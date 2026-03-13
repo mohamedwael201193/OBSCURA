@@ -77,9 +77,14 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
     if (preset.seconds > 0) {
       return BigInt(Math.floor(Date.now() / 1000) + preset.seconds);
     }
-    // Custom
+    // Custom datetime-local: parse as LOCAL time explicitly to avoid UTC
+    // ambiguity in new Date("YYYY-MM-DDTHH:mm") across browsers/platforms.
     if (!customDeadline) return 0n;
-    return BigInt(Math.floor(new Date(customDeadline).getTime() / 1000));
+    const [datePart, timePart = "00:00"] = customDeadline.split("T");
+    const [year, month, day] = datePart.split("-").map(Number);
+    const [hour, minute] = timePart.split(":").map(Number);
+    const localDate = new Date(year, month - 1, day, hour, minute);
+    return BigInt(Math.floor(localDate.getTime() / 1000));
   }
 
   async function handleSubmit(e: React.FormEvent) {

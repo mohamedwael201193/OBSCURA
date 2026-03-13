@@ -3,6 +3,7 @@ import { Ban, Clock, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { OBSCURA_VOTE_ADDRESS, OBSCURA_VOTE_ABI } from "@/config/contracts";
 import { useProposalCount, useProposal } from "@/hooks/useProposals";
+import { useChainTime } from "@/hooks/useChainTime";
 
 function ProposalAdminRow({ index }: { index: number }) {
   const { proposal } = useProposal(BigInt(index));
@@ -14,7 +15,7 @@ function ProposalAdminRow({ index }: { index: number }) {
 
   if (!proposal?.exists || proposal.isCancelled) return null;
 
-  const now = BigInt(Math.floor(Date.now() / 1000));
+  const now = useChainTime();
   const ended = proposal.deadline <= now;
 
   async function handleCancel() {

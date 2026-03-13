@@ -9,6 +9,7 @@ import { arbitrumSepolia } from "viem/chains";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { FHEStepStatus } from "@/lib/constants";
 import FHEOperationsVisual, { buildFinalizeOps } from "@/components/vote/FHEOperationsVisual";
+import { useChainTime } from "@/hooks/useChainTime";
 
 const BAR_COLORS = [
   "bg-green-400/60", "bg-red-400/60", "bg-blue-400/60", "bg-yellow-400/60",
@@ -54,7 +55,7 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
 
   const isFinalized = proposal.isFinalized;
   const isCancelled = proposal.isCancelled;
-  const now = BigInt(Math.floor(Date.now() / 1000));
+  const now = useChainTime();
   const deadlinePassed = now >= proposal.deadline;
   const canFinalize = deadlinePassed && !isFinalized && !isCancelled;
   const quorumMet = proposal.quorum === 0n || proposal.totalVoters >= proposal.quorum;

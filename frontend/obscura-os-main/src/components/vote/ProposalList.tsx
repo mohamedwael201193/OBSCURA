@@ -4,14 +4,14 @@ import { FileText, Clock, CheckCircle, Lock, RefreshCw, Search, XCircle, Users, 
 import { useWatchContractEvent } from "wagmi";
 import { useProposalCount, useProposal, CATEGORY_LABELS } from "@/hooks/useProposals";
 import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
+import { useChainTime } from "@/hooks/useChainTime";
 
 type ProposalStatus = "active" | "ended" | "finalized" | "cancelled";
 type StatusFilter = "all" | ProposalStatus;
 
-function getStatus(deadline: bigint, isFinalized: boolean, isCancelled: boolean): ProposalStatus {
+function getStatus(deadline: bigint, isFinalized: boolean, isCancelled: boolean, now: bigint): ProposalStatus {
   if (isCancelled) return "cancelled";
   if (isFinalized) return "finalized";
-  const now = BigInt(Math.floor(Date.now() / 1000));
   return now < deadline ? "active" : "ended";
 }
 
@@ -46,12 +46,12 @@ function Countdown({ deadline }: { deadline: bigint }) {
   return <span className="text-emerald-400 font-semibold">{remaining}</span>;
 }
 
-function ProposalRow({ proposalId, searchQuery, statusFilter, onVote }: { proposalId: bigint; searchQuery: string; statusFilter: StatusFilter; onVote?: (id: number) => void }) {
+function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { proposalId: bigint; searchQuery: string; statusFilter: StatusFilter; onVote?: (id: number) => void; now: bigint }) {
   const { proposal, isLoading } = useProposal(proposalId);
 
   if (isLoading || !proposal || !proposal.exists) return null;
 
-  const status = getStatus(proposal.deadline, proposal.isFinalized, proposal.isCancelled);
+  const status = getStatus(proposal.deadline, proposal.isFinalized, proposal.isCancelled, now);
 
   // Filter by status
   if (statusFilter !== "all" && status !== statusFilter) return null;
@@ -127,6 +127,7 @@ export default function ProposalList({ onVote }: { onVote?: (id: number) => void
   const proposalCount = Number(count ?? 0);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const now = useChainTime();
 
   // Instantly refetch when a new proposal is created on-chain
   useWatchContractEvent({
@@ -202,7 +203,7 @@ export default function ProposalList({ onVote }: { onVote?: (id: number) => void
       ) : (
         <div className="space-y-2">
           {Array.from({ length: proposalCount }, (_, i) => (
-            <ProposalRow key={i} proposalId={BigInt(i)} searchQuery={searchQuery} statusFilter={statusFilter} onVote={onVote} />
+            <ProposalRow key={i} proposalId={BigInt(i)} searchQuery={searchQuery} statusFilter={statusFilter} onVote={onVote} now={now} />
           ))}
         </div>
       )}

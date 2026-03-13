@@ -5,6 +5,7 @@ import { useProposalCount, useProposal, useProposalOptions, useHasVoted, CATEGOR
 import { useMyVote } from "@/hooks/useVoteTally";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { FHEStepStatus } from "@/lib/constants";
+import { useChainTime } from "@/hooks/useChainTime";
 
 function HistoryRow({ index, address }: { index: number; address: `0x${string}` }) {
   const { proposal } = useProposal(BigInt(index));
@@ -16,7 +17,7 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
   if (!proposal?.exists) return null;
 
   const options = (optionLabels as string[]) ?? [];
-  const now = BigInt(Math.floor(Date.now() / 1000));
+  const now = useChainTime();
   const ended = proposal.deadline <= now || proposal.isFinalized;
   const isCancelled = proposal.isCancelled;
 

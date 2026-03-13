@@ -10,11 +10,11 @@ import AsyncStepper from "@/components/shared/AsyncStepper";
 import { FHEStepStatus } from "@/lib/constants";
 import { initFHEClient } from "@/lib/fhe";
 import FHEOperationsVisual, { buildVoteOps, buildRevoteOps } from "@/components/vote/FHEOperationsVisual";
+import { useChainTime } from "@/hooks/useChainTime";
 
 /** Dropdown option that fetches its own proposal data */
-function ProposalOption({ index }: { index: number }) {
+function ProposalOption({ index, now }: { index: number; now: bigint }) {
   const { proposal } = useProposal(BigInt(index));
-  const now = BigInt(Math.floor(Date.now() / 1000));
   const cancelled = proposal?.isCancelled;
   const ended = proposal && (proposal.deadline <= now || proposal.isFinalized);
   const label = proposal?.title
@@ -34,6 +34,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
   const { castVote, txHash, isTxPending, status, stepIndex, error: fheError, reset } = useEncryptedVote();
   const { data: count } = useProposalCount();
   const proposalCount = Number(count ?? 0);
+  const now = useChainTime();
 
   // Check if user has claimed OBS tokens
   const { data: lastClaimRaw } = useReadContract({
@@ -77,7 +78,6 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
   const hasSelection = selectedProposal !== '';
   const isActive = hasSelection && proposal?.exists && !proposal.isCancelled && now < proposal.deadline && !proposal.isFinalized;
   const isOwnProposal = !!(address && proposal?.creator && address.toLowerCase() === proposal.creator.toLowerCase());
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (selectedOption === null || !selectedProposal || proposalId === undefined) return;
@@ -144,7 +144,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
           >
             <option value="">Choose a proposal...</option>
             {Array.from({ length: proposalCount }, (_, i) => (
-              <ProposalOption key={i} index={i} />
+              <ProposalOption key={i} index={i} now={now} />
             ))}
           </select>
         </div>

@@ -9,11 +9,13 @@ import {
   Settings,
   Wallet as WalletIcon,
   Lock,
-  Vote,
+  BookOpen,
   HelpCircle,
   Shield,
   Sparkles,
   Network,
+  Coins,
+  PlayCircle,
 } from "lucide-react";
 
 import SectionDiagram from "@/components/elite/SectionDiagram";
@@ -40,6 +42,7 @@ import CreateProposalForm from "@/components/vote/CreateProposalForm";
 import VotingHistory from "@/components/vote/VotingHistory";
 import AdminControls from "@/components/vote/AdminControls";
 import ClaimDailyObsForm from "@/components/pay/ClaimDailyObsForm";
+import VoteOnboardingWizard from "@/components/vote/VoteOnboardingWizard";
 import { useVoteOwner, useVoteRole } from "@/hooks/useProposals";
 import { Role } from "@/lib/constants";
 
@@ -50,7 +53,6 @@ const sidebarSections: SidebarSection[] = [
   {
     heading: "Modules",
     items: [
-      { key: "vote", label: "Vote", icon: Vote },
       { key: "proposals", label: "Proposals", icon: FileText },
       { key: "cast", label: "Cast Vote", icon: CheckSquare },
       { key: "results", label: "Results", icon: BarChart3 },
@@ -60,6 +62,7 @@ const sidebarSections: SidebarSection[] = [
   {
     heading: "Resources",
     items: [
+      { key: "howto", label: "How to Use", icon: PlayCircle },
       { key: "docs", label: "Docs", icon: BookOpen },
       { key: "private", label: "What's Private?", icon: Lock },
     ],
@@ -110,9 +113,11 @@ const VotePage = () => {
 
   const [tab, setTab] = useState<Tab>("dashboard");
   const [jumpProposalId, setJumpProposalId] = useState("");
+  const [showGuide, setShowGuide] = useState(false);
 
   const handleSidebarSelect = (key: string) => {
-    if (key === "vote" || key === "dashboard") return setTab("dashboard");
+    if (key === "dashboard") return setTab("dashboard");
+    if (key === "howto") return setShowGuide(true);
     if (key === "docs") return void navigate("/docs");
     if (key === "private") return void navigate("/docs#whats-private");
     setTab(key as Tab);
@@ -123,29 +128,24 @@ const VotePage = () => {
       case "dashboard":
         return (
           <div className="space-y-4">
-            {/* Main features first: live proposals */}
+            {/* $OBS claim banner — always visible at the top of dashboard */}
+            <div className="pay-card p-4 flex items-center gap-4 flex-wrap">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                <Coins className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-semibold text-foreground leading-tight">Get $OBS governance tokens</div>
+                <div className="text-[11px] text-muted-foreground/60 mt-0.5">You need $OBS to vote. Claim 100 free tokens every 24 hours.</div>
+              </div>
+              <div className="shrink-0">
+                <ClaimDailyObsForm compact />
+              </div>
+            </div>
+
+            {/* Live proposals stats */}
             <Card>
               <CardHeader title="Active proposals" eyebrow="Live" />
               <div className="p-5"><VoteDashboard /></div>
-            </Card>
-
-            {/* Daily claim */}
-            <Card>
-              <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/[0.05]">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-md bg-emerald-500/[0.08] border border-emerald-500/15 flex items-center justify-center">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                  </div>
-                  <span className="text-[13px] font-display font-semibold text-foreground">Claim $OBS to vote</span>
-                </div>
-                <span className="text-[9px] tracking-[0.22em] uppercase text-emerald-400/80 font-mono">Faucet</span>
-              </div>
-              <div className="p-5">
-                <p className="text-[12px] text-muted-foreground/70 leading-relaxed mb-4 max-w-2xl">
-                  You need $OBS governance tokens to participate. Claim 100 free tokens every 24 hours.
-                </p>
-                <ClaimDailyObsForm />
-              </div>
             </Card>
 
             {/* Diagram + how-it-works at the bottom */}
@@ -226,6 +226,11 @@ const VotePage = () => {
     <div className="min-h-screen flex bg-[#06090c] text-foreground antialiased">
       <AmbientBackground />
 
+      <VoteOnboardingWizard
+        forceOpen={showGuide}
+        onClose={() => setShowGuide(false)}
+      />
+
       <DashboardSidebar
         sections={sidebarSections}
         active={tab === "dashboard" ? "dashboard" : tab}
@@ -271,7 +276,6 @@ const VotePage = () => {
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 };

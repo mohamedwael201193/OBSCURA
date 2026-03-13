@@ -93,20 +93,20 @@ export default function StakePoolForm() {
   };
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <Landmark className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Landmark className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Stake to Insurance Pool</h3>
+          <h3 className="font-display text-lg text-foreground leading-tight">Stake to Insurance Pool</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Earn Yield · ocUSDC</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">LP YIELD</span>
       </div>
 
-      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
+      <p className="text-sm text-muted-foreground leading-relaxed">
         Deposit ocUSDC into the insurance pool so dispute payouts can be funded.
         Anyone can stake — you earn a share of premiums paid by coverage buyers.
         The staked amount is fully encrypted.

@@ -66,12 +66,12 @@ function CountdownTimer({ nextDue, now, onRefresh }: { nextDue: number; now: num
           : "now";
   return (
     <div className="space-y-1.5">
-      <div className="w-full py-2 text-[11px] tracking-[0.15em] uppercase text-muted-foreground/40 border border-white/[0.07] rounded-lg flex items-center justify-center gap-1.5">
+      <div className="w-full py-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground hairline rounded-lg flex items-center justify-center gap-1.5">
         <Timer className="w-3 h-3" /> Next cycle in {display}
       </div>
       {secsLeft <= 0 && (
         <button onClick={() => onRefresh()}
-          className="w-full py-1.5 text-[10px] tracking-[0.15em] uppercase text-emerald-400/60 hover:text-emerald-400 transition-colors">
+          className="w-full py-1.5 text-[10px] tracking-[0.15em] uppercase text-foreground/60 hover:text-foreground transition-colors">
           Refresh to check
         </button>
       )}
@@ -197,19 +197,19 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   if (!address) return null;
 
   return (
-    <div className="pay-card p-5 space-y-5">
+    <div className="space-y-5">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25">
-          {mode === "employer" ? <Play className="w-4 h-4 text-emerald-400" /> : <Clock className="w-4 h-4 text-cyan-400" />}
+          {mode === "employer" ? <Play className="w-4 h-4 text-foreground" /> : <Clock className="w-4 h-4 text-foreground" />}
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">
+          <h3 className="font-display text-lg text-foreground leading-tight">
             {mode === "employer" ? "Streams You're Paying" : "Streams Paying You"}
           </h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">ocUSDC · FHE Encrypted</p>
         </div>
         <button onClick={() => refresh()}
-          className="ml-auto text-[10px] tracking-[0.15em] uppercase text-muted-foreground/40 hover:text-emerald-400 transition-colors shrink-0">
+          className="ml-auto text-[10px] tracking-[0.15em] uppercase text-muted-foreground/40 hover:text-foreground transition-colors shrink-0">
           Refresh
         </button>
       </div>
@@ -221,7 +221,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
         <button
           disabled={autoPaying || isTicking}
           onClick={payAllDue}
-          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-400 text-black font-display font-semibold text-[12px] inline-flex items-center justify-center gap-2 disabled:opacity-50"
+          className="btn-pay btn-pay-emerald w-full py-2.5 text-sm font-medium inline-flex items-center justify-center gap-2 disabled:opacity-50"
         >
           <Zap className="w-3.5 h-3.5" />
           {autoPaying ? "Paying all due cycles…" : `Pay all due cycles (${tickAmount || "—"} ocUSDC each)`}
@@ -247,9 +247,9 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                   className={`flex-1 py-2 text-[11px] tracking-[0.12em] uppercase font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all border ${
                     payMode === m
                       ? m === "direct"
-                        ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/35 shadow-[0_0_8px_rgba(52,211,153,0.15)]"
+                        ? "bg-emerald-500/15 text-[hsl(var(--success))] border-emerald-500/35 shadow-[0_0_8px_rgba(52,211,153,0.15)]"
                         : "bg-violet-500/15 text-violet-300 border-violet-500/35 shadow-[0_0_8px_rgba(139,92,246,0.15)]"
-                      : "bg-white/[0.03] text-muted-foreground/50 border-white/[0.07] hover:text-muted-foreground hover:border-white/[0.12]"
+                      : "hairline bg-card text-muted-foreground hover:bg-muted/50"
                   }`}>
                   {m === "direct" ? <Zap className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
                   {m}
@@ -268,24 +268,24 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
       {lastPayment && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
           className="p-3.5 bg-emerald-500/8 border border-emerald-500/25 rounded-xl flex items-start gap-2.5">
-          <Check className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
+          <Check className="w-3.5 h-3.5 text-foreground mt-0.5 shrink-0" />
           <div className="min-w-0 space-y-1">
-            <div className="text-[12px] text-emerald-300 font-medium">
+            <div className="text-[12px] text-[hsl(var(--success))] font-medium">
               {lastPayment.amount} ocUSDC sent → Stream #{lastPayment.streamId}
             </div>
-            <div className="font-mono text-[11px] text-emerald-400/50">
+            <div className="font-mono text-[11px] text-foreground/50">
               tx: {lastPayment.txHash.slice(0, 14)}…{lastPayment.txHash.slice(-8)}
             </div>
             {lastPayment.stealthAddress && (
               <div className="text-[11px] text-violet-300/70 space-y-0.5">
                 <div>Stealth: {lastPayment.stealthAddress.slice(0, 14)}…{lastPayment.stealthAddress.slice(-6)}</div>
                 {lastPayment.announceTx
-                  ? <div className="text-emerald-400/70 flex items-center gap-1"><Check className="w-2.5 h-2.5" /> Announced — recipient can scan Stealth Inbox</div>
+                  ? <div className="text-foreground/70 flex items-center gap-1"><Check className="w-2.5 h-2.5" /> Announced — recipient can scan Stealth Inbox</div>
                   : <div className="text-amber-400/70">Announcement pending — recipient must wait then rescan</div>}
               </div>
             )}
             {!lastPayment.stealthAddress && (
-              <div className="text-[11px] text-emerald-400/50">Direct — encrypted on-chain, visible after REVEAL</div>
+              <div className="text-[11px] text-foreground/50">Direct — encrypted on-chain, visible after REVEAL</div>
             )}
           </div>
           <button onClick={() => setLastPayment(null)}
@@ -299,7 +299,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
       {!isLoading && streams.length === 0 && (
         <div className="text-center py-8">
           <div className="text-[13px] text-foreground/80 mb-1">No streams yet</div>
-          <p className="text-[12px] text-muted-foreground/55 max-w-xs mx-auto">
+          <p className="text-sm text-muted-foreground max-w-xs mx-auto">
             {mode === "employer"
               ? "Create a confidential subscription or custom stream above to start paying recipients on a recurring schedule."
               : "You are not receiving any streams yet. Share your stealth meta-address with a payer to get started."}
@@ -321,17 +321,17 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           const effectiveStream = { ...s, recipientHint: recipientUnknown ? (ZERO_ADDR as `0x${string}`) : storedHint };
 
           return (
-            <div key={key} className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 space-y-3">
+            <div key={key} className="rounded-xl hairline bg-card p-4 space-y-3">
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
-                  <div className="font-display text-sm font-semibold text-foreground">Stream #{key}</div>
+                  <div className="font-display text-lg text-foreground">Stream #{key}</div>
                   <div className="text-[11px] text-muted-foreground/50">
                     every {Number(s.periodSeconds) >= 86400
                       ? `${Math.round(Number(s.periodSeconds) / 86400)}d`
                       : Number(s.periodSeconds) >= 3600
                         ? `${Math.round(Number(s.periodSeconds) / 3600)}h`
                         : `${Number(s.periodSeconds)}s`} ·{" "}
-                    <span className={totalPaid > 0 ? "text-emerald-400" : ""}>{totalPaid} paid</span>
+                    <span className={totalPaid > 0 ? "text-foreground" : ""}>{totalPaid} paid</span>
                   </div>
                 </div>
                 {effectivePending > 0 ? (
@@ -440,7 +440,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                         refresh();
                       } catch (e) { toast.error((e as Error).message || "Resume failed"); } finally { setStreamAction(null); }
                     }}
-                    className="btn-pay btn-pay-ghost py-1.5 px-3 text-emerald-400 hover:text-emerald-300 border-emerald-500/25 disabled:opacity-50">
+                    className="btn-pay btn-pay-ghost py-1.5 px-3 text-foreground hover:text-[hsl(var(--success))] border-emerald-500/25 disabled:opacity-50">
                     <PlayCircle className="w-3 h-3" /> {streamAction === key ? "Resuming…" : "Resume"}
                   </button>
                 </div>

@@ -100,7 +100,7 @@ export default function StealthInboxV2() {
 
       {inbox.items.length === 0 ? (
         <div className="text-center py-8">
-          <Inbox className="w-6 h-6 mx-auto mb-2 text-emerald-400/60" />
+          <Inbox className="w-6 h-6 mx-auto mb-2 text-foreground/60" />
           <div className="text-[13px] text-foreground/80 mb-1">Inbox empty</div>
           <p className="text-[12px] text-muted-foreground/60 max-w-xs mx-auto">
             No incoming stealth payments scanned yet. Share your stealth meta-address from the Receive tab to start receiving private ocUSDC.
@@ -121,11 +121,11 @@ export default function StealthInboxV2() {
             >
               <div className="w-7 h-7 rounded-full bg-emerald-500/[0.1] border border-emerald-500/30 flex items-center justify-center">
                 {m.claimed ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-foreground" />
                 ) : m.seen ? (
                   <Eye className="w-3.5 h-3.5 text-muted-foreground/50" />
                 ) : (
-                  <EyeOff className="w-3.5 h-3.5 text-emerald-300" />
+                  <EyeOff className="w-3.5 h-3.5 text-[hsl(var(--success))]" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -135,13 +135,13 @@ export default function StealthInboxV2() {
                 <div className="text-[10px] text-muted-foreground/55 font-mono">
                   block #{m.blockNumber.toString()} · view-tag {m.viewTag}
                   {m.amount > 0n && (
-                    <span className="text-emerald-300/80"> · {(Number(m.amount) / 1_000_000).toFixed(2)} cUSDC</span>
+                    <span className="text-[hsl(var(--success))]/80"> · {(Number(m.amount) / 1_000_000).toFixed(2)} cUSDC</span>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
                 {m.claimed ? (
-                  <span className="text-[10px] text-emerald-400/60 font-mono uppercase tracking-wide px-2 py-1 rounded border border-emerald-500/20 bg-emerald-500/[0.06]">
+                  <span className="text-[10px] text-foreground/60 font-mono uppercase tracking-wide px-2 py-1 rounded border border-emerald-500/20 bg-emerald-500/[0.06]">
                     Swept ✓
                   </span>
                 ) : (

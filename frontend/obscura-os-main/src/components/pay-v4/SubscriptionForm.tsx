@@ -191,10 +191,10 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
   };
 
   return (
-    <div className="pay-card p-5 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <Repeat className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Repeat className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
           <div className="font-display text-[15px] font-semibold">Confidential subscription</div>
@@ -217,7 +217,7 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
         {merchant && isAddress(merchant) && (
           <div className="text-[10.5px] flex items-center gap-1.5 text-muted-foreground/65">
             {recipientStatus === "registered" && (
-              <><CheckCircle2 className="w-3 h-3 text-emerald-400" /> stealth-ready merchant</>
+              <><CheckCircle2 className="w-3 h-3 text-foreground" /> stealth-ready merchant</>
             )}
             {recipientStatus === "not-registered" && (
               <><span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> merchant needs to register stealth meta-address first</>
@@ -244,8 +244,8 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
               onClick={() => setMonthly(a)}
               className={`px-3 py-1 rounded-md text-[11px] font-mono border ${
                 monthly === a
-                  ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-300"
-                  : "bg-white/[0.025] border-white/[0.06] text-muted-foreground/65 hover:border-white/[0.12]"
+                  ? "bg-emerald-500/10 border-emerald-500/35 text-[hsl(var(--success))]"
+                  : "hairline bg-card text-muted-foreground hover:bg-muted/50"
               }`}
             >
               ${a}
@@ -267,8 +267,8 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
               onClick={() => setMonths(String(d.months))}
               className={`py-2 rounded-lg text-[11px] font-mono border ${
                 Number(months) === d.months
-                  ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-300"
-                  : "bg-white/[0.025] border-white/[0.06] text-muted-foreground/70 hover:border-white/[0.12]"
+                  ? "bg-emerald-500/10 border-emerald-500/35 text-[hsl(var(--success))]"
+                  : "hairline bg-card text-muted-foreground hover:bg-muted/50"
               }`}
             >
               {d.label}
@@ -278,7 +278,7 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
       </div>
 
       {/* Summary */}
-      <div className="rounded-xl bg-white/[0.025] border border-white/[0.07] p-3.5 space-y-1.5">
+      <div className="rounded-xl hairline bg-card p-3.5 space-y-1.5">
         <div className="flex items-center justify-between text-[12px]">
           <span className="text-muted-foreground/65">Per month</span>
           <span className="font-mono font-semibold">{monthly || "0"} ocUSDC</span>
@@ -287,10 +287,10 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
           <span className="text-muted-foreground/65">For</span>
           <span className="font-mono">{months || "0"} months</span>
         </div>
-        <div className="h-px bg-white/[0.08]" />
+        <div className="h-px bg-border" />
         <div className="flex items-center justify-between text-[13px]">
           <span className="text-foreground/85 font-display font-semibold">Lifetime cap</span>
-          <span className="font-mono font-bold text-emerald-300">{totalLifetime} ocUSDC</span>
+          <span className="font-mono font-bold text-[hsl(var(--success))]">{totalLifetime} ocUSDC</span>
         </div>
         <p className="text-[10px] text-muted-foreground/45 leading-relaxed">
           You only spend ocUSDC at each renewal. Each charge is encrypted end-to-end via CoFHE.

@@ -14,10 +14,12 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
   const { myVoteIndex, decryptMyVote, status, stepIndex, error: fheError } = useMyVote(BigInt(index));
   const [error, setError] = useState<string | null>(null);
 
+  // Must be called before any early return to satisfy Rules of Hooks
+  const now = useChainTime();
+
   if (!proposal?.exists) return null;
 
   const options = (optionLabels as string[]) ?? [];
-  const now = useChainTime();
   const ended = proposal.deadline <= now || proposal.isFinalized;
   const isCancelled = proposal.isCancelled;
 

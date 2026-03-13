@@ -13,9 +13,11 @@ function ProposalAdminRow({ index }: { index: number }) {
   const { writeContractAsync: cancelAsync, isPending: cancelling } = useWriteContract();
   const { writeContractAsync: extendAsync, isPending: extending } = useWriteContract();
 
+  // Must be called before any early return to satisfy Rules of Hooks
+  const now = useChainTime();
+
   if (!proposal?.exists || proposal.isCancelled) return null;
 
-  const now = useChainTime();
   const ended = proposal.deadline <= now;
 
   async function handleCancel() {

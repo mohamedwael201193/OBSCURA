@@ -51,12 +51,19 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
   const [error, setError] = useState<string | null>(null);
   const [finalizeTxHash, setFinalizeTxHash] = useState<string | null>(null);
 
+  // Must be called before any early return to satisfy Rules of Hooks
+  const now = useChainTime();
+
   if (!proposal?.exists) return null;
 
   const isFinalized = proposal.isFinalized;
   const isCancelled = proposal.isCancelled;
-  const now = useChainTime();
   const deadlinePassed = now >= proposal.deadline;
+  const canFinalize = deadlinePassed && !isFinalized && !isCancelled;
+  const quorumMet = proposal.quorum === 0n || proposal.totalVoters >= proposal.quorum;
+
+  const total = tallies ? tallies.reduce((sum, t) => sum + t.votes, 0n) : null;
+  const maxVotes = tallies ? tallies.reduce((max, t) => t.votes > max ? t.votes : max, 0n) : 0n;
   const canFinalize = deadlinePassed && !isFinalized && !isCancelled;
   const quorumMet = proposal.quorum === 0n || proposal.totalVoters >= proposal.quorum;
 

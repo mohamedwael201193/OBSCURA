@@ -64,11 +64,6 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
 
   const total = tallies ? tallies.reduce((sum, t) => sum + t.votes, 0n) : null;
   const maxVotes = tallies ? tallies.reduce((max, t) => t.votes > max ? t.votes : max, 0n) : 0n;
-  const canFinalize = deadlinePassed && !isFinalized && !isCancelled;
-  const quorumMet = proposal.quorum === 0n || proposal.totalVoters >= proposal.quorum;
-
-  const total = tallies ? tallies.reduce((sum, t) => sum + t.votes, 0n) : null;
-  const maxVotes = tallies ? tallies.reduce((max, t) => t.votes > max ? t.votes : max, 0n) : 0n;
 
   async function handleFinalize() {
     setError(null);

@@ -71,6 +71,15 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
       const maxFeePerGas = baseFee * 3n;
       const maxPriorityFeePerGas = baseFee;
 
+      // Simulate first to surface revert reason without spending gas
+      await publicClient!.simulateContract({
+        address: OBSCURA_VOTE_ADDRESS!,
+        abi: OBSCURA_VOTE_ABI,
+        functionName: "finalizeVote",
+        args: [proposalId],
+        account: address,
+      });
+
       const hash = await writeContractAsync({
         address: OBSCURA_VOTE_ADDRESS!,
         abi: OBSCURA_VOTE_ABI,
@@ -78,14 +87,16 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
         args: [proposalId],
         account: address,
         chain: arbitrumSepolia,
-        gas: 3_000_000n,
+        gas: 10_000_000n,
         maxFeePerGas,
         maxPriorityFeePerGas,
       });
       setFinalizeTxHash(hash);
       setTimeout(() => refetchProposal(), 3000);
     } catch (err: any) {
-      setError(err.shortMessage ?? err.message ?? "Finalization failed");
+      // Prefer the decoded revert reason (shortMessage) over raw message
+      const msg: string = err.shortMessage ?? err.cause?.reason ?? err.message ?? "Finalization failed";
+      setError(msg);
     }
   }
 

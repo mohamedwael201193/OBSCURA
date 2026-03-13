@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, AlertCircle, CheckCircle, ExternalLink, Trash2, X, Timer } from "lucide-react";
-import { useAccount, useWriteContract, usePublicClient } from "wagmi";
-import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
+import { Plus, AlertCircle, CheckCircle, ExternalLink, Trash2, X, Timer, AlertTriangle } from "lucide-react";
+import { useAccount, useWriteContract, usePublicClient, useReadContract } from "wagmi";
+import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS, OBSCURA_TOKEN_ABI, OBSCURA_TOKEN_ADDRESS } from "@/config/contracts";
 import { CATEGORY_LABELS } from "@/hooks/useProposals";
 import { arbitrumSepolia } from "viem/chains";
 
@@ -21,10 +21,24 @@ const DURATION_PRESETS = [
   { label: "Custom", seconds: 0 },
 ];
 
-export default function CreateProposalForm() {
+interface CreateProposalFormProps {
+  onSuccess?: () => void;
+}
+
+export default function CreateProposalForm({ onSuccess }: CreateProposalFormProps) {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
+
+  // Check if user has claimed OBS (required to create proposals)
+  const { data: lastClaimRaw } = useReadContract({
+    address: OBSCURA_TOKEN_ADDRESS,
+    abi: OBSCURA_TOKEN_ABI,
+    functionName: "lastClaim",
+    args: address ? [address] : undefined,
+    query: { enabled: !!OBSCURA_TOKEN_ADDRESS && !!address },
+  });
+  const hasClaimed = Number(lastClaimRaw ?? 0) > 0;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -112,6 +126,8 @@ export default function CreateProposalForm() {
       setOptions(["Yes", "No"]);
       setSelectedTemplate(0);
       setQuorum("0");
+      // Navigate to proposals list after a short delay so the user can see the success state
+      setTimeout(() => onSuccess?.(), 2000);
     } catch (err: any) {
       setError(err.shortMessage ?? err.message ?? "Failed to create proposal");
     }
@@ -137,7 +153,19 @@ export default function CreateProposalForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Template selector */}
+        {/* OBS token requirement warning */}
+        {isConnected && !hasClaimed && (
+          <div className="flex items-start gap-2 p-3 bg-yellow-400/5 border border-yellow-400/20 rounded-md">
+            <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+            <div>
+              <div className="text-sm text-yellow-400 font-semibold">$OBS Tokens Required</div>
+              <div className="text-xs text-yellow-400/70 mt-0.5">
+                You need to claim $OBS tokens at least once before creating a proposal.
+                Go to the <strong className="text-yellow-400">Dashboard</strong> and claim your free 100 $OBS, then come back.
+              </div>
+            </div>
+          </div>
+        )}
         <div>
           <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
             Template
@@ -318,12 +346,18 @@ export default function CreateProposalForm() {
 
         <motion.button
           type="submit"
-          disabled={!isConnected || isPending || !OBSCURA_VOTE_ADDRESS}
+          disabled={!isConnected || !hasClaimed || isPending || !OBSCURA_VOTE_ADDRESS}
           whileHover={{ scale: 1.005 }}
           whileTap={{ scale: 0.99 }}
           className="btn-pay btn-pay-emerald w-full py-2.5"
         >
-          {isPending ? "Sign in Wallet..." : "Create Proposal"}
+          {!isConnected
+            ? "Connect Wallet"
+            : !hasClaimed
+            ? "Claim $OBS First"
+            : isPending
+            ? "Sign in Wallet..."
+            : "Create Proposal"}
         </motion.button>
       </form>
     </div>

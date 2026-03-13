@@ -76,6 +76,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
 
   const hasSelection = selectedProposal !== '';
   const isActive = hasSelection && proposal?.exists && !proposal.isCancelled && now < proposal.deadline && !proposal.isFinalized;
+  const isOwnProposal = !!(address && proposal?.creator && address.toLowerCase() === proposal.creator.toLowerCase());
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -179,6 +180,11 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
             {alreadyVoted && (
               <div className="text-xs text-emerald-400 mt-1">
                 You have already voted — submitting will change your vote (anti-coercion revote)
+              </div>
+            )}
+            {isOwnProposal && (
+              <div className="text-xs text-red-400 mt-1 font-semibold">
+                You created this proposal. Creators cannot vote on their own proposals.
               </div>
             )}
           </div>
@@ -321,7 +327,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
         {!txHash && (
           <motion.button
             type="submit"
-            disabled={!isConnected || !hasClaimed || !isActive || selectedOption === null || isTxPending || status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
+            disabled={!isConnected || !hasClaimed || !isActive || isOwnProposal || selectedOption === null || isTxPending || status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
             whileHover={{ scale: 1.005 }}
             whileTap={{ scale: 0.99 }}
             className="btn-pay btn-pay-emerald w-full py-2.5"

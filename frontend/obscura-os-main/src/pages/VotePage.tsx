@@ -53,10 +53,10 @@ const sidebarSections: SidebarSection[] = [
   {
     heading: "Modules",
     items: [
+      { key: "create", label: "Create", icon: Settings },
       { key: "proposals", label: "Proposals", icon: FileText },
       { key: "cast", label: "Cast Vote", icon: CheckSquare },
       { key: "results", label: "Results", icon: BarChart3 },
-      { key: "create", label: "Create", icon: Settings },
     ],
   },
   {
@@ -208,7 +208,7 @@ const VotePage = () => {
           <div className="space-y-4">
             <Card>
               <CardHeader title="Launch a proposal" eyebrow="Create" />
-              <div className="p-5"><CreateProposalForm /></div>
+              <div className="p-5"><CreateProposalForm onSuccess={() => setTab("proposals")} /></div>
             </Card>
             {isAdmin && (
               <Card>

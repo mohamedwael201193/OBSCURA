@@ -103,7 +103,7 @@ export default function AuditorGrantPanel({
       className="rounded-xl border border-cyan-500/25 bg-gradient-to-br from-cyan-500/[0.06] to-transparent p-4 space-y-3"
     >
       <div className="flex items-start gap-2.5">
-        <ShieldCheck className="w-4 h-4 text-cyan-300 mt-0.5 shrink-0" />
+        <ShieldCheck className="w-4 h-4 text-foreground mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="font-display text-[13px] font-semibold text-cyan-200">
             Share with auditor
@@ -152,7 +152,7 @@ export default function AuditorGrantPanel({
             Auditors granted ({list.length})
           </div>
           {list.map((a) => (
-            <div key={a} className="font-mono text-[11px] px-2 py-1.5 rounded bg-white/[0.03] border border-white/[0.06] truncate">
+            <div key={a} className="font-mono text-[11px] px-2 py-1.5 rounded hairline bg-card truncate">
               {a}
             </div>
           ))}

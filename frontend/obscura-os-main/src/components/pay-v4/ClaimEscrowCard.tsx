@@ -182,10 +182,10 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
 
       <div className="relative flex items-start gap-4">
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400/30 to-emerald-600/15 border border-emerald-400/40 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
-          <Gift className="w-5 h-5 text-emerald-300" />
+          <Gift className="w-5 h-5 text-[hsl(var(--success))]" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] tracking-[0.2em] uppercase text-emerald-400/80 font-bold mb-1">Confidential Payment for You</div>
+          <div className="text-[10px] tracking-[0.2em] uppercase text-foreground/80 font-bold mb-1">Confidential Payment for You</div>
           <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground leading-tight">
             You've been sent a private ocUSDC payment
           </h2>
@@ -211,14 +211,14 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
           <div className="px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.07]">
             <div className="text-[9px] tracking-[0.15em] uppercase text-muted-foreground/45 mb-0.5">Amount</div>
             <div className="font-mono text-[12px] font-semibold inline-flex items-center gap-1">
-              <Lock className="w-3 h-3 text-emerald-300/70" /> encrypted
+              <Lock className="w-3 h-3 text-[hsl(var(--success))]/70" /> encrypted
             </div>
           </div>
           <div className="px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.07]">
             <div className="text-[9px] tracking-[0.15em] uppercase text-muted-foreground/45 mb-0.5">Window</div>
             <div className="font-mono text-[12px] font-semibold">
               {expired ? <span className="text-amber-300">expired · refundable</span>
-                : daysLeft ? <span className="text-cyan-300">{daysLeft}d left</span>
+                : daysLeft ? <span className="text-foreground">{daysLeft}d left</span>
                 : <span className="text-muted-foreground/50">no expiry</span>}
             </div>
           </div>
@@ -239,7 +239,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
       {/* Connected wallet pill */}
       {isConnected && (
         <div className="relative flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.025] border border-white/[0.07] text-[11px]">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-300/70" />
+          <ShieldCheck className="w-3.5 h-3.5 text-[hsl(var(--success))]/70" />
           <span className="text-muted-foreground/55">Claiming as</span>
           <span className="font-mono text-foreground/80">{address?.slice(0, 8)}…{address?.slice(-6)}</span>
         </div>
@@ -274,11 +274,11 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
             {/* Phase: settling — countdown while CoFHE finalizes */}
             {verifyPhase === "settling" && (
               <div className="px-4 py-3.5 rounded-xl bg-cyan-500/[0.06] border border-cyan-500/25 flex items-start gap-3">
-                <Loader2 className="w-5 h-5 text-cyan-300 shrink-0 mt-0.5 animate-spin" />
+                <Loader2 className="w-5 h-5 text-foreground shrink-0 mt-0.5 animate-spin" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-display text-sm font-semibold text-cyan-200">Settling on the FHE coprocessor…</div>
+                  <div className="font-display text-lg text-cyan-200">Settling on the FHE coprocessor…</div>
                   <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
-                    Your transaction is mined. Waiting <span className="font-mono text-cyan-300">{settleSecondsLeft}s</span> for the encrypted balance to settle, then automatically revealing your new balance.
+                    Your transaction is mined. Waiting <span className="font-mono text-foreground">{settleSecondsLeft}s</span> for the encrypted balance to settle, then automatically revealing your new balance.
                   </p>
                 </div>
               </div>
@@ -287,9 +287,9 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
             {/* Phase: revealing — actively decrypting */}
             {verifyPhase === "revealing" && (
               <div className="px-4 py-3.5 rounded-xl bg-cyan-500/[0.06] border border-cyan-500/25 flex items-start gap-3">
-                <Loader2 className="w-5 h-5 text-cyan-300 shrink-0 mt-0.5 animate-spin" />
+                <Loader2 className="w-5 h-5 text-foreground shrink-0 mt-0.5 animate-spin" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-display text-sm font-semibold text-cyan-200">Decrypting your balance…</div>
+                  <div className="font-display text-lg text-cyan-200">Decrypting your balance…</div>
                   <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
                     Asking the CoFHE coprocessor for a fresh decryption permit. This usually takes 5–20 seconds.
                   </p>
@@ -300,15 +300,15 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
             {/* Phase: confirmed — positive delta, success */}
             {verifyPhase === "confirmed" && preClaimUnits !== null && postClaimUnits !== null && (
               <div className="px-4 py-3.5 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/30 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-5 h-5 text-[hsl(var(--success))] shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-display text-sm font-semibold text-emerald-300 flex items-center gap-2">
+                  <div className="font-display text-lg text-[hsl(var(--success))] flex items-center gap-2">
                     Confirmed — you received <ArrowUpRight className="w-3.5 h-3.5" />
                     <span className="font-mono">+{formatUSDC(postClaimUnits - preClaimUnits)} ocUSDC</span>
                   </div>
                   <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
                     Pre-claim: <span className="font-mono">{formatUSDC(preClaimUnits)}</span> ocUSDC ·
-                    Post-claim: <span className="font-mono text-emerald-200">{formatUSDC(postClaimUnits)}</span> ocUSDC.
+                    Post-claim: <span className="font-mono text-foreground">{formatUSDC(postClaimUnits)}</span> ocUSDC.
                     The funds are now in your encrypted balance.
                   </p>
                 </div>
@@ -320,7 +320,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
               <div className="px-4 py-3.5 rounded-xl bg-amber-500/[0.06] border border-amber-500/30 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-display text-sm font-semibold text-amber-200">Transaction confirmed — no funds moved</div>
+                  <div className="font-display text-lg text-amber-200">Transaction confirmed — no funds moved</div>
                   <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
                     Your balance did not change. This wallet is most likely <b>not</b> the encrypted recipient of escrow #{claimId},
                     or the escrow has already been claimed. No funds were lost — the FHE silent-failure guarantee held.
@@ -335,16 +335,16 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
             {/* Phase: reveal-failed — fallback (e.g. Reineira 403) */}
             {verifyPhase === "reveal-failed" && (
               <div className="px-4 py-3.5 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/30 flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-5 h-5 text-[hsl(var(--success))] shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-display text-sm font-semibold text-emerald-300">Claim transaction confirmed</div>
+                  <div className="font-display text-lg text-[hsl(var(--success))]">Claim transaction confirmed</div>
                   <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
                     The decryption permit could not be granted (Reineira cUSDC contract limitation).
                     Click <b>REVEAL</b> on the Pay header to manually decrypt your new balance and confirm the receipt.
                   </p>
                   <button
                     onClick={() => void runVerify()}
-                    className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-300 hover:text-emerald-200"
+                    className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-mono text-[hsl(var(--success))] hover:text-foreground"
                   >
                     <Eye className="w-3 h-3" /> Try reveal again
                   </button>
@@ -354,7 +354,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
 
             {redeemHash && (
               <a href={`https://sepolia.arbiscan.io/tx/${redeemHash}`} target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] text-cyan-300 hover:text-cyan-200 text-[11px] font-mono transition-colors">
+                className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] text-foreground hover:text-cyan-200 text-[11px] font-mono transition-colors">
                 View claim tx · {redeemHash.slice(0, 12)}…{redeemHash.slice(-8)} <ExternalLink className="w-3 h-3" />
               </a>
             )}

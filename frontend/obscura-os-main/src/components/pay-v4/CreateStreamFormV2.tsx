@@ -137,21 +137,21 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
     <motion.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      className="pay-card p-6 space-y-5"
+      className="space-y-5"
     >
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <Repeat className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Repeat className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Payroll Stream</h3>
+          <h3 className="font-display text-lg text-foreground leading-tight">Create Payroll Stream</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted Hint · {useV3 ? "V3 · Native ocUSDC" : "V2 · Jitter"}</p>
         </div>
         <span className={`ml-auto shrink-0 pay-badge ${useV3 ? "pay-badge-blue" : "pay-badge-emerald"}`}>{useV3 ? "V3" : "V2"}</span>
       </div>
 
-      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
+      <p className="text-sm text-muted-foreground leading-relaxed">
         {useV3
           ? "Each cycle sends ocUSDC to escrow via the V3 stream — proofs are processed by the stream contract (no CoFHE forwarding). Stealth recipients redeem from escrow after the release window."
           : "Each cycle sends ocUSDC to a fresh stealth address. The recipient hint is encrypted on-chain and per-cycle salts + optional jitter prevent timing correlation."
@@ -164,7 +164,7 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
           <Label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Recipient</Label>
           <ContactPicker value={hint} onChange={setHint} placeholder="0x… recipient address or contact" />
           {recipientStatus === "registered" && (
-            <div className="flex items-center gap-1.5 text-[11px] text-emerald-300 mt-1">
+            <div className="flex items-center gap-1.5 text-[11px] text-[hsl(var(--success))] mt-1">
               <CheckCircle2 className="w-3 h-3" /> Stealth meta-address found
             </div>
           )}
@@ -186,7 +186,7 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
                 onClick={() => setPeriod(p.seconds)}
                 className={`px-3 py-1.5 text-[11px] font-mono rounded-lg border transition-all ${
                   period === p.seconds
-                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.18)]"
+                    ? "bg-emerald-500/15 border-emerald-500/40 text-[hsl(var(--success))] shadow-[0_0_12px_rgba(52,211,153,0.18)]"
                     : "bg-white/[0.025] border-white/[0.08] text-muted-foreground/60 hover:border-white/[0.15] hover:text-foreground/80"
                 }`}
               >
@@ -204,7 +204,7 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
               type="number"
               value={durationDays}
               onChange={(e) => setDurationDays(e.target.value)}
-              className="mt-0 font-mono bg-white/[0.03] border-white/[0.09] focus:border-emerald-500/40 text-[12px]"
+              className="mt-0 font-mono border-border bg-background focus:border-emerald-500/40 text-[12px]"
             />
           </div>
           <div className="space-y-2">
@@ -214,14 +214,14 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
               min="0"
               value={jitterSeconds}
               onChange={(e) => setJitterSeconds(e.target.value)}
-              className="mt-0 font-mono bg-white/[0.03] border-white/[0.09] focus:border-emerald-500/40 text-[12px]"
+              className="mt-0 font-mono border-border bg-background focus:border-emerald-500/40 text-[12px]"
               placeholder="e.g. 300 — set 0 to disable"
             />
           </div>
         </div>
 
         {/* Auto-insure toggle */}
-        <label className="flex items-start gap-3 p-4 rounded-xl border border-white/[0.07] bg-white/[0.02] cursor-pointer hover:border-emerald-500/25 hover:bg-white/[0.03] transition-all">
+        <label className="flex items-start gap-3 p-4 rounded-xl border border-white/[0.07] bg-white/[0.02] cursor-pointer hover:border-emerald-500/25 hover:bg-muted/40 transition-all">
           <div className="relative mt-0.5 shrink-0">
             <input
               type="checkbox"
@@ -237,7 +237,7 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 text-[12px] text-foreground">
-              <Shield className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+              <Shield className="w-3.5 h-3.5 text-[hsl(var(--success))] shrink-0" />
               Auto-insure each cycle
             </div>
             <div className="text-[11px] text-muted-foreground/55 mt-0.5 leading-relaxed">
@@ -254,7 +254,7 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
                   min="0"
                   value={maxPremium}
                   onChange={(e) => setMaxPremium(e.target.value)}
-                  className="font-mono bg-white/[0.03] border-white/[0.09] focus:border-emerald-500/40 text-[12px]"
+                  className="font-mono border-border bg-background focus:border-emerald-500/40 text-[12px]"
                 />
               </div>
             )}

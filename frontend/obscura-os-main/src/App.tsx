@@ -30,6 +30,9 @@ const queryClient = new QueryClient();
 /** App workspace routes use the integrated light shell (icon rail + sidebar + top bar). */
 const WORKSPACE_PATHS = new Set(["/pay", "/pay/contacts", "/pay/settings", "/vote", "/credit", "/ecosystem"]);
 
+/** Marketing pages ship their own nav (SpadeLandingNav) — skip global GooeyNav. */
+const SELF_NAV_PATHS = new Set(["/docs", "/privacy"]);
+
 const normalizePath = (pathname: string) => {
   const base = pathname.split("?")[0].replace(/\/$/, "") || "/";
   return base;
@@ -44,6 +47,8 @@ const AnimatedRoutes = () => {
   const location = useLocation();
   const isLanding = location.pathname === "/";
   const isWorkspace = isWorkspacePath(location.pathname);
+  const isSelfNav = SELF_NAV_PATHS.has(normalizePath(location.pathname));
+  const isSageShell = isLanding || isWorkspace || isSelfNav;
 
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -62,8 +67,8 @@ const AnimatedRoutes = () => {
 
   return (
     <>
-      <div className={isLanding || isWorkspace ? "min-h-screen bg-sage-1" : "min-h-screen bg-background"}>
-        {!isLanding && !isWorkspace && <GooeyNav rightSlot={<NavRightSlot />} />}
+      <div className={isSageShell ? "min-h-screen bg-sage-1" : "min-h-screen bg-background"}>
+        {!isLanding && !isWorkspace && !isSelfNav && <GooeyNav rightSlot={<NavRightSlot />} />}
 
         {/* Landing scroll-pin sections need no transform ancestor (breaks sticky). */}
         {isLanding ? (

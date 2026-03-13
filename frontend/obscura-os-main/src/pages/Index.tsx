@@ -1,6 +1,7 @@
 import SpadeLandingNav from "@/components/landing/spade/SpadeLandingNav";
 import SpadeHeroSection from "@/components/landing/spade/SpadeHeroSection";
 import DevelopersSection from "@/components/landing/spade/DevelopersSection";
+import FigureShowcaseSection from "@/components/landing/spade/FigureShowcaseSection";
 import IntegrationsScrollSection from "@/components/landing/spade/IntegrationsScrollSection";
 import SpadeFooter from "@/components/landing/spade/SpadeFooter";
 import { LogoStrip } from "@/components/landing/vault/LogoStrip";
@@ -21,6 +22,7 @@ const Index = () => {
       <div className="landing-vault">
         <LogoStrip />
         <DevelopersSection />
+        <FigureShowcaseSection />
         <IntegrationsScrollSection />
         <ScrollStory />
         <EncryptionStory />

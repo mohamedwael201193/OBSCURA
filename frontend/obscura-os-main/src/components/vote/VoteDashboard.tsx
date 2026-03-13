@@ -35,7 +35,7 @@ export default function VoteDashboard() {
       label: "Your Wallet",
       value: isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : "Not Connected",
       icon: Users,
-      color: isConnected ? "text-primary" : "text-muted-foreground",
+      color: isConnected ? "text-emerald-400" : "text-muted-foreground",
     },
     {
       label: "Today",
@@ -54,11 +54,11 @@ export default function VoteDashboard() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="glass-panel rounded-md p-4 text-center"
+            className="pay-card rounded-md p-4 text-center"
           >
             <stat.icon className={`w-5 h-5 mx-auto mb-2 ${stat.color}`} />
             <div className="font-display text-lg text-foreground">{stat.value}</div>
-            <div className="text-[11px] text-muted-foreground tracking-[0.15em] uppercase mt-1">
+            <div className="text-[11px] text-muted-foreground/50 tracking-[0.15em] uppercase mt-1">
               {stat.label}
             </div>
           </motion.div>
@@ -70,11 +70,11 @@ export default function VoteDashboard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="glass-panel rounded-md p-4"
+        className="pay-card rounded-md p-4"
       >
         <div className="flex items-center gap-2 mb-3">
-          <Shield className="w-4 h-4 text-primary" />
-          <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
+          <Shield className="w-4 h-4 text-emerald-400" />
+          <span className="text-sm tracking-[0.2em] uppercase text-emerald-400 font-mono">
             Contract Status
           </span>
           <span className="ml-auto flex items-center gap-1.5 text-xs text-green-400">
@@ -83,24 +83,24 @@ export default function VoteDashboard() {
           </span>
         </div>
         <div className="grid md:grid-cols-3 gap-3">
-          <div className="p-3 bg-secondary/30 rounded-md border border-border/30 space-y-1">
-            <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Contract</div>
+          <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 space-y-1">
+            <div className="text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">Contract</div>
             <a
               href={`https://sepolia.arbiscan.io/address/${OBSCURA_VOTE_ADDRESS}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1"
+              className="font-mono text-xs text-emerald-400 hover:underline inline-flex items-center gap-1"
             >
               {OBSCURA_VOTE_ADDRESS.slice(0, 8)}...{OBSCURA_VOTE_ADDRESS.slice(-6)}
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
-          <div className="p-3 bg-secondary/30 rounded-md border border-border/30 space-y-1">
-            <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Network</div>
-            <div className="font-mono text-xs text-primary">{NETWORK} ({CHAIN_ID})</div>
+          <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 space-y-1">
+            <div className="text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">Network</div>
+            <div className="font-mono text-xs text-emerald-400">{NETWORK} ({CHAIN_ID})</div>
           </div>
-          <div className="p-3 bg-secondary/30 rounded-md border border-border/30 space-y-1">
-            <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Deployed</div>
+          <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 space-y-1">
+            <div className="text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">Deployed</div>
             <div className="font-mono text-xs text-foreground/70">{DEPLOY_DATE}</div>
           </div>
         </div>
@@ -111,11 +111,11 @@ export default function VoteDashboard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="glass-panel rounded-md p-4"
+        className="pay-card rounded-md p-4"
       >
         <div className="flex items-center gap-2 mb-3">
-          <Activity className="w-4 h-4 text-primary" />
-          <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
+          <Activity className="w-4 h-4 text-emerald-400" />
+          <span className="text-sm tracking-[0.2em] uppercase text-emerald-400 font-mono">
             Live Activity
           </span>
           <span className="ml-auto text-[10px] text-muted-foreground">last {Math.min(activityEvents.length, 5)} events</span>

@@ -93,15 +93,20 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
   }
 
   return (
-    <div className="glass-panel rounded-md p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Vote className="w-4 h-4 text-primary" />
-        <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
-          Cast Encrypted Vote
-        </span>
+    <div className="pay-card p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <Vote className="w-4 h-4 text-emerald-400" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Cast Encrypted Vote</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">FHE-sealed ballot</p>
+        </div>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">FHE</span>
       </div>
 
-      <div className="text-xs text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
+      <div className="text-[12px] text-muted-foreground/55 leading-relaxed border-l-2 border-emerald-500/20 pl-3">
         Your vote is encrypted client-side via FHE before submission. No one — including the
         contract — can see your individual choice. You can revote at any time before the deadline.
       </div>
@@ -115,7 +120,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
               <div className="text-sm text-yellow-400 font-semibold">OBS Tokens Required</div>
               <div className="text-xs text-yellow-400/70 mt-0.5">
                 You must claim daily $OBS tokens before voting. Go to the{" "}
-                <Link to="/pay" className="underline text-primary">Pay app</Link> and click "Claim Daily OBS" first.
+                <Link to="/pay" className="underline text-emerald-400">Pay app</Link> and click "Claim Daily OBS" first.
               </div>
             </div>
           </div>
@@ -123,7 +128,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
 
         {/* Proposal selector */}
         <div>
-          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
             Select Proposal
           </label>
           <select
@@ -134,7 +139,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
               reset();
               setError(null);
             }}
-            className="w-full bg-secondary/50 border border-border/50 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40"
+            className="pay-select"
           >
             <option value="">Choose a proposal...</option>
             {Array.from({ length: proposalCount }, (_, i) => (
@@ -145,20 +150,20 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
 
         {/* Proposal info */}
         {hasSelection && proposal?.exists && (
-          <div className="p-3 bg-secondary/30 rounded-md border border-border/30 space-y-1">
-            <div className="text-sm text-foreground">{proposal.title}</div>
+          <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-4 space-y-1">
+            <div className="text-sm text-foreground font-medium">{proposal.title}</div>
             {proposal.description && (
               <div className="text-xs text-muted-foreground/70">{proposal.description}</div>
             )}
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
               <span>Deadline: {new Date(Number(proposal.deadline) * 1000).toLocaleString()}</span>
-              <span className="text-primary/50">|</span>
-              <span>Category: <span className="text-primary">{CATEGORY_LABELS[proposal.category] ?? "General"}</span></span>
-              <span className="text-primary/50">|</span>
+              <span className="text-emerald-400/30">|</span>
+              <span>Category: <span className="text-emerald-400">{CATEGORY_LABELS[proposal.category] ?? "General"}</span></span>
+              <span className="text-emerald-400/30">|</span>
               <span>Voters: {proposal.totalVoters.toString()}</span>
               {proposal.quorum > 0n && (
                 <>
-                  <span className="text-primary/50">|</span>
+                  <span className="text-emerald-400/30">|</span>
                   <span>Quorum: {proposal.quorum.toString()}</span>
                 </>
               )}
@@ -172,7 +177,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
               </span>
             )}
             {alreadyVoted && (
-              <div className="text-xs text-primary mt-1">
+              <div className="text-xs text-emerald-400 mt-1">
                 You have already voted — submitting will change your vote (anti-coercion revote)
               </div>
             )}
@@ -182,7 +187,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
         {/* Multi-option vote buttons */}
         {hasSelection && isActive && proposal?.exists && optionLabels && (optionLabels as string[]).length > 0 && (
           <div>
-            <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
+            <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
               Your Vote
             </label>
             <div className="space-y-2">
@@ -191,20 +196,20 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
                   key={i}
                   type="button"
                   onClick={() => setSelectedOption(i)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-md border transition-all text-sm text-left ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-all text-sm text-left ${
                     selectedOption === i
-                      ? "border-primary/40 text-primary bg-primary/10"
-                      : "border-border/50 text-muted-foreground hover:border-primary/20 hover:text-foreground"
+                      ? "border-emerald-400/50 text-emerald-400 bg-emerald-400/10"
+                      : "border-white/[0.09] text-muted-foreground hover:border-emerald-500/30 hover:text-foreground"
                   }`}
                 >
                   <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                    selectedOption === i ? "border-primary" : "border-muted-foreground/30"
+                    selectedOption === i ? "border-emerald-400" : "border-muted-foreground/30"
                   }`}>
-                    {selectedOption === i && <div className="w-2 h-2 rounded-full bg-primary" />}
+                    {selectedOption === i && <div className="w-2 h-2 rounded-full bg-emerald-400" />}
                   </div>
                   <span className="text-xs text-muted-foreground/50 w-4">{i}</span>
                   {label}
-                  {selectedOption === i && <CheckCircle2 className="w-4 h-4 ml-auto text-primary" />}
+                  {selectedOption === i && <CheckCircle2 className="w-4 h-4 ml-auto text-emerald-400" />}
                 </button>
               ))}
             </div>
@@ -253,7 +258,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
                     href={`https://sepolia.arbiscan.io/tx/${txHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline inline-flex items-center gap-1"
+                    className="text-emerald-400 hover:underline inline-flex items-center gap-1"
                   >
                     {txHash.slice(0, 10)}…{txHash.slice(-8)}
                     <ExternalLink className="w-3 h-3" />
@@ -272,13 +277,13 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
             </div>
 
             {/* Verify prompt */}
-            <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-md">
-              <Eye className="w-4 h-4 text-primary shrink-0" />
+            <div className="flex items-center gap-2 p-3 bg-emerald-400/5 border border-emerald-400/20 rounded-lg">
+              <Eye className="w-4 h-4 text-emerald-400 shrink-0" />
               <div className="text-xs text-foreground/80">
                 Want to confirm your vote? Use{" "}
-                <span className="text-primary font-semibold">Verify My Vote</span>{" "}
+                <span className="text-emerald-400 font-semibold">Verify My Vote</span>{" "}
                 in the Voting History tab — your wallet can self-decrypt its own ballot via{" "}
-                <span className="font-mono text-primary">FHE.allow</span>.
+                <span className="font-mono text-emerald-400">FHE.allow</span>.
               </div>
             </div>
           </motion.div>
@@ -292,7 +297,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
               href={`https://sepolia.arbiscan.io/tx/${txHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline inline-flex items-center gap-1"
+              className="text-emerald-400 hover:underline inline-flex items-center gap-1"
             >
               {txHash.slice(0, 10)}...{txHash.slice(-8)}
               <ExternalLink className="w-3 h-3" />
@@ -314,20 +319,22 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
 
         {/* Submit */}
         {!txHash && (
-          <button
+          <motion.button
             type="submit"
             disabled={!isConnected || !hasClaimed || !isActive || selectedOption === null || isTxPending || status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
-            className="w-full py-3 rounded-md border border-primary/40 text-primary text-sm tracking-[0.2em] uppercase hover:bg-primary/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            whileHover={{ scale: 1.005 }}
+            whileTap={{ scale: 0.99 }}
+            className="btn-pay btn-pay-emerald w-full py-2.5"
           >
             {isTxPending ? "Submitting..." : alreadyVoted ? "Change Vote (Encrypted)" : "Cast Vote (Encrypted)"}
-          </button>
+          </motion.button>
         )}
 
         {txHash && (
           <button
             type="button"
             onClick={() => { reset(); setVotedOptionIndex(null); setSelectedOption(null); setError(null); }}
-            className="w-full py-2 rounded-md border border-border/40 text-muted-foreground text-xs tracking-[0.15em] uppercase hover:border-primary/20 hover:text-foreground transition-all"
+            className="btn-pay btn-pay-ghost w-full py-2.5"
           >
             Vote on another proposal
           </button>

@@ -30,24 +30,24 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
   }
 
   return (
-    <div className="p-3 bg-secondary/30 rounded-md border border-border/30 space-y-2">
+    <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <div className="text-xs text-foreground truncate">
+          <div className="text-xs text-foreground truncate font-medium">
             #{index} — {proposal.title}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
             <span>{CATEGORY_LABELS[proposal.category] ?? "General"}</span>
-            <span className="text-primary/50">|</span>
+            <span className="text-emerald-400/30">|</span>
             <span>Deadline: {new Date(Number(proposal.deadline) * 1000).toLocaleDateString()}</span>
             {isCancelled ? (
-              <span className="text-red-400">Cancelled</span>
+              <span className="pay-badge pay-badge-red">Cancelled</span>
             ) : proposal.isFinalized ? (
-              <span className="text-primary">Finalized</span>
+              <span className="pay-badge pay-badge-emerald">Finalized</span>
             ) : ended ? (
-              <span className="text-yellow-400">Ended</span>
+              <span className="pay-badge pay-badge-amber">Ended</span>
             ) : (
-              <span className="text-green-400">Active</span>
+              <span className="pay-badge pay-badge-emerald">Active</span>
             )}
           </div>
         </div>
@@ -80,7 +80,7 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
       {voted && !isCancelled && (
         <div className="pl-0">
           {myVoteIndex !== null ? (
-            <div className="text-xs text-primary flex items-center gap-1.5">
+            <div className="text-xs text-emerald-400 flex items-center gap-1.5">
               <Eye className="w-3 h-3" />
               Your vote: <span className="font-semibold">{options[myVoteIndex] ?? `Option ${myVoteIndex}`}</span>
             </div>
@@ -92,7 +92,7 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
               <button
                 onClick={handleVerify}
                 disabled={status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
-                className="text-xs text-primary hover:underline flex items-center gap-1 disabled:opacity-30"
+                className="text-xs text-emerald-400 hover:underline flex items-center gap-1 disabled:opacity-30"
               >
                 <Eye className="w-3 h-3" /> Verify My Vote
               </button>
@@ -115,16 +115,21 @@ export default function VotingHistory() {
   const proposalCount = Number(count ?? 0);
 
   return (
-    <div className="glass-panel rounded-md p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <History className="w-4 h-4 text-primary" />
-        <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
-          Your Voting History
-        </span>
+    <div className="pay-card p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <History className="w-4 h-4 text-emerald-400" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Voting History</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Your encrypted ballots</p>
+        </div>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">Private</span>
       </div>
 
-      <div className="text-xs text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
-        Track which proposals you've voted on. Use "Verify My Vote" to self-decrypt your
+      <div className="text-[12px] text-muted-foreground/55 leading-relaxed border-l-2 border-emerald-500/20 pl-3">
+        Track which proposals you’ve voted on. Use “Verify My Vote” to self-decrypt your
         encrypted ballot via FHE.allow — only you can see your own choice.
       </div>
 

@@ -16,9 +16,9 @@ function getStatus(deadline: bigint, isFinalized: boolean, isCancelled: boolean)
 }
 
 const statusConfig: Record<ProposalStatus, { label: string; color: string; icon: typeof Clock }> = {
-  active: { label: "Active", color: "text-green-400 bg-green-400/10 border-green-400/20", icon: Clock },
-  ended: { label: "Ended", color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20", icon: Lock },
-  finalized: { label: "Finalized", color: "text-primary bg-primary/10 border-primary/20", icon: CheckCircle },
+  active: { label: "Active", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", icon: Clock },
+  ended: { label: "Ended", color: "text-amber-400 bg-amber-400/10 border-amber-400/20", icon: Lock },
+  finalized: { label: "Finalized", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", icon: CheckCircle },
   cancelled: { label: "Cancelled", color: "text-red-400 bg-red-400/10 border-red-400/20", icon: XCircle },
 };
 
@@ -43,7 +43,7 @@ function Countdown({ deadline }: { deadline: bigint }) {
     return () => clearInterval(interval);
   }, [deadline]);
 
-  return <span className="text-primary font-semibold">{remaining}</span>;
+  return <span className="text-emerald-400 font-semibold">{remaining}</span>;
 }
 
 function ProposalRow({ proposalId, searchQuery, statusFilter, onVote }: { proposalId: bigint; searchQuery: string; statusFilter: StatusFilter; onVote?: (id: number) => void }) {
@@ -67,7 +67,7 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote }: { propos
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-4 bg-secondary/30 rounded-md border border-border/30 space-y-2"
+      className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-4 space-y-2 hover:border-white/[0.12] transition-colors"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
@@ -75,7 +75,7 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote }: { propos
             #{proposal.id.toString()}
           </span>
           <div className="min-w-0">
-            <div className="text-sm text-foreground">{proposal.title}</div>
+            <div className="text-sm text-foreground font-medium">{proposal.title}</div>
             {proposal.description && (
               <div className="text-xs text-muted-foreground/60 mt-0.5 truncate">{proposal.description}</div>
             )}
@@ -93,7 +93,7 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote }: { propos
             </div>
           </div>
         </div>
-        <span className={`text-xs tracking-[0.2em] uppercase px-2 py-0.5 rounded-md border shrink-0 ${cfg.color}`}>
+        <span className={`pay-badge border shrink-0 ${cfg.color}`}>
           <cfg.icon className="w-3 h-3 inline mr-1" />
           {cfg.label}
         </span>
@@ -112,7 +112,7 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote }: { propos
         <div className="pl-11">
           <button
             onClick={() => onVote(Number(proposalId))}
-            className="flex items-center gap-1 text-[11px] text-primary hover:underline"
+            className="flex items-center gap-1 text-[11px] text-emerald-400 hover:underline"
           >
             Vote on this <ArrowRight className="w-3 h-3" />
           </button>
@@ -145,18 +145,20 @@ export default function ProposalList({ onVote }: { onVote?: (id: number) => void
   ];
 
   return (
-    <div className="glass-panel rounded-md p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-primary" />
-          <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
-            All Proposals
-          </span>
+    <div className="pay-card p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <FileText className="w-4 h-4 text-emerald-400" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Browse Proposals</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">All governance polls</p>
         </div>
         <button
           onClick={() => refetch()}
           title="Refresh proposals"
-          className="p-1 text-muted-foreground hover:text-primary transition-colors"
+          className="ml-auto p-1.5 text-muted-foreground hover:text-emerald-400 transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
@@ -171,7 +173,7 @@ export default function ProposalList({ onVote }: { onVote?: (id: number) => void
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search proposals..."
-            className="w-full bg-secondary/50 border border-border/50 rounded-md pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40"
+            className="pay-input pl-9"
           />
         </div>
         <div className="flex gap-1.5 flex-wrap">
@@ -181,8 +183,8 @@ export default function ProposalList({ onVote }: { onVote?: (id: number) => void
               onClick={() => setStatusFilter(f.key)}
               className={`px-2.5 py-1 text-[11px] rounded-md border transition-all ${
                 statusFilter === f.key
-                  ? "border-primary/40 text-primary bg-primary/10"
-                  : "border-border/50 text-muted-foreground hover:border-primary/20"
+                  ? "border-emerald-400/50 text-emerald-400 bg-emerald-400/10"
+                  : "border-white/[0.09] text-muted-foreground hover:border-emerald-500/30"
               }`}
             >
               {f.label}

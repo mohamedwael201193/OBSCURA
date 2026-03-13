@@ -125,7 +125,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
       </div>
       {/* Max borrow — plaintext computed from public shadow + LLTV config */}
       {maxB > 0n && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20 border border-white/[0.05]">
+        <div className="flex items-center gap-2 rounded-lg hairline bg-muted/50 px-3 py-2">
           <span className="text-[10px] text-white/40 uppercase tracking-wider">Max Borrow</span>
           <span className="text-[9px] text-white/20 ml-1">(public)</span>
           <span className="ml-auto font-mono text-[13px] text-amber-300">{fmt6(maxB)} ocUSDC</span>
@@ -174,7 +174,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
         onFocus={preWarm.onFocus}
         onChange={(e) => setAmount(e.target.value)}
         placeholder="0.0"
-        className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+        className="border-border bg-background rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
       />
       <PercentChips
         max={tab === "supply" ? 0n : plainColl}
@@ -191,7 +191,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
         </p>
       )}
       {tab === "supply" && plainColl > 0n && (
-        <p className="text-[11px] text-emerald-300/70 flex items-center gap-1.5">
+        <p className="text-[11px] text-[hsl(var(--success))]/70 flex items-center gap-1.5">
           <ShieldCheck className="w-3 h-3 flex-shrink-0" />
           Collateral deposited: {fmt6(plainColl)} {market.collateralSymbol}.
           Max borrowable: {fmt6(maxB)} ocUSDC.
@@ -222,7 +222,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
       <button
         disabled={!amtBig || busy || (tab === "withdraw" && (lltvBreach || amtBig > plainColl))}
         onClick={submit}
-        className="mt-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-50"
+        className="mt-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-foreground hover:bg-emerald-500/25 disabled:opacity-50"
       >
         {tab === "supply" ? (
           <ArrowUpToLine className="w-4 h-4" />
@@ -235,7 +235,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
       <FHEStepper status={fheStatus.status} error={fheStatus.error} />
 
       {msg && (
-        <p className={`text-xs ${msg.toLowerCase().includes("fail") || msg.toLowerCase().includes("error") ? "text-red-300/70" : "text-emerald-300/70"}`}>
+        <p className={`text-xs ${msg.toLowerCase().includes("fail") || msg.toLowerCase().includes("error") ? "text-red-300/70" : "text-[hsl(var(--success))]/70"}`}>
           {msg}
         </p>
       )}

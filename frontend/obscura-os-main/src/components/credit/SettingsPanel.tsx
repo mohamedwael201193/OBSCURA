@@ -173,11 +173,11 @@ const SettingsPanel = ({ markets, approved }: Props) => {
         <div className="px-5 py-4 text-xs grid gap-2">
           <div className="flex justify-between">
             <span className="text-white/60">Auto-repay hook</span>
-            <span className={isOpStream ? "text-emerald-300" : "text-white/40"}>{isOpStream ? "approved" : "not approved"}</span>
+            <span className={isOpStream ? "text-[hsl(var(--success))]" : "text-white/40"}>{isOpStream ? "approved" : "not approved"}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-white/60">Insurance hook</span>
-            <span className={isOpInsurance ? "text-emerald-300" : "text-white/40"}>{isOpInsurance ? "approved" : "not approved"}</span>
+            <span className={isOpInsurance ? "text-[hsl(var(--success))]" : "text-white/40"}>{isOpInsurance ? "approved" : "not approved"}</span>
           </div>
           <p className="text-[11px] text-white/45 mt-1">Approval is granted automatically on first use of each hook.</p>
         </div>
@@ -195,11 +195,11 @@ const SettingsPanel = ({ markets, approved }: Props) => {
             </div>
             <div>
               <label className="text-[10px] uppercase tracking-wider text-white/45">Per cycle (ocUSDC)</label>
-              <input value={perCycle} onChange={(e) => setPerCycle(e.target.value)} className="w-full bg-white/[0.03] border border-white/10 rounded-md px-2 py-1.5 text-xs" />
+              <input value={perCycle} onChange={(e) => setPerCycle(e.target.value)} className="w-full border-border bg-background rounded-md px-2 py-1.5 text-xs" />
             </div>
             <div>
               <label className="text-[10px] uppercase tracking-wider text-white/45">Period (days)</label>
-              <input value={periodDays} onChange={(e) => setPeriodDays(e.target.value)} className="w-full bg-white/[0.03] border border-white/10 rounded-md px-2 py-1.5 text-xs" />
+              <input value={periodDays} onChange={(e) => setPeriodDays(e.target.value)} className="w-full border-border bg-background rounded-md px-2 py-1.5 text-xs" />
             </div>
           </div>
           <button onClick={enableStream} disabled={!address || busy === "stream"} className="self-start inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm bg-violet-500/15 border border-violet-500/40 text-violet-100 hover:bg-violet-500/25 disabled:opacity-50">
@@ -213,7 +213,7 @@ const SettingsPanel = ({ markets, approved }: Props) => {
         <CardHeader title="Insurance top-up subscription" />
         <div className="px-5 py-4 grid gap-3">
           <p className="text-xs text-white/55">Schedules a recurring collateral top-up against your active position to keep your HF above 1.</p>
-          <button onClick={subscribeIns} disabled={!address || busy === "ins"} className="self-start inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-50">
+          <button onClick={subscribeIns} disabled={!address || busy === "ins"} className="self-start inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-foreground hover:bg-emerald-500/25 disabled:opacity-50">
             {busy === "ins" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Umbrella className="w-4 h-4" />}
             Subscribe
           </button>
@@ -230,7 +230,7 @@ const SettingsPanel = ({ markets, approved }: Props) => {
                 key={v.toString()}
                 onClick={() => approveLLTV(v, !ok)}
                 disabled={busy === `gov-${v}`}
-                className={`text-xs px-2.5 py-2 rounded-md border ${ok ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200" : "border-white/10 bg-white/[0.03] text-white/60"} disabled:opacity-50 inline-flex items-center justify-center gap-1.5`}
+                className={`text-xs px-2.5 py-2 rounded-md border ${ok ? "border-emerald-500/40 bg-emerald-500/10 text-foreground" : "hairline bg-card text-muted-foreground"} disabled:opacity-50 inline-flex items-center justify-center gap-1.5`}
               >
                 {busy === `gov-${v}` ? <Loader2 className="w-3 h-3 animate-spin" /> : <Landmark className="w-3 h-3" />}
                 {(Number(v) / 100).toFixed(0)}% {ok ? "·on" : "·off"}

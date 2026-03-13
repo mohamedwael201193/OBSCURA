@@ -120,7 +120,7 @@ export default function OperatorApprovalModal({
             </div>
 
             <div className="flex items-start gap-3">
-              <Clock className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+              <Clock className="w-4 h-4 text-foreground mt-0.5 shrink-0" />
               <div>
                 <p className="text-xs font-semibold text-white/80 mb-0.5">
                   Expires in {expiryDays} days

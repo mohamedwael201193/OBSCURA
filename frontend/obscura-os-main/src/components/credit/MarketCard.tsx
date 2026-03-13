@@ -34,7 +34,7 @@ const MarketCard = ({ market, onAction, active, compact }: Props) => {
       className={`text-left w-full p-4 rounded-xl border transition group ${
         active
           ? "border-violet-400/40 bg-violet-500/[0.04]"
-          : "border-white/[0.06] bg-white/[0.015] hover:border-white/[0.12]"
+          : "hairline bg-card hover:bg-muted/50"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -54,7 +54,7 @@ const MarketCard = ({ market, onAction, active, compact }: Props) => {
       <div className="mt-3 grid grid-cols-3 gap-2">
         <div className="rounded-md bg-black/20 px-2.5 py-2">
           <div className="text-[10px] uppercase tracking-wider text-white/40">Supplied</div>
-          <div className="text-[12px] font-mono text-emerald-200">{supplied}</div>
+          <div className="text-[12px] font-mono text-foreground">{supplied}</div>
         </div>
         <div className="rounded-md bg-black/20 px-2.5 py-2">
           <div className="text-[10px] uppercase tracking-wider text-white/40">Util</div>

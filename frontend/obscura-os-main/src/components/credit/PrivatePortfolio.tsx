@@ -122,7 +122,7 @@ export default function PrivatePortfolio({ markets }: Props) {
     v === null ? HIDDEN_GLYPHS : `$${(Number(v) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.02] backdrop-blur-xl p-5">
+    <div className="rounded-2xl hairline bg-card p-5">
       <div className="flex items-center justify-between">
         <div>
           <div className="text-[9.5px] tracking-[0.22em] uppercase text-violet-400/60 font-mono flex items-center gap-1.5">
@@ -172,7 +172,7 @@ export default function PrivatePortfolio({ markets }: Props) {
             >
               {[
                 { k: "Collateral", v: totals.collateral, c: "text-cyan-300" },
-                { k: "Supplied",   v: totals.supply,     c: "text-emerald-300" },
+                { k: "Supplied",   v: totals.supply,     c: "text-[hsl(var(--success))]" },
                 { k: "Borrowed",   v: totals.borrow,     c: "text-violet-300" },
               ].map((t) => (
                 <div key={t.k} className="p-3 rounded-lg bg-black/30 border border-white/8">
@@ -185,7 +185,7 @@ export default function PrivatePortfolio({ markets }: Props) {
 
           {/* Per-market table */}
           <div className="mt-4 rounded-lg border border-white/8 overflow-hidden">
-            <div className="px-3 py-2 grid grid-cols-[1.5fr_1fr_1fr_1fr] gap-2 text-[10px] tracking-[0.15em] uppercase text-white/45 font-mono bg-white/[0.02]">
+            <div className="px-3 py-2 grid grid-cols-[1.5fr_1fr_1fr_1fr] gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground bg-muted/40">
               <span>Market</span>
               <span className="text-right">Collateral</span>
               <span className="text-right">Supply</span>
@@ -196,7 +196,7 @@ export default function PrivatePortfolio({ markets }: Props) {
                 <li key={r.market.address ?? r.market.label} className="px-3 py-2 grid grid-cols-[1.5fr_1fr_1fr_1fr] gap-2 text-[11.5px] items-center">
                   <span className="text-white/75 truncate">{r.market.label}</span>
                   <span className="text-right tabular-nums text-cyan-300/85">{fmt6(r.collateral)}</span>
-                  <span className="text-right tabular-nums text-emerald-300/85">{fmt6(r.supply)}</span>
+                  <span className="text-right tabular-nums text-[hsl(var(--success))]/85">{fmt6(r.supply)}</span>
                   <span className="text-right tabular-nums text-violet-300/85">{fmt6(r.borrow)}</span>
                 </li>
               ))}

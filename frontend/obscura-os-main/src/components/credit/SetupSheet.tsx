@@ -266,22 +266,22 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
           />
 
           {/* Sheet */}
           <motion.div
-            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border border-white/10 bg-[#0c0f14] shadow-2xl"
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl hairline bg-card shadow-2xl"
             initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
           >
             {/* Handle + close */}
             <div className="flex items-center justify-between px-5 pt-4 pb-2">
-              <div className="w-8 h-1 rounded-full bg-white/20 mx-auto absolute left-0 right-0 top-2" />
-              <span className="text-sm font-medium text-white/90">Get started with Obscura Credit</span>
-              <button onClick={onClose} className="text-white/40 hover:text-white/80 transition-colors">
+              <div className="w-8 h-1 rounded-full bg-border mx-auto absolute left-0 right-0 top-2" />
+              <span className="text-sm font-medium text-foreground">Get started with Obscura Credit</span>
+              <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -291,14 +291,14 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
               {steps.map((s, i) => (
                 <div key={s.key} className="flex items-center gap-0 flex-1">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center border transition-all ${
-                    i < stepIdx ? "bg-emerald-500/20 border-emerald-500/60 text-emerald-300" :
-                    i === stepIdx ? "bg-violet-500/20 border-violet-500/60 text-violet-300" :
-                    "bg-white/[0.03] border-white/15 text-white/30"
+                    i < stepIdx ? "bg-accent/20 border-accent/50 text-[hsl(var(--success))]" :
+                    i === stepIdx ? "bg-violet-500/15 border-violet-500/40 text-foreground" :
+                    "bg-muted border-border text-muted-foreground"
                   }`}>
                     {i < stepIdx ? <Check className="w-3.5 h-3.5" /> : s.icon}
                   </div>
                   {i < steps.length - 1 && (
-                    <div className={`flex-1 h-px mx-1 ${i < stepIdx ? "bg-emerald-500/40" : "bg-white/10"}`} />
+                    <div className={`flex-1 h-px mx-1 ${i < stepIdx ? "bg-[hsl(var(--success))]" : "bg-border"}`} />
                   )}
                 </div>
               ))}
@@ -309,21 +309,21 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
               <AnimatePresence mode="wait">
                 {step === "faucet" && (
                   <motion.div key="faucet" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                    <p className="text-sm text-white/70 mb-4">
+                    <p className="text-sm text-muted-foreground mb-4">
                       Claim 10,000 ocUSDC + 1 ocWETH + 1,000 ocOBS to your wallet — needed for collateral and repayment.
                     </p>
-                    <p className="text-[10px] text-white/40 mb-5 font-mono">3 txs · one per token · 24h cooldown</p>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">3 txs · one per token · 24h cooldown</p>
                     <button
                       disabled={busy || !address}
                       onClick={handleFaucet}
-                      className="w-full py-3 rounded-xl border border-cyan-500/40 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-50 flex items-center justify-center gap-2 text-sm font-medium"
+                      className="btn-pay btn-pay-emerald w-full py-3 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Droplet className="w-4 h-4" />}
                       Claim test funds
                     </button>
                     <button
                       onClick={() => setStep("operator")}
-                      className="w-full mt-2 py-2 text-[11px] text-white/40 hover:text-white/70 transition-colors"
+                      className="w-full mt-2 py-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Skip (already claimed) →
                     </button>
@@ -332,21 +332,21 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
 
                 {step === "operator" && (
                   <motion.div key="operator" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                    <p className="text-sm text-white/70 mb-3">
+                    <p className="text-sm text-muted-foreground mb-3">
                       Allow the Router to move your encrypted funds on your behalf. This is a {OPERATOR_EXPIRY_DAYS}-day approval — like a Uniswap permit.
                     </p>
-                    <p className="text-[10px] text-white/40 mb-5 font-mono">1 tx · expires in {OPERATOR_EXPIRY_DAYS} days · revocable anytime</p>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">1 tx · expires in {OPERATOR_EXPIRY_DAYS} days · revocable anytime</p>
                     <button
                       disabled={busy || !address}
                       onClick={handleOperator}
-                      className="w-full py-3 rounded-xl border border-violet-500/40 bg-violet-500/10 text-violet-100 hover:bg-violet-500/20 disabled:opacity-50 flex items-center justify-center gap-2 text-sm font-medium"
+                      className="btn-pay btn-pay-emerald w-full py-3 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                       Approve Router ({OPERATOR_EXPIRY_DAYS}d)
                     </button>
                     <button
                       onClick={() => setStep("borrow")}
-                      className="w-full mt-2 py-2 text-[11px] text-white/40 hover:text-white/70 transition-colors"
+                      className="w-full mt-2 py-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Skip (already approved) →
                     </button>
@@ -357,7 +357,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                   <motion.div key="borrow" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                     <div className="mb-4 space-y-3">
                       <div>
-                        <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1.5 font-mono">
+                        <label className="font-mono block text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1.5">
                           Collateral (ocUSDC)
                         </label>
                         <input
@@ -366,11 +366,11 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                           value={collateralAmt}
                           onChange={(e) => setCollateralAmt(e.target.value)}
                           placeholder="e.g. 1000"
-                          className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-violet-500/40"
+                          className="w-full border-border bg-background rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-violet-500/40"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] uppercase tracking-widest text-white/40 mb-1.5 font-mono">
+                        <label className="font-mono block text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1.5">
                           Borrow amount (ocUSDC)
                         </label>
                         <input
@@ -379,7 +379,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                           value={borrowAmt}
                           onChange={(e) => setBorrowAmt(e.target.value)}
                           placeholder="e.g. 500"
-                          className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-violet-500/40"
+                          className="w-full border-border bg-background rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-violet-500/40"
                         />
                       </div>
 
@@ -387,13 +387,13 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                       <label className="flex items-center gap-3 cursor-pointer py-1">
                         <div
                           onClick={() => setStealthToggle((v) => !v)}
-                          className={`w-9 h-5 rounded-full transition-colors border relative ${stealthToggle ? "bg-violet-600/70 border-violet-500/50" : "bg-white/[0.06] border-white/15"}`}
+                          className={`w-9 h-5 rounded-full transition-colors border relative ${stealthToggle ? "bg-violet-600/70 border-violet-500/50" : "bg-muted border-border"}`}
                         >
                           <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${stealthToggle ? "translate-x-4" : "translate-x-0.5"}`} />
                         </div>
                         <div>
-                          <span className="text-[11px] text-white/70">Disburse to private address</span>
-                          <p className="text-[9px] text-white/35 mt-0.5">
+                          <span className="text-[11px] text-foreground">Disburse to private address</span>
+                          <p className="text-[9px] text-muted-foreground mt-0.5">
                             Announces borrow via stealth registry (testnet: funds go to your wallet)
                           </p>
                         </div>
@@ -403,7 +403,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                     <button
                       disabled={busy || !collateralAmt || !borrowAmt}
                       onClick={handleSetup}
-                      className="w-full py-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 disabled:opacity-50 flex items-center justify-center gap-2 text-sm font-medium"
+                      className="btn-pay btn-pay-emerald w-full py-3 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowDownToLine className="w-4 h-4" />}
                       Borrow now
@@ -415,14 +415,14 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
 
                 {step === "done" && (
                   <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-6">
-                    <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center mx-auto mb-4">
-                      <Check className="w-6 h-6 text-emerald-400" />
+                    <div className="w-12 h-12 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center mx-auto mb-4">
+                      <Check className="w-6 h-6 text-foreground" />
                     </div>
-                    <h3 className="text-base font-medium text-white/90 mb-1">Position opened!</h3>
-                    <p className="text-[11px] text-white/50">
+                    <h3 className="text-base font-medium text-foreground mb-1">Position opened!</h3>
+                    <p className="text-[11px] text-muted-foreground">
                       Your borrow amount is encrypted on-chain. View your position on the Position tab.
                     </p>
-                    <button onClick={onClose} className="mt-5 px-5 py-2 rounded-lg border border-white/15 text-sm text-white/70 hover:text-white/90">
+                    <button onClick={onClose} className="btn-pay btn-pay-ghost mt-5 px-5 py-2">
                       Done
                     </button>
                   </motion.div>

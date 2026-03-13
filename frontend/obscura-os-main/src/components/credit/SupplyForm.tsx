@@ -87,11 +87,11 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
           accent="cyan"
           onReveal={pos.decryptShares}
         />
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 space-y-2">
+        <div className="rounded-xl hairline bg-card p-3 space-y-2">
           <div className="text-[9px] tracking-[0.18em] uppercase text-white/35">Risk tier</div>
           <div className={`text-sm font-semibold ${
             market.riskTier === "Conservative"
-              ? "text-emerald-300"
+              ? "text-[hsl(var(--success))]"
               : market.riskTier === "Aggressive"
               ? "text-rose-300"
               : "text-amber-300"
@@ -143,7 +143,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
         onFocus={preWarm.onFocus}
         onChange={(e) => setAmount(e.target.value)}
         placeholder="0.0"
-        className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-cyan-500/40"
+        className="border-border bg-background rounded-md px-3 py-2 text-sm focus:outline-none focus:border-cyan-500/40"
       />
       <PercentChips
         max={tab === "supply" ? cUSDCBal : (pos.mySupply ?? 0n)}

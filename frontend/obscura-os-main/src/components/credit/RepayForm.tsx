@@ -92,7 +92,7 @@ const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
         onFocus={preWarm.onFocus}
         onChange={(e) => setAmount(e.target.value)}
         placeholder="0.0"
-        className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/40"
+        className="border-border bg-background rounded-md px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/40"
       />
       <PercentChips
         max={pos.plainBorrow ?? 0n}
@@ -105,7 +105,7 @@ const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
         <button
           disabled={!amount || !!busy}
           onClick={submit}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-foreground hover:bg-emerald-500/25 disabled:opacity-50"
         >
           <ArrowUpFromLine className="w-4 h-4" />
           Repay
@@ -140,7 +140,7 @@ const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
         <button
           disabled={!!busy}
           onClick={tickAccrue}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md text-sm bg-white/[0.03] border border-white/10 text-white/80 hover:bg-white/[0.06] disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md text-sm border-border bg-background text-white/80 hover:bg-white/[0.06] disabled:opacity-50"
         >
           Accrue interest
         </button>

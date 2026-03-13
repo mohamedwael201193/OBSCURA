@@ -60,10 +60,14 @@ import MyPolicies from "@/components/pay-v4/MyPolicies";
 import ResolverManager from "@/components/pay-v4/ResolverManager";
 import UnifiedSendForm from "@/components/pay-v4/UnifiedSendForm";
 import BulkPayrollImport from "@/components/pay-v4/BulkPayrollImport";
+import StreamsDashboard from "@/components/pay-v4/StreamsDashboard";
 import { ReceiptList } from "@/components/pay-v4/PaymentReceipt";
 import AddContactModal from "@/components/pay-v4/AddContactModal";
+import PayHomeDashboard from "@/components/pay-v4/PayHomeDashboard";
 
 import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
+import { useUSDCBalance } from "@/hooks/useUSDCBalance";
+import UsdcIcon from "@/components/shared/UsdcIcon";
 import { useStealthInbox } from "@/hooks/useStealthInbox";
 import { usePreferences, type GasMode, type SendMode, type UIMode } from "@/contexts/PreferencesContext";
 import { useStealthRotation } from "@/hooks/useStealthRotation";
@@ -420,6 +424,40 @@ const ContactsPanel = () => {
   );
 };
 
+/** Compact info bar at top of Send tab — shows USDC balance + quick actions. */
+const SendCUSDCBar = ({ onGetCUSDC }: { onGetCUSDC: () => void }) => {
+  const usdcBalance = useUSDCBalance();
+  const { decrypted, trackedCusdc } = useCUSDCBalance();
+  const cusdc = decrypted !== null
+    ? (Number(decrypted) / 1_000_000).toFixed(2)
+    : trackedCusdc
+      ? parseFloat(trackedCusdc).toFixed(2)
+      : null;
+
+  return (
+    <div className="rounded-xl border border-[#3e73c4]/20 bg-[#3e73c4]/[0.06] px-4 py-3 flex flex-wrap items-center gap-3">
+      <UsdcIcon className="w-5 h-5 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="text-[12px] text-white/80 font-medium leading-tight">
+          cUSDC — USDC encrypted on-chain with FHE
+        </div>
+        <div className="text-[11px] text-white/40 mt-0.5">
+          You need cUSDC to send privately. Plain USDC: <span className="text-white/60 font-mono">{usdcBalance ?? "—"}</span>
+          {cusdc && <> · cUSDC: <span className="text-emerald-400/80 font-mono">{cusdc}</span></>}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={onGetCUSDC}
+          className="btn-pay btn-pay-emerald text-[12px] py-1.5 px-3"
+        >
+          Encrypt USDC →
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const PayPage = () => {
   const navigate = useNavigate();
   const { isConnected } = useAccount();
@@ -449,24 +487,23 @@ const PayPage = () => {
       case "home":
         return (
           <div className="space-y-5">
-            <SectionDiagram flow="send" />
-            {isConnected && (
-              <Card>
-                <CardHeader title="cUSDC Wallet" eyebrow="Wrap USDC → cUSDC" />
-                <div className="p-5"><CUSDCPanel /></div>
-              </Card>
+            {isConnected ? (
+              <PayHomeDashboard onNavigate={(t) => setTab(t)} />
+            ) : (
+              <>
+                <SectionDiagram flow="send" />
+                <HowItWorks
+                  title="How Obscura Pay works"
+                  steps={homeSteps}
+                  footnote={
+                    <>
+                      All encryption uses <span className="text-foreground/80">Phenix CoFHE</span>.
+                      Your data stays encrypted, even while the smart contract processes it.
+                    </>
+                  }
+                />
+              </>
             )}
-            <HowItWorks
-              title="How Obscura Pay works"
-              steps={homeSteps}
-              footnote={
-                <>
-                  All encryption uses <span className="text-foreground/80">Phenix CoFHE</span>.
-                  Your data stays encrypted, even while the smart contract processes it.
-                </>
-              }
-            />
-            <ReceiptList limit={5} />
           </div>
         );
 
@@ -474,16 +511,27 @@ const PayPage = () => {
         if (!isConnected) return <NotConnected message="Connect your wallet to send encrypted cUSDC payments." />;
         return (
           <div className="space-y-4">
-            <Card>
-              <CardHeader title="cUSDC Wallet" eyebrow="Need cUSDC to send? Wrap here" />
-              <div className="p-5"><CUSDCPanel /></div>
-            </Card>
+            {/* ── cUSDC quick-info bar ── */}
+            <SendCUSDCBar onGetCUSDC={() => document.getElementById("send-encrypt-panel")?.scrollIntoView({ behavior: "smooth" })} />
+
+            {/* ── Primary: Send ── */}
             <UnifiedSendForm />
+
+            {/* ── Bridge ── */}
             <Card>
-              <CardHeader title="Bridge USDC into Arbitrum" eyebrow="Cross-chain" />
+              <CardHeader title="Bridge USDC into Arbitrum" eyebrow="Cross-chain · CCTP" />
               <div className="p-5"><CrossChainFundForm /></div>
             </Card>
+
             <SectionDiagram flow="send" />
+
+            {/* ── Encrypt / Decrypt cUSDC — bottom ── */}
+            <div id="send-encrypt-panel">
+              <Card>
+                <CardHeader title="Encrypt · Decrypt cUSDC" eyebrow="Get cUSDC · Convert your USDC" />
+                <div className="p-5"><CUSDCPanel /></div>
+              </Card>
+            </div>
           </div>
         );
 
@@ -507,29 +555,11 @@ const PayPage = () => {
       case "streams":
         if (!isConnected) return <NotConnected message="Connect your wallet to create payroll streams." />;
         return (
-          <div className="space-y-4">
-            <Card>
-              <CardHeader title="Wallet" eyebrow="Streams" />
-              <div className="p-5"><CUSDCPanel /></div>
-            </Card>
-            <Card>
-              <CardHeader title="Create a stream" />
-              <div className="p-5"><CreateStreamFormV2 onCreated={refreshStreams} /></div>
-            </Card>
-            <Card>
-              <CardHeader title="Bulk payroll import" eyebrow="CSV" />
-              <div className="p-5"><BulkPayrollImport /></div>
-            </Card>
-            <Card>
-              <CardHeader title="Send each cycle" />
-              <div className="p-5"><StreamList key={`emp-${streamRefreshKey}`} mode="employer" /></div>
-            </Card>
-            <Card>
-              <CardHeader title="Streams paying you" eyebrow="Inbox" />
-              <div className="p-5"><StreamList key={`rec-${streamRefreshKey}`} mode="recipient" /></div>
-            </Card>
-            <SectionDiagram flow="stream" />
-          </div>
+          <StreamsDashboard
+            onNavigate={(t) => setTab(t)}
+            refreshKey={streamRefreshKey}
+            onRefresh={refreshStreams}
+          />
         );
 
       case "escrow":

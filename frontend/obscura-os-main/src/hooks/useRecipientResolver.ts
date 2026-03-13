@@ -10,6 +10,10 @@ import { useAccount, usePublicClient } from "wagmi";
 import { isAddress } from "viem";
 import { useSocialResolver } from "./useSocialResolver";
 import { loadStoredMetaPublic, type MetaAddress } from "@/lib/stealth";
+import {
+  OBSCURA_STEALTH_REGISTRY_ABI,
+  OBSCURA_STEALTH_REGISTRY_ADDRESS,
+} from "@/config/pay";
 
 export type ResolverInputKind =
   | "address"
@@ -54,7 +58,24 @@ export function useRecipientResolver() {
         }
 
         if (isAddress(trimmed)) {
-          return { kind: "address", raw: trimmed, address: trimmed as `0x${string}`, meta: null };
+          // Look up stealth meta-address from registry so stealth send works with raw addresses
+          let meta: MetaAddress | null = null;
+          if (publicClient && OBSCURA_STEALTH_REGISTRY_ADDRESS) {
+            try {
+              const [spendingPubKey, viewingPubKey, publishedAt] = await publicClient.readContract({
+                address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+                abi: OBSCURA_STEALTH_REGISTRY_ABI,
+                functionName: "getMetaAddress",
+                args: [trimmed as `0x${string}`],
+              }) as [`0x${string}`, `0x${string}`, bigint];
+              if (publishedAt > 0n && spendingPubKey.length > 2 && viewingPubKey.length > 2) {
+                meta = { spendingPubKey, viewingPubKey };
+              }
+            } catch {
+              // registry lookup failed — meta stays null, stealth mode will show error
+            }
+          }
+          return { kind: "address", raw: trimmed, address: trimmed as `0x${string}`, meta };
         }
 
         if (trimmed.endsWith(".eth")) {

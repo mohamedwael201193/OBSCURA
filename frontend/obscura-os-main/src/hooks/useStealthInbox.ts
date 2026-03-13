@@ -30,6 +30,7 @@ import { estimateCappedFees } from "@/lib/gas";
 import { getJSON, setJSON } from "@/lib/scopedStorage";
 
 const SEEN_KEY = "obscura.inbox.seen.v1";
+const CLAIMED_KEY = "obscura.inbox.claimed.v1";
 // Poll the chain at a relaxed cadence and pause when the tab is hidden so we
 // don't hammer the public RPC (avoids 429 rate-limit walls on Arbitrum Sepolia).
 const POLL_MS = 120_000;
@@ -42,6 +43,7 @@ export interface InboxItem extends ScannedPayment {
   id: string;
   ephHash: `0x${string}`;
   seen: boolean;
+  claimed: boolean;
 }
 
 export function useStealthInbox() {
@@ -54,7 +56,9 @@ export function useStealthInbox() {
 
   const [ignoredMap, setIgnoredMap] = useState<Record<string, boolean>>({});
   const [seenMap, setSeenMap] = useState<SeenMap>({});
+  const [claimedMap, setClaimedMap] = useState<SeenMap>({});
   const [isClaimingAll, setIsClaimingAll] = useState(false);
+  const [sweepingId, setSweepingId] = useState<string | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
 
   // Stable ref so the polling effect never needs `scan` in its dep array.
@@ -63,13 +67,15 @@ export function useStealthInbox() {
   const scanFnRef = useRef(scan.scan);
   scanFnRef.current = scan.scan;
 
-  // Load seen-state on address change.
+  // Load seen-state and claimed-state on address change.
   useEffect(() => {
     if (!address) {
       setSeenMap({});
+      setClaimedMap({});
       return;
     }
     setSeenMap(getJSON<SeenMap>(SEEN_KEY, address) ?? {});
+    setClaimedMap(getJSON<SeenMap>(CLAIMED_KEY, address) ?? {});
   }, [address]);
 
   // Periodic re-scan. Pauses while the tab is hidden so background tabs
@@ -132,12 +138,14 @@ export function useStealthInbox() {
           id,
           ephHash,
           seen: !!seenMap[id],
+          claimed: !!claimedMap[id],
         };
       })
       .filter((m) => !ignoredMap[m.ephHash]);
-  }, [scan.matches, ignoredMap, seenMap]);
+  }, [scan.matches, ignoredMap, seenMap, claimedMap]);
 
   const unreadCount = items.filter((i) => !i.seen).length;
+  const unclaimedCount = items.filter((i) => !i.claimed && i.amount > 0n).length;
 
   const markAsSeen = useCallback(
     (id: string) => {
@@ -230,27 +238,70 @@ export function useStealthInbox() {
     return hash;
   }, [publicClient, walletClient, writeContractAsync, address]);
 
-  /** Claim all unread, non-ignored payments by running sweeps sequentially. */
+  /** Mark a single item as claimed in state + localStorage. */
+  const markAsClaimed = useCallback(
+    (id: string) => {
+      if (!address) return;
+      setClaimedMap((prev) => {
+        const next = { ...prev, [id]: Date.now() };
+        setJSON(CLAIMED_KEY, address, next);
+        return next;
+      });
+    },
+    [address]
+  );
+
+  /** Sweep a single inbox item and mark it claimed. */
+  const claimOne = useCallback(
+    async (item: InboxItem) => {
+      if (item.claimed || item.amount === 0n) return;
+      setSweepingId(item.id);
+      setBulkError(null);
+      try {
+        await sweep.sweep(item);
+        markAsSeen(item.id);
+        markAsClaimed(item.id);
+      } catch (e) {
+        setBulkError((e as Error).message);
+        throw e;
+      } finally {
+        setSweepingId(null);
+      }
+    },
+    [sweep, markAsSeen, markAsClaimed]
+  );
+
+  /** Claim all unclaimed, non-ignored payments by running sweeps sequentially. */
   const claimAll = useCallback(async () => {
     setIsClaimingAll(true);
     setBulkError(null);
+    const newlyClaimed: SeenMap = {};
     try {
       for (const item of items) {
-        if (item.amount === 0n) continue;
+        if (item.amount === 0n || item.claimed) continue;
         await sweep.sweep(item);
         markAsSeen(item.id);
+        newlyClaimed[item.id] = Date.now();
       }
     } catch (e) {
       setBulkError((e as Error).message);
       throw e;
     } finally {
       setIsClaimingAll(false);
+      if (Object.keys(newlyClaimed).length > 0 && address) {
+        setClaimedMap((prev) => {
+          const next = { ...prev, ...newlyClaimed };
+          setJSON(CLAIMED_KEY, address, next);
+          return next;
+        });
+      }
     }
-  }, [items, sweep, markAsSeen]);
+  }, [items, sweep, markAsSeen, address]);
 
   return {
     items,
     unreadCount,
+    unclaimedCount,
     isScanning: scan.isScanning,
     scanError: scan.error,
     refresh: scan.scan,
@@ -259,9 +310,11 @@ export function useStealthInbox() {
     ignoreSender,
     ignoreSenders,
     resetFilter,
+    claimOne,
     claimAll,
     sweepState: sweep.state,
     sweepStepLabel: sweep.stepLabel,
+    sweepingId,
     isClaimingAll,
     bulkError,
   };

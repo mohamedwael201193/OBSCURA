@@ -15,6 +15,8 @@ import {
   RefreshCw,
   CheckCheck,
   Ban,
+  CheckCircle2,
+  ArrowDownToLine,
 } from "lucide-react";
 import { useStealthInbox } from "@/hooks/useStealthInbox";
 import { useStealthMetaAddress } from "@/hooks/useStealthMetaAddress";
@@ -76,7 +78,7 @@ export default function StealthInboxV2() {
           <Button
             size="sm"
             onClick={() => void inbox.claimAll()}
-            disabled={inbox.isClaimingAll || inbox.items.length === 0}
+            disabled={inbox.isClaimingAll || inbox.unclaimedCount === 0}
           >
             {inbox.isClaimingAll ? (
               <>
@@ -106,13 +108,17 @@ export default function StealthInboxV2() {
             <div
               key={m.id}
               className={`flex items-center gap-3 p-3 rounded-md border ${
-                m.seen
-                  ? "border-white/[0.06] bg-white/[0.02]"
-                  : "border-emerald-500/30 bg-emerald-500/[0.04]"
+                m.claimed
+                  ? "border-emerald-500/15 bg-emerald-500/[0.02] opacity-60"
+                  : m.seen
+                    ? "border-white/[0.06] bg-white/[0.02]"
+                    : "border-emerald-500/30 bg-emerald-500/[0.04]"
               }`}
             >
               <div className="w-7 h-7 rounded-full bg-emerald-500/[0.1] border border-emerald-500/30 flex items-center justify-center">
-                {m.seen ? (
+                {m.claimed ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                ) : m.seen ? (
                   <Eye className="w-3.5 h-3.5 text-muted-foreground/50" />
                 ) : (
                   <EyeOff className="w-3.5 h-3.5 text-emerald-300" />
@@ -130,22 +136,45 @@ export default function StealthInboxV2() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => inbox.markAsSeen(m.id)}
-                  disabled={m.seen}
-                >
-                  Read
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void inbox.ignoreSender(m.ephHash)}
-                  title="Ignore this sender (on-chain bloom filter)"
-                >
-                  <Ban className="w-3.5 h-3.5" />
-                </Button>
+                {m.claimed ? (
+                  <span className="text-[10px] text-emerald-400/60 font-mono uppercase tracking-wide px-2 py-1 rounded border border-emerald-500/20 bg-emerald-500/[0.06]">
+                    Swept ✓
+                  </span>
+                ) : (
+                  <>
+                    {m.amount > 0n && (
+                      <Button
+                        size="sm"
+                        onClick={() => void inbox.claimOne(m)}
+                        disabled={inbox.isClaimingAll || inbox.sweepingId === m.id}
+                        className="text-[11px]"
+                      >
+                        {inbox.sweepingId === m.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                        ) : (
+                          <ArrowDownToLine className="w-3 h-3 mr-1" />
+                        )}
+                        Sweep
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => inbox.markAsSeen(m.id)}
+                      disabled={m.seen}
+                    >
+                      Read
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void inbox.ignoreSender(m.ephHash)}
+                      title="Ignore this sender (on-chain bloom filter)"
+                    >
+                      <Ban className="w-3.5 h-3.5" />
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           ))}

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Globe2, ArrowRightLeft, CheckCircle2, Loader2, ExternalLink, RotateCcw, Copy, AlertTriangle } from "lucide-react";
+import UsdcIcon from "@/components/shared/UsdcIcon";
 import { useCrossChainFund, type BridgeStep } from "@/hooks/useCrossChainFund";
 import { toast } from "sonner";
+import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 
 const STEP_LABELS: Record<BridgeStep, string> = {
   idle: "",
@@ -94,8 +96,10 @@ export default function CrossChainFundForm() {
   const [recoverHash, setRecoverHash] = useState("");
   const [showRecover, setShowRecover] = useState(false);
   const { fund, claim, recover, isPending, step, burnTxHash, error, reset, attestationProgress, savedAmount } = useCrossChainFund();
+  const usdcBalance = useUSDCBalance();
 
   const displayAmount = amount || savedAmount;
+
 
   const submit = async () => {
     if (!amount || Number(amount) <= 0) {
@@ -187,6 +191,16 @@ export default function CrossChainFundForm() {
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">CCTP · Cross-chain</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">CCTP V1</span>
+      </div>
+
+      {/* Arb USDC balance pill (what you can wrap after bridging) */}
+      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#3e73c4]/10 border border-[#3e73c4]/25">
+        <UsdcIcon className="w-4 h-4 shrink-0" />
+        <span className="text-[11px] text-white/60 font-medium tracking-wide">Arb USDC Balance</span>
+        <span className="ml-auto font-mono text-[14px] text-white font-semibold">
+          {usdcBalance !== null ? usdcBalance : "—"}
+        </span>
+        <span className="text-[10px] text-[#3e73c4] font-semibold uppercase tracking-wider">USDC</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">

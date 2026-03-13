@@ -39,7 +39,7 @@ const HealthBadge = ({ market, user }: Props) => {
 
   const tone = useMemo(() => {
     if (!isFinite(hf)) return { color: "text-white/60", icon: ShieldCheck, label: "No debt" };
-    if (hf >= 1.5) return { color: "text-emerald-300", icon: ShieldCheck, label: "Healthy" };
+    if (hf >= 1.5) return { color: "text-[hsl(var(--success))]", icon: ShieldCheck, label: "Healthy" };
     if (hf >= 1.1) return { color: "text-amber-300",   icon: Activity,    label: "Watch"   };
     return               { color: "text-rose-300",     icon: ShieldAlert, label: "At risk"  };
   }, [hf]);
@@ -84,14 +84,14 @@ const HealthBadge = ({ market, user }: Props) => {
           value={collat}
           onChange={(e) => setCollat(e.target.value)}
           placeholder="0.0"
-          className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/40"
+          className="border-border bg-background rounded-md px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/40"
         />
         <input
           inputMode="decimal"
           value={debt}
           onChange={(e) => setDebt(e.target.value)}
           placeholder="0.0"
-          className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-rose-500/40"
+          className="border-border bg-background rounded-md px-3 py-2 text-sm focus:outline-none focus:border-rose-500/40"
         />
       </div>
 

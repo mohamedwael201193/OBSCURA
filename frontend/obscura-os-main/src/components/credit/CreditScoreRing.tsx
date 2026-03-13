@@ -52,7 +52,7 @@ export default function CreditScoreRing() {
     "rgb(248,113,113)";
 
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.02] backdrop-blur-xl p-5">
+    <div className="rounded-2xl hairline bg-card p-5">
       <div className="flex items-center justify-between">
         <div>
           <div className="text-[9.5px] tracking-[0.22em] uppercase text-violet-400/60 font-mono flex items-center gap-1.5">

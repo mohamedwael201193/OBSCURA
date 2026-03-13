@@ -31,10 +31,10 @@ interface Props {
 }
 
 const ACCENT = {
-  cyan:    { ring: "from-cyan-500/30 via-cyan-400/10 to-transparent", border: "border-cyan-500/20",  text: "text-cyan-300",    bg: "bg-cyan-950/30",   badge: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"    },
-  emerald: { ring: "from-emerald-500/30 via-emerald-400/10 to-transparent", border: "border-emerald-500/20", text: "text-emerald-300", bg: "bg-emerald-950/30", badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
-  violet:  { ring: "from-violet-500/30 via-violet-400/10 to-transparent", border: "border-violet-500/20",  text: "text-violet-300",  bg: "bg-violet-950/30",  badge: "bg-violet-500/10 text-violet-400 border-violet-500/20"  },
-  amber:   { ring: "from-amber-500/30 via-amber-400/10 to-transparent", border: "border-amber-500/20",   text: "text-amber-300",   bg: "bg-amber-950/30",   badge: "bg-amber-500/10 text-amber-400 border-amber-500/20"   },
+  cyan:    { ring: "from-accent/25 via-accent/8 to-transparent", border: "border-border", text: "text-foreground", bg: "bg-muted/60", badge: "bg-accent/15 text-foreground border-accent/30" },
+  emerald: { ring: "from-accent/25 via-accent/8 to-transparent", border: "border-accent/35", text: "text-[hsl(var(--success))]", bg: "bg-accent/10", badge: "bg-accent/15 text-foreground border-accent/30" },
+  violet:  { ring: "from-violet-400/20 via-violet-300/8 to-transparent", border: "border-border", text: "text-foreground", bg: "bg-muted/60", badge: "bg-violet-500/10 text-foreground border-violet-500/25" },
+  amber:   { ring: "from-amber-400/20 via-amber-300/8 to-transparent", border: "border-amber-500/25", text: "text-amber-900", bg: "bg-amber-500/5", badge: "bg-amber-500/10 text-amber-900 border-amber-500/25" },
 };
 
 function fmt(value: bigint, decimals: number): string {
@@ -91,7 +91,7 @@ export default function EncryptedValue({
       {label && (
         <div className="relative text-[9px] tracking-[0.18em] uppercase text-white/35 flex items-center gap-1.5">
           {revealed
-            ? <ShieldCheck className="w-2.5 h-2.5 text-emerald-400" />
+            ? <ShieldCheck className="w-2.5 h-2.5 text-foreground" />
             : <Lock className={`w-2.5 h-2.5 ${a.text}`} />}
           {label}
         </div>

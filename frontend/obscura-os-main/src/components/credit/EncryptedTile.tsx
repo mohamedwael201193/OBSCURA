@@ -38,8 +38,8 @@ const ACCENT_CLASSES: Record<string, { border: string; glow: string; text: strin
   emerald: {
     border: "border-emerald-500/25",
     glow: "bg-emerald-500/[0.06]",
-    text: "text-emerald-300",
-    icon: "text-emerald-400",
+    text: "text-[hsl(var(--success))]",
+    icon: "text-foreground",
   },
   violet: {
     border: "border-violet-500/25",

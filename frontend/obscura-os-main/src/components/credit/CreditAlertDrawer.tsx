@@ -75,7 +75,7 @@ export default function CreditAlertDrawer() {
             </button>
             <div className="ml-auto">
               {permission === "granted" ? (
-                <span className="inline-flex items-center gap-1 text-emerald-300/80">
+                <span className="inline-flex items-center gap-1 text-[hsl(var(--success))]/80">
                   <Bell className="w-3 h-3" /> Browser notifications on
                 </span>
               ) : (

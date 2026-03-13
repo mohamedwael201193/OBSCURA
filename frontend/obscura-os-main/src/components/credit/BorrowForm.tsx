@@ -64,7 +64,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
   const fmt6 = (v: bigint) =>
     (Number(v) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 4 });
 
-  const hfColor = healthFactor === null ? "text-white/40" : healthFactor >= 1.5 ? "text-emerald-400" : healthFactor >= 1.1 ? "text-amber-400" : "text-red-400";
+  const hfColor = healthFactor === null ? "text-white/40" : healthFactor >= 1.5 ? "text-foreground" : healthFactor >= 1.1 ? "text-amber-400" : "text-red-400";
 
   const submit = async () => {
     if (!amount || !destResolved) return;
@@ -115,7 +115,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
       </div>
       {/* Max borrowable — plaintext computed from public shadow + LLTV config */}
       {maxBorrowable > 0n && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20 border border-white/[0.05]">
+        <div className="flex items-center gap-2 rounded-lg hairline bg-muted/50 px-3 py-2">
           <span className="text-[10px] text-white/40 uppercase tracking-wider">Max Borrowable</span>
           <span className="text-[9px] text-white/20 ml-1">(public)</span>
           <span className="ml-auto font-mono text-[13px] text-violet-300">{fmt6(maxBorrowable)} ocUSDC</span>
@@ -123,7 +123,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
       )}
 
       {/* Health Factor tile */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20 border border-white/[0.05]">
+      <div className="flex items-center gap-2 rounded-lg hairline bg-muted/50 px-3 py-2">
         <Activity className="w-3.5 h-3.5 text-white/40" />
         <span className="text-[10px] text-white/40 uppercase tracking-wider">Health Factor</span>
         <span className={`ml-auto font-mono text-[13px] font-semibold ${hfColor}`}>
@@ -154,7 +154,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
         onFocus={preWarm.onFocus}
         onChange={(e) => setAmount(e.target.value)}
         placeholder="0.0"
-        className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+        className="border-border bg-background rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
       />
       <PercentChips
         max={maxBorrowable}
@@ -170,7 +170,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
         value={dest}
         onChange={(e) => setDest(e.target.value)}
         placeholder={address ?? "0x…"}
-        className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-violet-500/40"
+        className="border-border bg-background rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-violet-500/40"
       />
       <p className="text-[11px] text-white/45 -mt-1">
         The recipient is encrypted into the ocUSDC transfer; observers cannot link borrower to receiver.

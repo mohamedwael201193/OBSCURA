@@ -213,6 +213,7 @@ const VotePage = () => {
   const isAdmin = userRole === Role.ADMIN || isOwner;
 
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [jumpProposalId, setJumpProposalId] = useState("");
 
   const handleSidebarSelect = (key: string) => {
     if (key === "vote" || key === "dashboard") return setTab("dashboard");
@@ -272,7 +273,7 @@ const VotePage = () => {
           <div className="space-y-4">
             <Card>
               <CardHeader title="Browse all polls" eyebrow="Proposals" />
-              <div className="p-5"><ProposalList /></div>
+              <div className="p-5"><ProposalList onVote={(id) => { setJumpProposalId(String(id)); setTab("cast"); }} /></div>
             </Card>
             <SectionDiagram flow="vote-cast" />
           </div>
@@ -284,7 +285,7 @@ const VotePage = () => {
           <div className="space-y-4">
             <Card>
               <CardHeader title="Encrypt your choice" eyebrow="Cast Vote" />
-              <div className="p-5"><CastVoteForm /></div>
+              <div className="p-5"><CastVoteForm initialProposalId={jumpProposalId} /></div>
             </Card>
             <Card>
               <CardHeader title="Voting history" eyebrow="Your activity" />

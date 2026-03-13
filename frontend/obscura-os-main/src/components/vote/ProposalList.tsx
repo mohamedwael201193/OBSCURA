@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileText, Clock, CheckCircle, Lock, RefreshCw, Search, XCircle, Users, Timer } from "lucide-react";
+import { FileText, Clock, CheckCircle, Lock, RefreshCw, Search, XCircle, Users, Timer, ArrowRight } from "lucide-react";
 import { useWatchContractEvent } from "wagmi";
 import { useProposalCount, useProposal, CATEGORY_LABELS } from "@/hooks/useProposals";
 import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
@@ -46,7 +46,7 @@ function Countdown({ deadline }: { deadline: bigint }) {
   return <span className="text-primary font-semibold">{remaining}</span>;
 }
 
-function ProposalRow({ proposalId, searchQuery, statusFilter }: { proposalId: bigint; searchQuery: string; statusFilter: StatusFilter }) {
+function ProposalRow({ proposalId, searchQuery, statusFilter, onVote }: { proposalId: bigint; searchQuery: string; statusFilter: StatusFilter; onVote?: (id: number) => void }) {
   const { proposal, isLoading } = useProposal(proposalId);
 
   if (isLoading || !proposal || !proposal.exists) return null;
@@ -107,11 +107,22 @@ function ProposalRow({ proposalId, searchQuery, statusFilter }: { proposalId: bi
           </span>
         )}
       </div>
+      {/* Vote shortcut for active proposals */}
+      {status === "active" && onVote && (
+        <div className="pl-11">
+          <button
+            onClick={() => onVote(Number(proposalId))}
+            className="flex items-center gap-1 text-[11px] text-primary hover:underline"
+          >
+            Vote on this <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }
 
-export default function ProposalList() {
+export default function ProposalList({ onVote }: { onVote?: (id: number) => void }) {
   const { data: count, isLoading, refetch } = useProposalCount();
   const proposalCount = Number(count ?? 0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -189,7 +200,7 @@ export default function ProposalList() {
       ) : (
         <div className="space-y-2">
           {Array.from({ length: proposalCount }, (_, i) => (
-            <ProposalRow key={i} proposalId={BigInt(i)} searchQuery={searchQuery} statusFilter={statusFilter} />
+            <ProposalRow key={i} proposalId={BigInt(i)} searchQuery={searchQuery} statusFilter={statusFilter} onVote={onVote} />
           ))}
         </div>
       )}

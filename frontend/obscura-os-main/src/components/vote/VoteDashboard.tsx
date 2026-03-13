@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { BarChart3, Hash, Users, Shield, ExternalLink, Clock } from "lucide-react";
+import { BarChart3, Hash, Users, Shield, ExternalLink, Clock, Activity } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useProposalCount, useVoterParticipation } from "@/hooks/useProposals";
 import { OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
+import { useVoteActivity } from "@/hooks/useVoteActivity";
 
 const DEPLOY_DATE = "Apr 2025";
 const NETWORK = "Arbitrum Sepolia";
@@ -12,6 +13,7 @@ export default function VoteDashboard() {
   const { address, isConnected } = useAccount();
   const { data: proposalCount } = useProposalCount();
   const { data: participation } = useVoterParticipation(address as `0x${string}` | undefined);
+  const activityEvents = useVoteActivity();
 
   const now = new Date();
   const dateLabel = now.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -102,6 +104,49 @@ export default function VoteDashboard() {
             <div className="font-mono text-xs text-foreground/70">{DEPLOY_DATE}</div>
           </div>
         </div>
+      </motion.div>
+
+      {/* Live activity feed */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className="glass-panel rounded-md p-4"
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <Activity className="w-4 h-4 text-primary" />
+          <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
+            Live Activity
+          </span>
+          <span className="ml-auto text-[10px] text-muted-foreground">last {Math.min(activityEvents.length, 5)} events</span>
+        </div>
+        {activityEvents.length === 0 ? (
+          <div className="text-[12px] text-muted-foreground/50 text-center py-4">
+            Watching for new votes, proposals &amp; finalizations…
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {activityEvents.slice(0, 5).map((evt) => (
+              <motion.div
+                key={evt.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-start gap-2.5 text-xs"
+              >
+                <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
+                  evt.type === "vote" ? "bg-blue-400" :
+                  evt.type === "proposal" ? "bg-green-400" :
+                  evt.type === "finalized" ? "bg-yellow-400" :
+                  "bg-red-400"
+                }`} />
+                <div className="flex-1 text-foreground/80">{evt.message}</div>
+                <div className="text-muted-foreground/40 shrink-0">
+                  {new Date(evt.timestamp * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </motion.div>
     </div>
   );

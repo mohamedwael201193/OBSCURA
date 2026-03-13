@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Eye, BarChart3, AlertCircle, Unlock, ExternalLink, Download, Ban } from "lucide-react";
+import { Eye, BarChart3, AlertCircle, Unlock, ExternalLink, Download, Ban, Trophy, ShieldCheck } from "lucide-react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { useProposalCount, useProposal, useProposalOptions, CATEGORY_LABELS } from "@/hooks/useProposals";
 import { useVoteTally, TallyResult } from "@/hooks/useVoteTally";
@@ -8,6 +8,7 @@ import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
 import { arbitrumSepolia } from "viem/chains";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { FHEStepStatus } from "@/lib/constants";
+import FHEOperationsVisual, { buildFinalizeOps } from "@/components/vote/FHEOperationsVisual";
 
 const BAR_COLORS = [
   "bg-green-400/60", "bg-red-400/60", "bg-blue-400/60", "bg-yellow-400/60",
@@ -148,17 +149,27 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
             </button>
           )}
           {finalizeTxHash && (
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              TX:{" "}
-              <a
-                href={`https://sepolia.arbiscan.io/tx/${finalizeTxHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline inline-flex items-center gap-1"
-              >
-                {finalizeTxHash.slice(0, 10)}...{finalizeTxHash.slice(-8)}
-                <ExternalLink className="w-3 h-3" />
-              </a>
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                TX:{" "}
+                <a
+                  href={`https://sepolia.arbiscan.io/tx/${finalizeTxHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  {finalizeTxHash.slice(0, 10)}...{finalizeTxHash.slice(-8)}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+              {/* FHE ops that just ran on finalize */}
+              <div className="p-3 bg-secondary/20 rounded-md border border-border/20">
+                <FHEOperationsVisual
+                  ops={buildFinalizeOps(numOptions)}
+                  title="FHE Operations on Finalize"
+                  animate
+                />
+              </div>
             </div>
           )}
         </div>
@@ -179,39 +190,89 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
       )}
 
       {tallies ? (
-        <div className="space-y-2">
-          {tallies.map((t, i) => {
+        <div className="space-y-3">
+          {/* Winner analysis */}
+          {total && total > 0n && (() => {
+            const winnerIdx = tallies.reduce((best, t, i) => t.votes > tallies[best].votes ? i : best, 0);
+            const winner = tallies[winnerIdx];
+            const second = tallies.reduce((best, t, i) => i !== winnerIdx && t.votes > (best !== -1 ? tallies[best].votes : -1n) ? i : best, -1);
+            const margin = second !== -1 ? winner.votes - tallies[second].votes : winner.votes;
+            const marginPct = Number((margin * 100n) / total);
+            const winnerPct = Number((winner.votes * 100n) / total);
+            const tie = tallies.filter(t => t.votes === maxVotes && maxVotes > 0n).length > 1;
+            return (
+              <div className="p-3 bg-primary/5 border border-primary/20 rounded-md flex items-start gap-3">
+                <Trophy className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  {tie ? (
+                    <div className="text-sm text-yellow-400 font-semibold">It&apos;s a tie!</div>
+                  ) : (
+                    <>
+                      <div className="text-sm text-foreground font-semibold">
+                        Winner: <span className="text-primary">{options[winnerIdx] ?? `Option ${winnerIdx}`}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {winnerPct}% of votes · leads by{" "}
+                        <span className="text-primary font-mono">{margin.toString()} vote{margin !== 1n ? "s" : ""}</span>
+                        {" "}({marginPct}% margin)
+                      </div>
+                    </>
+                  )}
+                  <div className="text-[11px] text-muted-foreground/50 mt-1">
+                    {total.toString()} total votes · Individual ballots stay encrypted forever
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Per-option bars (sorted by votes desc for display) */}
+          {[...tallies].sort((a, b) => Number(b.votes - a.votes)).map((t) => {
+            const origIdx = t.optionIndex;
             const pct = total && total > 0n ? Number((t.votes * 100n) / total) : 0;
             const isWinner = t.votes === maxVotes && maxVotes > 0n;
             return (
-              <div key={i} className="flex items-center gap-3">
+              <div key={origIdx} className="flex items-center gap-3">
                 <div className="flex-1">
                   <div className="flex justify-between text-xs mb-1">
-                    <span className={TEXT_COLORS[i % TEXT_COLORS.length]}>
-                      {options[i] ?? `Option ${i}`}
+                    <span className={TEXT_COLORS[origIdx % TEXT_COLORS.length]}>
+                      {options[origIdx] ?? `Option ${origIdx}`}
                       {isWinner && " ★"}
                     </span>
-                    <span className="text-foreground">{t.votes.toString()} ({pct}%)</span>
+                    <span className="text-foreground font-mono">{t.votes.toString()} <span className="text-muted-foreground/60">({pct}%)</span></span>
                   </div>
                   <div className="h-2 rounded-full bg-secondary">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${pct}%` }}
-                      className={`h-full rounded-full ${BAR_COLORS[i % BAR_COLORS.length]}`}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                      className={`h-full rounded-full ${BAR_COLORS[origIdx % BAR_COLORS.length]}`}
                     />
                   </div>
                 </div>
               </div>
             );
           })}
+
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Total votes: {total?.toString()}</span>
+            <span>Total: {total?.toString()} votes</span>
             <button
               onClick={() => exportCSV(proposal.title, options, tallies)}
               className="flex items-center gap-1 text-primary hover:underline"
             >
               <Download className="w-3 h-3" /> Export CSV
             </button>
+          </div>
+
+          {/* Privacy guarantee note */}
+          <div className="flex items-start gap-2 p-3 bg-secondary/20 rounded-md border border-border/20">
+            <ShieldCheck className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" />
+            <div className="text-[11px] text-muted-foreground/70 leading-relaxed">
+              These tallies are publicly decryptable via{" "}
+              <span className="font-mono text-primary">FHE.allowPublic</span> — called at finalization.
+              Individual ballots remain as encrypted handles on-chain and{" "}
+              <span className="text-foreground/80">can never be decrypted</span>.
+            </div>
           </div>
         </div>
       ) : (

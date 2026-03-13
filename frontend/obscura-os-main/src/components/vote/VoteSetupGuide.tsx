@@ -108,35 +108,16 @@ export function VoteSetupGuide({ onNavigate }: VoteSetupGuideProps) {
 
   if (!isConnected) {
     return (
-      <div className="pay-card p-5 space-y-3">
-        <div>
-          <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/45 font-mono mb-0.5">
-            Setup guide
-          </div>
-          <h2 className="font-display text-[15px] font-semibold text-foreground leading-tight">
-            Get started with ObscuraVote
-          </h2>
-          <p className="text-[11px] text-muted-foreground/55 mt-0.5">
-            Connect your wallet to see your progress.
-          </p>
-        </div>
-        <div className="h-1 rounded-full bg-white/[0.06]" />
-      </div>
+      <p className="text-sm text-muted-foreground">Connect your wallet to see your progress.</p>
     );
   }
 
   return (
-    <div className="pay-card p-5 space-y-4">
+    <div className="space-y-4">
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/45 font-mono mb-0.5">
-            Setup guide
-          </div>
-          <h2 className="font-display text-[15px] font-semibold text-foreground leading-tight">
-            {allDone ? "You're all set — start governing" : "Get started with ObscuraVote"}
-          </h2>
-          <p className="text-[11px] text-muted-foreground/55 mt-0.5">
+          <p className="text-sm text-muted-foreground">
             {allDone
               ? "All steps complete. Your votes are private and binding."
               : `${doneCount} of ${steps.length} steps complete`}
@@ -146,8 +127,8 @@ export function VoteSetupGuide({ onNavigate }: VoteSetupGuideProps) {
         <div
           className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border tabular-nums ${
             allDone
-              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-              : "bg-white/[0.04] border-white/[0.08] text-muted-foreground/60"
+              ? "bg-emerald-500/10 border-emerald-500/30 text-[hsl(var(--success))]"
+              : "hairline bg-muted text-muted-foreground"
           }`}
         >
           {allDone && <CheckCircle2 className="w-3 h-3" />}
@@ -156,9 +137,9 @@ export function VoteSetupGuide({ onNavigate }: VoteSetupGuideProps) {
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="h-1 overflow-hidden rounded-full bg-muted">
         <div
-          className="h-full rounded-full bg-emerald-500 transition-all duration-700"
+          className="h-full rounded-full bg-[hsl(var(--success))] transition-all duration-700"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -168,14 +149,14 @@ export function VoteSetupGuide({ onNavigate }: VoteSetupGuideProps) {
         {steps.map((s) => (
           <div
             key={s.num}
-            className={`flex items-start gap-3 p-3.5 rounded-xl border transition-colors ${
+            className={`flex items-start gap-3 rounded-xl border p-3.5 transition-colors ${
               s.done
-                ? "border-emerald-500/15 bg-emerald-500/[0.03]"
-                : "border-white/[0.07] bg-white/[0.02]"
+                ? "border-accent/30 bg-accent/10"
+                : "hairline bg-card"
             }`}
           >
             {/* Status icon */}
-            <div className={`mt-0.5 shrink-0 ${s.done ? "text-emerald-400" : "text-muted-foreground/25"}`}>
+            <div className={`mt-0.5 shrink-0 ${s.done ? "text-foreground" : "text-muted-foreground/25"}`}>
               {s.loading ? (
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/30" />
               ) : s.done ? (
@@ -189,7 +170,7 @@ export function VoteSetupGuide({ onNavigate }: VoteSetupGuideProps) {
             <div className="flex-1 min-w-0">
               <div
                 className={`text-[13px] font-medium leading-tight ${
-                  s.done ? "text-foreground/50 line-through decoration-white/20" : "text-foreground/90"
+                  s.done ? "text-foreground/50 line-through decoration-border" : "text-foreground/90"
                 }`}
               >
                 {s.num}. {s.title}
@@ -201,7 +182,7 @@ export function VoteSetupGuide({ onNavigate }: VoteSetupGuideProps) {
 
             {/* Actions / Done badge */}
             {s.done ? (
-              <span className="shrink-0 text-[10px] text-emerald-400/50 font-mono uppercase tracking-wide self-center">
+              <span className="shrink-0 text-[10px] text-foreground/50 font-mono uppercase tracking-wide self-center">
                 Done
               </span>
             ) : (

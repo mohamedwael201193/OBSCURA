@@ -68,7 +68,7 @@ export default function VoteDashboard() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="pay-card rounded-md p-4 text-center"
+            className="space-y-5 rounded-md p-4 text-center"
             title={"title" in stat ? (stat as any).title : undefined}
           >
             <stat.icon className={`w-5 h-5 mx-auto mb-2 ${stat.color}`} />
@@ -85,11 +85,11 @@ export default function VoteDashboard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="pay-card rounded-md p-4"
+        className="space-y-5 rounded-md p-4"
       >
         <div className="flex items-center gap-2 mb-3">
-          <Shield className="w-4 h-4 text-emerald-400" />
-          <span className="text-sm tracking-[0.2em] uppercase text-emerald-400 font-mono">
+          <Shield className="w-4 h-4 text-foreground" />
+          <span className="text-sm tracking-[0.2em] uppercase text-foreground font-mono">
             Contract Status
           </span>
           <span className="ml-auto flex items-center gap-1.5 text-xs text-green-400">
@@ -98,23 +98,23 @@ export default function VoteDashboard() {
           </span>
         </div>
         <div className="grid md:grid-cols-3 gap-3">
-          <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 space-y-1">
+          <div className="rounded-xl hairline bg-card p-3 space-y-1">
             <div className="text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">Contract</div>
             <a
               href={`https://sepolia.arbiscan.io/address/${OBSCURA_VOTE_ADDRESS}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-xs text-emerald-400 hover:underline inline-flex items-center gap-1"
+              className="font-mono text-xs text-foreground hover:underline inline-flex items-center gap-1"
             >
               {OBSCURA_VOTE_ADDRESS.slice(0, 8)}...{OBSCURA_VOTE_ADDRESS.slice(-6)}
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
-          <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 space-y-1">
+          <div className="rounded-xl hairline bg-card p-3 space-y-1">
             <div className="text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">Network</div>
-            <div className="font-mono text-xs text-emerald-400">{NETWORK} ({CHAIN_ID})</div>
+            <div className="font-mono text-xs text-foreground">{NETWORK} ({CHAIN_ID})</div>
           </div>
-          <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 space-y-1">
+          <div className="rounded-xl hairline bg-card p-3 space-y-1">
             <div className="text-[10px] text-muted-foreground/50 uppercase tracking-[0.15em]">Deployed</div>
             <div className="font-mono text-xs text-foreground/70">{DEPLOY_DATE}</div>
           </div>
@@ -126,11 +126,11 @@ export default function VoteDashboard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="pay-card rounded-md p-4"
+        className="space-y-5 rounded-md p-4"
       >
         <div className="flex items-center gap-2 mb-3">
-          <Activity className="w-4 h-4 text-emerald-400" />
-          <span className="text-sm tracking-[0.2em] uppercase text-emerald-400 font-mono">
+          <Activity className="w-4 h-4 text-foreground" />
+          <span className="text-sm tracking-[0.2em] uppercase text-foreground font-mono">
             Live Activity
           </span>
           <span className="ml-auto text-[10px] text-muted-foreground">last {Math.min(activityEvents.length, 5)} events</span>

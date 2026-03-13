@@ -31,7 +31,7 @@ const steps = [
       <div className="space-y-3 text-sm text-muted-foreground/85 leading-relaxed">
         <p>
           ObscuraVote lets any wallet holder vote on proposals with
-          <span className="text-emerald-300"> fully encrypted ballots</span>.
+          <span className="text-[hsl(var(--success))]"> fully encrypted ballots</span>.
           Your choice is sealed by FHE before it ever leaves your browser —
           the smart contract only sees ciphertext.
         </p>
@@ -51,16 +51,16 @@ const steps = [
       <div className="space-y-3 text-sm text-muted-foreground/85 leading-relaxed">
         <p>
           All voting power is gated by the{" "}
-          <span className="text-emerald-300">$OBS governance token</span>. You
+          <span className="text-[hsl(var(--success))]">$OBS governance token</span>. You
           need at least 1 OBS in your wallet before you can cast a ballot.
         </p>
         <div className="rounded-lg bg-emerald-500/[0.07] border border-emerald-500/25 p-3 space-y-1">
-          <div className="text-[12px] font-semibold text-emerald-300">
+          <div className="text-[12px] font-semibold text-[hsl(var(--success))]">
             Free daily faucet
           </div>
           <div className="text-[12px] text-muted-foreground/70">
             Claim <strong className="text-foreground">100 OBS every 24 hours</strong> — use
-            the <span className="text-emerald-300">"Claim $OBS"</span> button
+            the <span className="text-[hsl(var(--success))]">"Claim $OBS"</span> button
             pinned at the top of the Vote dashboard.
           </div>
         </div>
@@ -74,13 +74,13 @@ const steps = [
     body: (
       <div className="space-y-3 text-sm text-muted-foreground/85 leading-relaxed">
         <p>
-          Open the <span className="text-emerald-300">Proposals</span> tab to
+          Open the <span className="text-[hsl(var(--success))]">Proposals</span> tab to
           browse active polls with live countdowns. Click{" "}
-          <span className="text-emerald-300">Vote on this →</span> to jump
+          <span className="text-[hsl(var(--success))]">Vote on this →</span> to jump
           directly to the encrypted voting form.
         </p>
         <p>
-          In <span className="text-emerald-300">Cast Vote</span>, select a
+          In <span className="text-[hsl(var(--success))]">Cast Vote</span>, select a
           proposal, pick an option, and submit. Your choice is wrapped in a
           FHE ciphertext on-device — the contract never learns what you chose.
         </p>
@@ -113,14 +113,14 @@ const steps = [
       <div className="space-y-3 text-sm text-muted-foreground/85 leading-relaxed">
         <p>
           After the deadline, any voter can trigger finalization in the{" "}
-          <span className="text-emerald-300">Results</span> tab. The contract
-          calls <span className="font-mono text-emerald-300">FHE.allowPublic()</span>{" "}
+          <span className="text-[hsl(var(--success))]">Results</span> tab. The contract
+          calls <span className="font-mono text-[hsl(var(--success))]">FHE.allowPublic()</span>{" "}
           on the aggregate tally — only the totals are revealed.
         </p>
         <p>
-          Use <span className="text-emerald-300">Verify My Vote</span> in the
+          Use <span className="text-[hsl(var(--success))]">Verify My Vote</span> in the
           history tab to self-decrypt your own ballot at any time via{" "}
-          <span className="font-mono text-emerald-300">FHE.allow</span>.
+          <span className="font-mono text-[hsl(var(--success))]">FHE.allow</span>.
         </p>
       </div>
     ),
@@ -168,14 +168,14 @@ export function VoteOnboardingWizard({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/25 backdrop-blur-sm p-4"
       >
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
           transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-          className="pay-card max-w-lg w-full p-6 relative"
+          className="relative w-full max-w-lg space-y-5 rounded-2xl hairline bg-card p-6 shadow-xl"
         >
           {/* Close / skip */}
           <button
@@ -188,8 +188,8 @@ export function VoteOnboardingWizard({
 
           {/* Step counter + icon */}
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-              <Icon className="w-4 h-4 text-emerald-400" />
+            <div className="w-8 h-8 rounded-xl bg-muted hairline flex items-center justify-center shrink-0">
+              <Icon className="w-4 h-4 text-foreground" />
             </div>
             <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/50 font-mono">
               Step {stepIdx + 1} / {steps.length}
@@ -213,7 +213,7 @@ export function VoteOnboardingWizard({
                     ? "w-4 h-1.5 bg-emerald-400"
                     : i < stepIdx
                     ? "w-1.5 h-1.5 bg-emerald-500/50"
-                    : "w-1.5 h-1.5 bg-white/15"
+                    : "w-1.5 h-1.5 bg-border"
                 }`}
               />
             ))}
@@ -223,7 +223,7 @@ export function VoteOnboardingWizard({
           {stepIdx === 0 && (
             <div
               className={`text-[11px] mb-4 flex items-center gap-1.5 ${
-                isConnected ? "text-emerald-400" : "text-amber-400"
+                isConnected ? "text-foreground" : "text-amber-400"
               }`}
             >
               <span

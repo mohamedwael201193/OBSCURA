@@ -21,6 +21,7 @@ import { useChainTime } from "@/hooks/useChainTime";
 import { useVoteOwner, useVoteRole } from "@/hooks/useProposals";
 import { Role, FHEStepStatus } from "@/lib/constants";
 import AsyncStepper from "@/components/shared/AsyncStepper";
+import { VoteKpi, VoteNotice, VoteTabs, vh } from "@/components/harmony/voteHarmonyUi";
 
 const ARBISCAN = "https://sepolia.arbiscan.io";
 
@@ -28,7 +29,7 @@ function TxLink({ hash }: { hash?: `0x${string}` }) {
   if (!hash) return null;
   return (
     <a href={`${ARBISCAN}/tx/${hash}`} target="_blank" rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 text-emerald-400 hover:underline text-xs">
+      className="inline-flex items-center gap-1 text-foreground hover:underline text-xs">
       View tx <ExternalLink className="h-3 w-3" />
     </a>
   );
@@ -71,7 +72,7 @@ function SpendRequestRow({ proposalId }: { proposalId: number }) {
   let badgeClass: string;
   if (reqExecuted) {
     badgeLabel = "Executed";
-    badgeClass = "border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
+    badgeClass = "border-emerald-500/30 bg-emerald-500/10 text-foreground";
   } else if (timelockElapsed) {
     badgeLabel = "Ready to Execute";
     badgeClass = "border-amber-500/30 bg-amber-500/10 text-amber-400";
@@ -84,15 +85,15 @@ function SpendRequestRow({ proposalId }: { proposalId: number }) {
   } else {
     // Not finalized yet
     badgeLabel = "Vote Pending";
-    badgeClass = "border-white/10 bg-white/5 text-white/50";
+    badgeClass = "hairline bg-muted text-muted-foreground";
   }
 
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-white/[0.025] p-4 space-y-3">
+    <div className={`${vh.listCard} space-y-3`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-white">#{proposalId} — {proposal.title}</p>
-          <p className="text-xs text-white/50 mt-0.5 font-mono">
+          <p className="text-sm font-medium text-foreground">#{proposalId} — {proposal.title}</p>
+          <p className="mt-0.5 font-mono text-sm text-muted-foreground">
             Recipient: {reqRecipient.slice(0, 8)}…{reqRecipient.slice(-4)}
           </p>
         </div>
@@ -101,11 +102,11 @@ function SpendRequestRow({ proposalId }: { proposalId: number }) {
         </span>
       </div>
 
-      <div className="text-xs text-white/40 flex items-center gap-1.5">
-        <Lock className="h-3 w-3 text-violet-400" />
-        Amount: <span className="text-white/60 font-mono">{reqAmountEth} ETH</span>
-        <span className="text-white/20 mx-1">·</span>
-        <span className="text-white/30">Recipient receives on execution</span>
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Lock className="h-3 w-3 text-[hsl(var(--success))]" />
+        Amount: <span className="font-mono text-foreground">{reqAmountEth} ETH</span>
+        <span className="mx-1">·</span>
+        <span>Recipient receives on execution</span>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -117,7 +118,7 @@ function SpendRequestRow({ proposalId }: { proposalId: number }) {
           </button>
         )}
         {!reqExecuted && timelockEnds > 0n && !timelockElapsed && (
-          <p className="text-xs text-white/40 self-center">
+          <p className="text-xs text-muted-foreground/40 self-center">
             Timelock: {timeLeftLabel} remaining before execution is allowed.
           </p>
         )}
@@ -192,54 +193,31 @@ export function TreasuryPanel() {
 
   const balanceEth = balanceWei ? formatEther(balanceWei as bigint) : "0";
 
+  const tabItems = [
+    { key: "requests" as const, label: "Spend requests" },
+    { key: "attach" as const, label: "Attach spend" },
+    { key: "fund" as const, label: "Fund treasury" },
+    ...(isAdmin ? [{ key: "settings" as const, label: "Settings" }] : []),
+  ];
+
   return (
-    <div className="space-y-5">
-      {/* Header stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-center gap-3">
-          <Vault className="h-8 w-8 text-amber-400 shrink-0" />
-          <div>
-            <p className="text-xs text-white/50 mb-0.5">Treasury Balance</p>
-            <p className="text-xl font-bold text-white">{parseFloat(balanceEth).toFixed(4)} ETH</p>
-          </div>
-        </div>
-        <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 flex items-center gap-3">
-          <Lock className="h-8 w-8 text-violet-400 shrink-0" />
-          <div>
-            <p className="text-xs text-white/50 mb-0.5">FHE Privacy</p>
-            <p className="text-sm font-semibold text-violet-300">Amounts encrypted</p>
-            <p className="text-xs text-white/40">until execution</p>
-          </div>
-        </div>
+    <div className={vh.panel}>
+      <div className={vh.kpiGrid2}>
+        <VoteKpi icon={Vault} label="Treasury balance" value={`${parseFloat(balanceEth).toFixed(4)} ETH`} iconClass="text-amber-700" />
+        <VoteKpi icon={Lock} label="FHE privacy" value="Amounts encrypted" sub="Until execution" iconClass="text-foreground" />
       </div>
 
-      {/* FHE info banner */}
-      <div className="rounded-lg border border-violet-500/10 bg-violet-500/[0.04] p-3 flex items-start gap-2">
-        <Info className="h-3.5 w-3.5 text-violet-400 shrink-0 mt-0.5" />
-        <p className="text-xs text-violet-300/70">
-          Spend amounts are sealed with <span className="text-violet-300 font-semibold">Fhenix FHE</span> at submission time.
-          Only the proposal creator and recipient can decrypt the amount privately until the vote finalizes.
-          After a 48h timelock, the amount is revealed on-chain and ETH is transferred.
-        </p>
-      </div>
+      <VoteNotice icon={Info}>
+        Spend amounts are sealed with <span className={vh.emphasis}>Fhenix FHE</span> at submission time. Only the proposal creator and recipient can decrypt the amount privately until the vote finalizes. After a 48h timelock, the amount is revealed on-chain and ETH is transferred.
+      </VoteNotice>
 
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-lg bg-white/5 p-1">
-        {(["requests", "attach", "fund", ...(isAdmin ? ["settings"] : [])] as const).map(t => (
-          <button key={t} onClick={() => setActiveTab(t)}
-            className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              activeTab === t ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"
-            }`}>
-            {t === "requests" ? "Spend Requests" : t === "attach" ? "Attach Spend" : t === "fund" ? "Fund Treasury" : "Settings"}
-          </button>
-        ))}
-      </div>
+      <VoteTabs tabs={tabItems} active={activeTab} onChange={setActiveTab} />
 
       {/* Spend Requests */}
       {activeTab === "requests" && (
         <div className="space-y-3">
           {proposalCount === 0 ? (
-            <p className="text-xs text-white/40 text-center py-6">No proposals yet.</p>
+            <p className="text-xs text-muted-foreground/40 text-center py-6">No proposals yet.</p>
           ) : (
             Array.from({ length: proposalCount }, (_, i) => (
               <SpendRequestRow key={i} proposalId={i} />
@@ -252,28 +230,28 @@ export function TreasuryPanel() {
       {activeTab === "attach" && (
         <div className="space-y-3">
           {!isConnected && (
-            <p className="text-xs text-white/50 text-center py-4">Connect your wallet to attach a spend request.</p>
+            <p className="text-xs text-muted-foreground/50 text-center py-4">Connect your wallet to attach a spend request.</p>
           )}
           {isConnected && (
             <>
-              <p className="text-xs text-white/50">
+              <p className="text-xs text-muted-foreground/50">
                 Attach an encrypted ETH spend request to one of your proposals. The amount is hidden until the vote passes and timelock elapses.
               </p>
               <div className="space-y-2">
                 <input type="number" placeholder="Proposal ID (e.g. 0)"
                   value={proposalIdInput} onChange={e => setProposalIdInput(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-violet-500/50 focus:outline-none" />
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none" />
                 <input type="text" placeholder="Recipient address (0x…)"
                   value={recipientInput} onChange={e => setRecipientInput(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-violet-500/50 focus:outline-none" />
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none" />
                 <div className="flex gap-2">
                   <input type="number" step="0.0001" placeholder="Amount in ETH (e.g. 0.05)"
                     value={ethAmountInput} onChange={e => setEthAmountInput(e.target.value)}
-                    className="flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-violet-500/50 focus:outline-none" />
+                    className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none" />
                   <motion.button onClick={handleAttach}
                     disabled={attaching || attachConfirming || !proposalIdInput || !recipientInput || !ethAmountInput}
                     whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-                    className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-50 transition-colors">
+                    className="flex items-center gap-1.5 btn-pay btn-pay-emerald px-4 py-2 text-sm font-medium text-foreground  disabled:opacity-50 transition-colors">
                     {attaching || attachConfirming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
                     {attachConfirming ? "Confirming…" : attaching ? "Encrypting…" : "Attach"}
                   </motion.button>
@@ -288,7 +266,7 @@ export function TreasuryPanel() {
                     />
                   </div>
                 )}
-                {attachSuccess && attachTx && <div className="flex items-center gap-2 text-xs text-emerald-400"><CheckCircle className="h-3 w-3" /> Attached! <TxLink hash={attachTx} /></div>}
+                {attachSuccess && attachTx && <div className="flex items-center gap-2 text-xs text-foreground"><CheckCircle className="h-3 w-3" /> Attached! <TxLink hash={attachTx} /></div>}
               </div>
             </>
           )}
@@ -298,27 +276,27 @@ export function TreasuryPanel() {
       {/* Fund Treasury */}
       {activeTab === "fund" && (
         <div className="space-y-3">
-          <p className="text-xs text-white/50">
+          <p className="text-xs text-muted-foreground/50">
             Deposit ETH into the DAO treasury. Funds are disbursed only by successful governance votes with a 48h timelock.
           </p>
           <div className="flex gap-2">
             <input type="number" step="0.001" placeholder="ETH amount (e.g. 0.1)"
               value={depositInput} onChange={e => setDepositInput(e.target.value)}
-              className="flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-amber-500/50 focus:outline-none" />
+              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none" />
             <button onClick={() => deposit(depositInput)} disabled={depositing || depositConfirming || !depositInput}
-              className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50 transition-colors">
+              className="flex items-center gap-1.5 btn-pay btn-pay-emerald px-4 py-2 text-sm font-medium text-foreground  disabled:opacity-50 transition-colors">
               {depositing || depositConfirming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowDownToLine className="h-3.5 w-3.5" />}
               Deposit
             </button>
           </div>
           {depositError && <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {depositError}</p>}
-          {depositSuccess && depositTx && <div className="flex items-center gap-2 text-xs text-emerald-400"><CheckCircle className="h-3 w-3" /> Deposited! <TxLink hash={depositTx} /></div>}
+          {depositSuccess && depositTx && <div className="flex items-center gap-2 text-xs text-foreground"><CheckCircle className="h-3 w-3" /> Deposited! <TxLink hash={depositTx} /></div>}
 
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-1.5 mt-2">
-            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider flex items-center gap-1.5">
+          <div className="rounded-xl border border-border bg-muted p-4 space-y-1.5 mt-2">
+            <p className="text-xs font-semibold text-muted-foreground/40 uppercase tracking-wider flex items-center gap-1.5">
               <Shield className="h-3.5 w-3.5" /> Treasury Security
             </p>
-            <ul className="text-xs text-white/30 space-y-1 list-disc list-inside">
+            <ul className="text-xs text-muted-foreground/30 space-y-1 list-disc list-inside">
               <li>Spend amounts are FHE-encrypted until execution.</li>
               <li>Timelock between vote finalization and execution.</li>
               <li>Only creator, recipient, or admin can execute a spend.</li>
@@ -335,12 +313,12 @@ export function TreasuryPanel() {
             <p className="text-xs font-semibold text-violet-300 flex items-center gap-1.5">
               <Timer className="h-3.5 w-3.5" /> Current Timelock
             </p>
-            <p className="text-2xl font-bold text-white">{formatDuration(timelockSeconds)}</p>
-            <p className="text-[10px] text-white/30">Applied to all new finalization records. Existing pending requests keep their original timelock.</p>
+            <p className="text-2xl font-bold text-foreground">{formatDuration(timelockSeconds)}</p>
+            <p className="text-[10px] text-muted-foreground/30">Applied to all new finalization records. Existing pending requests keep their original timelock.</p>
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs text-white/50 font-medium uppercase tracking-wider">Set New Timelock</p>
+            <p className="text-xs text-muted-foreground/50 font-medium uppercase tracking-wider">Set New Timelock</p>
             <div className="grid grid-cols-4 gap-2">
               {TIMELOCK_PRESETS.map((p) => {
                 const isActive = timelockSeconds === p.seconds;
@@ -352,7 +330,7 @@ export function TreasuryPanel() {
                     className={`py-2 rounded-lg border text-xs font-medium transition-all ${
                       isActive
                         ? "border-violet-500/50 bg-violet-500/20 text-violet-300 cursor-default"
-                        : "border-white/10 bg-white/[0.03] text-white/60 hover:border-violet-500/30 hover:text-violet-300 disabled:opacity-40"
+                        : "border-border bg-muted text-muted-foreground/60 hover:border-violet-500/30 hover:text-violet-300 disabled:opacity-40"
                     }`}
                   >
                     {settingTimelock && !isActive ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : p.label}
@@ -368,7 +346,7 @@ export function TreasuryPanel() {
             </p>
           )}
           {timelockReceipt?.isSuccess && (
-            <p className="text-xs text-emerald-400 flex items-center gap-1">
+            <p className="text-xs text-foreground flex items-center gap-1">
               <CheckCircle className="h-3 w-3" /> Timelock updated successfully!
             </p>
           )}

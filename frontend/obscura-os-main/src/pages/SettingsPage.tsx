@@ -8,6 +8,7 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, RotateCw, Trash2, Settings as SettingsIcon } from "lucide-react";
 import { Card, PageHeader } from "@/components/elite/Layout";
+import { ProductShell } from "@/components/design-system/ProductShell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -63,11 +64,10 @@ export default function SettingsPage() {
   const receipts = useReceipts();
 
   return (
-    <div className="min-h-screen bg-background py-12 px-6">
-      <div className="max-w-3xl mx-auto">
+    <ProductShell module="pay" searchPlaceholder="Search pay…" maxWidth="max-w-3xl">
         <Link
           to="/pay"
-          className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground/70 hover:text-foreground mb-4"
+          className="inline-flex items-center gap-1.5 text-[12px] text-forest/50 hover:text-forest mb-4"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Pay
         </Link>
@@ -174,7 +174,6 @@ export default function SettingsPage() {
             Replay onboarding wizard
           </Button>
         </Section>
-      </div>
-    </div>
+    </ProductShell>
   );
 }

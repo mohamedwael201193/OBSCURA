@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
-import ObscuraLogo from "./ObscuraLogo";
+import ObscuraLogo from "@/components/brand/ObscuraLogo";
 import WalletConnect from "./wallet/WalletConnect";
 
 const navItems = [
@@ -24,11 +24,8 @@ const ObscuraNav = () => {
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 border-b border-border/50 backdrop-blur-sm bg-background/40"
     >
-      <Link to="/" className="flex items-center gap-3 group">
-        <ObscuraLogo size={28} className="group-hover:opacity-80 transition-opacity" />
-        <span className="font-display text-base tracking-[0.3em] text-foreground">
-          OBSCURA
-        </span>
+      <Link to="/" aria-label="Obscura home" className="transition-opacity hover:opacity-85">
+        <ObscuraLogo size="md" tone="dark" />
       </Link>
 
       <div className="hidden md:flex items-center gap-8">

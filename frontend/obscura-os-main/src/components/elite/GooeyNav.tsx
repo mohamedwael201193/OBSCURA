@@ -1,15 +1,8 @@
 /**
- * GooeyNav — unified sticky nav for ALL pages.
+ * GooeyNav — unified sticky nav for app pages.
  *
- * Two-layer gooey technique:
- *   Layer 1 (abs, SVG filter): emerald active blob + white hover blob — merge/morph effect
- *   Layer 2 (rel, z-10):       crisp text links — fully clickable, no filter distortion
- *
- * Glass behaviour:
- *   scrollY = 0       → transparent, no blur
- *   scrollY > 24      → frosted glass: backdrop-blur-2xl, bg-[#06090c]/75, emerald accent line
- *
- * Blob position = measured via getBoundingClientRect after mount + ResizeObserver.
+ * Keeps the original measured active pill behavior, but presents it as a
+ * quieter official product nav instead of a neon demo surface.
  */
 
 import React, { useEffect, useRef, useState } from "react";
@@ -40,10 +33,11 @@ interface BlobRect { left: number; width: number }
 
 // ── Nav items (single source of truth) ────────────────────────────────────
 
-export const NAV_ITEMS: NavItem[] = [
+const NAV_ITEMS: NavItem[] = [
   { key: "pay",   label: "Pay",   href: "/pay" },
-  { key: "vote",  label: "Vote",  href: "/vote" },
   { key: "credit",label: "Credit",href: "/credit" },
+  { key: "vote",  label: "Vote",  href: "/vote" },
+  { key: "ecosystem", label: "Ecosystem", href: "/ecosystem" },
   { key: "vault", label: "Vault", soon: true },
   { key: "trust", label: "Trust", soon: true },
   { key: "mind",  label: "Mind",  soon: true },
@@ -55,6 +49,7 @@ const pathToKey: Record<string, string> = {
   "/pay":  "pay",
   "/vote": "vote",
   "/credit": "credit",
+  "/ecosystem": "ecosystem",
   "/docs": "docs",
 };
 
@@ -100,7 +95,6 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
       setActiveRect(measure(activeKey));
     });
     return () => cancelAnimationFrame(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey]);
 
   // Re-measure on resize
@@ -111,7 +105,6 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
     });
     if (wrapRef.current) obs.observe(wrapRef.current);
     return () => obs.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey]);
 
   const handleEnter = (key: string) => {
@@ -124,10 +117,10 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
   return (
     <header
       className={cn(
-        "nav-glass sticky top-0 z-50 w-full",
+        "nav-glass sticky top-0 z-50 w-full border-b",
         scrolled
-          ? "scrolled bg-[#06090c]/75 shadow-[0_8px_40px_rgba(0,0,0,0.55)]"
-          : "bg-[#06090c]/0"
+          ? "scrolled border-forest/10 bg-sage-1/95 shadow-[0_8px_32px_rgba(24,40,14,0.08)]"
+          : "border-forest/8 bg-sage-1/90"
       )}
     >
       {/* Offscreen SVG gooey filter */}
@@ -160,13 +153,13 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
         }}
       />
 
-      {/* Top-edge gradient shimmer — tint from emerald on scroll */}
+      {/* Top-edge gradient shimmer — subtle product polish on scroll */}
       <motion.div
         aria-hidden={true}
         className="absolute inset-x-0 top-0 h-px pointer-events-none"
         animate={{
           opacity: scrolled ? 1 : 0,
-          background: "linear-gradient(90deg, transparent 0%, rgba(52,211,153,0.12) 15%, rgba(52,211,153,0.45) 50%, rgba(52,211,153,0.12) 85%, transparent 100%)",
+          background: "linear-gradient(90deg, transparent 0%, rgba(178,235,118,0.1) 15%, rgba(178,235,118,0.32) 50%, rgba(178,235,118,0.1) 85%, transparent 100%)",
         }}
         transition={{ duration: 0.6, ease: "easeInOut" }}
       />
@@ -219,7 +212,7 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
               />
               <ObscuraLogo size={26} className="relative z-10 group-hover:opacity-80 transition-opacity" />
             </div>
-            <span className="hidden sm:block font-display text-[13px] tracking-[0.3em] text-foreground/90 group-hover:text-foreground transition-colors">
+            <span className="hidden sm:block font-spadeDisplay text-[13px] font-semibold tracking-tight text-forest group-hover:text-forest/80 transition-colors">
               OBSCURA
             </span>
           </Link>
@@ -233,9 +226,9 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
             "transition-all duration-500 ease-out",
             scrolled && [
               "rounded-full",
-              "bg-white/[0.035]",
-              "border border-white/[0.09]",
-              "shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_4px_24px_rgba(0,0,0,0.35),0_0_0_1px_rgba(52,211,153,0.05)]",
+              "bg-white",
+              "border border-forest/10",
+              "shadow-[0_4px_24px_rgba(24,40,14,0.08)]",
               "px-1",
             ],
           )}
@@ -250,7 +243,7 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
             {activeRect && (
               <motion.div
                 key="active-blob"
-                className="absolute rounded-full bg-emerald-400"
+                className="absolute rounded-full bg-lime-accent"
                 animate={{ left: activeRect.left, width: activeRect.width }}
                 initial={false}
                 transition={SPRING}
@@ -261,7 +254,7 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
               {hoverRect && hoverKey !== activeKey && (
                 <motion.div
                   key="hover-blob"
-                  className="absolute rounded-full bg-white/[0.08]"
+                  className="absolute rounded-full bg-sage-2"
                   initial={{ opacity: 0, left: hoverRect.left, width: hoverRect.width }}
                   animate={{ opacity: 1, left: hoverRect.left, width: hoverRect.width }}
                   exit={{ opacity: 0 }}
@@ -280,10 +273,10 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
                 "flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium leading-none select-none",
                 "transition-colors duration-150",
                 isActive
-                  ? "text-[#06090c]"
+                  ? "text-forest"
                   : item.soon
-                  ? "text-white/25 cursor-not-allowed"
-                  : "text-white/55 hover:text-white/90",
+                  ? "text-forest/25 cursor-not-allowed"
+                  : "text-forest/50 hover:text-forest/85",
               )}>
                 {item.label}
                 {item.soon && (

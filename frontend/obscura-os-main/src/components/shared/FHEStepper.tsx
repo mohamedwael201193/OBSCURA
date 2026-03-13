@@ -79,10 +79,8 @@ export default function FHEStepper({ status, error, className = "" }: Props) {
         <motion.div
           animate={isError ? { x: [0, -4, 4, -3, 3, 0] } : {}}
           transition={{ duration: 0.4 }}
-          className={`mt-3 p-3 rounded-xl border backdrop-blur-md ${
-            isError
-              ? "bg-red-500/10 border-red-500/30"
-              : "bg-black/30 border-white/8"
+          className={`harmony-fhe-stepper mt-3 rounded-xl hairline p-4 ${
+            isError ? "border-destructive/30 bg-destructive/5" : "bg-card"
           }`}
         >
           <div className="flex items-stretch gap-1">
@@ -93,10 +91,10 @@ export default function FHEStepper({ status, error, className = "" }: Props) {
               return (
                 <div key={phase.key} className="flex-1 flex items-center gap-1">
                   <div className="flex flex-col items-center gap-1 min-w-0 flex-1">
-                    <div className={`relative w-7 h-7 rounded-full flex items-center justify-center transition-colors duration-300 ${
-                      done   ? "bg-emerald-500/20 border border-emerald-500/40" :
-                      active ? "bg-violet-500/20 border border-violet-500/50" :
-                                "bg-white/5 border border-white/10"
+                    <div className={`relative flex h-7 w-7 items-center justify-center rounded-full transition-colors duration-300 ${
+                      done   ? "border border-[hsl(var(--success))]/40 bg-accent/20" :
+                      active ? "border border-accent/50 bg-accent/25" :
+                                "hairline bg-muted"
                     }`}>
                       {active && (
                         <motion.div
@@ -110,25 +108,25 @@ export default function FHEStepper({ status, error, className = "" }: Props) {
                         />
                       )}
                       {done ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <CheckCircle2 className="h-3.5 w-3.5 text-[hsl(var(--success))]" />
                       ) : active ? (
-                        <Loader2 className="w-3.5 h-3.5 text-violet-300 animate-spin" />
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-foreground" />
                       ) : (
-                        <phase.Icon className="w-3.5 h-3.5 text-white/25" />
+                        <phase.Icon className="h-3.5 w-3.5 text-muted-foreground" />
                       )}
                     </div>
-                    <span className={`text-[8px] font-mono tracking-[0.16em] uppercase ${
-                      done ? "text-emerald-400/90" : active ? "text-violet-200" : "text-white/30"
+                    <span className={`font-mono text-[8px] uppercase tracking-[0.16em] ${
+                      done ? "text-[hsl(var(--success))]" : active ? "text-foreground" : "text-muted-foreground"
                     }`}>
                       {phase.label}
                     </span>
                   </div>
                   {next && (
-                    <div className="flex-1 h-px bg-white/8 mb-3 relative overflow-hidden rounded-full">
+                    <div className="relative mb-3 h-px flex-1 overflow-hidden rounded-full bg-border">
                       <motion.div
                         className={
-                          done ? "h-full bg-emerald-400/50" :
-                          active ? "h-full bg-violet-400/60" :
+                          done ? "h-full bg-[hsl(var(--success))]" :
+                          active ? "h-full bg-accent" :
                           "h-full bg-transparent"
                         }
                         initial={false}
@@ -143,20 +141,20 @@ export default function FHEStepper({ status, error, className = "" }: Props) {
           </div>
 
           {activePhase && !isError && (
-            <div className="mt-2 flex items-center justify-between text-[10.5px] text-white/55">
+            <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <span className="text-violet-300 font-medium">{activePhase.label}</span>
-                <span className="text-white/30">·</span>
+                <span className="font-medium text-foreground">{activePhase.label}</span>
+                <span>·</span>
                 <span>{activePhase.hint}</span>
               </span>
-              <span className="font-mono text-white/40">
+              <span className="font-mono">
                 {elapsed.toFixed(1)}s {activePhase.etaSec > 0 && `/ ~${activePhase.etaSec}s`}
               </span>
             </div>
           )}
 
           {status === FHEStepStatus.READY && (
-            <div className="mt-2 text-[10.5px] text-emerald-300 flex items-center gap-1.5">
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-[hsl(var(--success))]">
               <CheckCircle2 className="w-3 h-3" />
               Sealed and confirmed on-chain.
             </div>
@@ -166,7 +164,7 @@ export default function FHEStepper({ status, error, className = "" }: Props) {
             <motion.div
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-2 flex items-start gap-1.5 text-[10.5px] text-red-300"
+              className="mt-2 flex items-start gap-1.5 text-[11px] text-destructive"
             >
               <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
               <span>{error}</span>

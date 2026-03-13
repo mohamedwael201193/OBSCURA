@@ -70,7 +70,6 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
   const { data: alreadyVoted } = useHasVoted(proposalId ?? 0n, address);
 
   // Deadline urgency
-  const now = BigInt(Math.floor(Date.now() / 1000));
   const secondsLeft = proposal?.deadline ? Number(proposal.deadline - now) : null;
   const isUrgent = secondsLeft !== null && secondsLeft > 0 && secondsLeft < 3600;
   const isCritical = secondsLeft !== null && secondsLeft > 0 && secondsLeft < 1800;

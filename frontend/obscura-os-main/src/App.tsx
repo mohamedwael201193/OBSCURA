@@ -15,11 +15,15 @@ import PrivacyPage from "./pages/PrivacyPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import VotePage from "./pages/VotePage.tsx";
 import PMFPage from "./pages/PMFPage.tsx";
+import ContactsPage from "./pages/ContactsPage.tsx";
+import SettingsPage from "./pages/SettingsPage.tsx";
+import { PreferencesProvider } from "@/contexts/PreferencesContext";
+import OnboardingWizard from "@/components/pay-v4/OnboardingWizard";
 
 const queryClient = new QueryClient();
 
 /** Dashboard paths have a sidebar — hide the logo from the top nav there to avoid duplication. */
-const DASHBOARD_PATHS = new Set(["/pay", "/vote"]);
+const DASHBOARD_PATHS = new Set(["/pay", "/pay/contacts", "/pay/settings", "/vote"]);
 
 const AnimatedRoutes = () => {
   const location = useLocation();
@@ -41,6 +45,8 @@ const AnimatedRoutes = () => {
           <Routes location={location}>
             <Route path="/" element={<Index />} />
             <Route path="/pay" element={<PayPage />} />
+            <Route path="/pay/contacts" element={<ContactsPage />} />
+            <Route path="/pay/settings" element={<SettingsPage />} />
             <Route path="/vote" element={<VotePage />} />
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
@@ -49,6 +55,9 @@ const AnimatedRoutes = () => {
           </Routes>
         </motion.div>
       </AnimatePresence>
+
+      {/* Wave 3 globals — only meaningful when wallet is connected, but kept mounted so they survive route changes. */}
+      {isDashboard && <OnboardingWizard />}
     </div>
   );
 };
@@ -57,11 +66,13 @@ const App = () => (
   <WagmiProvider config={config}>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AnimatedRoutes />
-        </BrowserRouter>
+        <PreferencesProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AnimatedRoutes />
+          </BrowserRouter>
+        </PreferencesProvider>
       </TooltipProvider>
     </QueryClientProvider>
   </WagmiProvider>

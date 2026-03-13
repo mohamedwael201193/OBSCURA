@@ -7,9 +7,10 @@ import {
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
   REINEIRA_CUSDC_ABI,
   REINEIRA_CUSDC_ADDRESS,
-} from "@/config/wave2";
+} from "@/config/pay";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
 import { deriveStealthPayment, type MetaAddress } from "@/lib/stealth";
+import { estimateCappedFees } from "@/lib/gas";
 
 /**
  * useTickStream — releases ONE cycle on a stream:
@@ -87,22 +88,9 @@ export function useTickStream() {
 
         // 3. Direct cUSDC transfer: employer → stealth address.
         //    Uses the InEuint64-accepting overload (selector 0xa794ee95).
-        const feeData = await publicClient.estimateFeesPerGas();
-        // Arbitrum Sepolia base fees can be extremely low (~0.024 gwei).
-        // Clamp priority fee to never exceed the fee cap (EIP-1559 invariant).
-        let maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 150n) / 100n
-          : undefined;
-        let maxPriorityFeePerGas = feeData.maxPriorityFeePerGas
-          ? (feeData.maxPriorityFeePerGas * 150n) / 100n
-          : undefined;
-        // Clamp: priorityFee must be ≤ feeCap
-        if (maxFeePerGas !== undefined && maxPriorityFeePerGas !== undefined) {
-          if (maxPriorityFeePerGas > maxFeePerGas) maxPriorityFeePerGas = maxFeePerGas;
-        } else if (maxFeePerGas !== undefined && maxPriorityFeePerGas === undefined) {
-          // No priority fee returned — use the fee cap itself (safe, wastes nothing on L2)
-          maxPriorityFeePerGas = maxFeePerGas;
-        }
+        //    Capped EIP-1559 fees from shared lib/gas.ts (anti-regression
+        //    for Wave 2 #51-#52, #153-#156).
+        const fees1 = await estimateCappedFees(publicClient);
 
         const txHash = await writeContractAsync({
           address: REINEIRA_CUSDC_ADDRESS,
@@ -111,8 +99,8 @@ export function useTickStream() {
           args: [stealth.stealthAddress as `0x${string}`, inEuint64],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas,
-          maxPriorityFeePerGas,
+          maxFeePerGas: fees1.maxFeePerGas,
+          maxPriorityFeePerGas: fees1.maxPriorityFeePerGas,
           gas: 1_500_000n,
         });
 
@@ -139,34 +127,9 @@ export function useTickStream() {
           [params.streamId, 0n, params.amount]
         );
 
-        // Re-estimate gas fees after the delay — stale values cause MetaMask to
-        // call eth_maxPriorityFeePerGas itself which often fails on testnet.
-        // Pass BOTH maxFeePerGas + maxPriorityFeePerGas so MetaMask never needs
-        // to make its own estimation (eliminates the "gas error" popup).
-        let maxFeePerGas2: bigint | undefined;
-        let maxPriorityFeePerGas2: bigint | undefined;
-        try {
-          const feeData2 = await publicClient.estimateFeesPerGas();
-          maxFeePerGas2 = feeData2.maxFeePerGas
-            ? (feeData2.maxFeePerGas * 150n) / 100n
-            : undefined;
-          maxPriorityFeePerGas2 = feeData2.maxPriorityFeePerGas
-            ? (feeData2.maxPriorityFeePerGas * 150n) / 100n
-            : undefined;
-        } catch {
-          // RPC rate-limited or offline — use safe Arbitrum Sepolia fallbacks
-          maxFeePerGas2 = 300_000_000n; // 0.3 gwei
-          maxPriorityFeePerGas2 = undefined; // let clamp logic handle it
-        }
-        // EIP-1559 invariant: priorityFee must be ≤ feeCap.
-        // Arbitrum Sepolia base fees are extremely low (~0.024 gwei), so any
-        // fixed-value fallback (e.g. 0.1 gwei) will exceed the cap. Instead,
-        // clamp to maxFeePerGas — on L2 the priority fee has no effect on inclusion.
-        if (maxFeePerGas2 !== undefined) {
-          if (maxPriorityFeePerGas2 === undefined || maxPriorityFeePerGas2 > maxFeePerGas2) {
-            maxPriorityFeePerGas2 = maxFeePerGas2;
-          }
-        }
+        // Re-estimate gas after the delay — stale fees from the first tx
+        // commonly cause MetaMask to make its own (often-failing) estimation.
+        const fees2 = await estimateCappedFees(publicClient);
 
         // Pre-simulate the announce to catch on-chain reverts before MetaMask popup.
         // If this fails, MetaMask would show "Review alert" — we throw a clear error instead.
@@ -192,8 +155,8 @@ export function useTickStream() {
           args: [stealth.stealthAddress, stealth.ephemeralPubKey, stealth.viewTag, metadata],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas: maxFeePerGas2,
-          maxPriorityFeePerGas: maxPriorityFeePerGas2,
+          maxFeePerGas: fees2.maxFeePerGas,
+          maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
           gas: 500_000n,
         });
 

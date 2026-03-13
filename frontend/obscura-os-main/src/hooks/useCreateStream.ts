@@ -4,7 +4,8 @@ import { arbitrumSepolia } from "viem/chains";
 import {
   OBSCURA_PAY_STREAM_ABI,
   OBSCURA_PAY_STREAM_ADDRESS,
-} from "@/config/wave2";
+} from "@/config/pay";
+import { estimateCappedFees } from "@/lib/gas";
 
 /**
  * useCreateStream — schedules a new recurring payroll stream.
@@ -33,10 +34,7 @@ export function useCreateStream() {
       setIsPending(true);
       setError(null);
       try {
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        const fees = await estimateCappedFees(publicClient);
 
         const hash = await writeContractAsync({
           address: OBSCURA_PAY_STREAM_ADDRESS,
@@ -50,7 +48,8 @@ export function useCreateStream() {
           ],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
           gas: 300_000n,
         });
         setTxHash(hash);

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
-import { useAccount, usePublicClient } from "wagmi";
+import { useCallback, useState } from "react";
+import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { decodeEventLog, decodeAbiParameters } from "viem";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
-} from "@/config/wave2";
-import { scanAnnouncement, loadStoredKeys } from "@/lib/stealth";
+} from "@/config/pay";
+import { scanAnnouncement, loadStoredKeys, unlockStoredKeys } from "@/lib/stealth";
 
 export interface ScannedPayment {
   blockNumber: bigint;
@@ -28,13 +28,24 @@ const SCAN_LOOKBACK_BLOCKS = 50_000n; // ~14 days on Arb Sepolia
 export function useStealthScan() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
   const [matches, setMatches] = useState<ScannedPayment[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const scan = useCallback(async () => {
     if (!publicClient || !address || !OBSCURA_STEALTH_REGISTRY_ADDRESS) return;
-    const keys = loadStoredKeys(address);
+    // Phase 0.5.2: keys may be encrypted at rest. Try plaintext first (legacy);
+    // if absent, prompt the wallet to unlock the encrypted keystore.
+    let keys = loadStoredKeys(address);
+    if (!keys && walletClient) {
+      try {
+        keys = await unlockStoredKeys(address, walletClient);
+      } catch (e) {
+        setError("Stealth keystore unlock cancelled");
+        return;
+      }
+    }
     if (!keys) {
       setError("Generate a stealth meta-address first");
       return;
@@ -141,11 +152,7 @@ export function useStealthScan() {
     } finally {
       setIsScanning(false);
     }
-  }, [publicClient, address]);
-
-  useEffect(() => {
-    void scan();
-  }, [scan]);
+  }, [publicClient, address, walletClient]);
 
   return { matches, isScanning, error, scan };
 }

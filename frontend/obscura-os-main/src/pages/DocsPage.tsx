@@ -7,6 +7,7 @@ const sections = [
   { id: "overview", label: "Overview", icon: Book },
   { id: "wave1", label: "ObscuraPay", icon: Shield },
   { id: "wave2", label: "ObscuraVote", icon: Lock },
+  { id: "wave3-pay", label: "Pay Wave 3", icon: Zap },
   { id: "contracts", label: "Deployed Contracts", icon: Terminal },
   { id: "architecture", label: "FHE Architecture", icon: Layers },
   { id: "fhe-ops", label: "FHE Operations", icon: Lock },
@@ -107,6 +108,49 @@ const deployedContracts = [
     address: "0x5d91B5ccb581F543f7399eea1c65Dfa88b3f9B7a",
     purpose: "Encrypted governance — FHE.add() tallies, coercion-resistant revoting, time-locked results, multi-option polls",
     explorer: "https://sepolia.arbiscan.io/address/0x5d91B5ccb581F543f7399eea1c65Dfa88b3f9B7a",
+  },
+  // ── Wave 3 — Pay privacy hardening ──
+  {
+    name: "ObscuraPayStreamV2",
+    address: "0xb2fF39C496131d4AFd01d189569aF6FEBaC54d2C",
+    purpose: "V2 streams — encrypted recipient hint (InEaddress), per-cycle salt commits, configurable jitter (±seconds), pause/cancel",
+    explorer: "https://sepolia.arbiscan.io/address/0xb2fF39C496131d4AFd01d189569aF6FEBaC54d2C",
+  },
+  {
+    name: "ObscuraPayrollResolverV2",
+    address: "0x0f130a6Fe6C200F1F8cc1594a8448AE45A3d7bBF",
+    purpose: "V2 resolver — escrow approval/cancel keyed by (escrowId, salt) so observers can’t correlate cycles",
+    explorer: "https://sepolia.arbiscan.io/address/0x0f130a6Fe6C200F1F8cc1594a8448AE45A3d7bBF",
+  },
+  {
+    name: "ObscuraAddressBook",
+    address: "0x4095065ee7cc4C9f5210A328EC08e29B4Ac74Eef",
+    purpose: "Encrypted on-chain address book — contact metadata stored as InEaddress, label hash only on-chain",
+    explorer: "https://sepolia.arbiscan.io/address/0x4095065ee7cc4C9f5210A328EC08e29B4Ac74Eef",
+  },
+  {
+    name: "ObscuraInboxIndex",
+    address: "0xDF195fcfa6806F07740A5e3Bf664eE765eC98131",
+    purpose: "Per-recipient ignore filter — hash(ephemeralPubKey) suppression list, batch ignoreSenders, resetFilter",
+    explorer: "https://sepolia.arbiscan.io/address/0xDF195fcfa6806F07740A5e3Bf664eE765eC98131",
+  },
+  {
+    name: "ObscuraInsuranceSubscription",
+    address: "0x0CCE5DA9E447e7B4A400fC53211dd29C51CA8102",
+    purpose: "One-click recurring premium subscription — max premium ciphertext per cycle, auto-charge on stream tick",
+    explorer: "https://sepolia.arbiscan.io/address/0x0CCE5DA9E447e7B4A400fC53211dd29C51CA8102",
+  },
+  {
+    name: "ObscuraSocialResolver",
+    address: "0xCe79E7a6134b17EBC7B594C2D85090Ef3cf37578",
+    purpose: "Human-readable @handles → stealth meta-addresses; selfRegister or registerWithEnsProof, transferable handles",
+    explorer: "https://sepolia.arbiscan.io/address/0xCe79E7a6134b17EBC7B594C2D85090Ef3cf37578",
+  },
+  {
+    name: "ObscuraStealthRotation",
+    address: "0x47D4a7c2B2b7EDACCBf5B9d9e9C281671B2b5289",
+    purpose: "Append-only stealth meta-address rotation log so a leaked viewing key only exposes one epoch",
+    explorer: "https://sepolia.arbiscan.io/address/0x47D4a7c2B2b7EDACCBf5B9d9e9C281671B2b5289",
   },
 ];
 
@@ -461,6 +505,53 @@ const DocsPage = () => {
                     ))}
                   </ul>
                 </div>
+              </div>
+            </section>
+
+            {/* ── WAVE 3 PAY ── */}
+            <section id="wave3-pay" className="mb-16">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[9px] tracking-[0.2em] uppercase text-emerald-400 font-mono">Wave 3 — Pay</span>
+                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 font-mono">
+                  Live on Arbitrum Sepolia
+                </span>
+              </div>
+              <h2 className="font-display text-2xl text-foreground tracking-tight mb-3">
+                Pay Wave 3 — <span className="text-primary text-glow">Privacy hardening + UX</span>
+              </h2>
+              <p className="text-sm font-body text-muted-foreground mb-8 max-w-2xl">
+                Wave 3 closes the metadata leaks that survived Wave 2. Recipient hints are now encrypted on-chain,
+                cycle commits use per-cycle salts, schedules accept jitter, and a rotation log lets a leaked viewing
+                key only expose one epoch. A new social resolver maps `@handle → meta-address` and a one-click
+                insurance subscription auto-charges every cycle.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { t: "ObscuraPayStreamV2", b: "Encrypted recipient hint (InEaddress) · per-cycle salt commits · jitter (±seconds) · pause / cancel / shareRecipientHint" },
+                  { t: "ObscuraPayrollResolverV2", b: "Cancel & approve keyed by (escrowId, salt) so observers can't link cycles" },
+                  { t: "ObscuraAddressBook", b: "Encrypted contacts — InEaddress payload, label hash on-chain, plaintext labels stored locally per wallet" },
+                  { t: "ObscuraInboxIndex", b: "Per-recipient bloom filter for ignored ephemeral keys; resetFilter wipes it" },
+                  { t: "ObscuraInsuranceSubscription", b: "Auto-charge every cycle up to a ciphertext premium cap chosen on subscribe" },
+                  { t: "ObscuraSocialResolver", b: "@handle → 33-byte spending+viewing keys (split as bytes32 X + uint8 prefix); selfRegister or registerWithEnsProof, transferable" },
+                  { t: "ObscuraStealthRotation", b: "Append-only log of meta-address rotations; clients keep historyLength entries" },
+                ].map((c) => (
+                  <div key={c.t} className="glass-panel rounded-md p-4">
+                    <div className="text-[12.5px] text-foreground font-display mb-1">{c.t}</div>
+                    <p className="text-[12px] text-muted-foreground/75">{c.b}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 glass-panel rounded-md p-4">
+                <div className="text-[12px] text-foreground/85 mb-2">Privacy upgrades over Wave 2</div>
+                <ul className="text-[12px] text-muted-foreground/75 space-y-1.5 list-disc pl-4">
+                  <li>Recipient hint stored as <code className="text-primary/70">InEaddress</code>, not a plaintext address.</li>
+                  <li>Each cycle's escrow commit uses a per-cycle salt, persisted client-side under <code>obscura.stream.salts.v1:&lt;addr&gt;:&lt;streamId&gt;</code>.</li>
+                  <li>Stream tick supports a configurable jitter window (±seconds) so observers can't time the schedule.</li>
+                  <li>Stealth meta-address rotation is append-only on chain; an attacker who learns one viewing key only sees one epoch.</li>
+                  <li>Inbox filter, anti-regression operator pre-checks, gas clamping and wallet-scoped local state are inherited from the Wave 2 hardening.</li>
+                </ul>
               </div>
             </section>
 

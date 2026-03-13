@@ -20,7 +20,13 @@
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { sha256 } from "@noble/hashes/sha256";
 import { keccak_256 } from "@noble/hashes/sha3";
-import { bytesToHex, hexToBytes, getAddress } from "viem";
+import { bytesToHex, hexToBytes, getAddress, type WalletClient } from "viem";
+import {
+  encryptJSON,
+  decryptJSON,
+  getUnlockKey,
+  type EncryptedBlob,
+} from "./keystore";
 
 export interface MetaAddress {
   spendingPubKey: `0x${string}`; // 33-byte compressed
@@ -133,16 +139,144 @@ function bytesToBigInt(b: Uint8Array): bigint {
 
 const STORAGE_KEY = "obscura.stealth.keys.v1";
 
-export function loadStoredKeys(account: string | undefined): MetaAddressKeys | null {
+/** v2 stored shape: meta is plaintext (already published on-chain),
+ *  privkeys live encrypted in `enc`. The wave-2 plaintext shape is
+ *  detected by the absence of `enc` and presence of `spendingPrivateKey`. */
+interface StoredKeystoreV2 {
+  v: 2;
+  meta: MetaAddress;
+  enc: EncryptedBlob; // ciphertext of { spendingPrivateKey, viewingPrivateKey }
+}
+
+type LegacyPlaintextKeystore = MetaAddressKeys; // raw v1 shape
+
+type StoredAny = StoredKeystoreV2 | LegacyPlaintextKeystore | null;
+
+function storageKeyFor(account: string): string {
+  return `${STORAGE_KEY}:${account.toLowerCase()}`;
+}
+
+function readRawStored(account: string | undefined): StoredAny {
   if (!account) return null;
   try {
-    const raw = localStorage.getItem(`${STORAGE_KEY}:${account.toLowerCase()}`);
-    return raw ? (JSON.parse(raw) as MetaAddressKeys) : null;
+    const raw = localStorage.getItem(storageKeyFor(account));
+    return raw ? (JSON.parse(raw) as StoredAny) : null;
   } catch {
     return null;
   }
 }
 
+/** Synchronous — returns only the public meta-address part if any keystore
+ *  exists for this account (encrypted or legacy plaintext). Used by UI that
+ *  needs to render "meta-address registered" state without unlocking privkeys. */
+export function loadStoredMetaPublic(
+  account: string | undefined
+): MetaAddress | null {
+  const stored = readRawStored(account);
+  if (!stored) return null;
+  if ("v" in stored && stored.v === 2) return stored.meta;
+  // Legacy plaintext shape
+  return (stored as LegacyPlaintextKeystore).meta ?? null;
+}
+
+/** Synchronous — returns the legacy plaintext keystore if (and only if)
+ *  this account still has Wave-2 plaintext keys stored. Used by
+ *  `unlockStoredKeys` for the one-time auto-migration to encrypted format. */
+function loadLegacyPlaintext(account: string | undefined): MetaAddressKeys | null {
+  const stored = readRawStored(account);
+  if (!stored) return null;
+  if ("v" in stored) return null; // already v2 (encrypted)
+  // v1 plaintext: must have privkeys
+  const k = stored as LegacyPlaintextKeystore;
+  if (k.spendingPrivateKey && k.viewingPrivateKey && k.meta) return k;
+  return null;
+}
+
+/** True if the legacy plaintext keystore exists for this account. */
+export function hasLegacyPlaintextKeys(account: string | undefined): boolean {
+  return loadLegacyPlaintext(account) !== null;
+}
+
+/** True if any keystore (encrypted or legacy) exists for this account. */
+export function hasStoredKeys(account: string | undefined): boolean {
+  return loadStoredMetaPublic(account) !== null;
+}
+
+/** SYNCHRONOUS — deprecated wrapper kept ONLY for legacy callers that already
+ *  hold plaintext keys from Wave 2. Returns null in the encrypted-at-rest case;
+ *  callers must prefer `unlockStoredKeys` which prompts the wallet for the
+ *  unlock signature.
+ *
+ *  TODO: remove once all consumers migrate to `unlockStoredKeys`. */
+export function loadStoredKeys(account: string | undefined): MetaAddressKeys | null {
+  return loadLegacyPlaintext(account);
+}
+
+/** Async — unlocks (and migrates if needed) the stealth privkeys for this account.
+ *  Triggers a single `personal_sign` prompt the first time per tab session. */
+export async function unlockStoredKeys(
+  account: `0x${string}`,
+  walletClient: WalletClient
+): Promise<MetaAddressKeys | null> {
+  const stored = readRawStored(account);
+  if (!stored) return null;
+
+  // Legacy v1 plaintext → transparently re-encrypt and overwrite.
+  if (!("v" in stored)) {
+    const legacy = stored as LegacyPlaintextKeystore;
+    if (
+      !legacy.spendingPrivateKey ||
+      !legacy.viewingPrivateKey ||
+      !legacy.meta
+    ) {
+      return null;
+    }
+    const aesKey = await getUnlockKey(walletClient, account);
+    const enc = await encryptJSON(aesKey, {
+      spendingPrivateKey: legacy.spendingPrivateKey,
+      viewingPrivateKey: legacy.viewingPrivateKey,
+    });
+    const v2: StoredKeystoreV2 = { v: 2, meta: legacy.meta, enc };
+    localStorage.setItem(storageKeyFor(account), JSON.stringify(v2));
+    return legacy;
+  }
+
+  // v2 encrypted-at-rest path.
+  const aesKey = await getUnlockKey(walletClient, account);
+  const decrypted = await decryptJSON<{
+    spendingPrivateKey: `0x${string}`;
+    viewingPrivateKey: `0x${string}`;
+  }>(aesKey, stored.enc);
+  return {
+    spendingPrivateKey: decrypted.spendingPrivateKey,
+    viewingPrivateKey: decrypted.viewingPrivateKey,
+    meta: stored.meta,
+  };
+}
+
+/** Async — persist freshly-generated meta keys in encrypted form.
+ *  Triggers `personal_sign` prompt to derive the AES unlock key. */
+export async function persistKeysEncrypted(
+  account: `0x${string}`,
+  keys: MetaAddressKeys,
+  walletClient: WalletClient
+): Promise<void> {
+  const aesKey = await getUnlockKey(walletClient, account);
+  const enc = await encryptJSON(aesKey, {
+    spendingPrivateKey: keys.spendingPrivateKey,
+    viewingPrivateKey: keys.viewingPrivateKey,
+  });
+  const v2: StoredKeystoreV2 = { v: 2, meta: keys.meta, enc };
+  localStorage.setItem(storageKeyFor(account), JSON.stringify(v2));
+}
+
+/** Sync — LEGACY plaintext writer. Kept only so old call-sites compile until
+ *  they migrate to `persistKeysEncrypted`. New code MUST NOT call this. */
 export function persistKeys(account: string, keys: MetaAddressKeys) {
-  localStorage.setItem(`${STORAGE_KEY}:${account.toLowerCase()}`, JSON.stringify(keys));
+  // Phase 0.5.2: writing plaintext is now considered a privacy regression.
+  // Emit a console warning so any remaining call site shows up in dev.
+  console.warn(
+    "[stealth] persistKeys() writes plaintext privkeys \u2014 migrate to persistKeysEncrypted()"
+  );
+  localStorage.setItem(storageKeyFor(account), JSON.stringify(keys));
 }

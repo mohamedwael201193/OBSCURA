@@ -4,6 +4,7 @@ import { OBSCURA_ESCROW_ABI, OBSCURA_ESCROW_ADDRESS } from '@/config/contracts';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount, encryptAddressAndAmount, decryptBalance, getOrCreatePermit } from '@/lib/fhe';
+import { estimateCappedFees } from '@/lib/gas';
 import { arbitrumSepolia } from 'viem/chains';
 import { encodeAbiParameters } from 'viem';
 
@@ -59,10 +60,7 @@ export function useConfidentialEscrow() {
           );
         }
 
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        const fees = await estimateCappedFees(publicClient);
 
         const hash = await writeContractAsync({
           address: OBSCURA_ESCROW_ADDRESS,
@@ -76,7 +74,8 @@ export function useConfidentialEscrow() {
           ],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
           gas: 1_200_000n,
         });
 
@@ -108,10 +107,7 @@ export function useConfidentialEscrow() {
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        const fees = await estimateCappedFees(publicClient);
 
         const hash = await writeContractAsync({
           address: OBSCURA_ESCROW_ADDRESS,
@@ -120,7 +116,8 @@ export function useConfidentialEscrow() {
           args: [escrowId, encryptedInputs[0]],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
           gas: 600_000n,
         });
 
@@ -144,10 +141,7 @@ export function useConfidentialEscrow() {
       try {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        const fees = await estimateCappedFees(publicClient);
 
         const hash = await writeContractAsync({
           address: OBSCURA_ESCROW_ADDRESS,
@@ -156,7 +150,8 @@ export function useConfidentialEscrow() {
           args: [escrowId],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
           gas: 800_000n,
         });
 
@@ -180,10 +175,7 @@ export function useConfidentialEscrow() {
       try {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        const feeData = await publicClient!.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        const fees = await estimateCappedFees(publicClient!);
 
         const hash = await writeContractAsync({
           address: OBSCURA_ESCROW_ADDRESS,
@@ -192,7 +184,8 @@ export function useConfidentialEscrow() {
           args: [escrowId],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
           gas: 200_000n,
         });
 

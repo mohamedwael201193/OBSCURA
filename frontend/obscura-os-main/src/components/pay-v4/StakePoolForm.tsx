@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Landmark } from "lucide-react";
+import { Landmark, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
 import { arbitrumSepolia } from "viem/chains";
@@ -9,7 +9,7 @@ import {
   REINEIRA_CUSDC_ADDRESS,
   REINEIRA_INSURANCE_POOL_ADDRESS,
   REINEIRA_INSURANCE_POOL_ABI,
-} from "@/config/wave2";
+} from "@/config/pay";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
 
 export default function StakePoolForm() {
@@ -93,40 +93,44 @@ export default function StakePoolForm() {
   };
 
   return (
-    <div className="glass-panel rounded-md p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Landmark className="w-4 h-4 text-primary" />
-        <h3 className="font-display text-sm tracking-wider text-foreground">Stake to Insurance Pool</h3>
-        <span className="ml-auto text-[11px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
-          SEED LIQUIDITY
-        </span>
+    <div className="pay-card p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <Landmark className="w-4 h-4 text-emerald-400" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Stake to Insurance Pool</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Earn Yield · cUSDC</p>
+        </div>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">LP YIELD</span>
       </div>
 
-      <p className="text-sm text-muted-foreground/70">
+      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
         Deposit cUSDC into the insurance pool so dispute payouts can be funded.
         Anyone can stake — you earn a share of premiums paid by coverage buyers.
         The staked amount is fully encrypted.
       </p>
 
-      <div>
-        <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+      <div className="space-y-2">
+        <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
           Amount to Stake (cUSDC)
         </label>
         <div className="flex gap-2">
           <input
             type="number"
-            placeholder="10"
+            placeholder="e.g. 10"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="flex-1 px-3 py-2 bg-background border border-border/50 rounded-md text-xs font-mono"
+            className="pay-input flex-1 font-mono"
           />
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={handleStake}
             disabled={busy || !amount}
-            className="px-4 py-2 text-sm tracking-[0.2em] uppercase bg-primary text-primary-foreground rounded-md disabled:opacity-50"
+            className="btn-pay btn-pay-emerald px-5"
           >
-            {busy ? "Staking…" : "Stake"}
+            {busy ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Staking…</> : "Stake"}
           </motion.button>
         </div>
       </div>

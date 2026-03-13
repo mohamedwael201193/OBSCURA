@@ -24,5 +24,15 @@
     "TrustedForwarder": "0x7ceA357B5AC0639F89F9e378a1f03Aa5005C0a25"
   },
   "wave2PayDeployedAt": "2026-04-19T19:56:49.043Z",
-  "InsurancePool": "0x5AC95Fa097CAC0a6d98157596Aff386b30b67069"
+  "InsurancePool": "0x5AC95Fa097CAC0a6d98157596Aff386b30b67069",
+  "ObscuraPayrollResolverV2": "0x0f130a6Fe6C200F1F8cc1594a8448AE45A3d7bBF",
+  "ObscuraPayStreamV2": "0xb2fF39C496131d4AFd01d189569aF6FEBaC54d2C",
+  "ObscuraAddressBook": "0x4095065ee7cc4C9f5210A328EC08e29B4Ac74Eef",
+  "ObscuraInboxIndex": "0xDF195fcfa6806F07740A5e3Bf664eE765eC98131",
+  "ObscuraInsuranceSubscription": "0x0CCE5DA9E447e7B4A400fC53211dd29C51CA8102",
+  "ObscuraSocialResolver": "0xCe79E7a6134b17EBC7B594C2D85090Ef3cf37578",
+  "ObscuraStealthRotation": "0x47D4a7c2B2b7EDACCBf5B9d9e9C281671B2b5289",
+  "SocialResolverEnsVerifier": "0xD208aC8327e6479967693Af2F2216e1612D0171A",
+  "InsuranceSubscriptionConsumer": "0x766e9508BD41BCE0e788F16Da86B3615386Ff6f6",
+  "wave3PayDeployedAt": "2026-04-28T01:42:11.960Z"
 }

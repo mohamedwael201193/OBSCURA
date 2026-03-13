@@ -4,6 +4,7 @@ import { OBSCURA_TOKEN_ABI, OBSCURA_TOKEN_ADDRESS } from '@/config/contracts';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount } from '@/lib/fhe';
+import { estimateCappedFees } from '@/lib/gas';
 import { arbitrumSepolia } from 'viem/chains';
 
 export function useConfidentialTransfer() {
@@ -31,10 +32,7 @@ export function useConfidentialTransfer() {
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        const fees = await estimateCappedFees(publicClient);
 
         const hash = await writeContractAsync({
           address: OBSCURA_TOKEN_ADDRESS,
@@ -43,7 +41,8 @@ export function useConfidentialTransfer() {
           args: [to, encryptedInputs[0]],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
           gas: 500_000n,
         });
 
@@ -64,10 +63,7 @@ export function useConfidentialTransfer() {
         throw new Error('Wallet not connected or token contract not configured');
       }
 
-      const feeData = await publicClient!.estimateFeesPerGas();
-      const maxFeePerGas = feeData.maxFeePerGas
-        ? (feeData.maxFeePerGas * 130n) / 100n
-        : undefined;
+      const fees = await estimateCappedFees(publicClient!);
 
       const hash = await writeContractAsync({
         address: OBSCURA_TOKEN_ADDRESS,
@@ -76,7 +72,8 @@ export function useConfidentialTransfer() {
         args: [operator, expiry],
         account: address,
         chain: arbitrumSepolia,
-        maxFeePerGas,
+        maxFeePerGas: fees.maxFeePerGas,
+        maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: 150_000n,
       });
 

@@ -52,12 +52,12 @@ const DashboardSidebar = ({
   const location = useLocation();
 
   return (
-    <aside className="hidden lg:flex flex-col w-[240px] shrink-0 h-screen sticky top-0 border-r border-white/[0.05] bg-black/40 backdrop-blur-xl px-4 py-5">
+    <aside className="hidden lg:flex flex-col w-[240px] shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] border-r border-white/[0.05] bg-black/40 backdrop-blur-xl px-4 py-5 overflow-y-auto">
       {/* Optional brand override (logo lives in the top nav by default) */}
       {brand && <div className="px-2 pb-6">{brand}</div>}
 
       {/* Sections */}
-      <nav className="flex-1 overflow-y-auto pr-1 space-y-6">
+      <nav className="flex-1 space-y-6">
         {sections.map((section, sIdx) => (
           <div key={sIdx}>
             {section.heading && (

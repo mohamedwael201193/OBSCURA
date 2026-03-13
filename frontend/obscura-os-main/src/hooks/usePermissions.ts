@@ -2,6 +2,7 @@ import { useReadContract, useWriteContract, useAccount, useConfig, usePublicClie
 import { OBSCURA_PAY_ABI, OBSCURA_PAY_ADDRESS } from '@/config/contracts';
 import { Role } from '@/lib/constants';
 import { arbitrumSepolia } from 'viem/chains';
+import { estimateCappedFees } from '@/lib/gas';
 
 export function usePermissions() {
   const { address } = useAccount();
@@ -47,8 +48,7 @@ export function usePermissions() {
 
   async function grantRole(user: `0x${string}`, role: Role) {
     if (!OBSCURA_PAY_ADDRESS || !address) throw new Error('Contract not configured');
-    const feeData = await publicClient!.estimateFeesPerGas();
-    const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
+    const fees = await estimateCappedFees(publicClient!);
     return grantRoleAsync({
       address: OBSCURA_PAY_ADDRESS,
       abi: OBSCURA_PAY_ABI,
@@ -56,15 +56,15 @@ export function usePermissions() {
       args: [user, role],
       account: address,
       chain: arbitrumSepolia,
-      maxFeePerGas,
+      maxFeePerGas: fees.maxFeePerGas,
+      maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
       gas: 150_000n,
     });
   }
 
   async function revokeRole(user: `0x${string}`) {
     if (!OBSCURA_PAY_ADDRESS || !address) throw new Error('Contract not configured');
-    const feeData = await publicClient!.estimateFeesPerGas();
-    const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
+    const fees = await estimateCappedFees(publicClient!);
     return revokeRoleAsync({
       address: OBSCURA_PAY_ADDRESS,
       abi: OBSCURA_PAY_ABI,
@@ -72,15 +72,15 @@ export function usePermissions() {
       args: [user],
       account: address,
       chain: arbitrumSepolia,
-      maxFeePerGas,
+      maxFeePerGas: fees.maxFeePerGas,
+      maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
       gas: 150_000n,
     });
   }
 
   async function grantAuditAccess(auditor: `0x${string}`) {
     if (!OBSCURA_PAY_ADDRESS || !address) throw new Error('Contract not configured');
-    const feeData = await publicClient!.estimateFeesPerGas();
-    const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
+    const fees = await estimateCappedFees(publicClient!);
     return grantAuditAsync({
       address: OBSCURA_PAY_ADDRESS,
       abi: OBSCURA_PAY_ABI,
@@ -88,7 +88,8 @@ export function usePermissions() {
       args: [auditor],
       account: address,
       chain: arbitrumSepolia,
-      maxFeePerGas,
+      maxFeePerGas: fees.maxFeePerGas,
+      maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
       gas: 200_000n,
     });
   }

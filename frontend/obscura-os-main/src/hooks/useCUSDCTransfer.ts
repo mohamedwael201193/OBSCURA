@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useWriteContract, usePublicClient, useWalletClient, useAccount } from 'wagmi';
-import { REINEIRA_CUSDC_ADDRESS, REINEIRA_CUSDC_ABI } from '@/config/wave2';
+import { REINEIRA_CUSDC_ADDRESS, REINEIRA_CUSDC_ABI } from '@/config/pay';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount } from '@/lib/fhe';

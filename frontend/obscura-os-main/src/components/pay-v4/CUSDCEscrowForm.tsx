@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Lock, Plus, Copy, CheckCircle } from "lucide-react";
+import { Lock, Plus, Copy, CheckCircle2, Loader2, ExternalLink } from "lucide-react";
 import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
@@ -28,22 +28,15 @@ export default function CUSDCEscrowForm() {
       toast.error("Enter a valid escrow amount");
       return;
     }
-
     try {
       const parsedAmount = parseUnits(amount, 6);
       const resolverAddr = isValidAddress(resolver)
         ? (resolver as `0x${string}`)
         : ("0x0000000000000000000000000000000000000000" as `0x${string}`);
-      const data = resolverData.startsWith("0x")
-        ? (resolverData as `0x${string}`)
-        : ("0x" as `0x${string}`);
-
+      const data = resolverData.startsWith("0x") ? (resolverData as `0x${string}`) : ("0x" as `0x${string}`);
       await create(ownerAddr as `0x${string}`, parsedAmount, resolverAddr, data);
       toast.success("Escrow created & auto-funded with cUSDC! Send the ID to the recipient.", { duration: 8000 });
-      setOwnerAddr("");
-      setAmount("");
-      setResolver("");
-      setResolverData("");
+      setOwnerAddr(""); setAmount(""); setResolver(""); setResolverData("");
     } catch (err) {
       toast.error((err as Error).message || "Escrow creation failed");
     }
@@ -59,37 +52,38 @@ export default function CUSDCEscrowForm() {
 
   if (isDone) {
     return (
-      <div className="glass-panel rounded-md p-6 space-y-4">
-        <div className="flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-green-400" />
-          <h3 className="font-display text-sm tracking-wider text-green-400">Escrow Created &amp; Funded</h3>
+      <div className="pay-card p-6 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div>
+            <h3 className="font-display text-sm font-semibold text-emerald-300">Escrow Created &amp; Funded</h3>
+            <p className="text-[10px] text-muted-foreground/40 tracking-widest uppercase">cUSDC · Encrypted</p>
+          </div>
         </div>
-        <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-md space-y-2">
-          <div className="text-sm text-muted-foreground">Escrow ID:</div>
+        <div className="rounded-lg bg-emerald-500/8 border border-emerald-500/20 p-4 space-y-2">
+          <div className="text-[11px] text-muted-foreground/55 uppercase tracking-wider">Escrow ID</div>
           <div className="flex items-center gap-2">
-            <span className="font-mono text-lg text-green-400 font-bold">#{lastEscrowId}</span>
-            <button onClick={handleCopyId} className="p-1 hover:bg-secondary rounded-md">
-              {copied ? <CheckCircle className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+            <span className="font-mono text-xl font-bold text-emerald-300">#{lastEscrowId}</span>
+            <button onClick={handleCopyId} className="p-1.5 hover:bg-white/[0.06] rounded-md transition-colors text-muted-foreground/40 hover:text-muted-foreground">
+              {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
           </div>
-          <p className="text-xs text-muted-foreground/60">
-            Escrow created and funded automatically. Send this ID to the recipient so they can redeem.
+          <p className="text-[11px] text-muted-foreground/55 leading-relaxed">
+            Escrow created and funded automatically. Share this ID with the recipient so they can redeem.
           </p>
         </div>
         {txHash && (
-          <div className="text-xs text-muted-foreground/60 text-center">
-            TX:{" "}
-            <a href={`https://sepolia.arbiscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="font-mono text-cyan-400 hover:underline">
-              {txHash.slice(0, 10)}...{txHash.slice(-8)}
+          <div className="flex items-center gap-2 px-3 py-2.5 bg-white/[0.025] border border-white/[0.07] rounded-lg">
+            <ExternalLink className="w-3 h-3 text-cyan-400 shrink-0" />
+            <a href={`https://sepolia.arbiscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
+              className="font-mono text-[11px] text-cyan-300 hover:text-cyan-200 transition-colors truncate">
+              {txHash.slice(0, 10)}…{txHash.slice(-8)}
             </a>
           </div>
         )}
-        <motion.button
-          onClick={reset}
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.99 }}
-          className="w-full py-2 text-xs tracking-[0.15em] uppercase border border-border/50 text-muted-foreground rounded-md hover:text-foreground hover:border-primary/40 transition-all"
-        >
+        <motion.button onClick={reset} whileTap={{ scale: 0.99 }} className="btn-pay btn-pay-ghost w-full py-2.5">
           Create Another Escrow
         </motion.button>
       </div>
@@ -97,107 +91,77 @@ export default function CUSDCEscrowForm() {
   }
 
   return (
-    <div className="glass-panel rounded-md p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Lock className="w-4 h-4 text-cyan-400" />
-        <h3 className="font-display text-sm tracking-wider text-foreground">
-          Create Encrypted Escrow
-        </h3>
-        <span className="ml-auto text-[11px] bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-md border border-cyan-500/20">
-          cUSDC
-        </span>
+    <div className="pay-card p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <Lock className="w-4 h-4 text-emerald-400" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Encrypted Escrow</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">cUSDC · FHE Locked</p>
+        </div>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">cUSDC</span>
       </div>
 
-      <p className="text-sm text-muted-foreground/70">
+      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
         Lock cUSDC in an encrypted escrow. The owner address and locked amount are both encrypted on-chain.
         You must have enough cUSDC balance (wrap USDC first in Dashboard tab).
       </p>
 
       {!isProcessing && (
         <div className="space-y-3">
-          <div>
-            <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
-              Owner / Recipient (who can redeem)
+          <div className="space-y-2">
+            <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
+              Owner / Recipient <span className="normal-case tracking-normal text-muted-foreground/30">(who can redeem)</span>
             </label>
-            <input
-              type="text"
-              placeholder="0x... owner address"
-              value={ownerAddr}
-              onChange={(e) => setOwnerAddr(e.target.value)}
-              className="w-full px-3 py-2 bg-background border border-border/50 rounded-md font-mono text-xs text-foreground placeholder:text-muted-foreground/30 focus:border-cyan-500/40 focus:outline-none"
-            />
+            <input type="text" placeholder="0x… owner address" value={ownerAddr}
+              onChange={(e) => setOwnerAddr(e.target.value)} className="pay-input font-mono" />
           </div>
 
-          <div>
-            <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
-              Amount (cUSDC)
-            </label>
-            <input
-              type="number"
-              placeholder="e.g. 100"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2 bg-background border border-border/50 rounded-md font-mono text-xs text-foreground placeholder:text-muted-foreground/30 focus:border-cyan-500/40 focus:outline-none"
-            />
+          <div className="space-y-2">
+            <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Amount (cUSDC)</label>
+            <input type="number" placeholder="e.g. 100" value={amount}
+              onChange={(e) => setAmount(e.target.value)} className="pay-input font-mono" />
           </div>
 
-          <div>
-            <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
-              Resolver Contract (optional)
+          <div className="space-y-2">
+            <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
+              Resolver Contract <span className="normal-case tracking-normal text-muted-foreground/30">(optional)</span>
             </label>
-            <input
-              type="text"
-              placeholder="0x... or leave blank for no resolver"
-              value={resolver}
-              onChange={(e) => setResolver(e.target.value)}
-              className="w-full px-3 py-2 bg-background border border-border/50 rounded-md font-mono text-xs text-foreground placeholder:text-muted-foreground/30 focus:border-cyan-500/40 focus:outline-none"
-            />
-            <span className="text-[11px] text-muted-foreground/40 mt-0.5 block">
-              Leave empty for unconditional escrow
-            </span>
+            <input type="text" placeholder="0x… or leave blank for no resolver" value={resolver}
+              onChange={(e) => setResolver(e.target.value)} className="pay-input font-mono" />
+            <p className="text-[11px] text-muted-foreground/35">Leave empty for unconditional escrow</p>
           </div>
 
-          <div>
-            <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
-              Resolver Data (optional hex)
+          <div className="space-y-2">
+            <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
+              Resolver Data <span className="normal-case tracking-normal text-muted-foreground/30">(optional hex)</span>
             </label>
-            <input
-              type="text"
-              placeholder="0x... or leave blank"
-              value={resolverData}
-              onChange={(e) => setResolverData(e.target.value)}
-              className="w-full px-3 py-2 bg-background border border-border/50 rounded-md font-mono text-xs text-foreground placeholder:text-muted-foreground/30 focus:border-cyan-500/40 focus:outline-none"
-            />
+            <input type="text" placeholder="0x… or leave blank" value={resolverData}
+              onChange={(e) => setResolverData(e.target.value)} className="pay-input font-mono" />
           </div>
         </div>
       )}
 
       {status !== "idle" && (
-        <div className="pt-1">
+        <div className="rounded-lg bg-white/[0.025] border border-white/[0.07] p-4">
+          {isProcessing && (
+            <div className="flex items-center gap-2.5 mb-3">
+              <Loader2 className="w-3.5 h-3.5 text-emerald-400 animate-spin shrink-0" />
+              <span className="text-[12px] text-emerald-300">Creating &amp; funding escrow…</span>
+            </div>
+          )}
           <AsyncStepper status={status} stepIndex={stepIndex} />
         </div>
       )}
 
       {!isDone && (
-        <motion.button
-          onClick={handleCreate}
-          disabled={isProcessing || isTxPending}
-          whileHover={!isProcessing ? { scale: 1.01 } : {}}
-          whileTap={!isProcessing ? { scale: 0.99 } : {}}
-          className="w-full py-3 text-xs tracking-[0.2em] uppercase bg-cyan-600 text-white rounded-md hover:bg-cyan-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
+        <motion.button onClick={handleCreate} disabled={isProcessing || isTxPending} whileTap={{ scale: 0.99 }}
+          className="btn-pay btn-pay-emerald w-full py-2.5">
           <Plus className="w-3.5 h-3.5" />
-          {isProcessing ? "Creating & Funding..." : "Create & Fund Escrow"}
+          {isProcessing ? "Creating & Funding…" : "+ Create & Fund Escrow"}
         </motion.button>
-      )}
-
-      {txHash && !isDone && (
-        <div className="text-xs text-muted-foreground/60 text-center">
-          TX:{" "}
-          <a href={`https://sepolia.arbiscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="font-mono text-cyan-400 hover:underline">
-            {txHash.slice(0, 10)}...{txHash.slice(-8)}
-          </a>
-        </div>
       )}
     </div>
   );

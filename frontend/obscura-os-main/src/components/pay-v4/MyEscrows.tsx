@@ -4,31 +4,30 @@ import { FileText, Copy, Trash2, ExternalLink, CheckCircle, AlertTriangle } from
 import type { SavedEscrow } from "@/hooks/useCUSDCEscrow";
 import { formatUnits } from "viem";
 import { useAccount } from "wagmi";
+import { getJSON, setJSON, migrateGlobalKey } from "@/lib/scopedStorage";
 
 const STORAGE_KEY = 'obscura_cusdc_escrows';
 
-function loadEscrows(): SavedEscrow[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  } catch {
-    return [];
-  }
+function loadEscrows(addr: `0x${string}` | undefined): SavedEscrow[] {
+  return getJSON<SavedEscrow[]>(STORAGE_KEY, addr, []);
 }
 
 export default function MyEscrows() {
   const { address } = useAccount();
-  const [escrows, setEscrows] = useState<SavedEscrow[]>(loadEscrows);
+  const [escrows, setEscrows] = useState<SavedEscrow[]>(() => loadEscrows(undefined));
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => setEscrows(loadEscrows()), 3000);
-    const onStorage = () => setEscrows(loadEscrows());
+    if (address) migrateGlobalKey(STORAGE_KEY, address);
+    setEscrows(loadEscrows(address));
+    const interval = setInterval(() => setEscrows(loadEscrows(address)), 3000);
+    const onStorage = () => setEscrows(loadEscrows(address));
     window.addEventListener('storage', onStorage);
     return () => {
       clearInterval(interval);
       window.removeEventListener('storage', onStorage);
     };
-  }, []);
+  }, [address]);
 
   // Format amount — stored values are always raw bigint (micro-USDC, 6 decimals)
   const formatAmount = (raw: string) => {
@@ -48,18 +47,23 @@ export default function MyEscrows() {
 
   const handleDelete = (txHash: string) => {
     const updated = escrows.filter((e) => e.txHash !== txHash);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setJSON(STORAGE_KEY, address, updated);
     setEscrows(updated);
   };
 
   if (escrows.length === 0) {
     return (
-      <div className="glass-panel rounded-md p-6">
-        <div className="flex items-center gap-2 mb-3">
-          <FileText className="w-4 h-4 text-cyan-400" />
-          <h3 className="font-display text-sm tracking-wider text-foreground">My Escrows</h3>
+      <div className="pay-card p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+            <FileText className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div>
+            <h3 className="font-display text-sm font-semibold text-foreground">My Escrows</h3>
+            <p className="text-[10px] text-muted-foreground/45 tracking-widest uppercase">Saved Locally</p>
+          </div>
         </div>
-        <div className="py-6 text-center text-muted-foreground/40 text-xs font-mono">
+        <div className="py-6 text-center text-muted-foreground/35 text-[12px] font-mono">
           No escrows created yet. Use the form above to create one.
         </div>
       </div>
@@ -67,18 +71,19 @@ export default function MyEscrows() {
   }
 
   return (
-    <div className="glass-panel rounded-md p-6 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-cyan-400" />
-          <h3 className="font-display text-sm tracking-wider text-foreground">My Escrows</h3>
+    <div className="pay-card p-6 space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <FileText className="w-4 h-4 text-emerald-400" />
         </div>
-        <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-md">
-          {escrows.length} saved
-        </span>
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">My Escrows</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Saved Locally</p>
+        </div>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">{escrows.length} saved</span>
       </div>
 
-      <p className="text-xs text-muted-foreground/50">
+      <p className="text-[12px] text-muted-foreground/50">
         Escrows created from this browser. Send the Escrow ID to the recipient — they must connect their wallet and click Redeem.
       </p>
 
@@ -88,51 +93,39 @@ export default function MyEscrows() {
           const formattedAmt = formatAmount(escrow.amount);
           const isTinyAmount = (() => { try { return BigInt(escrow.amount) < 1000n; } catch { return false; } })();
           return (
-          <motion.div
-            key={escrow.txHash}
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between p-3 bg-secondary/20 rounded-md border border-border/30"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-cyan-400 font-bold">#{escrow.escrowId}</span>
-                <button onClick={() => handleCopy(escrow.escrowId)} className="p-0.5 hover:bg-secondary rounded-md">
-                  {copiedId === escrow.escrowId ? (
-                    <CheckCircle className="w-3 h-3 text-green-400" />
-                  ) : (
-                    <Copy className="w-3 h-3 text-muted-foreground/50" />
+            <motion.div key={escrow.txHash} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.025] border border-white/[0.07]">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[13px] text-emerald-300 font-bold font-mono">#{escrow.escrowId}</span>
+                  <button onClick={() => handleCopy(escrow.escrowId)}
+                    className="p-1 hover:bg-white/[0.05] rounded-md transition-colors">
+                    {copiedId === escrow.escrowId
+                      ? <CheckCircle className="w-3 h-3 text-emerald-400" />
+                      : <Copy className="w-3 h-3 text-muted-foreground/40" />}
+                  </button>
+                  {isRecipient && !isTinyAmount && (
+                    <span className="pay-badge pay-badge-emerald text-[10px]">YOU CAN REDEEM</span>
                   )}
+                  {isTinyAmount && (
+                    <span className="pay-badge pay-badge-red text-[10px]">BAD AMOUNT</span>
+                  )}
+                </div>
+                <div className="text-[11px] text-muted-foreground/40 mt-0.5 font-mono">
+                  {formattedAmt} cUSDC · to {escrow.recipient.slice(0, 8)}… · {new Date(escrow.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                <a href={`https://sepolia.arbiscan.io/tx/${escrow.txHash}`} target="_blank" rel="noopener noreferrer"
+                  className="p-1.5 hover:bg-white/[0.05] rounded-md transition-colors">
+                  <ExternalLink className="w-3 h-3 text-muted-foreground/40 hover:text-emerald-400 transition-colors" />
+                </a>
+                <button onClick={() => handleDelete(escrow.txHash)}
+                  className="p-1.5 hover:bg-white/[0.05] rounded-md transition-colors">
+                  <Trash2 className="w-3 h-3 text-muted-foreground/40 hover:text-red-400 transition-colors" />
                 </button>
-                {isRecipient && !isTinyAmount && (
-                  <span className="text-[11px] bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded-md border border-green-500/20">
-                    YOU CAN REDEEM
-                  </span>
-                )}
-                {isTinyAmount && (
-                  <span className="text-[11px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded-md border border-red-500/20">
-                    BAD AMOUNT — CREATED BEFORE FIX
-                  </span>
-                )}
               </div>
-              <div className="text-[11px] text-muted-foreground/40 mt-0.5">
-                {formattedAmt} cUSDC · to {escrow.recipient.slice(0, 8)}... · {new Date(escrow.createdAt).toLocaleDateString()}
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 ml-2">
-              <a
-                href={`https://sepolia.arbiscan.io/tx/${escrow.txHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-1 hover:bg-secondary rounded-md"
-              >
-                <ExternalLink className="w-3 h-3 text-muted-foreground/50 hover:text-cyan-400" />
-              </a>
-              <button onClick={() => handleDelete(escrow.txHash)} className="p-1 hover:bg-secondary rounded-md">
-                <Trash2 className="w-3 h-3 text-muted-foreground/50 hover:text-red-400" />
-              </button>
-            </div>
-          </motion.div>
+            </motion.div>
           );
         })}
       </div>

@@ -1,4 +1,4 @@
-ï»¿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   useAccount,
   usePublicClient,
@@ -14,38 +14,14 @@ import {
   OBSCURA_PAY_STREAM_ADDRESS,
   USDC_ARB_SEPOLIA,
   ERC20_APPROVE_ABI,
-} from "@/config/wave2";
+} from "@/config/pay";
 import { initFHEClient, encryptAmount, decryptBalance, getOrCreatePermit } from "@/lib/fhe";
+import { withRateLimitRetry } from "@/lib/rateLimit";
+import { estimateCappedFees } from "@/lib/gas";
+import { addTrackedUnits, getTrackedFormatted } from "@/lib/trackedBalance";
+import { parseUSDC, USDC_DECIMALS } from "@/lib/usdc";
 
-const USDC_DECIMALS = 6;
-
-/** Retry helper for RPC rate-limit errors on READ calls only (gas estimation, reads).
- *  NEVER use this to wrap writeContractAsync â€” that would cause multiple MetaMask popups.
- */
-async function withRateLimitRetry<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3,
-  baseDelayMs = 4000
-): Promise<T> {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (e) {
-      const msg = ((e as Error).message || "").toLowerCase();
-      const isRateLimit = msg.includes("rate limit") || msg.includes("rate-limit") || msg.includes("429");
-      if (isRateLimit && attempt < maxRetries) {
-        const delay = baseDelayMs * (attempt + 1);
-        console.warn(`[RPC rate-limit] retry ${attempt + 1}/${maxRetries} after ${delay}ms`);
-        await new Promise((r) => setTimeout(r, delay));
-        continue;
-      }
-      throw e;
-    }
-  }
-  throw new Error("Max retries exceeded");
-}
-
-/** Fetch gas fees with retry â€” safe because no wallet popup is involved. */
+/** Fetch gas fees with retry — safe because no wallet popup is involved. */
 async function estimateFeesWithRetry(publicClient: ReturnType<typeof usePublicClient>) {
   return withRateLimitRetry(() => publicClient!.estimateFeesPerGas());
 }
@@ -93,10 +69,10 @@ export function useCUSDCBalance() {
         setUsdcBalance(formatUnits(bal as bigint, USDC_DECIMALS));
       }).catch(() => {});
     }
-    // Restore tracked cUSDC from localStorage
+    // Restore tracked cUSDC from localStorage (centralized in lib/trackedBalance).
     if (address) {
-      const saved = localStorage.getItem(`cusdc_tracked_${address}`);
-      if (saved) setTrackedCusdc(saved);
+      const formatted = getTrackedFormatted(address);
+      setTrackedCusdc(formatted === "0" ? null : formatted);
     }
   }, [address, publicClient, refetch]);
 
@@ -134,11 +110,11 @@ export function useCUSDCBalance() {
         } else {
           setError(
             `The Reineira cUSDC contract doesn't grant decrypt access (HTTP 403). ` +
-            `Your encrypted handle exists â€” the balance is on-chain but can't be revealed from the browser. ` +
+            `Your encrypted handle exists — the balance is on-chain but can't be revealed from the browser. ` +
             `Wrap USDC below to track your balance.`
           );
         }
-        return; // Don't re-throw â€” we handled it
+        return; // Don't re-throw — we handled it
       }
 
       setError(msg);
@@ -202,7 +178,7 @@ export function useCUSDCBalance() {
       }
       const amount = parseUnits(amountUSDC, USDC_DECIMALS);
 
-      // Step 1: Check allowance â€” approve cUSDC contract to pull plain USDC if needed
+      // Step 1: Check allowance — approve cUSDC contract to pull plain USDC if needed
       const currentAllowance = await publicClient.readContract({
         address: USDC_ARB_SEPOLIA,
         abi: [{
@@ -236,8 +212,8 @@ export function useCUSDCBalance() {
         await new Promise((r) => setTimeout(r, 5000));
       }
 
-      // Step 2: Fetch gas (with retry) then wrap USDC â†’ cUSDC exactly ONCE
-      // Do NOT wrap writeContractAsync in retry â€” each retry would open a new MetaMask popup
+      // Step 2: Fetch gas (with retry) then wrap USDC ? cUSDC exactly ONCE
+      // Do NOT wrap writeContractAsync in retry — each retry would open a new MetaMask popup
       const feeData2 = await estimateFeesWithRetry(publicClient);
       const wrapMaxFee = feeData2.maxFeePerGas
         ? (feeData2.maxFeePerGas * 130n) / 100n
@@ -255,11 +231,11 @@ export function useCUSDCBalance() {
       await publicClient.waitForTransactionReceipt({ hash });
       await refetch();
 
-      // Track wrapped cUSDC balance locally (Reineira doesn't allow on-chain decrypt)
-      const prev = parseFloat(trackedCusdc || "0");
-      const newTotal = (prev + parseFloat(amountUSDC)).toFixed(6);
-      setTrackedCusdc(newTotal);
-      localStorage.setItem(`cusdc_tracked_${address}`, newTotal);
+      // Track wrapped cUSDC balance locally (Reineira doesn't allow on-chain decrypt).
+      // Centralized writer (lib/trackedBalance) keeps the format consistent
+      // across all writers (sweep, escrow redeem, wrap, unwrap).
+      const updated = addTrackedUnits(address, amount);
+      setTrackedCusdc(formatUnits(updated, USDC_DECIMALS));
 
       // Refresh USDC balance
       publicClient.readContract({
@@ -283,7 +259,7 @@ export function useCUSDCBalance() {
       }
       const amount = parseUnits(amountCUSDC, USDC_DECIMALS);
 
-      // Fetch gas (with retry) then unwrap ONCE â€” never retry the wallet write
+      // Fetch gas (with retry) then unwrap ONCE — never retry the wallet write
       const feeData = await estimateFeesWithRetry(publicClient);
       const maxFee = feeData.maxFeePerGas
         ? (feeData.maxFeePerGas * 130n) / 100n
@@ -301,11 +277,9 @@ export function useCUSDCBalance() {
       await publicClient.waitForTransactionReceipt({ hash });
       await refetch();
 
-      // Update tracked cUSDC balance
-      const prev = parseFloat(trackedCusdc || "0");
-      const newTotal = Math.max(0, prev - parseFloat(amountCUSDC)).toFixed(6);
-      setTrackedCusdc(newTotal);
-      localStorage.setItem(`cusdc_tracked_${address}`, newTotal);
+      // Update tracked cUSDC balance (centralized writer).
+      const updated = addTrackedUnits(address, -amount);
+      setTrackedCusdc(formatUnits(updated, USDC_DECIMALS));
 
       // Refresh USDC balance
       publicClient.readContract({

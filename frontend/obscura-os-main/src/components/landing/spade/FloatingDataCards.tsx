@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Banknote, Vault, Vote as VoteIcon } from "lucide-react";
+import { Banknote, Landmark, Vote as VoteIcon } from "lucide-react";
 
 function CornerBracket({ className }: { className?: string }) {
   return (
@@ -22,43 +22,48 @@ function ReceiptCard({ label, children }: { label: string; children: React.React
   );
 }
 
-function MerchantCard({
-  name,
-  meta,
-  trailing,
-  accent,
+/** Module activity card — matches receipt cards (brackets, sage, forest, mono) */
+function ModuleSignalCard({
+  module,
+  title,
+  detail,
+  status,
   icon,
   featured,
 }: {
-  name: string;
-  meta: string;
-  trailing?: string;
-  accent: "emerald" | "violet" | "amber";
+  module: string;
+  title: string;
+  detail: string;
+  status: React.ReactNode;
   icon: React.ReactNode;
   featured?: boolean;
 }) {
-  const accentBg = {
-    emerald: "bg-emerald-600",
-    violet: "bg-violet-600",
-    amber: "bg-amber-500",
-  }[accent];
-
   return (
     <div
-      className={`flex items-center gap-2 rounded-xl border border-forest/8 bg-white px-3 py-2 shadow-[0_8px_28px_rgba(24,40,14,0.09)] sm:rounded-2xl sm:px-3.5 sm:py-2.5 ${
+      className={`relative border border-forest/25 bg-white/95 px-3 py-2.5 shadow-[0_6px_24px_rgba(24,40,14,0.07)] backdrop-blur-sm sm:px-3.5 sm:py-3 ${
         featured ? "w-[min(52vw,228px)] sm:w-[236px]" : "w-[min(48vw,210px)] sm:w-[214px]"
       }`}
     >
-      <div className={`flex shrink-0 items-center justify-center rounded-lg text-white ${accentBg} size-9`}>
-        {icon}
+      <CornerBracket className="absolute left-0 top-0 text-forest/40" />
+      <CornerBracket className="absolute bottom-0 right-0 rotate-180 text-forest/40" />
+
+      <div className="flex items-center gap-2.5">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-forest/12 bg-sage-2 text-forest">
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1 text-left">
+          <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-forest/42">
+            ▸ {module}
+          </p>
+          <p className="truncate font-display text-[13px] leading-tight text-forest sm:text-[14px]">
+            {title}
+          </p>
+          <p className="truncate font-mono text-[9px] text-forest/45 sm:text-[10px]">{detail}</p>
+        </div>
+        <div className="shrink-0 text-right font-mono text-[10px] leading-none text-forest/70 sm:text-[11px]">
+          {status}
+        </div>
       </div>
-      <div className="min-w-0 flex-1 text-left">
-        <p className="truncate text-[12px] font-medium text-forest sm:text-[13px]">{name}</p>
-        <p className="truncate font-mono text-[9px] text-forest/45 sm:text-[10px]">{meta}</p>
-      </div>
-      {trailing ? (
-        <span className="shrink-0 font-display text-base tabular-nums text-forest">{trailing}</span>
-      ) : null}
     </div>
   );
 }
@@ -105,7 +110,7 @@ function WideLayout() {
 
       <Floater delay={0.4} from="left" className="left-0 top-[48%] lg:left-[2%] xl:left-[4%]">
         <ReceiptCard label="ENCRYPTED AMOUNT">
-          <span className="tracking-[0.26em]">• • • • • • •</span>
+          <span className="tracking-[0.26em] text-lime-accent/80">• • • • • • •</span>
         </ReceiptCard>
       </Floater>
 
@@ -123,33 +128,39 @@ function WideLayout() {
       </Floater>
 
       <Floater delay={0.3} from="right" className="right-0 top-[14%] z-30 lg:right-[2%] xl:right-[4%]">
-        <MerchantCard
+        <ModuleSignalCard
           featured
-          name="Payroll · Acme Labs"
-          meta="2026-05-24 · sealed"
-          trailing="—————"
-          accent="emerald"
-          icon={<Banknote className="size-4" />}
+          module="ObscuraPay"
+          title="Payroll stream"
+          detail="ocUSDC · cycle sealed"
+          status={<span className="tracking-[0.2em] text-lime-accent/75">████</span>}
+          icon={<Banknote className="size-4 stroke-[1.5]" />}
         />
       </Floater>
 
       <Floater delay={0.45} from="right" className="right-0 top-[44%] lg:right-[3%] xl:right-[5%]" hideBelow="md">
-        <MerchantCard
-          name="Vault · Conservative"
-          meta="Health · encrypted"
-          trailing="●●●●"
-          accent="violet"
-          icon={<Vault className="size-4" />}
+        <ModuleSignalCard
+          module="ObscuraCredit"
+          title="Vault position"
+          detail="Health · FHE compute"
+          status={
+            <span className="flex gap-0.5 text-forest/35" aria-hidden>
+              {[0, 1, 2, 3].map((i) => (
+                <span key={i} className="size-1.5 rounded-full bg-forest/25" />
+              ))}
+            </span>
+          }
+          icon={<Landmark className="size-4 stroke-[1.5]" />}
         />
       </Floater>
 
       <Floater delay={0.6} from="right" className="bottom-[20%] right-0 lg:right-[2%] xl:right-[4%]" hideBelow="md">
-        <MerchantCard
-          name="Proposal #014"
-          meta="Ballot · sealed"
-          trailing="✓"
-          accent="amber"
-          icon={<VoteIcon className="size-4" />}
+        <ModuleSignalCard
+          module="ObscuraVote"
+          title="Proposal #014"
+          detail="Ballot · homomorphic"
+          status={<span className="text-lime-accent">✓</span>}
+          icon={<VoteIcon className="size-4 stroke-[1.5]" />}
         />
       </Floater>
     </>
@@ -161,5 +172,6 @@ type FloatingDataCardsProps = {
 };
 
 export default function FloatingDataCards({ variant = "wide" }: FloatingDataCardsProps) {
+  void variant;
   return <WideLayout />;
 }

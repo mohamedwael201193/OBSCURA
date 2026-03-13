@@ -16,7 +16,7 @@ export function buildVoteOps(numOptions: number): FHEOp[] {
       op: "asEuint64",
       desc: "Encrypt option index",
       detail: "Your choice never leaves the browser as plaintext — it's encrypted here before the transaction is signed.",
-      color: "text-emerald-400",
+      color: "text-foreground",
     },
     {
       op: `FHE.eq × ${numOptions}`,
@@ -58,7 +58,7 @@ export function buildRevoteOps(numOptions: number): FHEOp[] {
       op: "asEuint64",
       desc: "Encrypt new option",
       detail: "New choice encrypted in-browser.",
-      color: "text-emerald-400",
+      color: "text-foreground",
     },
     {
       op: `FHE.eq × ${numOptions}`,
@@ -132,7 +132,7 @@ export default function FHEOperationsVisual({ ops, title, animate = true }: Prop
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.25 }}
-              className="flex items-start gap-3 p-2.5 bg-secondary/30 rounded-md border border-border/30"
+              className="flex items-start gap-3 p-2.5 bg-secondary/30 rounded-md border border-border"
             >
               <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 text-green-400 shrink-0" />
               <div className="flex-1 min-w-0">

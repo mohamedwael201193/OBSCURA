@@ -136,10 +136,10 @@ export default function InvoicePayCard({
 
       <div className="relative flex items-start gap-4">
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400/30 to-cyan-600/15 border border-cyan-400/40 flex items-center justify-center shrink-0 shadow-lg shadow-cyan-500/20">
-          <FileText className="w-5 h-5 text-cyan-300" />
+          <FileText className="w-5 h-5 text-foreground" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] tracking-[0.2em] uppercase text-cyan-400/80 font-bold mb-1">Invoice for You</div>
+          <div className="text-[10px] tracking-[0.2em] uppercase text-foreground/80 font-bold mb-1">Invoice for You</div>
           <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground leading-tight">
             You've been asked to pay a private invoice
           </h2>
@@ -169,7 +169,7 @@ export default function InvoicePayCard({
               {loadingProbe ? (
                 "—"
               ) : info?.creatorHasMeta ? (
-                <><EyeOff className="w-3 h-3 text-emerald-400" /><span className="text-emerald-300">Private (stealth)</span></>
+                <><EyeOff className="w-3 h-3 text-foreground" /><span className="text-[hsl(var(--success))]">Private (stealth)</span></>
               ) : (
                 <><AlertCircle className="w-3 h-3 text-amber-400" /><span className="text-amber-300 font-mono text-[10px]">Unshielded</span></>
               )}
@@ -177,7 +177,7 @@ export default function InvoicePayCard({
           </div>
           <div className="px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.07]">
             <div className="text-[9px] tracking-[0.15em] uppercase text-muted-foreground/45 mb-0.5">Your balance</div>
-            <div className="font-mono text-[12px] font-semibold text-emerald-200">
+            <div className="font-mono text-[12px] font-semibold text-foreground">
               {trackedUnits > 0n ? `≈ ${formatUSDC(trackedUnits)} ocUSDC` : trackedCusdc ? `${trackedCusdc} ocUSDC` : "—"}
             </div>
           </div>
@@ -196,7 +196,7 @@ export default function InvoicePayCard({
 
       {isConnected && !paidHash && (
         <div className="relative flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.025] border border-white/[0.07] text-[11px]">
-          <ShieldCheck className="w-3.5 h-3.5 text-cyan-300/70" />
+          <ShieldCheck className="w-3.5 h-3.5 text-foreground/70" />
           <span className="text-muted-foreground/55">Paying as</span>
           <span className="font-mono text-foreground/80">{address?.slice(0, 8)}…{address?.slice(-6)}</span>
         </div>
@@ -267,9 +267,9 @@ export default function InvoicePayCard({
         ) : (
           <motion.div key="paid" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="relative space-y-3">
             <div className="px-4 py-3.5 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/30 flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-5 h-5 text-[hsl(var(--success))] shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <div className="font-display text-sm font-semibold text-emerald-300 flex items-center gap-2">
+                <div className="font-display text-lg text-[hsl(var(--success))] flex items-center gap-2">
                   Paid <ArrowDownLeft className="w-3.5 h-3.5" />
                   {paidAmount !== null && (
                     <span className="font-mono">−{formatUSDC(paidAmount)} ocUSDC</span>
@@ -279,7 +279,7 @@ export default function InvoicePayCard({
                   Invoice #{invoiceId} settled. Funds were sent to the creator’s stealth address — your balance has been decremented locally.
                 </p>
                 <div className="mt-2 flex items-start gap-2 px-3 py-2 rounded-lg bg-cyan-500/[0.06] border border-cyan-500/20">
-                  <span className="text-[11px] text-cyan-300/80 leading-relaxed">
+                  <span className="text-[11px] text-foreground/80 leading-relaxed">
                     The creator should check <strong className="text-cyan-200">Receive → Stealth Inbox</strong> and click <strong className="text-cyan-200">Claim all</strong> to receive the funds.
                   </span>
                 </div>
@@ -290,7 +290,7 @@ export default function InvoicePayCard({
                 href={`https://sepolia.arbiscan.io/tx/${paidHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] text-cyan-300 hover:text-cyan-200 text-[11px] font-mono transition-colors"
+                className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] text-foreground hover:text-cyan-200 text-[11px] font-mono transition-colors"
               >
                 View receipt tx · {paidHash.slice(0, 12)}…{paidHash.slice(-8)} <ExternalLink className="w-3 h-3" />
               </a>

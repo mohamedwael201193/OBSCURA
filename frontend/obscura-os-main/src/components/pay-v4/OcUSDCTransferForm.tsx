@@ -38,14 +38,14 @@ export default function OcUSDCTransferForm() {
   };
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <Send className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Send className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Confidential P2P Transfer</h3>
+          <h3 className="font-display text-lg text-foreground leading-tight">Confidential P2P Transfer</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">FHE Encrypted · ocUSDC</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ENCRYPTED</span>
@@ -61,7 +61,7 @@ export default function OcUSDCTransferForm() {
         <span className="text-[10px] text-[#3e73c4] font-semibold uppercase tracking-wider">USDC</span>
       </div>
 
-      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
+      <p className="text-sm text-muted-foreground leading-relaxed">
         Send ocUSDC to any address. The transfer amount is fully encrypted — no one can see how much was sent, not even block explorers.
       </p>
 
@@ -87,7 +87,7 @@ export default function OcUSDCTransferForm() {
             Amount (ocUSDC)
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-400/40 pointer-events-none" />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground/40 pointer-events-none" />
             <input
               type="number"
               placeholder="e.g. 50"
@@ -100,7 +100,7 @@ export default function OcUSDCTransferForm() {
       </div>
 
       {status !== "idle" && (
-        <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-4">
+        <div className="rounded-xl hairline bg-card p-4">
           <AsyncStepper status={status} stepIndex={stepIndex} />
         </div>
       )}
@@ -120,12 +120,12 @@ export default function OcUSDCTransferForm() {
 
       {txHash && (
         <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-500/8 border border-emerald-500/20 rounded-lg">
-          <ExternalLink className="w-3 h-3 text-emerald-400 shrink-0" />
+          <ExternalLink className="w-3 h-3 text-foreground shrink-0" />
           <a
             href={`https://sepolia.arbiscan.io/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-[11px] text-emerald-300 hover:text-emerald-200 transition-colors truncate"
+            className="font-mono text-[11px] text-[hsl(var(--success))] hover:text-foreground transition-colors truncate"
           >
             {txHash.slice(0, 10)}…{txHash.slice(-8)}
           </a>

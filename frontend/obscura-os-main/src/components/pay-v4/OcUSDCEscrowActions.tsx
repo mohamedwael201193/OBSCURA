@@ -157,14 +157,14 @@ export default function OcUSDCEscrowActions() {
     expiryInfo && expiryInfo.block > 0n && expiryInfo.current >= expiryInfo.block;
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <Unlock className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Unlock className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">
+          <h3 className="font-display text-lg text-foreground leading-tight">
             Claim / Redeem Escrow
           </h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">
@@ -174,7 +174,7 @@ export default function OcUSDCEscrowActions() {
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ocUSDC</span>
       </div>
 
-      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
+      <p className="text-sm text-muted-foreground leading-relaxed">
         Enter the escrow ID you received. The contract privately verifies your access — no
         information is revealed to observers whether you succeed or fail.
       </p>
@@ -224,7 +224,7 @@ export default function OcUSDCEscrowActions() {
               <div
                 className={`flex items-start gap-2 text-[12px] px-3 py-2.5 rounded-lg border ${
                   lookupStatus === "found"
-                    ? "bg-emerald-500/[0.06] border-emerald-500/25 text-emerald-300/80"
+                    ? "bg-emerald-500/[0.06] border-emerald-500/25 text-[hsl(var(--success))]/80"
                     : lookupStatus === "not-found"
                     ? "bg-amber-500/[0.06] border-amber-500/25 text-amber-300/80"
                     : "bg-white/[0.025] border-white/[0.07] text-muted-foreground/55"
@@ -284,7 +284,7 @@ export default function OcUSDCEscrowActions() {
         {isRecipientMatch === true && (
           <div className="flex items-center gap-2 p-2.5 bg-emerald-500/8 border border-emerald-500/20 rounded-lg">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-            <p className="text-[11px] text-emerald-300/80">
+            <p className="text-[11px] text-[hsl(var(--success))]/80">
               Your wallet matches the recipient for escrow #{escrowId} — ready to claim.
             </p>
           </div>
@@ -305,7 +305,7 @@ export default function OcUSDCEscrowActions() {
         {isRecipientMatch === null && (
           <div className="flex items-start gap-2 p-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg">
             <Info className="w-3 h-3 text-muted-foreground/50 mt-0.5 shrink-0" />
-            <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               No local record for this ID — that&apos;s normal when you&apos;re the recipient on
               a different device. Enter the ID and click Claim. The contract privately
               verifies your access.
@@ -344,7 +344,7 @@ export default function OcUSDCEscrowActions() {
         <button
           type="button"
           onClick={() => setFundOpen((v) => !v)}
-          className="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-white/[0.03] transition-colors"
+          className="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-muted/40 transition-colors"
         >
           <span className="text-[11px] text-muted-foreground/55 font-medium">
             Top-up escrow (optional · for senders only)
@@ -383,7 +383,7 @@ export default function OcUSDCEscrowActions() {
                     onClick={handleFund}
                     disabled={isProcessing || isTxPending || !escrowId || !fundAmount}
                     whileTap={{ scale: 0.98 }}
-                    className="btn-pay btn-pay-ghost px-5 text-emerald-400 border-emerald-500/25 disabled:opacity-40"
+                    className="btn-pay btn-pay-ghost px-5 text-foreground border-emerald-500/25 disabled:opacity-40"
                   >
                     Fund
                   </motion.button>
@@ -422,15 +422,15 @@ export default function OcUSDCEscrowActions() {
       {redeemDone && txHash && (
         <div className="rounded-xl bg-emerald-500/[0.08] border border-emerald-500/25 p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span className="text-sm font-semibold text-emerald-300">Claimed!</span>
+            <CheckCircle2 className="w-4 h-4 text-foreground shrink-0" />
+            <span className="text-sm font-semibold text-[hsl(var(--success))]">Claimed!</span>
           </div>
-          <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             Your ocUSDC was privately transferred. Arbiscan will show{" "}
             <strong className="text-foreground/75">0.0001 pUSDC</strong> — that is a privacy
             placeholder. Your real encrypted balance lives on-chain. Go to{" "}
             <strong className="text-foreground/75">Dashboard</strong> and click{" "}
-            <strong className="text-emerald-300">REVEAL</strong> to decrypt it.
+            <strong className="text-[hsl(var(--success))]">REVEAL</strong> to decrypt it.
           </p>
           <a
             href="/dashboard"
@@ -451,12 +451,12 @@ export default function OcUSDCEscrowActions() {
       {/* ── TX link ── */}
       {txHash && (
         <div className="flex items-center gap-2 px-3 py-2.5 bg-white/[0.025] border border-white/[0.07] rounded-lg">
-          <ExternalLink className="w-3 h-3 text-cyan-400 shrink-0" />
+          <ExternalLink className="w-3 h-3 text-foreground shrink-0" />
           <a
             href={`https://sepolia.arbiscan.io/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-[11px] text-cyan-300 hover:text-cyan-200 transition-colors truncate"
+            className="font-mono text-[11px] text-foreground hover:text-cyan-200 transition-colors truncate"
           >
             {txHash.slice(0, 12)}…{txHash.slice(-8)}
           </a>

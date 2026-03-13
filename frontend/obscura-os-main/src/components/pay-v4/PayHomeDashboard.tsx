@@ -147,11 +147,11 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
   return (
     <div className="space-y-5">
       {/* ── Setup checklist ──────────────────────────────────────── */}
-      <div className="pay-card p-5 space-y-4">
+      <div className="space-y-4">
         {/* Header row */}
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/45 font-mono mb-0.5">
+            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-mono mb-0.5">
               Setup guide
             </div>
             <h2 className="font-display text-[15px] font-semibold text-foreground leading-tight">
@@ -167,8 +167,8 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
           <div
             className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono border tabular-nums ${
               allDone
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                : "bg-white/[0.04] border-white/[0.08] text-muted-foreground/60"
+                ? "bg-emerald-500/10 border-emerald-500/30 text-[hsl(var(--success))]"
+                : "bg-muted hairline text-muted-foreground/60"
             }`}
           >
             {allDone && <CheckCircle2 className="w-3 h-3" />}
@@ -198,7 +198,7 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
               {/* Status icon */}
               <div
                 className={`mt-0.5 shrink-0 ${
-                  s.done ? "text-emerald-400" : "text-muted-foreground/25"
+                  s.done ? "text-foreground" : "text-muted-foreground/25"
                 }`}
               >
                 {s.loading ? (
@@ -226,7 +226,7 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
 
               {/* Actions / Done badge */}
               {s.done ? (
-                <span className="shrink-0 text-[10px] text-emerald-400/50 font-mono uppercase tracking-wide self-center">
+                <span className="shrink-0 text-[10px] text-foreground/50 font-mono uppercase tracking-wide self-center">
                   Done
                 </span>
               ) : (
@@ -259,7 +259,7 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
 
       {/* ── Quick actions ─────────────────────────────────────────── */}
       <div className="pay-card p-5 space-y-3">
-        <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/45 font-mono">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-mono">
           Quick actions
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -294,10 +294,10 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
             <button
               key={tab}
               onClick={() => onNavigate(tab)}
-              className="flex flex-col items-center gap-2 p-3.5 rounded-xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.05] hover:border-emerald-500/20 transition-all text-center group"
+              className="flex flex-col items-center gap-2 p-3.5 rounded-xl hairline bg-card hover:bg-muted/50 hover:border-emerald-500/20 transition-all text-center group"
             >
               <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center group-hover:border-emerald-500/25 group-hover:bg-emerald-500/[0.06] transition-colors">
-                <Icon className="w-4 h-4 text-muted-foreground/50 group-hover:text-emerald-400 transition-colors" />
+                <Icon className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
               </div>
               <div>
                 <div className="text-[12px] text-foreground/70 group-hover:text-foreground/90 transition-colors font-medium leading-tight">
@@ -312,7 +312,7 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
 
       {/* ── How it works ──────────────────────────────────────────── */}
       <div className="pay-card p-5 space-y-3">
-        <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/45 font-mono">
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-mono">
           How it works
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -345,7 +345,7 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
               className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]"
             >
               <div className="w-7 h-7 rounded-lg bg-emerald-500/[0.07] border border-emerald-500/15 flex items-center justify-center shrink-0 mt-0.5">
-                <Icon className="w-3.5 h-3.5 text-emerald-400/60" />
+                <Icon className="w-3.5 h-3.5 text-foreground/60" />
               </div>
               <div>
                 <div className="text-[12px] text-foreground/75 font-medium leading-tight">

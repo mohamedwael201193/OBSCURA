@@ -92,12 +92,12 @@ export default function MyEscrows() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-[13px] font-bold font-mono ${
-              isLegacy ? "text-muted-foreground/50" : "text-emerald-300"
+              isLegacy ? "text-muted-foreground/50" : "text-[hsl(var(--success))]"
             }`}>#{escrow.escrowId}</span>
             <button onClick={() => handleCopy(escrow.escrowId)}
               className="p-1 hover:bg-white/[0.05] rounded-md transition-colors">
               {copiedId === escrow.escrowId
-                ? <CheckCircle className="w-3 h-3 text-emerald-400" />
+                ? <CheckCircle className="w-3 h-3 text-foreground" />
                 : <Copy className="w-3 h-3 text-muted-foreground/40" />}
             </button>
             {isLegacy && (
@@ -130,13 +130,13 @@ export default function MyEscrows() {
               className="p-1.5 hover:bg-white/[0.05] rounded-md transition-colors"
             >
               {sharedId === escrow.escrowId
-                ? <CheckCircle className="w-3 h-3 text-emerald-400" />
-                : <Link2 className="w-3 h-3 text-muted-foreground/40 hover:text-cyan-400 transition-colors" />}
+                ? <CheckCircle className="w-3 h-3 text-foreground" />
+                : <Link2 className="w-3 h-3 text-muted-foreground/40 hover:text-foreground transition-colors" />}
             </button>
           )}
           <a href={`https://sepolia.arbiscan.io/tx/${escrow.txHash}`} target="_blank" rel="noopener noreferrer"
             className="p-1.5 hover:bg-white/[0.05] rounded-md transition-colors">
-            <ExternalLink className="w-3 h-3 text-muted-foreground/40 hover:text-emerald-400 transition-colors" />
+            <ExternalLink className="w-3 h-3 text-muted-foreground/40 hover:text-foreground transition-colors" />
           </a>
           <button onClick={() => handleDelete(escrow.txHash)}
             className="p-1.5 hover:bg-white/[0.05] rounded-md transition-colors">
@@ -148,13 +148,13 @@ export default function MyEscrows() {
   };
 
   return (
-    <div className="pay-card p-6 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <FileText className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <FileText className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">My Escrows</h3>
+          <h3 className="font-display text-lg text-foreground leading-tight">My Escrows</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Saved Locally</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">{currentEscrows.length} active</span>

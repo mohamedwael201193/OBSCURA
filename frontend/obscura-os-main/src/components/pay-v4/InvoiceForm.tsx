@@ -81,10 +81,10 @@ export default function InvoiceForm() {
   };
 
   return (
-    <div className="pay-card p-5 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center shrink-0">
-          <FileText className="w-4 h-4 text-cyan-300" />
+          <FileText className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="font-display text-[15px] font-semibold text-foreground">Request a private payment</div>
@@ -107,7 +107,7 @@ export default function InvoiceForm() {
             className="pay-input w-full pr-16 font-mono"
             disabled={busy}
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] tracking-[0.18em] text-emerald-300/60 font-mono">ocUSDC</span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] tracking-[0.18em] text-[hsl(var(--success))]/60 font-mono">ocUSDC</span>
         </div>
       </div>
 
@@ -141,7 +141,7 @@ export default function InvoiceForm() {
               className={`py-2 rounded-lg text-[11px] font-mono border transition-colors ${
                 expiry === opt
                   ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-200"
-                  : "bg-white/[0.025] border-white/[0.06] text-muted-foreground/70 hover:border-white/[0.12]"
+                  : "hairline bg-card text-muted-foreground hover:bg-muted/50"
               }`}
             >
               {opt === "0" ? "No expiry" : `${opt}d`}
@@ -163,19 +163,19 @@ export default function InvoiceForm() {
 
       {created && (
         <div className="rounded-xl bg-emerald-500/[0.07] border border-emerald-500/25 p-4 space-y-2">
-          <div className="font-display text-[13px] font-semibold text-emerald-200">
+          <div className="font-display text-[13px] font-semibold text-foreground">
             Invoice #{created.id} published
           </div>
           <p className="text-[11px] text-muted-foreground/65">
             Share this link with the payer. They click, connect, and pay — ocUSDC is sent privately to your stealth address.
           </p>
           <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-cyan-500/[0.06] border border-cyan-500/20">
-            <span className="text-[11px] text-cyan-300 leading-relaxed">
+            <span className="text-[11px] text-foreground leading-relaxed">
               ⚠️ After payment, go to <strong className="text-cyan-200">Receive → Stealth Inbox</strong> and click <strong className="text-cyan-200">Claim all</strong> to sweep the funds into your wallet.
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <code className="flex-1 truncate text-[11px] font-mono px-2 py-1.5 rounded bg-black/20 text-emerald-200/80">
+            <code className="flex-1 truncate text-[11px] font-mono px-2 py-1.5 rounded bg-black/20 text-foreground/80">
               {created.link}
             </code>
             <button
@@ -189,7 +189,7 @@ export default function InvoiceForm() {
             href={`https://sepolia.arbiscan.io/tx/${created.hash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[10.5px] font-mono text-cyan-300 hover:text-cyan-200"
+            className="inline-flex items-center gap-1 text-[10.5px] font-mono text-foreground hover:text-cyan-200"
           >
             View tx <ExternalLink className="w-3 h-3" />
           </a>

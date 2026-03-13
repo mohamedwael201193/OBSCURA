@@ -305,6 +305,15 @@
   border-color: rgba(52, 211, 153, 0.5);
   box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.09), inset 0 1px 0 rgba(255,255,255,0.03);
 }
+/* Make datetime-local calendar/clock picker icons emerald instead of black */
+.pay-input::-webkit-calendar-picker-indicator {
+  filter: invert(71%) sepia(62%) saturate(400%) hue-rotate(109deg) brightness(98%) contrast(95%);
+  cursor: pointer;
+  opacity: 0.8;
+}
+.pay-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
 
 /* ─── Select dropdowns ─────────────────────────────────────────────────────── */
 .pay-select {

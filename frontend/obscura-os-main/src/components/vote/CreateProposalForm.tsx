@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Plus, AlertCircle, CheckCircle, ExternalLink, Trash2, X, Timer, AlertTriangle } from "lucide-react";
 import { useAccount, useWriteContract, usePublicClient, useReadContract } from "wagmi";
 import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS, OBSCURA_TOKEN_ABI, OBSCURA_TOKEN_ADDRESS } from "@/config/contracts";
 import { CATEGORY_LABELS } from "@/hooks/useProposals";
 import { arbitrumSepolia } from "viem/chains";
+import { useChainTime } from "@/hooks/useChainTime";
 
 const TEMPLATES = [
   { label: "Yes / No", options: ["Yes", "No"] },
@@ -51,6 +52,22 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
   const [category, setCategory] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+
+  // Use chain time so the custom deadline picker defaults to the correct blockchain time
+  const chainNow = useChainTime();
+
+  // When the user switches to Custom duration, pre-fill with chain time + 24h
+  useEffect(() => {
+    if (selectedDuration === DURATION_PRESETS.length - 1) {
+      const chainTimeMs = Number(chainNow) * 1000 + 24 * 3600 * 1000;
+      const d = new Date(chainTimeMs);
+      const pad = (n: number) => n.toString().padStart(2, "0");
+      setCustomDeadline(
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDuration]);
 
   function applyTemplate(idx: number) {
     setSelectedTemplate(idx);

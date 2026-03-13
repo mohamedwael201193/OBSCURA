@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Eye, BarChart3, AlertCircle, Unlock, ExternalLink, Download, Ban, Trophy, ShieldCheck } from "lucide-react";
+import { Eye, BarChart3, AlertCircle, Unlock, ExternalLink, Download, Ban, Trophy, ShieldCheck, User, Users } from "lucide-react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { useProposalCount, useProposal, useProposalOptions, CATEGORY_LABELS } from "@/hooks/useProposals";
 import { useVoteTally, TallyResult } from "@/hooks/useVoteTally";
@@ -58,9 +58,15 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
 
   const isFinalized = proposal.isFinalized;
   const isCancelled = proposal.isCancelled;
-  const deadlinePassed = now >= proposal.deadline;
+  // Use the LATER of chain time and system time so the Finalize button appears
+  // even when chain time (block.timestamp) is slightly ahead of the user's
+  // system clock (or before the first block response arrives).
+  const systemNow = BigInt(Math.floor(Date.now() / 1000));
+  const effectiveNow = now > systemNow ? now : systemNow;
+  const deadlinePassed = effectiveNow >= proposal.deadline;
   const canFinalize = deadlinePassed && !isFinalized && !isCancelled;
   const quorumMet = proposal.quorum === 0n || proposal.totalVoters >= proposal.quorum;
+  const isCreator = !!(address && proposal.creator && address.toLowerCase() === proposal.creator.toLowerCase());
 
   const total = tallies ? tallies.reduce((sum, t) => sum + t.votes, 0n) : null;
   const maxVotes = tallies ? tallies.reduce((max, t) => t.votes > max ? t.votes : max, 0n) : 0n;
@@ -152,6 +158,18 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
           <div className="text-xs text-yellow-400">
             Voting ended.{!quorumMet ? " Quorum not reached — cannot finalize." : " Finalize to reveal the aggregate tally on-chain."}
           </div>
+          {/* Who should finalize */}
+          {quorumMet && (
+            <div className="flex items-start gap-2 p-2.5 rounded-md bg-white/[0.025] border border-white/[0.06] text-xs text-muted-foreground/70">
+              {isCreator ? (
+                <><User className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <span><span className="text-emerald-400 font-semibold">You created this proposal.</span> Finalizing publishes the encrypted tallies — only you know the actual votes until someone decrypts. Anyone can finalize, but as the creator it's your responsibility.</span></>
+              ) : (
+                <><Users className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <span><span className="text-amber-400 font-semibold">Anyone can finalize.</span> The proposal creator (<span className="font-mono text-foreground/70">{proposal.creator.slice(0,6)}…{proposal.creator.slice(-4)}</span>) is the natural finalizer, but since this is permissionless you can also trigger it.</span></>
+              )}
+            </div>
+          )}
           {quorumMet && (
           <motion.button
             onClick={handleFinalize}
@@ -161,7 +179,7 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
             className="btn-pay btn-pay-amber w-full py-2.5"
           >
             <Unlock className="w-3.5 h-3.5 inline mr-2" />
-            {isFinalizePending ? "Finalizing..." : "Finalize Vote"}
+            {isFinalizePending ? "Finalizing..." : isCreator ? "Finalize My Proposal" : "Finalize Vote"}
           </motion.button>
           )}
           {finalizeTxHash && (

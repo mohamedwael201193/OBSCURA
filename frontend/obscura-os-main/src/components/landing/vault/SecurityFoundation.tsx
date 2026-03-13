@@ -1,22 +1,20 @@
 import { motion } from "framer-motion";
-import { ShieldCheck, FileCheck2, Lock, Cpu, KeyRound, ScrollText } from "lucide-react";
+import { FileCheck2, ScrollText, FileBadge } from "lucide-react";
+import {
+  ObscuraFeatureIcon,
+  SECURITY_PILLAR_ICONS,
+} from "@/components/landing/ObscuraFeatureIcon";
 
 const PILLARS = [
   {
-    icon: Cpu,
-    chip: "chip-emerald",
     title: "FHE at the protocol layer",
     body: "Values are encrypted before they ever leave your device. Contracts compute on ciphertext using the CoFHE coprocessor — no node, sequencer, or relayer ever sees the plaintext.",
   },
   {
-    icon: KeyRound,
-    chip: "chip-violet",
     title: "Permits, not custody",
     body: "Every reveal is an explicit, time-boxed EIP-712 signature you control. Grant a viewer for 5 minutes; revoke instantly. Obscura never holds your decryption keys.",
   },
   {
-    icon: ShieldCheck,
-    chip: "chip-sky",
     title: "Audited by the best",
     body: "Trail of Bits, OpenZeppelin, and Spearbit have reviewed every primitive. Formal verification on the settlement layer. Bug bounty live with Immunefi.",
   },
@@ -26,7 +24,7 @@ const PROOFS = [
   { icon: FileCheck2, label: "Trail of Bits · 2026 Q1" },
   { icon: FileCheck2, label: "OpenZeppelin · 2026 Q2" },
   { icon: ScrollText, label: "Whitepaper · v2.1" },
-  { icon: Lock, label: "Immunefi · $2M bounty" },
+  { icon: FileBadge, label: "Immunefi · $2M bounty" },
 ];
 
 export function SecurityFoundation() {
@@ -55,9 +53,11 @@ export function SecurityFoundation() {
               transition={{ duration: 0.7, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
               className="rounded-3xl border border-border-subtle bg-surface-elevated p-8 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-float)] transition-shadow"
             >
-              <div className={`chip-icon size-12 ${p.chip}`}>
-                <p.icon className="size-5" />
-              </div>
+              <ObscuraFeatureIcon
+                icon={SECURITY_PILLAR_ICONS[i].icon}
+                tone={SECURITY_PILLAR_ICONS[i].tone}
+                size="lg"
+              />
               <h3 className="mt-6 font-display text-2xl md:text-3xl tracking-tight">{p.title}</h3>
               <p className="mt-3 text-muted-foreground leading-relaxed">{p.body}</p>
             </motion.div>
@@ -73,7 +73,7 @@ export function SecurityFoundation() {
               key={p.label}
               className="inline-flex items-center gap-2 rounded-full border border-border-subtle bg-surface-elevated px-3 py-1.5 text-xs text-foreground"
             >
-              <p.icon className="size-3.5 text-brand" />
+              <p.icon className="size-3.5 text-brand" strokeWidth={1.75} />
               {p.label}
             </span>
           ))}

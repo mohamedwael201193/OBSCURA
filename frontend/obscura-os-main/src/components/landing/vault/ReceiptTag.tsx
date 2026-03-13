@@ -25,7 +25,7 @@ interface MerchantPillProps {
   meta: string;
   amount: string;
   icon?: React.ReactNode;
-  accent?: "emerald" | "amber" | "rose" | "violet" | "sky";
+  accent?: "forest" | "lime" | "deep" | "moss" | "emerald" | "amber" | "rose" | "violet" | "sky";
   className?: string;
 }
 
@@ -34,7 +34,7 @@ export function MerchantPill({
   meta,
   amount,
   icon,
-  accent = "emerald",
+  accent = "forest",
   className,
 }: MerchantPillProps) {
   return (

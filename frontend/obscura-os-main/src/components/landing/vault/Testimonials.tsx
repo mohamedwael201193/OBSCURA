@@ -6,21 +6,21 @@ const QUOTES = [
       "Obscura is the first privacy layer that didn't force us to compromise on auditability. Our treasury moves confidentially, our auditors still get a verified seat at the table.",
     name: "Mira Velazquez",
     role: "Head of Treasury · Stellar DAO",
-    chip: "chip-emerald",
+    chip: "chip-forest",
   },
   {
     quote:
       "We replaced three off-chain reporting systems with a single permit flow. Encrypted payroll, public proofs of solvency — it just works.",
     name: "Daniel Cho",
     role: "CFO · Sequence Labs",
-    chip: "chip-violet",
+    chip: "chip-lime",
   },
   {
     quote:
       "Coercion-resistant voting changed our governance overnight. Quiet votes, loud results — proposals finally reflect what people actually want.",
     name: "Adaeze Okafor",
     role: "Steward · Arbitrum Citizens",
-    chip: "chip-amber",
+    chip: "chip-deep",
   },
 ];
 

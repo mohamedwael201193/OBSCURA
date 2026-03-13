@@ -1,6 +1,7 @@
 ﻿export const OBSCURA_PAY_ADDRESS = import.meta.env.VITE_OBSCURA_PAY_ADDRESS as `0x${string}` | undefined;
 export const OBSCURA_ESCROW_ADDRESS = import.meta.env.VITE_OBSCURA_ESCROW_ADDRESS as `0x${string}` | undefined;
 export const OBSCURA_CONDITION_RESOLVER_ADDRESS = import.meta.env.VITE_OBSCURA_CONDITION_RESOLVER_ADDRESS as `0x${string}` | undefined;
+export const OBSCURA_VOTE_ADDRESS = import.meta.env.VITE_OBSCURA_VOTE_ADDRESS as `0x${string}` | undefined;
 
 // InEuint64 tuple: { ctHash: uint256, securityZone: uint8, utype: uint8, signature: bytes }
 const InEuint64Components = [
@@ -613,5 +614,244 @@ export const OBSCURA_CONDITION_RESOLVER_ABI = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ name: "", type: "address" }],
+  },
+] as const;
+
+// ═══════════════════════════════════════════════════════════════════════
+// ObscuraVote ABI — Wave 2 (v2: multi-option, categories, quorum, cancel/extend, verify-my-vote)
+// ═══════════════════════════════════════════════════════════════════════
+
+export const OBSCURA_VOTE_ABI = [
+  // constructor(address)
+  { inputs: [{ name: "_obsToken", type: "address" }], stateMutability: "nonpayable", type: "constructor" },
+  // events
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "proposalId", type: "uint256" },
+      { indexed: false, name: "title", type: "string" },
+      { indexed: false, name: "numOptions", type: "uint8" },
+      { indexed: false, name: "deadline", type: "uint256" },
+      { indexed: false, name: "category", type: "uint8" },
+    ],
+    name: "ProposalCreated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "proposalId", type: "uint256" },
+      { indexed: true, name: "voter", type: "address" },
+    ],
+    name: "VoteCast",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "proposalId", type: "uint256" },
+      { indexed: true, name: "voter", type: "address" },
+    ],
+    name: "VoteChanged",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: true, name: "proposalId", type: "uint256" }],
+    name: "VoteFinalized",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: true, name: "proposalId", type: "uint256" }],
+    name: "ProposalCancelled",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "proposalId", type: "uint256" },
+      { indexed: false, name: "newDeadline", type: "uint256" },
+    ],
+    name: "DeadlineExtended",
+    type: "event",
+  },
+  // createProposal(string, string, string[], uint256, uint256, uint8) returns (uint256)
+  {
+    name: "createProposal",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_title", type: "string" },
+      { name: "_description", type: "string" },
+      { name: "_options", type: "string[]" },
+      { name: "_deadline", type: "uint256" },
+      { name: "_quorum", type: "uint256" },
+      { name: "_category", type: "uint8" },
+    ],
+    outputs: [{ name: "proposalId", type: "uint256" }],
+  },
+  // castVote(uint256, InEuint64)
+  {
+    name: "castVote",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_proposalId", type: "uint256" },
+      { name: "_encVote", type: "tuple", components: [...InEuint64Components] },
+    ],
+    outputs: [],
+  },
+  // cancelProposal(uint256)
+  {
+    name: "cancelProposal",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_proposalId", type: "uint256" }],
+    outputs: [],
+  },
+  // extendDeadline(uint256, uint256)
+  {
+    name: "extendDeadline",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_proposalId", type: "uint256" },
+      { name: "_newDeadline", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  // finalizeVote(uint256)
+  {
+    name: "finalizeVote",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_proposalId", type: "uint256" }],
+    outputs: [],
+  },
+  // getProposal(uint256) returns (string, string, uint8, uint256, uint256, uint8, uint256, bool, bool, bool, address)
+  {
+    name: "getProposal",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "_proposalId", type: "uint256" }],
+    outputs: [
+      { name: "title", type: "string" },
+      { name: "description", type: "string" },
+      { name: "numOptions", type: "uint8" },
+      { name: "deadline", type: "uint256" },
+      { name: "quorum", type: "uint256" },
+      { name: "category", type: "uint8" },
+      { name: "totalVoters", type: "uint256" },
+      { name: "isFinalized", type: "bool" },
+      { name: "isCancelled", type: "bool" },
+      { name: "exists", type: "bool" },
+      { name: "creator", type: "address" },
+    ],
+  },
+  // getProposalOptions(uint256) returns (string[])
+  {
+    name: "getProposalOptions",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "_proposalId", type: "uint256" }],
+    outputs: [{ name: "", type: "string[]" }],
+  },
+  // getTally(uint256, uint8) returns (uint256)
+  {
+    name: "getTally",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "_proposalId", type: "uint256" },
+      { name: "_optionIndex", type: "uint8" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  // getProposalCount() returns (uint256)
+  {
+    name: "getProposalCount",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  // getMyVote(uint256) returns (uint256) — verify my vote
+  {
+    name: "getMyVote",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "_proposalId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  // hasVoted(uint256, address) returns (bool)
+  {
+    name: "hasVoted",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "", type: "uint256" },
+      { name: "", type: "address" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  // voterParticipation(address) returns (uint256)
+  {
+    name: "voterParticipation",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  // MAX_OPTIONS() returns (uint8)
+  {
+    name: "MAX_OPTIONS",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint8" }],
+  },
+  // owner() returns (address)
+  {
+    name: "owner",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  // roles(address) returns (uint8)
+  {
+    name: "roles",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "uint8" }],
+  },
+  // grantRole(address, uint8)
+  {
+    name: "grantRole",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_user", type: "address" },
+      { name: "_role", type: "uint8" },
+    ],
+    outputs: [],
+  },
+  // revokeRole(address)
+  {
+    name: "revokeRole",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_user", type: "address" }],
+    outputs: [],
+  },
+  // nextProposalId() returns (uint256)
+  {
+    name: "nextProposalId",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
   },
 ] as const;

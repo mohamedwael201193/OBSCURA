@@ -1,13 +1,16 @@
 /**
  * NavRightSlot — drop the real WalletConnect widget into GooeyNav's right slot.
- * Wraps WalletConnect so it fits the nav height (h-14).
  */
 import WalletConnect from "@/components/wallet/WalletConnect";
 
-export default function NavRightSlot() {
+type NavRightSlotProps = {
+  tone?: "dark" | "light";
+};
+
+export default function NavRightSlot({ tone = "dark" }: NavRightSlotProps) {
   return (
     <div className="flex items-center gap-3">
-      <WalletConnect />
+      <WalletConnect tone={tone} />
     </div>
   );
 }

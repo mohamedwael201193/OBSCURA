@@ -149,9 +149,11 @@
 
 .obscura-app main button.inline-flex {
   border-radius: 9999px !important;
+  font-family: "JetBrains Mono", ui-monospace, monospace !important;
   font-weight: 500 !important;
-  letter-spacing: normal !important;
-  text-transform: none !important;
+  font-size: 0.75rem !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
 }
 
 .obscura-app main button.bg-primary {
@@ -408,9 +410,9 @@
 /* Typography in forms */
 .obscura-app main h3.font-display,
 .obscura-app .harmony-form-inner h3.font-display {
-  font-family: "Instrument Serif", "Cormorant Garamond", serif !important;
-  font-weight: 400 !important;
-  letter-spacing: -0.02em !important;
+  font-family: "Sora", ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.03em !important;
 }
 
 .obscura-app main [class*="tracking-[0.18em]"],

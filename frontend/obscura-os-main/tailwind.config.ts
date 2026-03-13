@@ -37,9 +37,11 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['"Instrument Serif"', '"Cormorant Garamond"', 'serif'],
-        mono: ['"JetBrains Mono"', 'monospace'],
-        body: ['"DM Sans"', 'sans-serif'],
+        display: ['"Sora"', '"Inter"', 'sans-serif'],
+        brand: ['"Sora"', '"Inter"', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        body: ['"Inter"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        ui: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
         spadeDisplay: ['"Sora"', 'sans-serif'],
         spadeBody: ['"Inter"', 'sans-serif'],
         editorial: ['"Cormorant Garamond"', '"Sora"', 'serif'],

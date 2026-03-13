@@ -112,8 +112,8 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
     try {
       await registration.showNotification("Obscura Push Test", {
         body: `Browser display check for ${wallet.slice(0, 6)}...${wallet.slice(-4)}.`,
-        icon: "/favicon.ico",
-        badge: "/favicon.ico",
+        icon: "/favicon.png",
+        badge: "/favicon.png",
         tag: `obscura-debug-local-${Date.now()}`,
         renotify: true,
         requireInteraction: true,

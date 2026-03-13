@@ -2,7 +2,6 @@ import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useSpring, useTransform, type MotionValue } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import ObscuraLogo from "@/components/brand/ObscuraLogo";
 import { cn } from "@/lib/utils";
 
 const USE_CASES = [
@@ -91,7 +90,6 @@ function FooterCtaBand() {
       />
 
       <div className="relative z-10 mx-auto max-w-[1400px]">
-        <ObscuraLogo size="md" tone="dark" className="mb-8" />
         <h2 className="max-w-3xl font-display text-[clamp(2rem,5vw,3.75rem)] font-normal leading-[1.08] tracking-tight">
           Add <span className="text-lime-accent">privacy</span> to every layer of onchain finance
         </h2>

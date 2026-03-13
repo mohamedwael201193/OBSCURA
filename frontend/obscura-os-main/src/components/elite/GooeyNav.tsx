@@ -210,7 +210,7 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
                 }
                 transition={{ duration: 2.8, repeat: Infinity, ease: "easeOut", repeatDelay: 0.5 }}
               />
-              <ObscuraLogo size={26} className="relative z-10 group-hover:opacity-80 transition-opacity" />
+              <ObscuraLogo size={36} className="relative z-10 group-hover:opacity-80 transition-opacity" />
             </div>
             <span className="hidden sm:block font-spadeDisplay text-[13px] font-semibold tracking-tight text-forest group-hover:text-forest/80 transition-colors">
               OBSCURA
@@ -270,7 +270,7 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
             const isActive = item.key === activeKey;
             const labelContent = (
               <span className={cn(
-                "flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium leading-none select-none",
+                "flex items-center gap-1.5 px-4 py-2 font-mono text-[11px] font-medium uppercase leading-none tracking-[0.14em] select-none",
                 "transition-colors duration-150",
                 isActive
                   ? "text-forest"

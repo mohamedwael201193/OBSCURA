@@ -54,7 +54,7 @@ const DashboardSidebar = ({
                     key={item.key}
                     onClick={() => onSelect(item.key)}
                     className={cn(
-                      "relative w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[13px] font-medium transition-colors",
+                      "relative w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left font-mono text-[11px] font-medium uppercase tracking-[0.12em] transition-colors",
                       isActive
                         ? "bg-white text-forest"
                         : "text-forest/50 hover:bg-white/60 hover:text-forest/80",

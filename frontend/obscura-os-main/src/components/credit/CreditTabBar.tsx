@@ -55,7 +55,7 @@ export default function CreditTabBar({ active, onSelect, onMore, moreBadge }: Pr
                 aria-current={isActive ? "page" : undefined}
               >
                 <Icon className="w-4 h-4" />
-                <span className="text-[9.5px] tracking-wide">{it.label}</span>
+                <span className="font-mono text-[9.5px] uppercase tracking-[0.14em]">{it.label}</span>
                 {it.key === "__more__" && moreBadge && moreBadge > 0 && (
                   <span className="absolute top-2 right-1/3 -translate-x-1/2 min-w-[14px] h-[14px] px-1 rounded-full bg-red-500 text-[8.5px] text-white font-medium flex items-center justify-center">
                     {moreBadge > 9 ? "9+" : moreBadge}

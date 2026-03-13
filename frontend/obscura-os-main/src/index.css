@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 @import "./styles/harmony-workspace-forms.css";
 
 @tailwind base;
@@ -80,28 +80,35 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: 'DM Sans', sans-serif;
+    @apply bg-background text-foreground font-body;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Sora', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.03em;
   }
 }
 
 @layer utilities {
   .font-display {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Sora', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.03em;
   }
 
   .font-mono {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
   }
 
   .font-body {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .font-ui {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
   }
 
   .text-glow {
@@ -315,7 +322,7 @@
   color: hsl(var(--foreground));
 }
 
-/* ─── Buttons (W5P1.9 compact, no uppercase, no neon) ────────────────────── */
+/* ─── Buttons — Spade mono UI ─────────────────────────────────────────────── */
 .btn-pay {
   display: inline-flex;
   align-items: center;
@@ -329,10 +336,11 @@
   padding-bottom: 0 !important;
   padding-left: 1rem;
   padding-right: 1rem;
-  font-size: 0.8125rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   border-radius: 9999px;
   border: none;
   cursor: pointer;
@@ -362,7 +370,10 @@
   border: none;
   padding: 0;
   height: auto;
-  font-size: 0.8125rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: hsl(var(--foreground) / 0.7);
   cursor: pointer;
   transition: color 0.15s ease;
@@ -474,8 +485,9 @@
 }
 
 .landing-vault .font-display {
-  font-family: "Instrument Serif", "Cormorant Garamond", ui-serif, Georgia, serif;
-  letter-spacing: -0.02em;
+  font-family: "Sora", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.03em;
 }
 
 .landing-vault .font-mono {
@@ -566,9 +578,22 @@
 .landing-spade h2,
 .landing-spade h3,
 .landing-spade .font-display {
-  font-family: 'Instrument Serif', 'Cormorant Garamond', ui-serif, Georgia, serif;
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  font-family: 'Sora', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+
+.landing-spade nav a,
+.landing-spade nav button,
+.landing-spade header a:not([aria-label="Obscura home"]),
+.landing-spade header button,
+.landing-spade button,
+.landing-spade a.rounded-full,
+.landing-spade .btn-pay,
+.landing-spade .btn-pay-link {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .landing-spade .font-body {
@@ -586,17 +611,17 @@
 }
 
 .landing-spade .obscura-slogan-line1 {
-  font-family: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
-  font-weight: 400;
-  letter-spacing: -0.048em;
-  line-height: 0.9;
+  font-family: "Sora", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
   color: #0a0f08;
-  -webkit-text-stroke: 0.4px #0a0f08;
-  paint-order: stroke fill;
+  -webkit-text-stroke: 0;
+  paint-order: normal;
 }
 
 .landing-spade .obscura-slogan--hero .obscura-slogan-line1 {
-  font-size: clamp(2.65rem, 9vw, 5.25rem);
+  font-size: clamp(2.35rem, 7.5vw, 4.5rem);
 }
 
 .landing-spade .obscura-slogan--page .obscura-slogan-line1 {
@@ -608,19 +633,23 @@
   display: inline-block;
   width: fit-content;
   margin-inline: auto;
+  overflow: visible;
+  padding-inline-end: 0.12em;
 }
 
 .landing-spade .obscura-slogan-line2,
 .landing-spade .obscura-slogan-line2-text {
-  font-family: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
-  letter-spacing: -0.038em;
-  line-height: 0.88;
+  font-family: "Sora", ui-sans-serif, system-ui, sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
   filter: drop-shadow(0 10px 24px rgba(24, 40, 14, 0.07));
 }
 
 .landing-spade .obscura-slogan-line2-text {
+  display: inline-block;
+  padding-inline-end: 0.12em;
   background: linear-gradient(102deg, #0a0f08 0%, #18280e 36%, #2d6b45 70%, #6bb84a 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -628,6 +657,8 @@
 }
 
 .landing-spade .obscura-slogan-word-computed {
+  display: inline-block;
+  padding-inline-end: 0.22em;
   background: linear-gradient(102deg, #0a0f08 0%, #18280e 55%, #2d6b45 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -647,7 +678,7 @@
 
 .landing-spade .obscura-slogan--hero .obscura-slogan-line2-wrap,
 .landing-spade .obscura-slogan--hero .obscura-slogan-line2-text {
-  font-size: clamp(2.85rem, 9.5vw, 5.5rem);
+  font-size: clamp(2.5rem, 8vw, 4.75rem);
 }
 
 .landing-spade .obscura-slogan--page .obscura-slogan-line2-wrap,
@@ -1187,8 +1218,9 @@
 }
 
 .landing-spade .landing-vault .font-display {
-  font-family: "Instrument Serif", "Cormorant Garamond", ui-serif, Georgia, serif;
-  letter-spacing: -0.02em;
+  font-family: "Sora", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.03em;
 }
 
 .landing-spade .landing-vault .tag-bracket {
@@ -1287,13 +1319,33 @@
 .obscura-app h2,
 .obscura-app h3,
 .obscura-app .font-display {
-  font-family: 'Instrument Serif', 'Cormorant Garamond', 'Times New Roman', serif;
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  font-family: 'Sora', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.03em;
 }
 
 .obscura-app .font-editorial {
-  font-family: 'Instrument Serif', 'Cormorant Garamond', serif;
+  font-family: 'Sora', ui-sans-serif, system-ui, sans-serif;
+}
+
+.obscura-app nav a,
+.obscura-app nav button,
+.obscura-app header a,
+.obscura-app header button,
+.obscura-app .font-ui {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.obscura-app button,
+.obscura-app .btn-pay,
+.obscura-app .btn-pay-link {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .obscura-app .hairline {
@@ -1332,9 +1384,10 @@
   border-color: rgba(24, 40, 14, 0.12) !important;
   background: #fff !important;
   color: #18280e !important;
-  letter-spacing: 0.04em;
-  text-transform: none;
-  font-size: 12px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  font-size: 11px !important;
   padding: 0.5rem 1rem;
   box-shadow: 0 4px 16px rgba(24, 40, 14, 0.06);
 }

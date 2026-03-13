@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ObscuraMark } from "./Logo";
+import ObscuraLogo from "@/components/brand/ObscuraLogo";
 
 export function Footer() {
   return (
@@ -7,10 +7,7 @@ export function Footer() {
       <div className="mx-auto max-w-[1400px] px-6 md:px-8 py-20">
         <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>
-            <div className="flex items-center gap-2.5">
-              <ObscuraMark size={28} className="text-brand" />
-              <span className="font-display text-2xl tracking-tight text-foreground">Obscura</span>
-            </div>
+            <ObscuraLogo size="lg" tone="light" />
             <p className="mt-4 max-w-sm text-sm text-muted-foreground leading-relaxed">
               The encrypted operating system for onchain privacy. Pay, Credit,
               and Vote — unified by one FHE engine, settled on Arbitrum.

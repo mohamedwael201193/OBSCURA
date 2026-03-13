@@ -9,10 +9,10 @@ export function Nav() {
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/70 border-b border-border-subtle">
       <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 md:px-8 py-3.5">
         <Link to="/" className="shrink-0">
-          <ObscuraLogo size={26} />
+          <ObscuraLogo size="nav" tone="light" />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-7 text-sm text-muted-foreground">
+        <nav className="hidden md:flex items-center gap-7 font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
           <Link to="/pay" className="hover:text-foreground transition" activeProps={{ className: "text-foreground" }}>Pay</Link>
           <Link to="/credit" className="hover:text-foreground transition" activeProps={{ className: "text-foreground" }}>Credit</Link>
           <Link to="/vote" className="hover:text-foreground transition" activeProps={{ className: "text-foreground" }}>Vote</Link>
@@ -35,7 +35,7 @@ export function Nav() {
           >
             {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </button>
-          <Link to="/pay" className="rounded-full bg-brand-ink px-5 py-2 text-sm text-brand-soft hover:opacity-90 transition">
+          <Link to="/pay" className="rounded-full bg-brand-ink px-5 py-2 font-mono text-xs uppercase tracking-[0.14em] text-brand-soft hover:opacity-90 transition">
             Launch app
           </Link>
         </div>

@@ -17,7 +17,9 @@ export default function SpadeHeroSection() {
         <div className={`relative z-10 ${SAGE_INSET}`}>
           <div className="overflow-hidden rounded-[1.5rem] bg-sage-1 shadow-[0_1px_0_rgba(24,40,14,0.05)] ring-1 ring-forest/[0.05] md:rounded-[1.75rem] lg:rounded-[2rem]">
             <div className="flex min-h-[min(90vh,920px)] flex-col px-3 pt-8 pb-8 sm:px-4 sm:pt-9 sm:pb-9 md:px-5 md:pt-10 md:pb-10 lg:pt-11 lg:pb-11">
-              <ObscuraSlogan centered size="hero" className="shrink-0" />
+              <div className="overflow-visible px-2 sm:px-3">
+                <ObscuraSlogan centered size="hero" className="shrink-0" />
+              </div>
 
               <div className="relative mt-5 flex flex-1 flex-col justify-center md:mt-6">
                 <div className="relative mx-auto w-full max-w-[960px] flex-1">
@@ -51,7 +53,7 @@ export default function SpadeHeroSection() {
           >
             <Link
               to="/pay"
-              className="inline-flex min-w-[200px] items-center justify-center rounded-full bg-forest px-8 py-3.5 font-body text-sm font-medium text-lime-accent transition-opacity hover:opacity-90"
+              className="inline-flex min-w-[200px] items-center justify-center rounded-full bg-forest px-8 py-3.5 font-mono text-xs font-semibold uppercase tracking-[0.14em] text-lime-accent transition-opacity hover:opacity-90"
             >
               Open Obscura →
             </Link>

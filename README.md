@@ -12,10 +12,11 @@
 </p>
 
 <p align="center">
-  <a href="#wave-1--obscurapay-live">ObscuraPay</a> ·
-  <a href="#wave-2--obscuravote-live">ObscuraVote</a> ·
+  <a href="#wave-1--obscurapay-live">Wave 1</a> ·
+  <a href="#wave-2--obscurapay-v4-live">Wave 2 Pay</a> ·
+  <a href="#wave-2--obscuravote-live">Wave 2 Vote</a> ·
   <a href="#deployed-contracts">15 Contracts</a> ·
-  <a href="#fhe-architecture">FHE Architecture</a> ·
+  <a href="#fhe-architecture">FHE</a> ·
   <a href="#roadmap">Roadmap</a>
 </p>
 
@@ -35,7 +36,7 @@ OBSCURA is not a single privacy tool — it's an **operating system** of five co
 
 **OBSCURA** is built by a collaborative team formed during the Fhenix Buildathon:
 
-- **Core contributor** — ObscuraPay architect. 10 Solidity contracts, 14+ React hooks, full 8-tab payment frontend, stealth payments, payroll insurance, cross-chain USDC bridge, cUSDC FHERC-20 integration. 123 tracked tasks shipped across Wave 1–2.
+- **Core contributor** — Full-stack architect. All 10 Solidity contracts, 5 interfaces, 14+ React hooks, complete 8-tab payment frontend, stealth payments, payroll insurance, cross-chain USDC bridge, cUSDC FHERC-20 integration. 142 tracked Pay tasks + full landing page, docs, and PMF page shipped.
 - **[DiablooDEVs](https://app.akindo.io/users/DiablooDEVs)** — ObscuraVote architect. Full governance contract (V4, 4 iterations), multi-option encrypted voting, coercion-resistant revoting, 7 frontend components, 5-tab VotePage. Merged into OBSCURA to combine complementary skills — payments + governance — into one stronger team, as encouraged by the Fhenix Buildathon organizers.
 
 Two builders. Two live modules. One unified privacy operating system.
@@ -52,8 +53,8 @@ Two builders. Two live modules. One unified privacy operating system.
 │  Wave 1  │  Wave 2   │  Wave 3   │  Wave 4   │     Wave 5        │
 │  ✅ LIVE │  ✅ LIVE  │  PLANNED  │  PLANNED  │    PLANNED        │
 │ Obscura  │ Obscura   │ Obscura   │ Obscura   │  Obscura          │
-│ Pay      │ Vote      │ Vault     │ Trust     │  Mind             │
-│(Payments)│(Governance)│  (DeFi)  │(Compliance)│  (AI)            │
+│ Pay      │ Pay v4    │ Vault     │ Trust     │  Mind             │
+│  (Core)  │ + Vote    │  (DeFi)   │(Compliance)│  (AI)            │
 ├──────────┴───────────┴───────────┴───────────┴───────────────────┤
 │   cUSDC FHERC20 · $OBS Token · ObscuraPermissions · ACL Layer    │
 │   CoFHE / FHE.sol / @cofhe/sdk / EIP-712 Permits                │
@@ -81,24 +82,57 @@ Two builders. Two live modules. One unified privacy operating system.
 
 ## Wave 1 — ObscuraPay (LIVE)
 
-**The most complete confidential payment platform on Fhenix.**
+**Core encrypted payment infrastructure. Four Solidity contracts deployed, all processing real encrypted transactions.**
 
-10 Solidity contracts deployed. 14+ React hooks. Full 8-tab frontend. 123 tracked implementation tasks shipped.
+Plus `ObscuraPermissions.sol` — shared role-based ACL helper reused across all waves.
 
-### Smart Contracts
+### Smart Contracts (4)
 
 | Contract | Purpose |
 |----------|---------|
-| **ObscuraToken.sol** | $OBS FHERC-20 — encrypted balances, daily faucet (100/day), confidential P2P transfers, time-limited operator model (`setOperator + expiry`) |
-| **ObscuraPay.sol** | Encrypted payroll engine — `FHE.add()` salary accumulation, `batchPay()` up to 50 employees, role-based ACL (Admin/Employee/Auditor), auditor aggregate-only access |
-| **ObscuraEscrow.sol** | Encrypted escrow — owner as `eaddress`, amount as `euint64`, **silent failure pattern** (`FHE.select` returns 0 to unauthorized — no revert, no info leak), pluggable resolver hooks |
-| **ObscuraConditionResolver.sol** | Time-lock (release after deadline) and approval (designated approver) conditions for escrow release |
-| **cUSDC (ConfidentialUSDC)** | FHERC-20 encrypted stablecoin — wrap/unwrap from plaintext USDC, all balances as `euint64`, confidential transfers |
+| **ObscuraToken.sol** | `$OBS` FHERC-20. All balances are `euint64` ciphertexts. Daily faucet 100 $OBS/24h. Confidential P2P transfers. Operator model with time-scoped expiry (`setOperator + expiry`). |
+| **ObscuraPay.sol** | Open-access encrypted payroll. Any wallet is employer. `FHE.add()` accumulates salaries on-chain without ever seeing the values. `batchPay()` up to 50 employees. Role ACL: ADMIN / EMPLOYEE / AUDITOR. Auditors see aggregate totals only — zero individual salary exposure. |
+| **ObscuraEscrow.sol** | Recipient identity stored as `eaddress` ciphertext. Amount stored as `euint64` ciphertext. **Silent failure pattern:** unauthorized redemptions return zero via `FHE.select()` — no revert, indistinguishable from success. Zero information leakage. Pluggable resolver hooks. |
+| **ObscuraConditionResolver.sol** | Pluggable escrow release logic. TIME_LOCK (release after deadline) and APPROVAL (designated approver) conditions. Queried before every redemption attempt. |
+
+### Wave 1 Key Features
+
+- **Encrypted Payroll** — `FHE.add()` salary accumulation, `batchPay()` up to 50, role-based ACL (Admin/Employee/Auditor)
+- **Encrypted Escrow** — `eaddress` owner + `euint64` amount, silent failure pattern via `FHE.select()`
+- **Conditional Release** — TIME_LOCK and APPROVAL modes, queried before every redemption
+- **$OBS FHERC-20** — Encrypted balances, daily faucet, confidential transfers, time-scoped operator model
+
+---
+
+## Wave 2 — ObscuraPay v4 (LIVE)
+
+**Massive expansion of ObscuraPay. From 4 → 15 deployed contracts. 142 tracked implementation tasks shipped. 14+ React hooks. 15 payment components. Full 8-tab frontend rebuild on encrypted cUSDC stablecoin.**
+
+Wave 2 Pay v4 integrates with the ReineiraOS protocol for FHERC-20 stablecoin (cUSDC), encrypted escrows, and insurance infrastructure. All payment features now run exclusively on encrypted cUSDC — no plaintext stablecoins touch the system.
+
+### New OBSCURA Contracts (4)
+
+| Contract | Purpose |
+|----------|---------|
 | **ObscuraPayStream.sol** | Recurring encrypted payroll streams — cUSDC salary to stealth addresses, per-cycle encrypted payments, pause/resume/cancel |
-| **ObscuraStealthRegistry.sol** | ERC-5564 stealth address registry — recipients register ECDH meta-addresses, senders generate one-time addresses, view-tag scanning |
-| **ObscuraPayrollUnderwriter.sol** | Payroll insurance underwriting — encrypted coverage, premium calculation, dispute resolution |
-| **ObscuraPayrollResolver.sol** | Cycle-based escrow release conditions — `getCycle`, `isConditionMet`, `approve`, `cancel` per escrow |
-| **InsurancePool / PoolFactory / PolicyRegistry / CoverageManager** | Insurance infrastructure — stakers provide liquidity, earn premiums, coverage policies, claim adjudication |
+| **ObscuraStealthRegistry.sol** | ERC-5564 stealth address registry — recipients register ECDH meta-addresses, senders generate one-time stealth addresses, view-tag scanning |
+| **ObscuraPayrollResolver.sol** | Cycle-based escrow release conditions — `getCycle`, `isConditionMet`, `approve`, `cancel` per escrow ID |
+| **ObscuraPayrollUnderwriter.sol** | Payroll insurance underwriting — encrypted coverage terms, premium calculation, dispute resolution |
+
+### ReineiraOS Protocol Integration (6 contracts)
+
+| Contract | Purpose |
+|----------|---------|
+| **cUSDC (ConfidentialUSDC)** | FHERC-20 encrypted stablecoin — wrap/unwrap from plaintext USDC, all balances as `euint64`, confidential transfers, operator model |
+| **ConfidentialEscrow** | cUSDC-native encrypted escrow — owner as `eaddress`, amount as `euint64`, create/fund/redeem with FHE |
+| **CoverageManager** | Insurance coverage management — purchase encrypted coverage for escrows, dispute filing, claim adjudication |
+| **InsurancePool** | Staked liquidity pool — stakers deposit cUSDC, earn premiums, provide coverage backing |
+| **PoolFactory** | Creates and manages insurance pool instances |
+| **PolicyRegistry** | On-chain registry of active insurance policies |
+
+### Interfaces Written (5)
+
+`IConditionResolver` · `IConfidentialUSDC` · `IERC165` · `IReineiraEscrow` · `IUnderwriterPolicy`
 
 ### Frontend — 8-Tab PayPage
 
@@ -107,13 +141,13 @@ Two builders. Two live modules. One unified privacy operating system.
 | **Dashboard** | cUSDC balance (encrypted handle + decrypted), wrap/unwrap USDC↔cUSDC, operator authorization, 6-step how-it-works guide |
 | **Send** | FHE-encrypted P2P cUSDC transfers with 3-step progress (Encrypting → Sending → Confirmed) |
 | **Receive** | 4-step recipient onboarding, stealth registration, incoming stream detection, cUSDC balance reveal |
-| **Escrows** | Create encrypted escrow (owner `eaddress` + amount `euint64`), fund, redeem, resolver conditions, My Escrows list with localStorage tracking |
+| **Escrows** | Create encrypted escrow (owner `eaddress` + amount `euint64`), auto-fund after create, redeem, resolver conditions, My Escrows list |
 | **Streams** | Create recurring payroll streams to stealth addresses, tick payments, pause/resume/cancel, live countdown timers, stealth-ready badges |
-| **Cross-Chain** | Bridge USDC from Ethereum Sepolia via Circle CCTP V1 — `depositForBurn` → attestation polling → `receiveMessage` auto-claim, 6-step progress, state persistence across tab switches, burn tx recovery |
+| **Cross-Chain** | Bridge USDC from Ethereum Sepolia via Circle CCTP V1 — `depositForBurn` → attestation polling → `receiveMessage` auto-claim, 6-step progress, state persistence, burn tx recovery |
 | **Insurance** | Buy coverage for escrows, file disputes with encrypted evidence, stake cUSDC into insurance pools as LP, My Policies panel |
 | **Stealth** | Register ECDH meta-address, scan inbox for incoming stealth payments, reveal claim key derivation |
 
-### Key Hooks
+### Key Hooks (14+)
 
 | Hook | Purpose |
 |------|---------|
@@ -128,15 +162,23 @@ Two builders. Two live modules. One unified privacy operating system.
 | `useCrossChainFund` | CCTP V1 burn on Eth Sepolia → attestation poll → claim on Arb Sepolia, localStorage persistence |
 | `useInsurePayroll` | Purchase coverage with `ensureOperator` pre-check, 3-step progress, coverage ID capture from tx logs |
 | `useIsOperator` | Pre-check `cUSDC.isOperator(holder, spender)` to skip redundant `setOperator` transactions |
+| `useRecipientStealthCheck` | Live stealth registration status badge for recipients |
 
 ### Critical Bug Fixes Shipped
 
 - **euint64 selector mismatch** — Our SDK uses bytes32, Reineira uses uint256. All PayStream↔cUSDC calls used wrong selector. **Fix:** bypass PayStream, call `cUSDC.confidentialTransfer()` directly.
-- **BigInt(0) falsy in JS** — `!proposalId` is true when `proposalId === 0n`. Cast vote did nothing for proposal #0. **Fix:** check `=== undefined`.
-- **encodePacked vs encodeAbiParameters** — Tight-packed produces 33 bytes, Solidity `abi.decode` expects 64. Resolver conditions reverted silently. **Fix:** use `encodeAbiParameters`.
-- **Rate limit 429** — Arbitrum Sepolia RPC throttles rapid sequential txs. **Fix:** `withRateLimitRetry<T>` helper with 3-retry exponential backoff.
-- **MetaMask "Network fee: Unavailable"** — RPC cannot simulate CoFHE coprocessor calls. **Fix:** explicit `gas: bigint` on every `writeContractAsync` call.
 - **FHERC-20 approve vs setOperator** — Standard `approve()` reverts on Reineira cUSDC. **Fix:** use `setOperator(spender, expiry)` everywhere.
+- **Rate limit 429** — Arbitrum Sepolia RPC throttles rapid sequential txs. **Fix:** `withRateLimitRetry<T>` helper with 3-retry exponential backoff.
+- **Escrow auto-fund** — `create()` only registers the escrow record; `fund()` is required to lock cUSDC. **Fix:** `create()` auto-calls `fund()` after.
+- **MetaMask "Network fee: Unavailable"** — RPC cannot simulate CoFHE coprocessor calls. **Fix:** explicit `gas: bigint` on every `writeContractAsync` call.
+- **Double 0x prefix** — `bytesToHex()` already returns `0x`-prefixed. **Fix:** removed redundant concat in stealth lib.
+- **Stealth registration gas** — 200k insufficient for Arbitrum L1 data costs on `bytes` storage. **Fix:** increased to 500k.
+- **BigInt(0) falsy in JS** — `!proposalId` is true when `proposalId === 0n`. Cast vote did nothing for proposal #0. **Fix:** check `=== undefined`.
+- **CCTP V2→V1 downgrade** — CCTP V2 not deployed on Sepolia testnet. **Fix:** switched to `depositForBurn` (V1).
+
+### FHE Feature Coverage Audit
+
+**Every function in every deployed ABI is wired to a UI entry point. 0 unused capabilities.** Full audit across 24 contract functions covering `wrap`, `unwrap`, `confidentialTransfer`, `setOperator`, `isOperator`, `confidentialBalanceOf`, `create`, `fund`, `redeem`, `exists`, `setPaused`, `cancelStream`, `createStream`, `getStream`, `approve`, `cancel`, `getCycle`, `isConditionMet`, `registerMetaAddress`, `getMetaAddress`, `announce`, `purchaseCoverage`, `dispute`, `stake`.
 
 ---
 
@@ -144,7 +186,7 @@ Two builders. Two live modules. One unified privacy operating system.
 
 **Coercion-resistant encrypted governance. No one — including the contract — knows individual vote choices.**
 
-ObscuraVote V4 deployed after 4 contract iterations. 7 frontend components. Full 5-tab VotePage.
+Built by [DiablooDEVs](https://app.akindo.io/users/DiablooDEVs). ObscuraVote V4 deployed after 4 contract iterations. 7 frontend components. Full 5-tab VotePage.
 
 ### Smart Contract — ObscuraVote.sol (V4)
 
@@ -152,7 +194,7 @@ ObscuraVote V4 deployed after 4 contract iterations. 7 frontend components. Full
 - **V1** — Yes/No voting with `euint64 yesVotes/noVotes`, admin-gated creation
 - **V2** — Multi-option (2–10 options), categories, description, quorum, voter participation tracking, "Verify My Vote"
 - **V3** — Token-gated creation (any $OBS holder), creator can cancel/extend (not admin-only)
-- **V4** — Fixed stuck proposals (cancel allowed when deadline passed + quorum not met), frontend BigInt(0) fix, FHE pre-init
+- **V4** — Fixed stuck proposals (cancel allowed when deadline passed + quorum not met), BigInt(0) fix, FHE pre-init
 
 ### Contract Features
 
@@ -161,11 +203,11 @@ ObscuraVote V4 deployed after 4 contract iterations. 7 frontend components. Full
 | **Multi-option polls** | 2–10 options per proposal, each with independent encrypted tally counter |
 | **6 Categories** | General, Treasury, Protocol, Grants, Social, Technical |
 | **FHE-encrypted ballots** | Option index encrypted client-side via `@cofhe/sdk`, accumulated via `FHE.add()` |
-| **Coercion-resistant revoting** | `FHE.sub(tally[oldOption], 1)` + `FHE.add(tally[newOption], 1)` — externally indistinguishable from first vote |
+| **Coercion-resistant revoting** | `FHE.sub(tally[old], 1)` + `FHE.add(tally[new], 1)` — externally indistinguishable from first vote |
 | **Time-locked results** | `FHE.allowPublic()` on each tally only after deadline + finalization. No one sees results during voting |
 | **Token-gated creation** | Any wallet that has claimed $OBS at least once can create proposals |
 | **Quorum enforcement** | Configurable minimum votes. Finalization blocked if quorum not met. Cancel allowed if expired + no quorum |
-| **Verify My Vote** | `FHE.allow(newVote, msg.sender)` — voter self-decrypts their ballot to confirm it was recorded correctly |
+| **Verify My Vote** | `FHE.allow(newVote, msg.sender)` — voter self-decrypts their ballot to confirm correct recording |
 | **Cancel / Extend** | Creator or admin can cancel (if no votes or expired+no quorum) or extend deadline (forward-only) |
 
 ### FHE Operations Per Vote
@@ -191,11 +233,11 @@ Gas per vote: **N × 7 FHE ops** (eq + select + add/sub per option). Gas limit: 
 |-----|----------|
 | **Dashboard** | Stats (total proposals, your votes cast, wallet info), Privacy Model cards, FHE Operations grid, $OBS faucet |
 | **Proposals** | Search by title, status filters (All/Active/Ended/Finalized/Cancelled), live countdown timers, category badges |
-| **Cast Vote** | Multi-option radio selection, $OBS token check, revote warning, proposal info display, FHE step tracking |
+| **Cast Vote** | Multi-option radio selection, $OBS token check, revote warning, proposal info display, eager FHE pre-init |
 | **Results** | Multi-option colored bars, winner highlight (★), quorum indicator, CSV export, finalize button |
 | **Create** | Templates (Yes/No, Approve/Reject/Abstain, Custom), dynamic options (2–10), description, category, duration presets, quorum |
 
-### Vote Components
+### Vote Components (7)
 
 | Component | Features |
 |-----------|----------|
@@ -211,9 +253,9 @@ Gas per vote: **N × 7 FHE ops** (eq + select + add/sub per option). Gas limit: 
 
 ## Deployed Contracts
 
-**Network:** Arbitrum Sepolia (Chain ID 421614)
+**Network:** Arbitrum Sepolia (Chain ID 421614) | **Deployer:** `0xD208aC8327e6479967693Af2F2216e1612D0171A`
 
-### Wave 1 — ObscuraPay
+### Wave 1 — Core (4 contracts)
 
 | Contract | Address |
 |----------|---------|
@@ -221,24 +263,34 @@ Gas per vote: **N × 7 FHE ops** (eq + select + add/sub per option). Gas limit: 
 | ObscuraPay | `0x13e2e3069bF9729C8Cd239F9A5fAAb087c77C33f` |
 | ObscuraEscrow | `0x77d6f4B3250Ef6C88EC409d49dcF4e5a4DdF2187` |
 | ObscuraConditionResolver | `0x8176549dfbE797b1C77316BFac18DAFCe42bEb8c` |
-| cUSDC (ConfidentialUSDC) | `0x6b6e6479b8b3237933c3ab9d8be969862d4ed89f` |
+
+### Wave 2 — Pay v4 New OBSCURA Contracts (4)
+
+| Contract | Address |
+|----------|---------|
 | ObscuraPayStream | `0x15d28Cbad36d3aC2d898DFB28644033000F16162` |
 | ObscuraStealthRegistry | `0xa36e791a611D36e2C817a7DA0f41547D30D4917d` |
-| ObscuraPayrollUnderwriter | `0x8fA403DDBE7CD30C8b26348E1a41E86ABDD6088c` |
-| InsurancePool | `0x5AC95Fa097CAC0a7d98157596Aff386b30b67069` |
 | ObscuraPayrollResolver | `0xC567249c8bE2C59783CD1d1F3081Eb7B03e89761` |
-| ConfidentialEscrow (V2) | `0xC4333F84F5034D8691CB95f068def2e3B6DC60Fa` |
+| ObscuraPayrollUnderwriter | `0x8fA403DDBE7CD30C8b26348E1a41E86ABDD6088c` |
+
+### Wave 2 — ReineiraOS Protocol Integration (6)
+
+| Contract | Address |
+|----------|---------|
+| cUSDC (ConfidentialUSDC) | `0x6b6e6479b8b3237933c3ab9d8be969862d4ed89f` |
+| ConfidentialEscrow | `0xC4333F84F5034D8691CB95f068def2e3B6DC60Fa` |
 | CoverageManager | `0x766e9508BD41BCE0e788F16Da86B3615386Ff6f6` |
+| InsurancePool | `0x5AC95Fa097CAC0a6d98157596Aff386b30b67069` |
 | PoolFactory | `0x03bAc36d45fA6f5aD8661b95D73452b3BedcaBFD` |
 | PolicyRegistry | `0xf421363B642315BD3555dE2d9BD566b7f9213c8E` |
 
-### Wave 2 — ObscuraVote
+### Wave 2 — ObscuraVote (1)
 
 | Contract | Address |
 |----------|---------|
 | ObscuraVote (V4) | `0x5d91B5ccb581F543f7399eea1c65Dfa88b3f9B7a` |
 
-**Deployer:** `0xD208aC8327e6479967693Af2F2216e1612D0171A`
+**Total: 15 deployed contracts on Arbitrum Sepolia.**
 
 ---
 
@@ -308,13 +360,13 @@ const result = await decryptForView(ctHash, FheTypes.Uint64)
 
 ## Roadmap
 
-| Wave | Module | Status | FHE Ops | Description |
-|------|--------|--------|---------|-------------|
-| **1** | **ObscuraPay** | ✅ Live | add, sub, eq, gte, select, and, not, allow, allowThis | Encrypted payroll, stealth payments, escrows, insurance, cross-chain bridge |
-| **2** | **ObscuraVote** | ✅ Live | add, sub, eq, select, allowPublic, allow | Coercion-resistant voting, multi-option polls, token-gated governance |
-| **3** | ObscuraVault | 🔒 Planned | gt, mul, div, max, min | MEV-protected sealed-bid auctions, encrypted yield vaults, private liquidity pools |
-| **4** | ObscuraTrust | 🔒 Planned | eq, gte, allow, allowTransient | Selective disclosure, time-scoped auditor permits, ZK+FHE compliance attestations |
-| **5** | ObscuraMind | 🔒 Planned | mul, add, div, gte, select, square | Privacy-preserving AI inference, ML on encrypted data, cross-module credit scoring |
+| Wave | Module | Status | Description |
+|------|--------|--------|-------------|
+| **1** | **ObscuraPay** | ✅ Live | 4 contracts — encrypted payroll, escrows, conditions, $OBS FHERC-20 token |
+| **2** | **ObscuraPay v4 + ObscuraVote** | ✅ Live | 11 new contracts — stealth payments, recurring streams, cUSDC, insurance, cross-chain bridge, encrypted governance |
+| **3** | ObscuraVault | 🔒 Planned | MEV-protected sealed-bid auctions, encrypted yield vaults, private liquidity pools |
+| **4** | ObscuraTrust | 🔒 Planned | Selective disclosure, time-scoped auditor permits, ZK+FHE compliance attestations |
+| **5** | ObscuraMind | 🔒 Planned | Privacy-preserving AI inference, ML on encrypted data, cross-module credit scoring |
 
 ---
 
@@ -325,20 +377,21 @@ obscura/
 ├── contracts-hardhat/
 │   ├── contracts/
 │   │   ├── ObscuraPermissions.sol       # Shared ACL helper (all waves)
-│   │   ├── ObscuraToken.sol             # $OBS FHERC20 token
-│   │   ├── ObscuraPay.sol               # Encrypted payroll engine
-│   │   ├── ObscuraEscrow.sol            # Encrypted escrow + silent failure
-│   │   ├── ObscuraConditionResolver.sol # Time-lock + approval conditions
-│   │   ├── ObscuraPayStream.sol         # Recurring cUSDC payroll streams
-│   │   ├── ObscuraStealthRegistry.sol   # ERC-5564 stealth address registry
-│   │   ├── ObscuraPayrollResolver.sol   # Cycle-based escrow resolver
-│   │   ├── ObscuraPayrollUnderwriter.sol# Payroll insurance underwriting
-│   │   ├── ObscuraVote.sol              # Encrypted governance (V4)
+│   │   ├── ObscuraToken.sol             # $OBS FHERC20 token [Wave 1]
+│   │   ├── ObscuraPay.sol               # Encrypted payroll engine [Wave 1]
+│   │   ├── ObscuraEscrow.sol            # Encrypted escrow + silent failure [Wave 1]
+│   │   ├── ObscuraConditionResolver.sol # Time-lock + approval conditions [Wave 1]
+│   │   ├── ObscuraPayStream.sol         # Recurring cUSDC payroll streams [Wave 2]
+│   │   ├── ObscuraStealthRegistry.sol   # ERC-5564 stealth address registry [Wave 2]
+│   │   ├── ObscuraPayrollResolver.sol   # Cycle-based escrow resolver [Wave 2]
+│   │   ├── ObscuraPayrollUnderwriter.sol# Payroll insurance underwriting [Wave 2]
+│   │   ├── ObscuraVote.sol              # Encrypted governance V4 [Wave 2]
 │   │   └── interfaces/
 │   │       ├── IConditionResolver.sol
 │   │       ├── IConfidentialUSDC.sol
 │   │       ├── IReineiraEscrow.sol
-│   │       └── IUnderwriterPolicy.sol
+│   │       ├── IUnderwriterPolicy.sol
+│   │       └── IERC165.sol
 │   ├── scripts/
 │   │   ├── deployWave2Pay.ts
 │   │   └── deploy-vote.js
@@ -352,18 +405,18 @@ obscura/
 │   ├── src/
 │   │   ├── pages/
 │   │   │   ├── Index.tsx                # Landing page (5-module vision)
-│   │   │   ├── PayPage.tsx              # 8-tab ObscuraPay dashboard
-│   │   │   ├── VotePage.tsx             # 5-tab ObscuraVote dashboard
-│   │   │   ├── DocsPage.tsx             # Official documentation
+│   │   │   ├── PayPage.tsx              # 8-tab ObscuraPay dashboard [Wave 2]
+│   │   │   ├── VotePage.tsx             # 5-tab ObscuraVote dashboard [Wave 2]
+│   │   │   ├── DocsPage.tsx             # Documentation
 │   │   │   └── PMFPage.tsx              # Product-market fit analysis
 │   │   ├── components/
-│   │   │   ├── pay-v4/                  # 15 payment components
-│   │   │   ├── vote/                    # 7 governance components
+│   │   │   ├── pay-v4/                  # 15 payment components [Wave 2]
+│   │   │   ├── vote/                    # 7 governance components [Wave 2]
 │   │   │   └── (landing page components)
 │   │   ├── hooks/                       # 14+ custom React hooks
 │   │   ├── config/
 │   │   │   ├── contracts.ts             # Vote ABI + addresses
-│   │   │   ├── wave2.ts                 # Pay ABIs + addresses
+│   │   │   ├── wave2.ts                 # Pay v4 ABIs + all addresses
 │   │   │   └── wagmi.ts                 # Chain config
 │   │   └── lib/
 │   │       ├── fhe.ts                   # @cofhe/sdk wrappers + permit caching
@@ -371,7 +424,7 @@ obscura/
 │   └── .env
 │
 ├── wave2-vote/WAVE2-PROGRESS.md         # Vote implementation log
-├── WAVE2_PAY_PROGRESS.md                # Pay implementation log (123 tasks)
+├── WAVE2_PAY_PROGRESS.md                # Pay implementation log (142 tasks)
 ├── implementation_plan.md               # Full 5-wave architecture plan
 └── README.md
 ```
@@ -384,8 +437,8 @@ obscura/
 |-------|-----------|
 | **Blockchain** | Arbitrum Sepolia (Chain ID 421614) |
 | **FHE Protocol** | Fhenix CoFHE Threshold Network · @fhenixprotocol/cofhe-contracts |
-| **Contracts** | Solidity 0.8.25 · FHE.sol · 15 deployed contracts |
-| **Token** | cUSDC (FHERC-20 encrypted stablecoin) · $OBS (governance token) |
+| **Contracts** | Solidity 0.8.25 · FHE.sol · 10 contract files + 5 interfaces |
+| **Tokens** | cUSDC (FHERC-20 encrypted stablecoin) · $OBS (FHERC-20 governance token) |
 | **Frontend** | React 18 · Vite 5 · TypeScript 5.8 · Tailwind 3.4 · Framer Motion |
 | **Web3** | wagmi 3.6 · viem 2.47 · @cofhe/sdk 0.4 |
 | **Design** | Space Grotesk + DM Sans · Dark luxury cyberpunk aesthetic |
@@ -418,7 +471,7 @@ npx hardhat test
 ## What OBSCURA Proves
 
 - **FHE on EVM is production-ready.** 15 smart contracts deployed, processing real encrypted transactions with zero plaintext leakage across payments and governance.
-- **Complex business logic works on ciphertext.** Payroll accumulation, conditional escrows, coercion-resistant voting, stealth addressing — all on encrypted data.
+- **Complex business logic works on ciphertext.** Payroll accumulation, conditional escrows, stealth payments, coercion-resistant voting, insurance underwriting — all on encrypted data.
 - **UX can abstract FHE complexity.** 8-tab PayPage + 5-tab VotePage with async stepper, permit-gated decryption, and "What's Private?" panels. Zero user exposure to ciphertext internals.
 - **Composable encrypted modules scale.** Five modules sharing one FHE infrastructure, one ACL layer, one stablecoin. Each module reinforces the next.
 

@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "shadcn": "^4.5.0"
+  },
+  "dependencies": {
+    "@ui-layouts/mcp": "^0.3.0"
+  }
+}

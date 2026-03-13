@@ -19,7 +19,9 @@ import { initFHEClient, encryptAmount, decryptBalance, getOrCreatePermit } from 
 
 const USDC_DECIMALS = 6;
 
-/** Retry helper for RPC rate-limit errors — exponential backoff */
+/** Retry helper for RPC rate-limit errors on READ calls only (gas estimation, reads).
+ *  NEVER use this to wrap writeContractAsync — that would cause multiple MetaMask popups.
+ */
 async function withRateLimitRetry<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
@@ -41,6 +43,11 @@ async function withRateLimitRetry<T>(
     }
   }
   throw new Error("Max retries exceeded");
+}
+
+/** Fetch gas fees with retry — safe because no wallet popup is involved. */
+async function estimateFeesWithRetry(publicClient: ReturnType<typeof usePublicClient>) {
+  return withRateLimitRetry(() => publicClient!.estimateFeesPerGas());
 }
 
 const USDC_BALANCE_ABI = [
@@ -229,22 +236,21 @@ export function useCUSDCBalance() {
         await new Promise((r) => setTimeout(r, 5000));
       }
 
-      // Step 2: Wrap USDC → cUSDC (with rate-limit retry)
-      const hash = await withRateLimitRetry(async () => {
-        const feeData2 = await publicClient.estimateFeesPerGas();
-        const wrapMaxFee = feeData2.maxFeePerGas
-          ? (feeData2.maxFeePerGas * 130n) / 100n
-          : undefined;
-        return writeContractAsync({
-          address: REINEIRA_CUSDC_ADDRESS,
-          abi: REINEIRA_CUSDC_ABI,
-          functionName: "wrap",
-          args: [address, amount],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas: wrapMaxFee,
-          gas: 600_000n,
-        });
+      // Step 2: Fetch gas (with retry) then wrap USDC → cUSDC exactly ONCE
+      // Do NOT wrap writeContractAsync in retry — each retry would open a new MetaMask popup
+      const feeData2 = await estimateFeesWithRetry(publicClient);
+      const wrapMaxFee = feeData2.maxFeePerGas
+        ? (feeData2.maxFeePerGas * 130n) / 100n
+        : undefined;
+      const hash = await writeContractAsync({
+        address: REINEIRA_CUSDC_ADDRESS,
+        abi: REINEIRA_CUSDC_ABI,
+        functionName: "wrap",
+        args: [address, amount],
+        account: address,
+        chain: arbitrumSepolia,
+        maxFeePerGas: wrapMaxFee,
+        gas: 600_000n,
       });
       await publicClient.waitForTransactionReceipt({ hash });
       await refetch();
@@ -277,22 +283,20 @@ export function useCUSDCBalance() {
       }
       const amount = parseUnits(amountCUSDC, USDC_DECIMALS);
 
-      // Unwrap cUSDC → USDC (with rate-limit retry)
-      const hash = await withRateLimitRetry(async () => {
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFee = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
-        return writeContractAsync({
-          address: REINEIRA_CUSDC_ADDRESS,
-          abi: REINEIRA_CUSDC_ABI,
-          functionName: "unwrap",
-          args: [address, amount],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas: maxFee,
-          gas: 600_000n,
-        });
+      // Fetch gas (with retry) then unwrap ONCE — never retry the wallet write
+      const feeData = await estimateFeesWithRetry(publicClient);
+      const maxFee = feeData.maxFeePerGas
+        ? (feeData.maxFeePerGas * 130n) / 100n
+        : undefined;
+      const hash = await writeContractAsync({
+        address: REINEIRA_CUSDC_ADDRESS,
+        abi: REINEIRA_CUSDC_ABI,
+        functionName: "unwrap",
+        args: [address, amount],
+        account: address,
+        chain: arbitrumSepolia,
+        maxFeePerGas: maxFee,
+        gas: 600_000n,
       });
       await publicClient.waitForTransactionReceipt({ hash });
       await refetch();

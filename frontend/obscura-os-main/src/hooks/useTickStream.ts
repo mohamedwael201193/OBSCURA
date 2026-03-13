@@ -88,9 +88,21 @@ export function useTickStream() {
         // 3. Direct cUSDC transfer: employer → stealth address.
         //    Uses the InEuint64-accepting overload (selector 0xa794ee95).
         const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
+        // Arbitrum Sepolia base fees can be extremely low (~0.024 gwei).
+        // Clamp priority fee to never exceed the fee cap (EIP-1559 invariant).
+        let maxFeePerGas = feeData.maxFeePerGas
           ? (feeData.maxFeePerGas * 150n) / 100n
           : undefined;
+        let maxPriorityFeePerGas = feeData.maxPriorityFeePerGas
+          ? (feeData.maxPriorityFeePerGas * 150n) / 100n
+          : undefined;
+        // Clamp: priorityFee must be ≤ feeCap
+        if (maxFeePerGas !== undefined && maxPriorityFeePerGas !== undefined) {
+          if (maxPriorityFeePerGas > maxFeePerGas) maxPriorityFeePerGas = maxFeePerGas;
+        } else if (maxFeePerGas !== undefined && maxPriorityFeePerGas === undefined) {
+          // No priority fee returned — use the fee cap itself (safe, wastes nothing on L2)
+          maxPriorityFeePerGas = maxFeePerGas;
+        }
 
         const txHash = await writeContractAsync({
           address: REINEIRA_CUSDC_ADDRESS,
@@ -100,6 +112,7 @@ export function useTickStream() {
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas,
+          maxPriorityFeePerGas,
           gas: 1_500_000n,
         });
 
@@ -116,19 +129,63 @@ export function useTickStream() {
         //    Small delay to avoid MetaMask RPC rate-limiting (back-to-back txs).
         await new Promise((r) => setTimeout(r, 2_000));
 
-        const feeData2 = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas2 = feeData2.maxFeePerGas
-          ? (feeData2.maxFeePerGas * 150n) / 100n
-          : undefined;
-
+        // Encode amount into metadata so recipient can auto-sweep without guessing
         const metadata = encodeAbiParameters(
           [
             { name: "streamId", type: "uint256" },
             { name: "escrowId", type: "uint256" },
+            { name: "amount", type: "uint256" },
           ],
-          [params.streamId, 0n]
+          [params.streamId, 0n, params.amount]
         );
-        await writeContractAsync({
+
+        // Re-estimate gas fees after the delay — stale values cause MetaMask to
+        // call eth_maxPriorityFeePerGas itself which often fails on testnet.
+        // Pass BOTH maxFeePerGas + maxPriorityFeePerGas so MetaMask never needs
+        // to make its own estimation (eliminates the "gas error" popup).
+        let maxFeePerGas2: bigint | undefined;
+        let maxPriorityFeePerGas2: bigint | undefined;
+        try {
+          const feeData2 = await publicClient.estimateFeesPerGas();
+          maxFeePerGas2 = feeData2.maxFeePerGas
+            ? (feeData2.maxFeePerGas * 150n) / 100n
+            : undefined;
+          maxPriorityFeePerGas2 = feeData2.maxPriorityFeePerGas
+            ? (feeData2.maxPriorityFeePerGas * 150n) / 100n
+            : undefined;
+        } catch {
+          // RPC rate-limited or offline — use safe Arbitrum Sepolia fallbacks
+          maxFeePerGas2 = 300_000_000n; // 0.3 gwei
+          maxPriorityFeePerGas2 = undefined; // let clamp logic handle it
+        }
+        // EIP-1559 invariant: priorityFee must be ≤ feeCap.
+        // Arbitrum Sepolia base fees are extremely low (~0.024 gwei), so any
+        // fixed-value fallback (e.g. 0.1 gwei) will exceed the cap. Instead,
+        // clamp to maxFeePerGas — on L2 the priority fee has no effect on inclusion.
+        if (maxFeePerGas2 !== undefined) {
+          if (maxPriorityFeePerGas2 === undefined || maxPriorityFeePerGas2 > maxFeePerGas2) {
+            maxPriorityFeePerGas2 = maxFeePerGas2;
+          }
+        }
+
+        // Pre-simulate the announce to catch on-chain reverts before MetaMask popup.
+        // If this fails, MetaMask would show "Review alert" — we throw a clear error instead.
+        try {
+          await publicClient.simulateContract({
+            address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+            abi: OBSCURA_STEALTH_REGISTRY_ABI,
+            functionName: "announce",
+            args: [stealth.stealthAddress, stealth.ephemeralPubKey, stealth.viewTag, metadata],
+            account: address,
+          });
+        } catch (simErr) {
+          throw new Error(
+            `Stealth announcement simulation failed: ${(simErr as Error).message?.slice(0, 120)}. ` +
+            `cUSDC transfer succeeded — try again or use Direct mode.`
+          );
+        }
+
+        const announceTx = await writeContractAsync({
           address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
           abi: OBSCURA_STEALTH_REGISTRY_ABI,
           functionName: "announce",
@@ -136,10 +193,22 @@ export function useTickStream() {
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas: maxFeePerGas2,
+          maxPriorityFeePerGas: maxPriorityFeePerGas2,
           gas: 500_000n,
         });
 
-        return { txHash, escrowId: null, stealth };
+        // Wait for announce receipt so we can detect silent on-chain reverts.
+        // If announce fails the recipient's inbox will never find the payment.
+        const announceReceipt = await publicClient.waitForTransactionReceipt({ hash: announceTx });
+        if (announceReceipt.status === "reverted") {
+          throw new Error(
+            `Stealth announcement reverted on-chain (tx ${announceTx.slice(0, 10)}…). ` +
+            `The cUSDC transfer succeeded but the recipient won't be able to find it in their inbox. ` +
+            `Try again or use Direct mode.`
+          );
+        }
+
+        return { txHash, announceTx, escrowId: null, stealth };
       } catch (e) {
         const msg = (e as Error).message ?? "tick failed";
         setError(msg);

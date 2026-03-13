@@ -1,10 +1,12 @@
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { parseUnits } from "viem";
 import { motion } from "framer-motion";
 import { useStreamList, type StreamSummary } from "@/hooks/useStreamList";
 import { useTickStream } from "@/hooks/useTickStream";
+import { useCUSDCTransfer } from "@/hooks/useCUSDCTransfer";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Play, Clock, Ban, Timer, CheckCircle2, XCircle, Check, Pause, PlayCircle } from "lucide-react";
+import { Play, Clock, Ban, Timer, CheckCircle2, XCircle, Check, Pause, PlayCircle, Shield, Zap } from "lucide-react";
 import { arbitrumSepolia } from "viem/chains";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
@@ -82,10 +84,12 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   const filter = mode === "employer" ? { employer: address } : { recipient: address };
   const { streams, isLoading, refresh } = useStreamList(filter);
   const { tick, isTicking } = useTickStream();
+  const { transfer: directTransfer } = useCUSDCTransfer();
   const { writeContractAsync } = useWriteContract();
   const [tickAmount, setTickAmount] = useState("");
+  const [payMode, setPayMode] = useState<"direct" | "stealth">("direct");
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
-  const [lastPayment, setLastPayment] = useState<{ streamId: string; txHash: string; amount: string } | null>(null);
+  const [lastPayment, setLastPayment] = useState<{ streamId: string; txHash: string; announceTx?: string; amount: string; stealthAddress?: string } | null>(null);
   const [streamAction, setStreamAction] = useState<string | null>(null);
 
   // Track paid cycles in localStorage (on-chain counter won't update since we bypass PayStream)
@@ -129,45 +133,72 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
       toast.error("Not connected");
       return;
     }
-    const amt = BigInt(Math.floor(Number(tickAmount) * 1_000_000));
+
+    // Parse amount using parseUnits for correct decimal handling
+    let amt: bigint;
+    try {
+      amt = parseUnits(tickAmount, 6);
+    } catch {
+      toast.error("Invalid amount — enter a number like 2.5");
+      return;
+    }
     if (amt <= 0n) {
-      toast.error("Enter a per-cycle amount in cUSDC");
+      toast.error("Enter a per-cycle amount in cUSDC (e.g. 2.5)");
       return;
     }
 
-    // Fetch the RECIPIENT's meta-address from the registry
     try {
-      const meta = (await publicClient.readContract({
-        address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
-        abi: OBSCURA_STEALTH_REGISTRY_ABI,
-        functionName: "getMetaAddress",
-        args: [stream.recipientHint],
-      })) as readonly [`0x${string}`, `0x${string}`, bigint];
+      if (payMode === "direct") {
+        // ── Direct mode: send cUSDC straight to recipientHint ──────────────
+        // Encrypted on-chain (cUSDC is FHE) but goes to the actual wallet address
+        // so the recipient can see and use it immediately.
+        const hash = await directTransfer(stream.recipientHint, amt);
+        await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+        incrementLocalPaid(stream.id);
+        setLastLocalTick(stream.id);
+        setLastPayment({
+          streamId: stream.id.toString(),
+          txHash: hash as string,
+          amount: tickAmount,
+        });
+        toast.success(`✅ ${tickAmount} cUSDC sent directly to ${stream.recipientHint.slice(0, 8)}…`);
+        refresh();
+      } else {
+        // ── Stealth mode: derive one-time stealth address, announce ─────────
+        // Maximum privacy — recipient must scan Stealth Inbox to claim.
+        const meta = (await publicClient.readContract({
+          address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+          abi: OBSCURA_STEALTH_REGISTRY_ABI,
+          functionName: "getMetaAddress",
+          args: [stream.recipientHint],
+        })) as readonly [`0x${string}`, `0x${string}`, bigint];
 
-      const [s, v, ts] = meta;
-      if (ts === 0n) {
-        toast.error(
-          `Recipient ${stream.recipientHint.slice(0, 8)}… hasn't registered a stealth meta-address yet. They need to go to the Stealth tab first.`
+        const [s, v, ts] = meta;
+        if (ts === 0n) {
+          toast.error(
+            `Recipient hasn't registered a stealth meta-address yet. Use Direct mode, or ask them to register in the Stealth tab.`
+          );
+          return;
+        }
+
+        const recipientMeta: MetaAddress = { spendingPubKey: s, viewingPubKey: v };
+        const result = await tick({ streamId: stream.id, amount: amt, recipientMeta });
+        incrementLocalPaid(stream.id);
+        setLastLocalTick(stream.id);
+        setLastPayment({
+          streamId: stream.id.toString(),
+          txHash: result.txHash,
+          announceTx: result.announceTx,
+          amount: tickAmount,
+          stealthAddress: result.stealth?.stealthAddress,
+        });
+        toast.success(
+          `✅ ${tickAmount} cUSDC → stealth address. Recipient must scan Stealth Inbox to claim.`
         );
-        return;
+        refresh();
       }
-
-      const recipientMeta: MetaAddress = { spendingPubKey: s, viewingPubKey: v };
-      const result = await tick({ streamId: stream.id, amount: amt, recipientMeta });
-      incrementLocalPaid(stream.id);
-      setLastLocalTick(stream.id);
-      setLastPayment({
-        streamId: stream.id.toString(),
-        txHash: result.txHash,
-        amount: tickAmount,
-      });
-      toast.success(
-        `✅ Sent ${tickAmount} cUSDC to stream #${stream.id.toString()} — stealth transfer + announcement confirmed!`
-      );
-      refresh();
     } catch (e) {
       const msg = (e as Error).message ?? "tick failed";
-      // Truncate for toast but log full error to console for debugging.
       console.error("[tickOne] full error:", e);
       toast.error(msg.length > 200 ? msg.slice(0, 200) + "…" : msg);
     }
@@ -190,20 +221,58 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
       </div>
 
       {mode === "employer" && (
-        <div>
-          <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
-            Amount Per Cycle (cUSDC)
-          </label>
-          <input
-            type="number"
-            value={tickAmount}
-            onChange={(e) => setTickAmount(e.target.value)}
-            placeholder="e.g. 2500"
+        <div className="space-y-3">
+          {/* Amount input */}
+          <div>
+            <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+              Amount Per Cycle (cUSDC)
+            </label>
+            <input
+              type="number"
+              value={tickAmount}
+              onChange={(e) => setTickAmount(e.target.value)}
+            placeholder="e.g. 2.5"
             className="w-full px-3 py-2 bg-background border border-border/50 rounded-md text-xs font-mono"
           />
+          </div>
+
+          {/* Payment mode toggle */}
+          <div>
+            <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+              Payment Mode
+            </label>
+            <div className="flex rounded-md border border-border/50 overflow-hidden text-xs">
+              <button
+                onClick={() => setPayMode("direct")}
+                className={`flex-1 py-2 flex items-center justify-center gap-1.5 transition-colors ${
+                  payMode === "direct"
+                    ? "bg-primary/20 text-primary border-r border-border/50"
+                    : "text-muted-foreground hover:text-foreground border-r border-border/50"
+                }`}
+              >
+                <Zap className="w-3 h-3" /> Direct
+                {payMode === "direct" && <span className="text-[10px] opacity-70">(recommended)</span>}
+              </button>
+              <button
+                onClick={() => setPayMode("stealth")}
+                className={`flex-1 py-2 flex items-center justify-center gap-1.5 transition-colors ${
+                  payMode === "stealth"
+                    ? "bg-emerald-500/10 text-emerald-400"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Shield className="w-3 h-3" /> Stealth
+                {payMode === "stealth" && <span className="text-[10px] opacity-70">(advanced)</span>}
+              </button>
+            </div>
+            <p className="text-[11px] text-muted-foreground/60 mt-1">
+              {payMode === "direct"
+                ? "cUSDC lands directly in the recipient's wallet — they see it immediately."
+                : "cUSDC goes to a derived one-time address. Recipient must scan Stealth Inbox to claim."}
+            </p>
+          </div>
         </div>
       )}
-
       {lastPayment && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -211,17 +280,36 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           className="p-3 bg-green-500/10 border border-green-500/30 rounded-md flex items-start gap-2"
         >
           <Check className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-          <div>
+          <div className="min-w-0">
             <div className="text-sm text-green-400">
               Payment sent! {lastPayment.amount} cUSDC → Stream #{lastPayment.streamId}
             </div>
             <div className="font-mono text-[11px] text-green-400/60 mt-0.5">
               tx: {lastPayment.txHash.slice(0, 14)}…{lastPayment.txHash.slice(-8)}
             </div>
+            {lastPayment.stealthAddress && (
+              <div className="text-[11px] text-emerald-400/80 mt-1 space-y-0.5">
+                <div>Stealth address: {lastPayment.stealthAddress.slice(0, 14)}…{lastPayment.stealthAddress.slice(-6)}</div>
+                {lastPayment.announceTx && (
+                  <div className="flex items-center gap-1">
+                    <Check className="w-2.5 h-2.5 text-emerald-400" />
+                    <span>Announcement confirmed — recipient can now scan Stealth Inbox.</span>
+                  </div>
+                )}
+                {!lastPayment.announceTx && (
+                  <div className="text-amber-400/80">⚠ Announcement may be pending — recipient must wait then rescan.</div>
+                )}
+              </div>
+            )}
+            {!lastPayment.stealthAddress && (
+              <div className="text-[11px] text-green-400/70 mt-1">
+                Direct transfer — cUSDC is now in recipient's wallet (encrypted on-chain, visible after REVEAL).
+              </div>
+            )}
           </div>
           <button
             onClick={() => setLastPayment(null)}
-            className="text-[11px] text-green-400/50 hover:text-green-400 ml-auto"
+            className="text-[11px] text-green-400/50 hover:text-green-400 ml-auto flex-shrink-0"
           >✕</button>
         </motion.div>
       )}
@@ -273,7 +361,8 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                 onClick={() => tickOne(s)}
                 className="w-full py-2 text-sm tracking-[0.2em] uppercase bg-primary/10 text-primary border border-primary/30 rounded-md hover:bg-primary/20 disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                <Play className="w-3 h-3" /> {isTicking ? "Sending…" : "Send Next Cycle"}
+                {payMode === "stealth" ? <Shield className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
+                {isTicking ? "Sending…" : `Send Next Cycle (${payMode})`}
               </motion.button>
             )}
             {mode === "employer" && effectivePending === 0 && !s.paused && (

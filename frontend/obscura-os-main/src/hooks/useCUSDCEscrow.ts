@@ -144,28 +144,26 @@ export function useCUSDCEscrow() {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
         await ensureOperator();
 
-        // Create escrow (with rate-limit retry)
-        const hash = await withRateLimitRetry(async () => {
-          const feeData = await publicClient.estimateFeesPerGas();
-          const maxFeePerGas = feeData.maxFeePerGas
-            ? (feeData.maxFeePerGas * 130n) / 100n
-            : undefined;
+        // Create escrow — fetch gas with retry, then call wallet exactly once
+        const createFeeData = await withRateLimitRetry(() => publicClient.estimateFeesPerGas());
+        const createMaxFee = createFeeData.maxFeePerGas
+          ? (createFeeData.maxFeePerGas * 130n) / 100n
+          : undefined;
 
-          return writeContractAsync({
-            address: REINEIRA_ESCROW_ADDRESS,
-            abi: REINEIRA_ESCROW_ABI,
-            functionName: 'create',
-            args: [
-              encryptedInputs[0], // encrypted owner address
-              encryptedInputs[1], // encrypted amount
-              resolver,
-              resolverData,
-            ],
-            account: address,
-            chain: arbitrumSepolia,
-            maxFeePerGas,
-            gas: 1_200_000n,
-          });
+        const hash = await writeContractAsync({
+          address: REINEIRA_ESCROW_ADDRESS,
+          abi: REINEIRA_ESCROW_ABI,
+          functionName: 'create',
+          args: [
+            encryptedInputs[0], // encrypted owner address
+            encryptedInputs[1], // encrypted amount
+            resolver,
+            resolverData,
+          ],
+          account: address,
+          chain: arbitrumSepolia,
+          maxFeePerGas: createMaxFee,
+          gas: 1_200_000n,
         });
 
         // Parse escrow ID from tx receipt logs
@@ -202,22 +200,21 @@ export function useCUSDCEscrow() {
           console.log('[FHE Escrow Auto-Fund Encrypt]', step)
         );
 
-        const fundHash = await withRateLimitRetry(async () => {
-          const feeData = await publicClient.estimateFeesPerGas();
-          const maxFeePerGas = feeData.maxFeePerGas
-            ? (feeData.maxFeePerGas * 130n) / 100n
-            : undefined;
+        // Auto-fund — fetch gas with retry, then call wallet exactly once
+        const fundFeeData = await withRateLimitRetry(() => publicClient.estimateFeesPerGas());
+        const fundMaxFee = fundFeeData.maxFeePerGas
+          ? (fundFeeData.maxFeePerGas * 130n) / 100n
+          : undefined;
 
-          return writeContractAsync({
-            address: REINEIRA_ESCROW_ADDRESS,
-            abi: REINEIRA_ESCROW_ABI,
-            functionName: 'fund',
-            args: [BigInt(escrowId), fundEncrypted[0]],
-            account: address,
-            chain: arbitrumSepolia,
-            maxFeePerGas,
-            gas: 600_000n,
-          });
+        const fundHash = await writeContractAsync({
+          address: REINEIRA_ESCROW_ADDRESS,
+          abi: REINEIRA_ESCROW_ABI,
+          functionName: 'fund',
+          args: [BigInt(escrowId), fundEncrypted[0]],
+          account: address,
+          chain: arbitrumSepolia,
+          maxFeePerGas: fundMaxFee,
+          gas: 600_000n,
         });
         await publicClient.waitForTransactionReceipt({ hash: fundHash });
         console.log(`[Escrow] Auto-fund tx confirmed: ${fundHash}`);
@@ -250,23 +247,21 @@ export function useCUSDCEscrow() {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
         await ensureOperator();
 
-        // Fund escrow (with rate-limit retry)
-        const hash = await withRateLimitRetry(async () => {
-          const feeData = await publicClient.estimateFeesPerGas();
-          const maxFeePerGas = feeData.maxFeePerGas
-            ? (feeData.maxFeePerGas * 130n) / 100n
-            : undefined;
+        // Fund escrow — fetch gas with retry, then call wallet exactly once
+        const fundFeeData = await withRateLimitRetry(() => publicClient.estimateFeesPerGas());
+        const fundMaxFee = fundFeeData.maxFeePerGas
+          ? (fundFeeData.maxFeePerGas * 130n) / 100n
+          : undefined;
 
-          return writeContractAsync({
-            address: REINEIRA_ESCROW_ADDRESS,
-            abi: REINEIRA_ESCROW_ABI,
-            functionName: 'fund',
-            args: [escrowId, encryptedInputs[0]],
-            account: address,
-            chain: arbitrumSepolia,
-            maxFeePerGas,
-            gas: 600_000n,
-          });
+        const hash = await writeContractAsync({
+          address: REINEIRA_ESCROW_ADDRESS,
+          abi: REINEIRA_ESCROW_ABI,
+          functionName: 'fund',
+          args: [escrowId, encryptedInputs[0]],
+          account: address,
+          chain: arbitrumSepolia,
+          maxFeePerGas: fundMaxFee,
+          gas: 600_000n,
         });
 
         setTxHash(hash);
@@ -289,22 +284,21 @@ export function useCUSDCEscrow() {
       try {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        const hash = await withRateLimitRetry(async () => {
-          const feeData = await publicClient.estimateFeesPerGas();
-          const maxFeePerGas = feeData.maxFeePerGas
-            ? (feeData.maxFeePerGas * 130n) / 100n
-            : undefined;
+        // Redeem — fetch gas with retry, then call wallet exactly once
+        const redeemFeeData = await withRateLimitRetry(() => publicClient.estimateFeesPerGas());
+        const redeemMaxFee = redeemFeeData.maxFeePerGas
+          ? (redeemFeeData.maxFeePerGas * 130n) / 100n
+          : undefined;
 
-          return writeContractAsync({
-            address: REINEIRA_ESCROW_ADDRESS,
-            abi: REINEIRA_ESCROW_ABI,
-            functionName: 'redeem',
-            args: [escrowId],
-            account: address,
-            chain: arbitrumSepolia,
-            maxFeePerGas,
-            gas: 800_000n,
-          });
+        const hash = await writeContractAsync({
+          address: REINEIRA_ESCROW_ADDRESS,
+          abi: REINEIRA_ESCROW_ABI,
+          functionName: 'redeem',
+          args: [escrowId],
+          account: address,
+          chain: arbitrumSepolia,
+          maxFeePerGas: redeemMaxFee,
+          gas: 800_000n,
         });
 
         setTxHash(hash);

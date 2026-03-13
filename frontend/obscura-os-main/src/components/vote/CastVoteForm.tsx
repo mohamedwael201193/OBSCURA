@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Vote, AlertCircle, AlertTriangle, ExternalLink, CheckCircle2 } from "lucide-react";
 import { useAccount, useReadContract, usePublicClient, useWalletClient } from "wagmi";
 import { useEncryptedVote } from "@/hooks/useEncryptedVote";
@@ -94,7 +95,7 @@ export default function CastVoteForm() {
               <div className="text-sm text-yellow-400 font-semibold">OBS Tokens Required</div>
               <div className="text-xs text-yellow-400/70 mt-0.5">
                 You must claim daily $OBS tokens before voting. Go to the{" "}
-                <a href="/pay" className="underline text-primary">Pay app</a> and click "Claim Daily OBS" first.
+                <Link to="/pay" className="underline text-primary">Pay app</Link> and click "Claim Daily OBS" first.
               </div>
             </div>
           </div>

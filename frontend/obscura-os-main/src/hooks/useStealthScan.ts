@@ -15,6 +15,7 @@ export interface ScannedPayment {
   viewTag: `0x${string}`;
   streamId: bigint;
   escrowId: bigint;
+  amount: bigint; // 0n if not encoded in metadata (old payments)
 }
 
 const SCAN_LOOKBACK_BLOCKS = 50_000n; // ~14 days on Arb Sepolia
@@ -86,16 +87,36 @@ export function useStealthScan() {
 
           let streamId = 0n;
           let escrowId = 0n;
+          let amount = 0n;
           try {
-            const [sId, eId] = decodeAbiParameters(
-              [
-                { name: "streamId", type: "uint256" },
-                { name: "escrowId", type: "uint256" },
-              ],
-              args.metadata as `0x${string}`
-            );
-            streamId = sId as bigint;
-            escrowId = eId as bigint;
+            const md = args.metadata as `0x${string}`;
+            if (md && md.length > 2) {
+              // Try 3-field (new: streamId, escrowId, amount)
+              try {
+                const [sId, eId, amt] = decodeAbiParameters(
+                  [
+                    { name: "streamId", type: "uint256" },
+                    { name: "escrowId", type: "uint256" },
+                    { name: "amount", type: "uint256" },
+                  ],
+                  md
+                );
+                streamId = sId as bigint;
+                escrowId = eId as bigint;
+                amount = amt as bigint;
+              } catch {
+                // Fallback: 2-field legacy (streamId, escrowId)
+                const [sId, eId] = decodeAbiParameters(
+                  [
+                    { name: "streamId", type: "uint256" },
+                    { name: "escrowId", type: "uint256" },
+                  ],
+                  md
+                );
+                streamId = sId as bigint;
+                escrowId = eId as bigint;
+              }
+            }
           } catch {
             /* metadata may be empty */
           }
@@ -108,6 +129,7 @@ export function useStealthScan() {
             viewTag,
             streamId,
             escrowId,
+            amount,
           });
         } catch {
           /* skip malformed logs */

@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
-import { BarChart3, Hash, Users, Shield, ExternalLink, Clock, Activity } from "lucide-react";
+import { BarChart3, Hash, Users, Shield, ExternalLink, Clock, Activity, Wifi, Lock } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useProposalCount, useVoterParticipation } from "@/hooks/useProposals";
 import { OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
 import { useVoteActivity } from "@/hooks/useVoteActivity";
+import { useChainTime } from "@/hooks/useChainTime";
 
 const DEPLOY_DATE = "Apr 2025";
 const NETWORK = "Arbitrum Sepolia";
@@ -14,9 +15,11 @@ export default function VoteDashboard() {
   const { data: proposalCount } = useProposalCount();
   const { data: participation } = useVoterParticipation(address as `0x${string}` | undefined);
   const activityEvents = useVoteActivity();
+  const chainTime = useChainTime();
 
-  const now = new Date();
-  const dateLabel = now.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  const chainTimeStr = new Date(Number(chainTime) * 1000).toLocaleTimeString([], {
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
 
   const stats = [
     {
@@ -32,21 +35,32 @@ export default function VoteDashboard() {
       color: "text-green-400",
     },
     {
-      label: "Your Wallet",
-      value: isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : "Not Connected",
-      icon: Users,
-      color: isConnected ? "text-emerald-400" : "text-muted-foreground",
+      label: "Vote Power",
+      value: isConnected ? "1" : "—",
+      icon: Shield,
+      color: "text-violet-400",
     },
     {
-      label: "Today",
-      value: dateLabel,
-      icon: Clock,
+      label: "Chain Time",
+      value: chainTimeStr,
+      icon: Wifi,
       color: "text-amber-400",
+      title: "Arbitrum Sepolia block timestamp — all deadlines are based on this clock",
     },
   ];
 
   return (
     <div className="space-y-4">
+      {/* FHE Privacy Banner */}
+      <div className="flex items-center gap-2 p-3 rounded-lg border border-violet-500/15 bg-violet-500/[0.04]">
+        <Lock className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+        <p className="text-[11px] text-violet-300/70">
+          Your vote is{" "}
+          <span className="text-violet-300 font-semibold">sealed by FHE</span>{" "}
+          — no one sees your choice until results are final. Coercion-resistant by design.
+        </p>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {stats.map((stat, i) => (
           <motion.div
@@ -55,6 +69,7 @@ export default function VoteDashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
             className="pay-card rounded-md p-4 text-center"
+            title={"title" in stat ? (stat as any).title : undefined}
           >
             <stat.icon className={`w-5 h-5 mx-auto mb-2 ${stat.color}`} />
             <div className="font-display text-lg text-foreground">{stat.value}</div>

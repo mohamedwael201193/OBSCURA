@@ -10,27 +10,24 @@
 
 | # | Task | Location | Status |
 |---|------|----------|--------|
-| 1 | Smart Contract — `ObscuraVote.sol` (V4) | `contracts-hardhat/contracts/ObscuraVote.sol` | ✅ Done |
-| 2 | Deploy Task Update | `contracts-hardhat/tasks/deploy.ts` | ✅ Done |
-| 3 | Deploy Script (vote-only) | `contracts-hardhat/scripts/deploy-vote.js` | ✅ Done |
-| 4 | CLI Task Update | `contracts-hardhat/tasks/create-proposal.ts` | ✅ Done |
+| 1 | Smart Contract — `ObscuraVote.sol` (V5 weighted quorum) | `contracts-hardhat/contracts/ObscuraVote.sol` | ✅ Done |
+| 2 | Smart Contract — `ObscuraTreasury.sol` | `contracts-hardhat/contracts/ObscuraTreasury.sol` | ✅ Done |
+| 3 | Smart Contract — `ObscuraRewards.sol` | `contracts-hardhat/contracts/ObscuraRewards.sol` | ✅ Done |
+| 4 | Deploy Scripts | `contracts-hardhat/scripts/` | ✅ Done |
 | 5 | Deployment Record | `contracts-hardhat/deployments/arb-sepolia.json` | ✅ Done |
 | 6 | Frontend Config — contracts.ts | `frontend/obscura-os-main/src/config/contracts.ts` | ✅ Done |
-| 7 | Hook — `useEncryptedVote.ts` | `frontend/obscura-os-main/src/hooks/useEncryptedVote.ts` | ✅ Done |
-| 8 | Hook — `useVoteTally.ts` | `frontend/obscura-os-main/src/hooks/useVoteTally.ts` | ✅ Done |
-| 9 | Hook — `useProposals.ts` | `frontend/obscura-os-main/src/hooks/useProposals.ts` | ✅ Done |
-| 10 | Page — `VotePage.tsx` | `frontend/obscura-os-main/src/pages/VotePage.tsx` | ✅ Done |
-| 11 | Components — `vote/` folder | `frontend/obscura-os-main/src/components/vote/` | ✅ Done |
-|   | — `ProposalList.tsx` | | ✅ Done |
-|   | — `CastVoteForm.tsx` | | ✅ Done |
-|   | — `TallyReveal.tsx` | | ✅ Done |
-|   | — `CreateProposalForm.tsx` | | ✅ Done |
-|   | — `VoteDashboard.tsx` | | ✅ Done |
-|   | — `VotingHistory.tsx` | | ✅ Done |
-|   | — `AdminControls.tsx` | | ✅ Done |
-| 12 | Routing — `App.tsx` | `frontend/obscura-os-main/src/App.tsx` | ✅ Done |
-| 13 | Navigation — `WaveModules.tsx` | `frontend/obscura-os-main/src/components/WaveModules.tsx` | ✅ Done |
-| 14 | Navigation — `ObscuraNav.tsx` | `frontend/obscura-os-main/src/components/ObscuraNav.tsx` | ✅ Done |
+| 7 | Hook — `useDelegation.ts` | `frontend/obscura-os-main/src/hooks/useDelegation.ts` | ✅ Done |
+| 8 | Hook — `useRewards.ts` | `frontend/obscura-os-main/src/hooks/useRewards.ts` | ✅ Done |
+| 9 | Hook — `useTreasury.ts` | `frontend/obscura-os-main/src/hooks/useTreasury.ts` | ✅ Done |
+| 10 | Component — `DelegationPanel.tsx` | `frontend/obscura-os-main/src/components/vote/` | ✅ Done |
+| 11 | Component — `TreasuryPanel.tsx` | `frontend/obscura-os-main/src/components/vote/` | ✅ Done |
+| 12 | Component — `RewardsPanel.tsx` | `frontend/obscura-os-main/src/components/vote/` | ✅ Done |
+| 13 | Component — `VoteSetupGuide.tsx` | `frontend/obscura-os-main/src/components/vote/` | ✅ Done |
+| 14 | Page — `VotePage.tsx` (sidebar + tabs overhaul) | `frontend/obscura-os-main/src/pages/VotePage.tsx` | ✅ Done |
+| 15 | Quorum progress bars — `ProposalList.tsx` | `frontend/obscura-os-main/src/components/vote/` | ✅ Done |
+| 16 | FHE banner + Vote Power stat — `VoteDashboard.tsx` | `frontend/obscura-os-main/src/components/vote/` | ✅ Done |
+| 17 | Treasury timelock presets — Settings tab | `TreasuryPanel.tsx` | ✅ Done |
+| 18 | Election module removed | VotePage + all election files deleted | ✅ Done |
 
 ---
 
@@ -42,7 +39,9 @@
 | ObscuraPay | `0x13e2e3069bF9729C8Cd239F9A5fAAb087c77C33f` |
 | ObscuraEscrow | `0x77d6f4B3250Ef6C88EC409d49dcF4e5a4DdF2187` |
 | ObscuraConditionResolver | `0x8176549dfbE797b1C77316BFac18DAFCe42bEb8c` |
-| **ObscuraVote (V4)** | **`0x5d91B5ccb581F543f7399eea1c65Dfa88b3f9B7a`** |
+| **ObscuraVote (V5 weighted quorum)** | **`0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730`** |
+| **ObscuraTreasury** | **`0x89252ee3f920978EEfDB650760fe56BA1Ede8c08`** |
+| **ObscuraRewards** | **`0x435ea117404553A6868fbe728A7A284FCEd15BC2`** |
 | Deployer | `0xD208aC8327e6479967693Af2F2216e1612D0171A` |
 
 ---
@@ -119,6 +118,108 @@
 ---
 
 ## Changelog
+
+### [2026-04-30] — V5: DAO Governance Full Stack (Treasury, Rewards, Delegation, UX)
+
+#### Contracts
+
+**ObscuraVote V5 — Weighted Quorum Fix**
+- `castVote`: changed `p.totalVoters++` → `p.totalVoters += weight` so quorum counts vote weight (delegated votes included), not just head count
+- Redeployed to `0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730`
+
+**ObscuraTreasury (new contract)**
+- FHE-encrypted DAO vault — encrypted spend requests attached to governance proposals
+- `attachSpend(proposalId, recipient, amountGwei, encAmountGwei)` — stores plaintext gwei for execution + FHE ciphertext for privacy attestation
+- `recordFinalization(proposalId)` — starts configurable timelock (default 48h, admin-adjustable down to 5min for testnet)
+- `executeSpend(proposalId)` — no user input needed; reads `amountGwei` from private storage, transfers to recipient after timelock
+- `setTimelockDuration(seconds)` — admin/owner configurable timelock (min 60s)
+- `setVoteContract(address)` — admin updatable vote contract reference
+- `getSpendRequest` returns `(recipient, executed, exists, timelockEnds, amountGwei)`
+- Deployed to `0x89252ee3f920978EEfDB650760fe56BA1Ede8c08`
+
+**ObscuraRewards (new contract)**
+- FHE-encrypted voter incentive layer — 0.001 ETH per finalized proposal voted on
+- `accrueReward(proposalId)` — adds encrypted reward to voter's `euint64` balance via `FHE.add()`
+- `requestWithdrawal()` — marks withdrawal intent (FHE.allow removed to avoid Fhenix testnet rate limits)
+- `withdraw()` — transfers pending ETH; uses plain `_totalAccruedGwei` accounting for correctness (FHE.sub removed to avoid rate limit)
+- `setVoteContract(address)` — admin updatable
+- `pendingRewardWei(voter)` — voter/admin view of pending reward
+- Deployed to `0x435ea117404553A6868fbe728A7A284FCEd15BC2`
+
+#### Frontend — New Components
+
+**DelegationPanel.tsx** (Tally-style profile)
+- Gradient address avatar, profile header with Vote Weight / Delegators / Voting Mode stats
+- "Delegating To" card with remove button + amber privacy disclosure (delegation address is public by design, vote choice stays FHE-private)
+- "Set/Change Delegate" form with privacy notice
+- "Delegated to You" list from on-chain `DelegateSet` / `DelegateRemoved` events
+- Collapsible "How Delegation Works" section
+
+**TreasuryPanel.tsx**
+- 4 tabs: Spend Requests, Attach Spend, Fund Treasury, Settings (admin only)
+- Spend Requests: per-proposal rows with badge state machine (Vote Pending → Start Timelock → Timelock Xm → Ready to Execute → Executed)
+- Execute button shows actual ETH amount from contract storage — no manual input
+- AsyncStepper milestones on Attach Spend: Encrypting Amount → Submitting TX → Spend Attached
+- Settings: 7 timelock presets (5min/10min/30min/1h/6h/24h/48h)
+- Timelock display: smart formatter (Xs / Xm / Xh instead of always rounding to hours)
+
+**RewardsPanel.tsx**
+- 3 tabs: Earn Rewards, Withdraw, Fund Pool
+- Earn Rewards: per-proposal "Claim" buttons for finalized proposals you voted on
+- Withdraw: 2-step (Request Withdrawal → Withdraw ETH), shows pending amount, pool insufficient warning
+- Fund Pool: anyone can top up the reward pool
+
+**VoteSetupGuide.tsx**
+- 4-step onboarding guide: Get ETH → Claim $OBS → Cast First Vote → Set Delegate
+- Step 2 uses `lastClaim(address) > 0` (not `balanceOf` — FHE encrypted, always falsy)
+- Step 2 action: `scrollIntoView` on `#obs-claim-banner`
+- Steps auto-mark Done from on-chain state
+
+#### Frontend — Modified Components / Pages
+
+**VotePage.tsx**
+- Sidebar renamed: "Vote Power" → "Delegations"
+- Tab type: `"dashboard" | "voting" | "delegate" | "treasury" | "rewards"` (elections removed)
+- `VoteSetupGuide` rendered at top of dashboard
+- `id="obs-claim-banner"` added to $OBS claim banner
+- `handleGuideNavigate` routes guide step actions
+
+**ProposalList.tsx**
+- Quorum progress bar added: amber while < quorum, green when met
+- Bar uses weighted `totalVoters` vs `quorum` from contract
+
+**VoteDashboard.tsx**
+- FHE privacy banner (violet, Lock icon)
+- "Vote Power" stat card (violet Shield icon)
+
+#### Hooks
+
+**useDelegation.ts**
+- `useDelegators(address)`: `getLogs` for `DelegateSet(delegatee=address)` + `DelegateRemoved` events, builds active set, 30s refresh
+
+**useTreasury.ts**
+- `useAttachSpend`: FHE step state (ENCRYPTING → SENDING → READY), passes both plain `amountGwei` and FHE cipher to contract
+- `useExecuteSpend`: takes only `proposalId` (no amount — read from contract)
+- `useRecordFinalization`, `useDepositTreasury`, `useExecuteSpend`, `useSetTimelockDuration`: all include `maxFeePerGas: 200_000_000n, maxPriorityFeePerGas: 1_000_000n`
+- `useTimelockDuration`, `useSetTimelockDuration`
+
+**useRewards.ts**
+- `useAccrueReward`, `useRequestWithdrawal`, `useWithdrawReward`, `useFundRewards`
+- `usePendingReward(address)`: reads `pendingRewardWei`
+- `useRewardAccrued(proposalId, voter)`: double-accrual check
+
+#### Bug Fixes
+- **"Claim $OBS" button scroll**: was calling `onNavigate("dashboard")` while already on dashboard — fixed with `scrollIntoView`
+- **OBS step Done state**: `balanceOf()` on FHE token is always encrypted/falsy — switched to `lastClaim(address) > 0`
+- **ObscuraRewards "Proposal must be finalized"**: rewards contract pointed to old vote contract after vote redeploy — redeployed rewards with new address
+- **ObscuraTreasury "Start Timelock" reverted**: treasury pointed to old vote contract — redeployed treasury
+- **Timelock badge "1h" for 5-min timelock**: `Math.ceil(300/3600) = 1` rounding — fixed with tiered formatter (Xs/Xm/Xh)
+- **Deposit gas error**: `maxFeePerGas` missing from deposit/executeSpend — fixed
+- **Withdraw rate limit**: `FHE.sub(enc,enc)` + `FHE.allow()` in withdrawal path hit Fhenix testnet rate limit — both removed (plain accounting drives ETH transfers)
+- **Execute Spend required manual FHE amount**: user had to guess encrypted amount — fixed by storing `amountGwei` in contract private storage and reading it in `executeSpend`
+- **"Your Balance 0 ETH / FHE-encrypted"**: contradictory labels — renamed to "Pending Reward / Claimable after accrual"
+
+
 
 ### [2025-04-19] — V4 Hotfix: Cast Vote Bug + FHE Speed
 **Frontend Changes:**

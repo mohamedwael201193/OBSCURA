@@ -333,6 +333,10 @@
 }
 .pay-select:hover,
 .pay-select:focus { border-color: rgba(52, 211, 153, 0.45); }
+.pay-select option {
+  background-color: #0d0d11;
+  color: #e8e8e8;
+}
 
 /* ─── Buttons ──────────────────────────────────────────────────────────────── */
 .btn-pay {

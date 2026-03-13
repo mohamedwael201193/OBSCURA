@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Ban, Clock, Loader2, AlertCircle, CheckCircle } from "lucide-react";
-import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { Ban, Clock, Loader2, AlertCircle, CheckCircle, ExternalLink } from "lucide-react";
+import { useWriteContract, useAccount } from "wagmi";
+import { arbitrumSepolia } from "viem/chains";
 import { OBSCURA_VOTE_ADDRESS, OBSCURA_VOTE_ABI } from "@/config/contracts";
 import { useProposalCount, useProposal } from "@/hooks/useProposals";
 import { useChainTime } from "@/hooks/useChainTime";
@@ -8,10 +9,13 @@ import { useChainTime } from "@/hooks/useChainTime";
 function ProposalAdminRow({ index }: { index: number }) {
   const { proposal } = useProposal(BigInt(index));
   const [extendHours, setExtendHours] = useState("24");
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+  const [feedbackTxHash, setFeedbackTxHash] = useState<string | null>(null);
 
   const { writeContractAsync: cancelAsync, isPending: cancelling } = useWriteContract();
   const { writeContractAsync: extendAsync, isPending: extending } = useWriteContract();
+  const { address } = useAccount();
 
   // Must be called before any early return to satisfy Rules of Hooks
   const now = useChainTime();
@@ -21,35 +25,42 @@ function ProposalAdminRow({ index }: { index: number }) {
   const ended = proposal.deadline <= now;
 
   async function handleCancel() {
-    setFeedback(null);
+    setFeedbackMsg(null); setFeedbackTxHash(null);
     try {
       await cancelAsync({
         address: OBSCURA_VOTE_ADDRESS as `0x${string}`,
         abi: OBSCURA_VOTE_ABI,
         functionName: "cancelProposal",
         args: [BigInt(index)],
+        account: address,
+        chain: arbitrumSepolia,
         gas: 500_000n,
       });
-      setFeedback("Cancel TX sent");
+      setFeedbackSuccess(true); setFeedbackMsg("Proposal cancelled.");
     } catch (err: any) {
-      setFeedback(err.shortMessage ?? err.message ?? "Cancel failed");
+      setFeedbackSuccess(false); setFeedbackMsg(err.shortMessage ?? err.message ?? "Cancel failed");
     }
   }
 
   async function handleExtend() {
-    setFeedback(null);
-    const newDeadline = BigInt(Math.floor(Date.now() / 1000) + Number(extendHours) * 3600);
+    setFeedbackMsg(null); setFeedbackTxHash(null);
+    const newDeadline = now + BigInt(Number(extendHours) * 3600);
     try {
-      await extendAsync({
+      const hash = await extendAsync({
         address: OBSCURA_VOTE_ADDRESS as `0x${string}`,
         abi: OBSCURA_VOTE_ABI,
         functionName: "extendDeadline",
         args: [BigInt(index), newDeadline],
+        account: address,
+        chain: arbitrumSepolia,
         gas: 500_000n,
       });
-      setFeedback("Extend TX sent");
+      setFeedbackSuccess(true);
+      setFeedbackMsg("Deadline extended.");
+      setFeedbackTxHash(hash);
     } catch (err: any) {
-      setFeedback(err.shortMessage ?? err.message ?? "Extend failed");
+      setFeedbackSuccess(false);
+      setFeedbackMsg(err.shortMessage ?? err.message ?? "Extend failed");
     }
   }
 
@@ -99,10 +110,20 @@ function ProposalAdminRow({ index }: { index: number }) {
         )}
       </div>
 
-      {feedback && (
-        <div className={`text-xs flex items-center gap-1 ${feedback.includes("sent") ? "text-green-400" : "text-red-400"}`}>
-          {feedback.includes("sent") ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
-          {feedback}
+      {feedbackMsg && (
+        <div className={`text-xs flex items-center gap-1 ${feedbackSuccess ? "text-green-400" : "text-red-400"}`}>
+          {feedbackSuccess ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+          {feedbackMsg}
+          {feedbackSuccess && feedbackTxHash && (
+            <a
+              href={`https://sepolia.arbiscan.io/tx/${feedbackTxHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-400 hover:underline inline-flex items-center"
+            >
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
         </div>
       )}
     </div>

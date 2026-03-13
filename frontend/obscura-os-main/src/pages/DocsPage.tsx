@@ -102,12 +102,24 @@ const deployedContracts = [
     purpose: "On-chain policy registration and lookup for insurance coverage",
     explorer: "https://sepolia.arbiscan.io/address/0xf421363B642315BD3555dE2d9BD566b7f9213c8E",
   },
-  // ── Wave 2 — ObscuraVote ──
+  // ── Wave 2 — ObscuraVote + Treasury + Rewards ──
   {
-    name: "ObscuraVote (V4)",
-    address: "0x5d91B5ccb581F543f7399eea1c65Dfa88b3f9B7a",
-    purpose: "Encrypted governance — FHE.add() tallies, coercion-resistant revoting, time-locked results, multi-option polls",
-    explorer: "https://sepolia.arbiscan.io/address/0x5d91B5ccb581F543f7399eea1c65Dfa88b3f9B7a",
+    name: "ObscuraVote (V5)",
+    address: "0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730",
+    purpose: "Encrypted governance — FHE.add() tallies, coercion-resistant revoting, weighted quorum, delegation with on-chain event log",
+    explorer: "https://sepolia.arbiscan.io/address/0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730",
+  },
+  {
+    name: "ObscuraTreasury",
+    address: "0x89252ee3f920978EEfDB650760fe56BA1Ede8c08",
+    purpose: "DAO-controlled ETH vault — FHE-encrypted spend requests attached to proposals, configurable timelock, single-click execute",
+    explorer: "https://sepolia.arbiscan.io/address/0x89252ee3f920978EEfDB650760fe56BA1Ede8c08",
+  },
+  {
+    name: "ObscuraRewards",
+    address: "0x435ea117404553A6868fbe728A7A284FCEd15BC2",
+    purpose: "Voter incentive pool — FHE-encrypted reward accumulation via FHE.add(), plain ETH withdrawal, 0.001 ETH per finalized proposal",
+    explorer: "https://sepolia.arbiscan.io/address/0x435ea117404553A6868fbe728A7A284FCEd15BC2",
   },
   // ── Wave 3 — Pay privacy hardening ──
   {
@@ -309,7 +321,7 @@ const DocsPage = () => {
 
               <div className="mt-8 pt-6 border-t border-border/30 space-y-1">
                 <div className="text-xs tracking-[0.15em] uppercase text-muted-foreground/40 mb-2">
-                  Deployed Contracts · 8 live
+                  Deployed Contracts · 10 live
                 </div>
                 {deployedContracts.map((c) => (
                   <a
@@ -344,7 +356,7 @@ const DocsPage = () => {
                 OBSCURA is the dark operating system for onchain organizations — a five-module privacy platform powered by <strong className="text-foreground">Fhenix CoFHE</strong> (Coprocessor Fully Homomorphic Encryption). All arithmetic executes directly on ciphertext. Data never decrypts on-chain. <em>See only what you're meant to.</em>
               </p>
               <p className="text-sm font-body text-muted-foreground leading-relaxed mb-8 max-w-2xl">
-                Waves 1–2 are live on Arbitrum Sepolia with 12+ deployed contracts: encrypted stablecoins (cUSDC), payroll streams to stealth addresses, confidential escrows, payroll insurance, cross-chain USDC bridging, and coercion-resistant governance. Waves 3–5 (Vault, Trust, Mind) extend the stack to MEV-protected DeFi, selective compliance, and privacy-preserving AI inference.
+                Waves 1–2 are live on Arbitrum Sepolia with 15+ deployed contracts: encrypted stablecoins (cUSDC), payroll streams to stealth addresses, confidential escrows, payroll insurance, cross-chain USDC bridging, coercion-resistant governance with treasury and voter rewards, and on-chain delegation. Waves 3–5 (Vault, Trust, Mind) extend the stack to MEV-protected DeFi, selective compliance, and privacy-preserving AI inference.
               </p>
 
               <div className="grid md:grid-cols-3 gap-4 mb-8">
@@ -471,39 +483,88 @@ const DocsPage = () => {
                 </span>
               </div>
               <h2 className="font-display text-2xl text-foreground tracking-tight mb-3">
-                ObscuraVote — <span className="text-primary text-glow">Coercion-Resistant Encrypted Governance</span>
+                ObscuraVote — <span className="text-primary text-glow">Full DAO Governance Stack</span>
               </h2>
               <p className="text-sm font-body text-muted-foreground mb-8 max-w-2xl">
-                Fully encrypted on-chain voting. Ballots stored as FHE ciphertexts. Tallied via FHE.add() without revealing individual votes. Anti-coercion revoting until deadline. Multi-option polls with encrypted results revealed only after finalization.
+                Three contracts and a full-featured 5-tab VotePage. Encrypted ballots, FHE-gated treasury, voter rewards, on-chain delegation, and a guided onboarding flow. Individual votes are never revealed — only the aggregate tally decrypts after finalization.
               </p>
 
               <div className="space-y-5">
-                <div className="glass-panel rounded-md overflow-hidden">
-                  <div className="p-4 border-b border-border/50 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="w-4 h-4 text-primary" />
-                      <span className="font-display text-sm tracking-wider text-foreground">ObscuraVote V4</span>
+                {[
+                  {
+                    title: "ObscuraVote V5 — Weighted Quorum",
+                    contract: "ObscuraVote.sol",
+                    items: [
+                      "createProposal() — token-gated (requires lastClaim > 0), up to 10 options, configurable quorum and deadline",
+                      "castVote(proposalId, optionIndex, InEuint64) — FHE.add() accumulates into per-option encrypted tally; only sender knows their choice",
+                      "Coercion resistance — revote before deadline; FHE.select() swaps old ballot for new. Observers see identical-looking transactions.",
+                      "finalizeVote() — FHE.allowPublic() reveals only aggregate tally after deadline; individual ballots encrypted forever",
+                      "Weighted quorum — p.totalVoters += weight (not ++); delegated weight counts correctly toward quorum threshold",
+                      "Delegation — delegateTo(address), undelegate(), getVoteWeight(address); DelegateSet + DelegateRemoved events",
+                      "Configurable timelock — setTimelockDuration(seconds) for treasury spend release",
+                    ],
+                  },
+                  {
+                    title: "ObscuraTreasury — FHE-Encrypted Spend Vault",
+                    contract: "ObscuraTreasury.sol",
+                    items: [
+                      "attachSpend(proposalId, recipient, amountGwei, encAmountGwei) — stores both plaintext gwei (for execution) and FHE ciphertext (for on-chain privacy attestation)",
+                      "recordFinalization(proposalId) — called after vote passes; starts configurable timelock (5min–48h, default 48h)",
+                      "executeSpend(proposalId) — single click, no manual amount; reads amountGwei from private contract storage and transfers ETH to recipient",
+                      "getSpendRequest(proposalId) → (recipient, executed, exists, timelockEnds, amountGwei) — full spend request view",
+                      "setTimelockDuration(seconds) — admin adjustable; 7 presets exposed in Settings tab UI",
+                      "Badge state machine: Vote Pending → Start Timelock → Timelock Xm → Ready to Execute → Executed",
+                    ],
+                  },
+                  {
+                    title: "ObscuraRewards — Voter Incentive Pool",
+                    contract: "ObscuraRewards.sol",
+                    items: [
+                      "accrueReward(proposalId) — 0.001 ETH per finalized proposal the voter participated in; FHE.add() accumulates encrypted balance",
+                      "requestWithdrawal() — marks intent, burns pending reward counter",
+                      "withdraw() — transfers ETH to caller; plain accounting (FHE.sub removed — Fhenix testnet rate limit workaround)",
+                      "pendingRewardWei(voter) — voter or admin view of claimable amount",
+                      "setVoteContract(address) — admin updatable to allow redeployment without losing reward history",
+                    ],
+                  },
+                ].map((section) => (
+                  <div key={section.title} className="glass-panel rounded-md overflow-hidden">
+                    <div className="p-4 border-b border-border/50 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="w-4 h-4 text-primary" />
+                        <span className="font-display text-sm tracking-wider text-foreground">{section.title}</span>
+                      </div>
+                      <code className="font-mono text-xs text-muted-foreground/40 bg-secondary/50 px-2 py-0.5 rounded-md">
+                        {section.contract}
+                      </code>
                     </div>
-                    <code className="font-mono text-xs text-muted-foreground/40 bg-secondary/50 px-2 py-0.5 rounded-md">
-                      ObscuraVote.sol
-                    </code>
+                    <ul className="p-4 space-y-2">
+                      {section.items.map((item) => (
+                        <li key={item} className="flex items-start gap-2 text-xs font-body text-muted-foreground">
+                          <span className="text-primary/60 mt-0.5 flex-shrink-0">›</span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="p-4 space-y-2">
-                    {[
-                      "createPoll() — owner defines options, deadline, and metadata. All tally slots initialized as euint64 zeros.",
-                      "castVote(pollId, optionIndex, InEuint64 weight) — ballot encrypted client-side, FHE.add() accumulates into tally without revealing choice",
-                      "Coercion resistance — voters can re-cast before deadline; previous vote subtracted, new one added. Observer cannot distinguish revote from first vote.",
-                      "finalizePoll() — after deadline, admin calls finalize. FHE.allowPublic() reveals aggregate tallies. Individual ballots remain encrypted forever.",
-                      "Multi-option support — up to 10 options per poll, each with independent encrypted tally counter",
-                      "Token-weighted voting — optional euint64 weight parameter for governance token-based influence",
-                      "5-tab VotePage frontend — Create, Active, My Votes, Results, History tabs with full lifecycle UX",
-                    ].map((item) => (
-                      <li key={item} className="flex items-start gap-2 text-xs font-body text-muted-foreground">
-                        <span className="text-primary/60 mt-0.5 flex-shrink-0">›</span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+                ))}
+              </div>
+
+              <div className="mt-6 glass-panel rounded-md p-5">
+                <div className="text-xs tracking-[0.15em] uppercase text-primary mb-4">◆ Frontend — 5-Tab VotePage</div>
+                <div className="grid md:grid-cols-5 gap-3">
+                  {[
+                    { tab: "Dashboard", desc: "Setup guide, stats, privacy model, FHE ops" },
+                    { tab: "Proposals", desc: "Browse, filter, vote, revote with quorum bars" },
+                    { tab: "Delegations", desc: "Delegate vote power, see who delegated to you" },
+                    { tab: "Treasury", desc: "Attach spends, start/execute timelock, fund vault" },
+                    { tab: "Participation", desc: "Claim voter rewards, request withdrawal" },
+                  ].map((t) => (
+                    <div key={t.tab} className="bg-secondary/20 rounded-md p-3 border border-border/30">
+                      <div className="text-xs text-primary mb-1">{t.tab}</div>
+                      <div className="text-xs font-body text-muted-foreground">{t.desc}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </section>

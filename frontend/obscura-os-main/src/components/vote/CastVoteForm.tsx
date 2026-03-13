@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Vote, AlertCircle, AlertTriangle, ExternalLink, CheckCircle2, ShieldCheck, Timer, Eye } from "lucide-react";
+import { Vote, AlertCircle, AlertTriangle, ExternalLink, CheckCircle2, ShieldCheck, Timer, Eye, Users } from "lucide-react";
 import { useAccount, useReadContract, usePublicClient, useWalletClient } from "wagmi";
 import { useEncryptedVote } from "@/hooks/useEncryptedVote";
 import { useProposalCount, useProposal, useProposalOptions, useHasVoted, CATEGORY_LABELS } from "@/hooks/useProposals";
@@ -9,8 +9,9 @@ import { OBSCURA_TOKEN_ABI, OBSCURA_TOKEN_ADDRESS, OBSCURA_VOTE_ABI, OBSCURA_VOT
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { FHEStepStatus } from "@/lib/constants";
 import { initFHEClient } from "@/lib/fhe";
-import FHEOperationsVisual, { buildVoteOps, buildRevoteOps } from "@/components/vote/FHEOperationsVisual";
+
 import { useChainTime } from "@/hooks/useChainTime";
+import { useDelegateTo, useVoteWeight } from "@/hooks/useDelegation";
 
 /** Dropdown option that fetches its own proposal data */
 function ProposalOption({ index, now }: { index: number; now: bigint }) {
@@ -35,6 +36,12 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
   const { data: count } = useProposalCount();
   const proposalCount = Number(count ?? 0);
   const now = useChainTime();
+
+  // Delegation state — must be called before any returns to satisfy Rules of Hooks
+  const { data: delegateTo } = useDelegateTo(address);
+  const { data: voteWeight } = useVoteWeight(address);
+  const hasDelegated = !!delegateTo && delegateTo !== "0x0000000000000000000000000000000000000000";
+  const effectiveWeight = voteWeight !== undefined ? Number(voteWeight) : 1;
 
   // Check if user has claimed OBS tokens
   const { data: lastClaimRaw } = useReadContract({
@@ -77,6 +84,8 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
   const hasSelection = selectedProposal !== '';
   const isActive = hasSelection && proposal?.exists && !proposal.isCancelled && now < proposal.deadline && !proposal.isFinalized;
   const isOwnProposal = !!(address && proposal?.creator && address.toLowerCase() === proposal.creator.toLowerCase());
+  // Ended but not yet finalized
+  const isEndedNotFinalized = hasSelection && proposal?.exists && !proposal.isCancelled && !proposal.isFinalized && now >= proposal.deadline;
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (selectedOption === null || !selectedProposal || proposalId === undefined) return;
@@ -122,6 +131,31 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
                 You must claim daily $OBS tokens before voting. Go to the{" "}
                 <Link to="/pay" className="underline text-emerald-400">Pay app</Link> and click "Claim Daily OBS" first.
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delegation banner */}
+        {isConnected && hasDelegated && (
+          <div className="flex items-start gap-2 p-3 bg-violet-500/5 border border-violet-500/20 rounded-md">
+            <Users className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <div className="text-violet-300 font-semibold mb-0.5">Vote delegated</div>
+              <div className="text-violet-400/70">
+                You have delegated your vote. Your delegate votes on your behalf with combined weight.
+                Go to the <span className="font-semibold text-violet-300">Delegation</span> tab to undelegate if you want to vote directly.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Vote weight badge */}
+        {isConnected && !hasDelegated && effectiveWeight > 1 && (
+          <div className="flex items-center gap-2 p-3 bg-violet-500/5 border border-violet-500/20 rounded-md">
+            <Users className="w-4 h-4 text-violet-400 shrink-0" />
+            <div className="text-xs text-violet-300">
+              Your vote weight: <span className="font-bold text-white">{effectiveWeight}</span>
+              <span className="text-violet-400/70 ml-1">({effectiveWeight - 1} delegate{effectiveWeight - 1 !== 1 ? "s" : ""} have trusted you)</span>
             </div>
           </div>
         )}
@@ -176,8 +210,18 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
                 {proposal.isFinalized ? "(Finalized)" : "(Ended)"}
               </span>
             )}
-            {alreadyVoted && (
-              <div className="text-xs text-emerald-400 mt-1">
+            {isEndedNotFinalized && (
+              <div className="flex items-start gap-2 p-3 bg-amber-400/5 border border-amber-400/20 rounded-md">
+                <Timer className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-400/80">
+                  <span className="font-semibold text-amber-400">Voting period ended.</span> This proposal hasn’t been finalized yet.
+                  Switch to the <span className="font-semibold">Results</span> tab to finalize and reveal the tally.
+                </div>
+              </div>
+            )}
+
+            {alreadyVoted && isActive && (
+              <div className="text-xs text-emerald-400">
                 You have already voted — submitting will change your vote (anti-coercion revote)
               </div>
             )}
@@ -272,15 +316,6 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
               </div>
             </div>
 
-            {/* FHE operations that just ran */}
-            <div className="p-3 bg-secondary/20 rounded-md border border-border/20">
-              <FHEOperationsVisual
-                ops={wasRevote ? buildRevoteOps(proposal?.numOptions ?? 2) : buildVoteOps(proposal?.numOptions ?? 2)}
-                title="FHE Operations That Ran"
-                animate
-              />
-            </div>
-
             {/* Verify prompt */}
             <div className="flex items-center gap-2 p-3 bg-emerald-400/5 border border-emerald-400/20 rounded-lg">
               <Eye className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -322,11 +357,29 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
           </div>
         )}
 
-        {/* Submit */}
+        {/* Confirmation step: shown after option selected, before submit */}
+        {hasSelection && isActive && selectedOption !== null && !txHash && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-start gap-3 p-3 rounded-lg bg-emerald-400/5 border border-emerald-400/20 text-xs"
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="text-emerald-400 font-semibold mb-0.5">Ready to cast your encrypted vote?</div>
+              <div className="text-muted-foreground/70">
+                You’ve selected <span className="text-foreground font-semibold">“{(optionLabels as string[])?.[selectedOption] ?? `Option ${selectedOption}`}”</span> on <span className="text-foreground/80">{proposal?.title}</span>.
+                Once confirmed, the ballot is sealed — only you can see your choice, even after results are revealed.
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Submit / Confirm */}
         {!txHash && (
           <motion.button
             type="submit"
-            disabled={!isConnected || !hasClaimed || !isActive || isOwnProposal || selectedOption === null || isTxPending || status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
+            disabled={!isConnected || !hasClaimed || hasDelegated || !isActive || isOwnProposal || selectedOption === null || isTxPending || status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
             whileHover={{ scale: 1.005 }}
             whileTap={{ scale: 0.99 }}
             className="btn-pay btn-pay-emerald w-full py-2.5"

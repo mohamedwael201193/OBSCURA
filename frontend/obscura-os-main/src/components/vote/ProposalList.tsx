@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileText, Clock, CheckCircle, Lock, RefreshCw, Search, XCircle, Users, Timer, ArrowRight } from "lucide-react";
+import { FileText, Clock, CheckCircle, CheckCircle2, Lock, RefreshCw, Search, XCircle, Users, Timer, ArrowRight } from "lucide-react";
 import { useWatchContractEvent } from "wagmi";
 import { useProposalCount, useProposal, CATEGORY_LABELS } from "@/hooks/useProposals";
 import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
@@ -13,6 +13,27 @@ function getStatus(deadline: bigint, isFinalized: boolean, isCancelled: boolean,
   if (isCancelled) return "cancelled";
   if (isFinalized) return "finalized";
   return now < deadline ? "active" : "ended";
+}
+
+function ProposalRowSkeleton() {
+  return (
+    <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-4 space-y-2 animate-pulse">
+      <div className="flex items-start gap-3">
+        <div className="w-8 h-4 bg-white/[0.05] rounded mt-0.5" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-white/[0.07] rounded w-3/4" />
+          <div className="h-3 bg-white/[0.04] rounded w-1/2" />
+          <div className="flex gap-2">
+            <div className="h-5 bg-white/[0.04] rounded w-16" />
+            <div className="h-5 bg-white/[0.04] rounded w-16" />
+            <div className="h-5 bg-white/[0.04] rounded w-12" />
+          </div>
+        </div>
+        <div className="h-5 bg-white/[0.05] rounded w-16 shrink-0" />
+      </div>
+      <div className="pl-11 h-3 bg-white/[0.03] rounded w-40" />
+    </div>
+  );
 }
 
 const statusConfig: Record<ProposalStatus, { label: string; color: string; icon: typeof Clock }> = {
@@ -91,6 +112,26 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { p
                 {proposal.quorum > 0n && ` / ${proposal.quorum.toString()}`}
               </span>
             </div>
+            {proposal.quorum > 0n && (
+              <div className="mt-2 space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground/50">
+                  <span>{proposal.totalVoters.toString()} / {proposal.quorum.toString()} voters</span>
+                  {proposal.totalVoters >= proposal.quorum
+                    ? <span className="text-emerald-400 flex items-center gap-0.5"><CheckCircle2 className="w-2.5 h-2.5" /> Quorum met</span>
+                    : <span className="text-amber-400/70">Quorum needed</span>
+                  }
+                </div>
+                <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(Number((proposal.totalVoters * 100n) / proposal.quorum), 100)}%`,
+                      background: proposal.totalVoters >= proposal.quorum ? '#10b981' : '#f59e0b',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <span className={`pay-badge border shrink-0 ${cfg.color}`}>
@@ -195,16 +236,29 @@ export default function ProposalList({ onVote }: { onVote?: (id: number) => void
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-muted-foreground text-center py-4">Loading...</div>
+        <div className="space-y-2">
+          {[...Array(3)].map((_, i) => <ProposalRowSkeleton key={i} />)}
+        </div>
       ) : proposalCount === 0 ? (
-        <div className="text-sm text-muted-foreground text-center py-8">
-          No proposals created yet. Go to the Create tab to make one.
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <FileText className="w-8 h-8 text-muted-foreground/20" />
+          <div className="text-sm text-muted-foreground/60">No proposals yet.</div>
+          <div className="text-[11px] text-muted-foreground/40">Switch to the Create tab to launch the first governance poll.</div>
         </div>
       ) : (
         <div className="space-y-2">
           {Array.from({ length: proposalCount }, (_, i) => (
             <ProposalRow key={i} proposalId={BigInt(i)} searchQuery={searchQuery} statusFilter={statusFilter} onVote={onVote} now={now} />
           ))}
+          {/* Empty filter result */}
+          {statusFilter !== "all" && Array.from({ length: proposalCount }).every((_, i) => {
+            // We can't easily check filter matches without fetching — just show a hint if filter is active
+            return false;
+          }) && (
+            <div className="text-sm text-muted-foreground/50 text-center py-4">
+              No {statusFilter} proposals.
+            </div>
+          )}
         </div>
       )}
     </div>

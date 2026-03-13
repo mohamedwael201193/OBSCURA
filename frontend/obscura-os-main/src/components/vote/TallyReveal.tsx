@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Eye, BarChart3, AlertCircle, Unlock, ExternalLink, Download, Ban, Trophy, ShieldCheck, User, Users } from "lucide-react";
+import { Eye, BarChart3, AlertCircle, Unlock, ExternalLink, Download, Ban, Trophy, ShieldCheck, User, Users, Timer, Clock } from "lucide-react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { useProposalCount, useProposal, useProposalOptions, CATEGORY_LABELS } from "@/hooks/useProposals";
-import { useVoteTally, TallyResult } from "@/hooks/useVoteTally";
+import { useVoteTally, type TallyResult as TallyResultData } from "@/hooks/useVoteTally";
 import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
 import { arbitrumSepolia } from "viem/chains";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { FHEStepStatus } from "@/lib/constants";
-import FHEOperationsVisual, { buildFinalizeOps } from "@/components/vote/FHEOperationsVisual";
+
 import { useChainTime } from "@/hooks/useChainTime";
 
 const BAR_COLORS = [
@@ -16,13 +16,43 @@ const BAR_COLORS = [
   "bg-purple-400/60", "bg-pink-400/60", "bg-cyan-400/60", "bg-orange-400/60",
   "bg-emerald-400/60", "bg-indigo-400/60",
 ];
+
+type TallyFilter = "all" | "action" | "active" | "finalized" | "cancelled";
+
+/** Live countdown to when a proposal can be finalized. */
+function DeadlineCountdown({ deadline }: { deadline: bigint }) {
+  const [remaining, setRemaining] = useState("");
+  useEffect(() => {
+    function update() {
+      const diff = Number(deadline) - Math.floor(Date.now() / 1000);
+      if (diff <= 0) { setRemaining(""); return; }
+      const d = Math.floor(diff / 86400);
+      const h = Math.floor((diff % 86400) / 3600);
+      const m = Math.floor((diff % 3600) / 60);
+      const s = diff % 60;
+      if (d > 0) setRemaining(`${d}d ${h}h ${m}m`);
+      else if (h > 0) setRemaining(`${h}h ${m}m ${s}s`);
+      else setRemaining(`${m}m ${s}s`);
+    }
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [deadline]);
+  if (!remaining) return null;
+  return (
+    <span className="inline-flex items-center gap-1 text-emerald-400/70">
+      <Clock className="w-3 h-3" />
+      <span className="font-mono">{remaining}</span>
+    </span>
+  );
+}
 const TEXT_COLORS = [
   "text-green-400", "text-red-400", "text-blue-400", "text-yellow-400",
   "text-purple-400", "text-pink-400", "text-cyan-400", "text-orange-400",
   "text-emerald-400", "text-indigo-400",
 ];
 
-function exportCSV(title: string, options: string[], tallies: TallyResult[]) {
+function exportCSV(title: string, options: string[], tallies: TallyResultData[]) {
   const rows = [["Option", "Votes"]];
   tallies.forEach((t, i) => {
     rows.push([options[i] ?? `Option ${i}`, t.votes.toString()]);
@@ -39,7 +69,7 @@ function exportCSV(title: string, options: string[], tallies: TallyResult[]) {
   URL.revokeObjectURL(url);
 }
 
-function TallyResult({ proposalId }: { proposalId: bigint }) {
+function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: TallyFilter }) {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { proposal, refetch: refetchProposal } = useProposal(proposalId);
@@ -67,6 +97,13 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
   const canFinalize = deadlinePassed && !isFinalized && !isCancelled;
   const quorumMet = proposal.quorum === 0n || proposal.totalVoters >= proposal.quorum;
   const isCreator = !!(address && proposal.creator && address.toLowerCase() === proposal.creator.toLowerCase());
+
+  // Apply filter — return null if this proposal doesn't match the selected tab
+  // "action" = proposals the connected user needs to act on (creator-only finalize)
+  if (filter === "action" && !(canFinalize && quorumMet && isCreator)) return null;
+  if (filter === "finalized" && !isFinalized) return null;
+  if (filter === "active" && (deadlinePassed || isCancelled || isFinalized)) return null;
+  if (filter === "cancelled" && !isCancelled) return null;
 
   const total = tallies ? tallies.reduce((sum, t) => sum + t.votes, 0n) : null;
   const maxVotes = tallies ? tallies.reduce((max, t) => t.votes > max ? t.votes : max, 0n) : 0n;
@@ -148,8 +185,9 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
       )}
 
       {!isCancelled && !isFinalized && !deadlinePassed && (
-        <div className="text-xs text-muted-foreground/50">
-          Voting still active. Results available after the deadline.
+        <div className="text-xs text-muted-foreground/50 flex items-center gap-2">
+          Voting active — results available after deadline.
+          <DeadlineCountdown deadline={proposal.deadline} />
         </div>
       )}
 
@@ -163,14 +201,14 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
             <div className="flex items-start gap-2 p-2.5 rounded-md bg-white/[0.025] border border-white/[0.06] text-xs text-muted-foreground/70">
               {isCreator ? (
                 <><User className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                <span><span className="text-emerald-400 font-semibold">You created this proposal.</span> Finalizing publishes the encrypted tallies — only you know the actual votes until someone decrypts. Anyone can finalize, but as the creator it's your responsibility.</span></>
+                <span><span className="text-emerald-400 font-semibold">You created this proposal.</span> Finalizing publishes the encrypted tallies on-chain so voters can decrypt their portion of the result.</span></>
               ) : (
                 <><Users className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                <span><span className="text-amber-400 font-semibold">Anyone can finalize.</span> The proposal creator (<span className="font-mono text-foreground/70">{proposal.creator.slice(0,6)}…{proposal.creator.slice(-4)}</span>) is the natural finalizer, but since this is permissionless you can also trigger it.</span></>
+                <span><span className="text-amber-400 font-semibold">Waiting for creator to finalize.</span> Only the proposal creator (<span className="font-mono text-foreground/70">{proposal.creator.slice(0,6)}…{proposal.creator.slice(-4)}</span>) can finalize this vote.</span></>
               )}
             </div>
           )}
-          {quorumMet && (
+          {quorumMet && isCreator && (
           <motion.button
             onClick={handleFinalize}
             disabled={isFinalizePending}
@@ -179,7 +217,7 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
             className="btn-pay btn-pay-amber w-full py-2.5"
           >
             <Unlock className="w-3.5 h-3.5 inline mr-2" />
-            {isFinalizePending ? "Finalizing..." : isCreator ? "Finalize My Proposal" : "Finalize Vote"}
+            {isFinalizePending ? "Finalizing..." : "Finalize My Proposal"}
           </motion.button>
           )}
           {finalizeTxHash && (
@@ -196,14 +234,7 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
-              {/* FHE ops that just ran on finalize */}
-              <div className="p-3 bg-secondary/20 rounded-md border border-border/20">
-                <FHEOperationsVisual
-                  ops={buildFinalizeOps(numOptions)}
-                  title="FHE Operations on Finalize"
-                  animate
-                />
-              </div>
+
             </div>
           )}
         </div>
@@ -335,6 +366,15 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
 export default function TallyReveal() {
   const { data: count } = useProposalCount();
   const proposalCount = Number(count ?? 0);
+  const [filter, setFilter] = useState<TallyFilter>("all");
+
+  const filterTabs: { key: TallyFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "action", label: "Needs Action" },
+    { key: "active", label: "Active" },
+    { key: "finalized", label: "Finalized" },
+    { key: "cancelled", label: "Cancelled" },
+  ];
 
   return (
     <div className="pay-card p-6 space-y-5">
@@ -355,14 +395,37 @@ export default function TallyReveal() {
         Individual votes remain permanently encrypted. Export results to CSV after reveal.
       </div>
 
+      {/* Filter tabs */}
+      {proposalCount > 0 && (
+        <div className="flex gap-1.5 flex-wrap">
+          {filterTabs.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-2.5 py-1 text-[11px] rounded-md border transition-all ${
+                filter === f.key
+                  ? f.key === "action"
+                    ? "border-amber-400/50 text-amber-400 bg-amber-400/10"
+                    : "border-emerald-400/50 text-emerald-400 bg-emerald-400/10"
+                  : "border-white/[0.09] text-muted-foreground hover:border-emerald-500/30"
+              }`}
+            >
+              {f.key === "action" && <Timer className="w-2.5 h-2.5 inline mr-1" />}
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {proposalCount === 0 ? (
-        <div className="text-sm text-muted-foreground text-center py-8">
-          No proposals to show results for.
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <BarChart3 className="w-8 h-8 text-muted-foreground/20" />
+          <div className="text-sm text-muted-foreground/60">No proposals yet.</div>
         </div>
       ) : (
         <div className="space-y-3">
           {Array.from({ length: proposalCount }, (_, i) => (
-            <TallyResult key={i} proposalId={BigInt(i)} />
+            <TallyResult key={i} proposalId={BigInt(i)} filter={filter} />
           ))}
         </div>
       )}

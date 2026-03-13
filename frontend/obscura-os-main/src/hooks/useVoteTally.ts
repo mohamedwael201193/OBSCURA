@@ -46,7 +46,8 @@ export function useVoteTally(proposalId: bigint, numOptions: number) {
           abi: OBSCURA_VOTE_ABI,
           functionName: 'getTally',
           args: [proposalId, i],
-        }) as bigint;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any) as bigint;
 
         if (!handle) {
           results.push({ optionIndex: i, votes: 0n });
@@ -103,7 +104,8 @@ export function useMyVote(proposalId: bigint) {
         functionName: 'getMyVote',
         args: [proposalId],
         account: address,
-      }) as bigint;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any) as bigint;
 
       if (!handle) throw new Error('No vote found');
 

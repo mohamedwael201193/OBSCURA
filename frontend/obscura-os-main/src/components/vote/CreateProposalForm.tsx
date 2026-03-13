@@ -13,6 +13,9 @@ const TEMPLATES = [
   { label: "Custom", options: [] },
 ];
 
+const TITLE_MAX = 120;
+const DESC_MAX = 500;
+
 const DURATION_PRESETS = [
   { label: "10 min", seconds: 600 },
   { label: "1 hour", seconds: 3600 },
@@ -110,6 +113,8 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
     setTxHash(null);
 
     if (!title.trim()) { setError("Title is required"); return; }
+    if (title.length > TITLE_MAX) { setError(`Title too long (max ${TITLE_MAX} characters)`); return; }
+    if (description.length > DESC_MAX) { setError(`Description too long (max ${DESC_MAX} characters)`); return; }
     if (options.length < 2) { setError("At least 2 options required"); return; }
     if (options.some(o => !o.trim())) { setError("All options must have text"); return; }
 
@@ -221,7 +226,15 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Increase treasury allocation by 10%"
             className="pay-input"
+            maxLength={TITLE_MAX}
           />
+          <div className="flex justify-end mt-1">
+            <span className={`text-[10px] tabular-nums ${
+              title.length > TITLE_MAX * 0.9 ? "text-amber-400" : "text-muted-foreground/30"
+            }`}>
+              {title.length} / {TITLE_MAX}
+            </span>
+          </div>
         </div>
 
         {/* Description */}
@@ -235,7 +248,15 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
             placeholder="Provide context for voters..."
             rows={2}
             className="pay-input resize-none"
+            maxLength={DESC_MAX}
           />
+          <div className="flex justify-end mt-1">
+            <span className={`text-[10px] tabular-nums ${
+              description.length > DESC_MAX * 0.9 ? "text-amber-400" : "text-muted-foreground/30"
+            }`}>
+              {description.length} / {DESC_MAX}
+            </span>
+          </div>
         </div>
 
         {/* Options */}

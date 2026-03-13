@@ -1,7 +1,7 @@
 export const OBSCURA_PAY_ADDRESS = import.meta.env.VITE_OBSCURA_PAY_ADDRESS as `0x${string}` | undefined;
 export const OBSCURA_ESCROW_ADDRESS = import.meta.env.VITE_OBSCURA_ESCROW_ADDRESS as `0x${string}` | undefined;
 export const OBSCURA_CONDITION_RESOLVER_ADDRESS = import.meta.env.VITE_OBSCURA_CONDITION_RESOLVER_ADDRESS as `0x${string}` | undefined;
-export const OBSCURA_VOTE_ADDRESS = (import.meta.env.VITE_OBSCURA_VOTE_ADDRESS ?? "0x5d91B5ccb581F543f7399eea1c65Dfa88b3f9B7a") as `0x${string}`;
+export const OBSCURA_VOTE_ADDRESS = (import.meta.env.VITE_OBSCURA_VOTE_ADDRESS ?? "0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730") as `0x${string}`;
 
 // InEuint64 tuple: { ctHash: uint256, securityZone: uint8, utype: uint8, signature: bytes }
 const InEuint64Components = [
@@ -149,7 +149,7 @@ export const OBSCURA_PAY_ABI = [
     ],
     outputs: [],
   },
-  // revokeRole(address) � owner only
+  // revokeRole(address) � owner only
   {
     name: "revokeRole",
     type: "function",
@@ -330,7 +330,7 @@ export const OBSCURA_TOKEN_ABI = [
     type: "event",
   },
   // --- Operator Model (v3) ------------------------------------------
-  // confidentialTransfer(address, InEuint64) � direct P2P transfer
+  // confidentialTransfer(address, InEuint64) � direct P2P transfer
   {
     name: "confidentialTransfer",
     type: "function",
@@ -341,7 +341,7 @@ export const OBSCURA_TOKEN_ABI = [
     ],
     outputs: [],
   },
-  // setOperator(address, uint256) � approve operator with expiry
+  // setOperator(address, uint256) � approve operator with expiry
   {
     name: "setOperator",
     type: "function",
@@ -578,7 +578,7 @@ export const OBSCURA_ESCROW_ABI = [
 // -----------------------------------------------------------------------
 
 export const OBSCURA_CONDITION_RESOLVER_ABI = [
-  // approve(uint256) � approver releases escrow
+  // approve(uint256) � approver releases escrow
   {
     name: "approve",
     type: "function",
@@ -618,7 +618,7 @@ export const OBSCURA_CONDITION_RESOLVER_ABI = [
 ] as const;
 
 // -----------------------------------------------------------------------
-// ObscuraVote ABI � Wave 2 (v2: multi-option, categories, quorum, cancel/extend, verify-my-vote)
+// ObscuraVote ABI � Wave 2 (v2: multi-option, categories, quorum, cancel/extend, verify-my-vote)
 // -----------------------------------------------------------------------
 
 export const OBSCURA_VOTE_ABI = [
@@ -674,6 +674,24 @@ export const OBSCURA_VOTE_ABI = [
       { indexed: false, name: "newDeadline", type: "uint256" },
     ],
     name: "DeadlineExtended",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "delegator", type: "address" },
+      { indexed: true, name: "delegatee", type: "address" },
+    ],
+    name: "DelegateSet",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "delegator", type: "address" },
+      { indexed: true, name: "formerDelegatee", type: "address" },
+    ],
+    name: "DelegateRemoved",
     type: "event",
   },
   // createProposal(string, string, string[], uint256, uint256, uint8) returns (uint256)
@@ -776,7 +794,7 @@ export const OBSCURA_VOTE_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
   },
-  // getMyVote(uint256) returns (uint256) � verify my vote
+  // getMyVote(uint256) returns (uint256) � verify my vote
   {
     name: "getMyVote",
     type: "function",
@@ -854,4 +872,510 @@ export const OBSCURA_VOTE_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
   },
+  // delegate(address)
+  {
+    name: "delegate",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_to", type: "address" }],
+    outputs: [],
+  },
+  // undelegate()
+  {
+    name: "undelegate",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: [],
+  },
+  // delegateTo(address) returns (address)
+  {
+    name: "delegateTo",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  // delegationWeight(address) returns (uint256)
+  {
+    name: "delegationWeight",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  // getVoteWeight(address) returns (uint256)
+  {
+    name: "getVoteWeight",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "_voter", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
+
+// ─── ObscuraTreasury ─────────────────────────────────────────────────────────
+export const OBSCURA_TREASURY_ADDRESS = (
+  import.meta.env.VITE_OBSCURA_TREASURY_ADDRESS ?? "0x89252ee3f920978EEfDB650760fe56BA1Ede8c08"
+) as `0x${string}`;
+
+export const OBSCURA_TREASURY_ABI = [
+  { inputs: [{ name: "_voteContract", type: "address" }], stateMutability: "nonpayable", type: "constructor" },
+  // events
+  { anonymous: false, inputs: [{ indexed: true, name: "from", type: "address" }, { indexed: false, name: "amount", type: "uint256" }], name: "FundsReceived", type: "event" },
+  { anonymous: false, inputs: [{ indexed: true, name: "proposalId", type: "uint256" }, { indexed: true, name: "recipient", type: "address" }], name: "SpendAttached", type: "event" },
+  { anonymous: false, inputs: [{ indexed: true, name: "proposalId", type: "uint256" }, { indexed: false, name: "timelockEnds", type: "uint256" }], name: "FinalizationRecorded", type: "event" },
+  { anonymous: false, inputs: [{ indexed: true, name: "proposalId", type: "uint256" }, { indexed: true, name: "recipient", type: "address" }, { indexed: false, name: "amountWei", type: "uint256" }], name: "SpendExecuted", type: "event" },
+  // write functions
+  { name: "deposit", type: "function", stateMutability: "payable", inputs: [], outputs: [] },
+  {
+    name: "attachSpend",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_proposalId", type: "uint256" },
+      { name: "_recipient", type: "address" },
+      { name: "_amountGwei", type: "uint256" },
+      { name: "_encAmountGwei", type: "tuple", components: [...InEuint64Components] },
+    ],
+    outputs: [],
+  },
+  { name: "recordFinalization", type: "function", stateMutability: "nonpayable", inputs: [{ name: "_proposalId", type: "uint256" }], outputs: [] },
+  {
+    name: "executeSpend",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_proposalId", type: "uint256" }],
+    outputs: [],
+  },
+  // view functions
+  {
+    name: "getSpendRequest",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "_proposalId", type: "uint256" }],
+    outputs: [
+      { name: "recipient", type: "address" },
+      { name: "executed", type: "bool" },
+      { name: "exists", type: "bool" },
+      { name: "timelockEnds", type: "uint256" },
+      { name: "amountGwei", type: "uint256" },
+    ],
+  },
+  { name: "treasuryBalance", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  { name: "timelockDuration", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  { name: "setTimelockDuration", type: "function", stateMutability: "nonpayable", inputs: [{ name: "_seconds", type: "uint256" }], outputs: [] },
+  { name: "setVoteContract", type: "function", stateMutability: "nonpayable", inputs: [{ name: "_newVoteContract", type: "address" }], outputs: [] },
+  { anonymous: false, inputs: [{ indexed: false, name: "oldDuration", type: "uint256" }, { indexed: false, name: "newDuration", type: "uint256" }], name: "TimelockDurationUpdated", type: "event" },
+  { name: "voteContract", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "address" }] },
+  { name: "owner", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "address" }] },
+  { name: "roles", type: "function", stateMutability: "view", inputs: [{ name: "", type: "address" }], outputs: [{ name: "", type: "uint8" }] },
+] as const;
+
+// ─── ObscuraRewards ──────────────────────────────────────────────────────────
+export const OBSCURA_REWARDS_ADDRESS = (
+  import.meta.env.VITE_OBSCURA_REWARDS_ADDRESS ?? "0x435ea117404553A6868fbe728A7A284FCEd15BC2"
+) as `0x${string}`;
+
+export const OBSCURA_REWARDS_ABI = [
+  { inputs: [{ name: "_voteContract", type: "address" }], stateMutability: "nonpayable", type: "constructor" },
+  // events
+  { anonymous: false, inputs: [{ indexed: true, name: "proposalId", type: "uint256" }, { indexed: true, name: "voter", type: "address" }, { indexed: false, name: "rewardGwei", type: "uint64" }], name: "RewardAccrued", type: "event" },
+  { anonymous: false, inputs: [{ indexed: true, name: "voter", type: "address" }], name: "WithdrawalRequested", type: "event" },
+  { anonymous: false, inputs: [{ indexed: true, name: "voter", type: "address" }, { indexed: false, name: "amountWei", type: "uint256" }], name: "RewardWithdrawn", type: "event" },
+  { anonymous: false, inputs: [{ indexed: true, name: "from", type: "address" }, { indexed: false, name: "amountWei", type: "uint256" }], name: "RewardsFunded", type: "event" },
+  // write
+  { name: "fundRewards", type: "function", stateMutability: "payable", inputs: [], outputs: [] },
+  { name: "accrueReward", type: "function", stateMutability: "nonpayable", inputs: [{ name: "_proposalId", type: "uint256" }], outputs: [] },
+  { name: "requestWithdrawal", type: "function", stateMutability: "nonpayable", inputs: [], outputs: [] },
+  { name: "withdraw", type: "function", stateMutability: "nonpayable", inputs: [], outputs: [] },
+  { name: "setVoteContract", type: "function", stateMutability: "nonpayable", inputs: [{ name: "_newVoteContract", type: "address" }], outputs: [] },
+  // view
+  { name: "rewardAccrued", type: "function", stateMutability: "view", inputs: [{ name: "", type: "uint256" }, { name: "", type: "address" }], outputs: [{ name: "", type: "bool" }] },
+  { name: "withdrawalRequested", type: "function", stateMutability: "view", inputs: [{ name: "", type: "address" }], outputs: [{ name: "", type: "bool" }] },
+  { name: "pendingRewardWei", type: "function", stateMutability: "view", inputs: [{ name: "_voter", type: "address" }], outputs: [{ name: "", type: "uint256" }] },
+  { name: "rewardPoolBalance", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  { name: "REWARD_PER_VOTE_GWEI", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint64" }] },
+  { name: "voteContract", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "address" }] },
+  { name: "owner", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "address" }] },
+] as const;
+
+// -----------------------------------------------------------------------
+// ObscuraElection — Wave 4 (FHE candidate elections)
+// -----------------------------------------------------------------------
+
+export const OBSCURA_ELECTION_ADDRESS = (
+  import.meta.env.VITE_OBSCURA_ELECTION_ADDRESS ?? "0x0000000000000000000000000000000000000000"
+) as `0x${string}`;
+
+export const OBSCURA_ELECTION_ABI = [
+  // constructor
+  { inputs: [{ name: "_obsToken", type: "address" }], stateMutability: "nonpayable", type: "constructor" },
+
+  // ── Events ──
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "electionId", type: "uint256" },
+      { indexed: false, name: "title", type: "string" },
+      { indexed: false, name: "registrationDeadline", type: "uint256" },
+      { indexed: false, name: "votingDeadline", type: "uint256" },
+      { indexed: false, name: "electionType", type: "uint8" },
+      { indexed: false, name: "seats", type: "uint8" },
+    ],
+    name: "ElectionCreated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "electionId", type: "uint256" },
+      { indexed: false, name: "candidateIndex", type: "uint8" },
+      { indexed: true, name: "candidateAddr", type: "address" },
+      { indexed: false, name: "name", type: "string" },
+    ],
+    name: "CandidateRegistered",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "electionId", type: "uint256" },
+      { indexed: false, name: "candidateIndex", type: "uint8" },
+    ],
+    name: "CandidateApproved",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "electionId", type: "uint256" },
+      { indexed: true, name: "voter", type: "address" },
+    ],
+    name: "BallotCast",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "electionId", type: "uint256" },
+      { indexed: true, name: "voter", type: "address" },
+    ],
+    name: "BallotChanged",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: true, name: "electionId", type: "uint256" }],
+    name: "ElectionFinalized",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: true, name: "electionId", type: "uint256" }],
+    name: "ElectionCancelled",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "delegator", type: "address" },
+      { indexed: true, name: "delegatee", type: "address" },
+    ],
+    name: "ElectionDelegateSet",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "delegator", type: "address" },
+      { indexed: true, name: "formerDelegatee", type: "address" },
+    ],
+    name: "ElectionDelegateRemoved",
+    type: "event",
+  },
+
+  // ── Write functions ──
+
+  // createElection(string,string,uint256,uint256,uint256,uint8,uint8,bool) returns (uint256)
+  {
+    name: "createElection",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_title", type: "string" },
+      { name: "_description", type: "string" },
+      { name: "_regDeadline", type: "uint256" },
+      { name: "_voteDeadline", type: "uint256" },
+      { name: "_quorum", type: "uint256" },
+      { name: "_seats", type: "uint8" },
+      { name: "_electionType", type: "uint8" },
+      { name: "_openRegistration", type: "bool" },
+    ],
+    outputs: [{ name: "electionId", type: "uint256" }],
+  },
+
+  // registerCandidate(uint256,string,string)
+  {
+    name: "registerCandidate",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_electionId", type: "uint256" },
+      { name: "_name", type: "string" },
+      { name: "_manifesto", type: "string" },
+    ],
+    outputs: [],
+  },
+
+  // addCandidate(uint256,address,string,string)
+  {
+    name: "addCandidate",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_electionId", type: "uint256" },
+      { name: "_candidateAddr", type: "address" },
+      { name: "_name", type: "string" },
+      { name: "_manifesto", type: "string" },
+    ],
+    outputs: [],
+  },
+
+  // approveCandidate(uint256,uint8)
+  {
+    name: "approveCandidate",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_electionId", type: "uint256" },
+      { name: "_candidateIdx", type: "uint8" },
+    ],
+    outputs: [],
+  },
+
+  // castBallot(uint256, InEuint64)
+  {
+    name: "castBallot",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_electionId", type: "uint256" },
+      { name: "_encBallot", type: "tuple", components: [...InEuint64Components] },
+    ],
+    outputs: [],
+  },
+
+  // finalizeElection(uint256)
+  {
+    name: "finalizeElection",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_electionId", type: "uint256" }],
+    outputs: [],
+  },
+
+  // cancelElection(uint256)
+  {
+    name: "cancelElection",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_electionId", type: "uint256" }],
+    outputs: [],
+  },
+
+  // delegate(address)
+  {
+    name: "delegate",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_to", type: "address" }],
+    outputs: [],
+  },
+
+  // undelegate()
+  {
+    name: "undelegate",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: [],
+  },
+
+  // ── View functions ──
+
+  // getElection(uint256) returns (title, description, regDeadline, voteDeadline, quorum,
+  //   numCandidates, totalRegistered, seats, electionType, totalVoters,
+  //   isFinalized, isCancelled, openRegistration, exists, creator)
+  {
+    name: "getElection",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "_electionId", type: "uint256" }],
+    outputs: [
+      { name: "title", type: "string" },
+      { name: "description", type: "string" },
+      { name: "registrationDeadline", type: "uint256" },
+      { name: "votingDeadline", type: "uint256" },
+      { name: "quorum", type: "uint256" },
+      { name: "numCandidates", type: "uint8" },
+      { name: "totalRegistered", type: "uint8" },
+      { name: "seats", type: "uint8" },
+      { name: "electionType", type: "uint8" },
+      { name: "totalVoters", type: "uint256" },
+      { name: "isFinalized", type: "bool" },
+      { name: "isCancelled", type: "bool" },
+      { name: "openRegistration", type: "bool" },
+      { name: "exists", type: "bool" },
+      { name: "creator", type: "address" },
+    ],
+  },
+
+  // getCandidate(uint256,uint8) returns (name,manifesto,candidateAddr,approved,exists)
+  {
+    name: "getCandidate",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "_electionId", type: "uint256" },
+      { name: "_candidateIdx", type: "uint8" },
+    ],
+    outputs: [
+      { name: "name", type: "string" },
+      { name: "manifesto", type: "string" },
+      { name: "candidateAddr", type: "address" },
+      { name: "approved", type: "bool" },
+      { name: "exists", type: "bool" },
+    ],
+  },
+
+  // getTallyHandle(uint256,uint8) returns (uint256)
+  {
+    name: "getTallyHandle",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "_electionId", type: "uint256" },
+      { name: "_candidateIdx", type: "uint8" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+
+  // getMyBallot(uint256) returns (uint256)
+  {
+    name: "getMyBallot",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "_electionId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+
+  // getElectionCount() returns (uint256)
+  {
+    name: "getElectionCount",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+
+  // getElectionStatus(uint256) returns (uint8)
+  {
+    name: "getElectionStatus",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "_electionId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint8" }],
+  },
+
+  // hasVoted(uint256,address) returns (bool)
+  {
+    name: "hasVoted",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "", type: "uint256" },
+      { name: "", type: "address" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+
+  // isRegistered(uint256,address) returns (bool)
+  {
+    name: "isRegistered",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "", type: "uint256" },
+      { name: "", type: "address" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+
+  // candidateIndexOf(uint256,address) returns (uint8)
+  {
+    name: "candidateIndexOf",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "", type: "uint256" },
+      { name: "", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint8" }],
+  },
+
+  // delegateTo(address) returns (address)
+  {
+    name: "delegateTo",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+
+  // delegationWeight(address) returns (uint256)
+  {
+    name: "delegationWeight",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+
+  // nextElectionId() returns (uint256)
+  {
+    name: "nextElectionId",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+
+  // MAX_CANDIDATES() returns (uint8)
+  {
+    name: "MAX_CANDIDATES",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint8" }],
+  },
+
+  // owner() returns (address)
+  {
+    name: "owner",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+
+  // roles(address) returns (uint8)
+  {
+    name: "roles",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "uint8" }],
+  },
+] as const;
+

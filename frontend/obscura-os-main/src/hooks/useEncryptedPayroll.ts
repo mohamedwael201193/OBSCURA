@@ -34,6 +34,12 @@ export function useEncryptedPayroll() {
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
+        // Fetch fresh fee data and apply a 30% buffer to avoid "max fee < base fee" reverts
+        const feeData = await publicClient.estimateFeesPerGas();
+        const maxFeePerGas = feeData.maxFeePerGas
+          ? (feeData.maxFeePerGas * 130n) / 100n
+          : undefined;
+
         // Send encrypted salary to contract
         const hash = await writeContractAsync({
           address: OBSCURA_PAY_ADDRESS,
@@ -42,6 +48,7 @@ export function useEncryptedPayroll() {
           args: [employeeAddress, encryptedInputs[0]],
           account: address,
           chain: arbitrumSepolia,
+          maxFeePerGas,
         });
 
         setTxHash(hash);
@@ -78,6 +85,12 @@ export function useEncryptedPayroll() {
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
+        // Fetch fresh fee data and apply a 30% buffer
+        const batchFeeData = await publicClient.estimateFeesPerGas();
+        const batchMaxFeePerGas = batchFeeData.maxFeePerGas
+          ? (batchFeeData.maxFeePerGas * 130n) / 100n
+          : undefined;
+
         const addresses = employees.map((e) => e.address);
         const hash = await writeContractAsync({
           address: OBSCURA_PAY_ADDRESS,
@@ -86,6 +99,7 @@ export function useEncryptedPayroll() {
           args: [addresses, encryptedSalaries],
           account: address,
           chain: arbitrumSepolia,
+          maxFeePerGas: batchMaxFeePerGas,
         });
 
         setTxHash(hash);

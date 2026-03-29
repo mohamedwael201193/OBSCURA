@@ -152,3 +152,70 @@ export const OBSCURA_PAY_ABI = [
     outputs: [],
   },
 ] as const;
+
+export const OBSCURA_TOKEN_ADDRESS = import.meta.env.VITE_OBSCURA_TOKEN_ADDRESS as `0x${string}` | undefined;
+
+export const OBSCURA_TOKEN_ABI = [
+  // mint(address, InEuint64) — owner only
+  {
+    name: "mint",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_to", type: "address" },
+      {
+        name: "_encAmount",
+        type: "tuple",
+        components: [
+          { name: "ctHash", type: "uint256" },
+          { name: "securityZone", type: "uint8" },
+          { name: "utype", type: "uint8" },
+          { name: "signature", type: "bytes" },
+        ],
+      },
+    ],
+    outputs: [],
+  },
+  // name() returns (string)
+  {
+    name: "name",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "string" }],
+  },
+  // symbol() returns (string)
+  {
+    name: "symbol",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "string" }],
+  },
+  // owner() returns (address)
+  {
+    name: "owner",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  // totalMinted() returns (uint256)
+  {
+    name: "totalMinted",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  // Mint event
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: "to", type: "address" },
+      { indexed: false, name: "ctHash", type: "uint256" },
+    ],
+    name: "Mint",
+    type: "event",
+  },
+] as const;

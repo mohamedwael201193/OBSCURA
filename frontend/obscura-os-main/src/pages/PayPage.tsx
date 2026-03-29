@@ -9,6 +9,7 @@ import PayrollForm from "@/components/pay/PayrollForm";
 import EmployeeList from "@/components/pay/EmployeeList";
 import BalanceReveal from "@/components/pay/BalanceReveal";
 import AuditView from "@/components/pay/AuditView";
+import MintObsForm from "@/components/pay/MintObsForm";
 import { usePermissions } from "@/hooks/usePermissions";
 import { OBSCURA_PAY_ABI, OBSCURA_PAY_ADDRESS } from "@/config/contracts";
 import { EXPLORER_URL } from "@/lib/constants";
@@ -127,6 +128,7 @@ const PayPage = () => {
                     <>
                       <PayrollForm />
                       <EmployeeList />
+                      <MintObsForm />
                     </>
                   )}
                 </motion.div>

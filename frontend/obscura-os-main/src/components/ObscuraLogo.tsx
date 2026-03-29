@@ -1,0 +1,63 @@
+const ObscuraLogo = ({ size = 32, className = "" }: { size?: number; className?: string }) => {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      {/* Outer octagon frame */}
+      <path
+        d="M20 4L44 4L60 20L60 44L44 60L20 60L4 44L4 20L20 4Z"
+        stroke="hsl(var(--primary))"
+        strokeWidth="1.5"
+        fill="none"
+        opacity="0.6"
+      />
+      {/* Inner diamond */}
+      <path
+        d="M32 12L52 32L32 52L12 32L32 12Z"
+        stroke="hsl(var(--primary))"
+        strokeWidth="1"
+        fill="none"
+        opacity="0.3"
+      />
+      {/* Center eye/lens — the "camera obscura" */}
+      <circle
+        cx="32"
+        cy="32"
+        r="10"
+        stroke="hsl(var(--primary))"
+        strokeWidth="1.5"
+        fill="none"
+      />
+      {/* Pupil / aperture */}
+      <circle
+        cx="32"
+        cy="32"
+        r="4"
+        fill="hsl(var(--primary))"
+        opacity="0.8"
+      />
+      {/* Light rays — selective revelation */}
+      <line x1="32" y1="4" x2="32" y2="22" stroke="hsl(var(--primary))" strokeWidth="0.5" opacity="0.3" />
+      <line x1="32" y1="42" x2="32" y2="60" stroke="hsl(var(--primary))" strokeWidth="0.5" opacity="0.3" />
+      <line x1="4" y1="32" x2="22" y2="32" stroke="hsl(var(--primary))" strokeWidth="0.5" opacity="0.3" />
+      <line x1="42" y1="32" x2="60" y2="32" stroke="hsl(var(--primary))" strokeWidth="0.5" opacity="0.3" />
+      {/* Diagonal rays */}
+      <line x1="12" y1="12" x2="24" y2="24" stroke="hsl(var(--primary))" strokeWidth="0.5" opacity="0.2" />
+      <line x1="40" y1="40" x2="52" y2="52" stroke="hsl(var(--primary))" strokeWidth="0.5" opacity="0.2" />
+      <line x1="52" y1="12" x2="40" y2="24" stroke="hsl(var(--primary))" strokeWidth="0.5" opacity="0.2" />
+      <line x1="24" y1="40" x2="12" y2="52" stroke="hsl(var(--primary))" strokeWidth="0.5" opacity="0.2" />
+      {/* Corner accents — data nodes */}
+      <rect x="18" y="2" width="4" height="4" fill="hsl(var(--primary))" opacity="0.15" />
+      <rect x="42" y="2" width="4" height="4" fill="hsl(var(--primary))" opacity="0.15" />
+      <rect x="18" y="58" width="4" height="4" fill="hsl(var(--primary))" opacity="0.15" />
+      <rect x="42" y="58" width="4" height="4" fill="hsl(var(--primary))" opacity="0.15" />
+    </svg>
+  );
+};
+
+export default ObscuraLogo;

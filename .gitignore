@@ -1,0 +1,66 @@
+# ── Sensitive: Environment & Keys ──────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# ── Node / npm ──────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+
+# ── Build Outputs ───────────────────────────────────────────────────────────────
+dist/
+build/
+out/
+.next/
+.nuxt/
+.vuepress/dist
+
+# ── Hardhat Artifacts ───────────────────────────────────────────────────────────
+contracts-hardhat/artifacts/
+contracts-hardhat/cache/
+contracts-hardhat/typechain-types/
+contracts-hardhat/coverage/
+contracts-hardhat/coverage.json
+
+# ── Internal / Planning Docs (not for public repo) ─────────────────────────────
+implementation_plan.md
+project_structure.md
+SKILL.md
+wave1_agent_prompt.md
+deploy.md
+guide.md
+wave1.md
+
+# ── IDE & OS ────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.user
+
+# ── TypeScript ──────────────────────────────────────────────────────────────────
+*.tsbuildinfo
+
+# ── Logs ────────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Test Coverage ───────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ── Lock files (let consumers decide) ──────────────────────────────────────────
+# package-lock.json   ← keep for reproducibility
+# bun.lockb           ← keep
+
+# ── Playwright ──────────────────────────────────────────────────────────────────
+test-results/
+playwright-report/

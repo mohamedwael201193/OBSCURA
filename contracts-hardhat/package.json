@@ -1,0 +1,20 @@
+{
+  "name": "obscura-contracts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:arb-sepolia": "hardhat deploy-obscura --network arb-sepolia",
+    "interact": "hardhat run tasks/interact.ts --network arb-sepolia"
+  },
+  "devDependencies": {
+    "@cofhe/hardhat-plugin": "^0.4.0",
+    "@fhenixprotocol/cofhe-contracts": "^0.1.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "dotenv": "^16.4.7",
+    "hardhat": "^2.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}

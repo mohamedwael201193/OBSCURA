@@ -1,24 +1,47 @@
-import { useDynamicContext, useIsLoggedIn } from '@dynamic-labs/sdk-react-core';
-import { useBalance, useSwitchChain, useAccount } from 'wagmi';
+import { useState } from 'react';
+import { useConnect, useDisconnect, useAccount, useBalance, useChainId, useSwitchChain } from 'wagmi';
 import { arbitrumSepolia } from 'wagmi/chains';
+import { formatUnits } from 'viem';
 
 export default function WalletConnect() {
-  const isLoggedIn = useIsLoggedIn();
-  const { setShowAuthFlow, handleLogOut, primaryWallet } = useDynamicContext();
-  const { address, chainId } = useAccount();
+  const [open, setOpen] = useState(false);
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { connectors, connect, isPending } = useConnect();
+  const { disconnect } = useDisconnect();
   const { data: balance } = useBalance({ address, chainId: arbitrumSepolia.id });
   const { switchChain } = useSwitchChain();
 
-  const isWrongNetwork = isLoggedIn && chainId !== undefined && chainId !== arbitrumSepolia.id;
+  const isWrongNetwork = isConnected && !!address && chainId !== arbitrumSepolia.id;
 
-  if (!isLoggedIn) {
+  if (!isConnected) {
     return (
-      <button
-        onClick={() => setShowAuthFlow(true)}
-        className="px-5 py-2 text-xs tracking-[0.15em] uppercase font-mono border border-primary/40 text-primary hover:bg-primary/10 transition-colors duration-300 rounded-sm"
-      >
-        Connect Wallet
-      </button>
+      <div className="relative">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="px-5 py-2 text-xs tracking-[0.15em] uppercase font-mono border border-primary/40 text-primary hover:bg-primary/10 transition-colors duration-300 rounded-sm"
+        >
+          Connect Wallet
+        </button>
+        {open && (
+          <div
+            className="absolute right-0 top-full mt-1 z-50 min-w-[180px] border border-primary/20 bg-background/95 backdrop-blur rounded-sm shadow-xl overflow-hidden"
+            onBlur={() => setOpen(false)}
+          >
+            {connectors.map((connector) => (
+              <button
+                key={connector.uid}
+                disabled={isPending}
+                onClick={() => { connect({ connector }); setOpen(false); }}
+                className="w-full px-4 py-3 text-left text-xs font-mono hover:bg-primary/10 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                <span className="text-primary/60">◆</span>
+                {connector.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -33,10 +56,9 @@ export default function WalletConnect() {
     );
   }
 
-  const addr = primaryWallet?.address ?? address ?? '';
-  const displayName = addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '';
+  const displayName = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
   const ethBalance = balance
-    ? `${parseFloat(balance.formatted).toFixed(4)} ETH`
+    ? `${parseFloat(formatUnits(balance.value, balance.decimals)).toFixed(4)} ETH`
     : '';
 
   return (
@@ -50,14 +72,12 @@ export default function WalletConnect() {
         )}
       </div>
       <button
-        onClick={() => setShowAuthFlow(true)}
-        title="Wallet settings"
         className="flex items-center gap-2 px-4 py-2 text-xs font-mono border border-primary/30 text-foreground hover:border-primary/60 transition-colors duration-300 rounded-sm group"
       >
         <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
         <span className="text-primary">{displayName}</span>
         <span
-          onClick={(e) => { e.stopPropagation(); handleLogOut(); }}
+          onClick={(e) => { e.stopPropagation(); disconnect(); }}
           title="Disconnect"
           className="text-[9px] text-muted-foreground group-hover:text-red-400 transition-colors cursor-pointer ml-1"
         >

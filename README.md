@@ -48,7 +48,6 @@ Data stays dark. You reveal only what's permitted.
 │ Obscura  │  Obscura   │   Obscura   │   Obscura    │      Obscura              │
 │   Pay    │    Vote    │    Vault    │    Trust     │       Mind                │
 │          │            │             │              │                           │
-│$3,000 🏆 │ $5,000 🏆  │ $12,000 🏆  │  $14,000 🏆  │   $14,000+$2k 🏆          │
 │ Payments │ Governance │    DeFi     │ RWA/Comply   │      AI Inference         │
 │add,sub  │ add,public │ gt,gte,sel  │ eq,gte,allow │ mul,add,div,square        │
 ├──────────┴────────────┴─────────────┴──────────────┴───────────────────────── ┤
@@ -126,7 +125,6 @@ Data stays dark. You reveal only what's permitted.
 - `FHE.allowPublic(tally)` after deadline → threshold decrypt reveals aggregate only
 - Voting weight tied to `$OBS` balance earned via ObscuraPay
 - FHE Ops: `add`, `allowPublic`
-- **Buildathon Prize:** $5,000
 
 ---
 
@@ -137,7 +135,6 @@ Data stays dark. You reveal only what's permitted.
 - **Sealed-bid auction**: encrypted bids → `FHE.gt()` comparison → `FHE.select()` winner routing → zero MEV extraction
 - Vault positions feed governance weight in ObscuraVote
 - FHE Ops: `gt`, `gte`, `select`, `add`, `sub`
-- **Buildathon Prize:** $12,000
 
 ---
 
@@ -150,7 +147,6 @@ Data stays dark. You reveal only what's permitted.
 - **Audit signatures**: time-scoped cryptographic view keys for regulators
 - ObscuraID gates access to ObscuraVault premium features
 - FHE Ops: `eq`, `gte`, `allow`, `allowTransient`
-- **Buildathon Prize:** $14,000
 
 ---
 
@@ -162,7 +158,6 @@ Data stays dark. You reveal only what's permitted.
 - Encrypted composite credit score feeds under-collateralized lending in ObscuraVault
 - Score computed entirely on ciphertext — even the model never sees plaintext inputs
 - FHE Ops: `mul`, `add`, `div`, `gte`, `select`, `square`
-- **Buildathon Prize:** $14,000 + $2,000 bonus
 
 ---
 
@@ -352,29 +347,6 @@ DynamicContextProvider (100+ wallet connections)
 | Connected | `0x1234...5678` + ETH balance + chain label · `×` to disconnect |
 
 ---
-
-## ◆ Resources
-
-| Resource | Link |
-|----------|------|
-| Fhenix CoFHE Docs | https://cofhe-docs.fhenix.zone |
-| FHE.sol Reference | https://cofhe-docs.fhenix.zone/fhe-library/reference/fhe-sol |
-| ACL Examples | https://cofhe-docs.fhenix.zone/tutorials/acl-usage-examples |
-| FHERC20 Standard | https://cofhe-docs.fhenix.zone/fhe-library/confidential-contracts/fherc20/overview |
-| Dynamic Docs | https://docs.dynamic.xyz |
-| ShieldedMode | https://shieldedmode.fhenix.io |
-| Redact Money | https://redact.money |
-| Arbitrum Sepolia Explorer | https://sepolia.arbiscan.io |
-| Testnet ETH Faucet | https://faucets.chain.link/arbitrum-sepolia |
-
----
-
-## ◆ Buildathon
-
-Built for the **Fhenix CoFHE Buildathon** on AKINDO.
-
-**Total buildathon prize pool:** $48,000 across 5 waves  
-**OBSCURA Wave 1 target:** $3,000 · ObscuraPay
 
 > *OBSCURA doesn't retrofit privacy. It was born in the dark.*
 

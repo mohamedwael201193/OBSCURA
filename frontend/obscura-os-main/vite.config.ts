@@ -23,6 +23,6 @@ export default defineConfig(({ mode }) => ({
     format: "es" as const,
   },
   optimizeDeps: {
-    exclude: ["@cofhe/sdk"],
+    exclude: ["@cofhe/sdk", "iframe-shared-storage"],
   },
 }));

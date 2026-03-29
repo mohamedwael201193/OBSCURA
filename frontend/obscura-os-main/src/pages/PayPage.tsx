@@ -10,6 +10,7 @@ import EmployeeList from "@/components/pay/EmployeeList";
 import BalanceReveal from "@/components/pay/BalanceReveal";
 import AuditView from "@/components/pay/AuditView";
 import MintObsForm from "@/components/pay/MintObsForm";
+import ObsBalanceReveal from "@/components/pay/ObsBalanceReveal";
 import { usePermissions } from "@/hooks/usePermissions";
 import { OBSCURA_PAY_ABI, OBSCURA_PAY_ADDRESS } from "@/config/contracts";
 import { EXPLORER_URL } from "@/lib/constants";
@@ -142,7 +143,10 @@ const PayPage = () => {
                       <p className="text-sm font-mono text-muted-foreground">Connect your wallet to view your encrypted balance</p>
                     </div>
                   ) : (
-                    <BalanceReveal />
+                    <div className="space-y-4">
+                      <BalanceReveal />
+                      <ObsBalanceReveal />
+                    </div>
                   )}
                 </motion.div>
               )}

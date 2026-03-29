@@ -200,6 +200,14 @@ export const OBSCURA_TOKEN_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "address" }],
   },
+  // balanceOf() returns (euint64 → bytes32) — caller gets their own encrypted balance handle
+  {
+    name: "balanceOf",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
   // totalMinted() returns (uint256)
   {
     name: "totalMinted",

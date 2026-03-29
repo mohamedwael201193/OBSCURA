@@ -24,6 +24,12 @@ export default defineConfig(({ mode }) => ({
   },
   optimizeDeps: {
     exclude: ["@cofhe/sdk"],
-    include: ["iframe-shared-storage"],
+    include: [
+      "iframe-shared-storage",
+      "tweetnacl",
+      "zustand/vanilla",
+      "zustand/middleware",
+      "immer",
+    ],
   },
 }));

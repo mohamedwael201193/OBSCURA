@@ -4,6 +4,7 @@ import { OBSCURA_PAY_ABI, OBSCURA_PAY_ADDRESS } from '@/config/contracts';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, decryptBalance, getOrCreatePermit } from '@/lib/fhe';
+import { isCofheError, CofheErrorCode } from '@cofhe/sdk';
 
 export function useDecryptBalance() {
   const { address } = useAccount();
@@ -62,8 +63,26 @@ export function useDecryptBalance() {
       fheStatus.setStep(FHEStepStatus.READY);
       return plaintext;
     } catch (error) {
-      fheStatus.setStep(FHEStepStatus.ERROR, (error as Error).message);
-      throw error;
+      let message = (error as Error).message ?? 'Unknown error';
+      if (isCofheError(error)) {
+        switch (error.code) {
+          case CofheErrorCode.PermitNotFound:
+          case CofheErrorCode.InvalidPermitData:
+          case CofheErrorCode.InvalidPermitDomain:
+            message = 'Permit expired or missing — please sign again.';
+            break;
+          case CofheErrorCode.DecryptFailed:
+            message = 'Decryption rejected by the Threshold Network. Try again.';
+            break;
+          case CofheErrorCode.NotConnected:
+            message = 'FHE client not connected — reconnect your wallet.';
+            break;
+          default:
+            message = error.message;
+        }
+      }
+      fheStatus.setStep(FHEStepStatus.ERROR, message);
+      throw new Error(message);
     }
   }, [publicClient, walletClient, address, refetchBalance, fheStatus]);
 

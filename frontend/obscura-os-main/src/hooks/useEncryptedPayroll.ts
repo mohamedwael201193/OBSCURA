@@ -49,6 +49,7 @@ export function useEncryptedPayroll() {
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas,
+          gas: 500_000n,
         });
 
         setTxHash(hash);
@@ -59,7 +60,7 @@ export function useEncryptedPayroll() {
         throw error;
       }
     },
-    [publicClient, walletClient, writeContractAsync, fheStatus]
+    [publicClient, walletClient, writeContractAsync, address, fheStatus]
   );
 
   const batchPay = useCallback(
@@ -100,6 +101,7 @@ export function useEncryptedPayroll() {
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas: batchMaxFeePerGas,
+          gas: 3_000_000n,
         });
 
         setTxHash(hash);

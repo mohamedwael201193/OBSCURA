@@ -1,12 +1,12 @@
 import { motion } from "framer-motion";
 
 const stack = [
-  { label: "Blockchain", value: "Arbitrum Sepolia" },
-  { label: "Contracts", value: "Solidity 0.8.25 + FHE.sol" },
-  { label: "Token", value: "$OBS FHERC20" },
-  { label: "Frontend", value: "React + @cofhe/sdk" },
-  { label: "Testing", value: "Hardhat + CoFHE Mock" },
-  { label: "Payments", value: "Privara SDK" },
+  { label: "Blockchain", value: "Arbitrum Sepolia · Chain ID 421614" },
+  { label: "FHE Protocol", value: "Fhenix CoFHE · cofhe-contracts" },
+  { label: "Contracts", value: "Solidity 0.8.25 · evmVersion cancun" },
+  { label: "$OBS Token", value: "FHERC20 · encrypted euint64 balances" },
+  { label: "Frontend", value: "React 18 · Vite 5 · TypeScript" },
+  { label: "Wallet/Tx", value: "wagmi 3.6.0 · viem 2 · @cofhe/sdk" },
 ];
 
 const TechStack = () => {

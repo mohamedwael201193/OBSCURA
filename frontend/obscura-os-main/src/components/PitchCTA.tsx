@@ -20,16 +20,18 @@ const PitchCTA = () => {
           transition={{ duration: 0.8 }}
         >
           <span className="text-[10px] tracking-[0.3em] uppercase text-primary font-mono text-glow-sm block mb-6">
-            The $500M Privacy Problem
+            ◆ Built on Fhenix CoFHE · Live on Arbitrum Sepolia
           </span>
           <h2 className="font-display text-3xl md:text-5xl text-foreground tracking-tight leading-tight mb-6">
-            OBSCURA doesn't retrofit privacy.
+            Four Contracts. All Encrypted.
             <br />
-            <span className="text-primary text-glow">It was born in the dark.</span>
+            <span className="text-primary text-glow">Arbiscan Shows Nothing.</span>
           </h2>
+          <p className="text-sm font-body text-muted-foreground leading-relaxed mb-4 max-w-xl mx-auto">
+            OBSCURA Wave 1 is live — encrypted payroll, P2P confidential transfers, and an escrow engine where the owner&rsquo;s address, the amount, and the redemption status are all FHE ciphertexts.
+          </p>
           <p className="text-sm font-body text-muted-foreground leading-relaxed mb-10 max-w-xl mx-auto">
-            Public blockchains have a $500M privacy architecture problem. Institutions cannot run payrolls,
-            manage treasuries, or execute trades on transparent rails — not "won't," <em>can't</em>.
+            Every on-chain value is a ciphertext handle. Only the authorized party can decrypt. Arbiscan shows event logs with no exposed amounts — not by obfuscation, by mathematics.
           </p>
 
           <div className="flex items-center justify-center gap-4">

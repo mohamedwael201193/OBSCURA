@@ -6,8 +6,8 @@ const waves = [
     name: "ObscuraPay",
     category: "Payments",
     status: "ACTIVE",
-    fheOps: "add, sub, allow",
-    description: "Encrypted payroll. Employers pay, Arbiscan shows nothing.",
+    fheOps: "add, eq, gte, select, asEaddress",
+    description: "Complete encrypted payment platform. 4 contracts live — payroll, P2P transfers, encrypted escrow engine with silent failure, conditional release. Daily $OBS faucet. Arbiscan shows nothing.",
     active: true,
   },
   {
@@ -16,7 +16,7 @@ const waves = [
     category: "Governance",
     status: "WAVE 2",
     fheOps: "add, allowPublic",
-    description: "Coercion-resistant voting with homomorphic tallying.",
+    description: "Coercion-resistant on-chain governance. Votes encrypted — FHE.add() tallies without revealing individual choices. Anti-coercion revote window. $OBS weighted voting power.",
     active: false,
   },
   {
@@ -24,26 +24,26 @@ const waves = [
     name: "ObscuraVault",
     category: "DeFi",
     status: "WAVE 3",
-    fheOps: "gt, gte, select",
-    description: "Sealed-bid auctions and MEV-protected positions.",
+    fheOps: "gt, gte, select, add, sub",
+    description: "Sealed-bid auctions and MEV-protected yield vaults. FHE.gt() selects auction winners without revealing losing bids. Zero front-running. Zero MEV extraction.",
     active: false,
   },
   {
     wave: 4,
     name: "ObscuraTrust",
-    category: "RWA",
+    category: "RWA / Compliance",
     status: "WAVE 4",
-    fheOps: "eq, gte, allow",
-    description: "Selective disclosure compliance with audit signatures.",
+    fheOps: "eq, gte, allow, allowTransient",
+    description: "Encrypted identity and institutional compliance. FHE.gte() validates KYC thresholds without revealing data. Selective disclosure via FHE.allow() scopes regulatory access cryptographically.",
     active: false,
   },
   {
     wave: 5,
     name: "ObscuraMind",
-    category: "AI",
+    category: "AI Inference",
     status: "WAVE 5",
-    fheOps: "mul, add, div",
-    description: "Privacy-preserving ML inference on ciphertext.",
+    fheOps: "mul, add, div, gte, square",
+    description: "Privacy-preserving ML inference on encrypted data. Model weights as euint64 — FHE.mul() computes dot products on ciphertext. Outputs encrypted credit scores for under-collateralized lending.",
     active: false,
   },
 ];
@@ -65,9 +65,12 @@ const WaveModules = () => {
             Architecture
           </span>
           <h2 className="font-display text-3xl md:text-4xl mt-3 text-foreground tracking-tight">
-            Five Waves of
-            <span className="text-primary text-glow"> Encryption</span>
+            Five Encrypted
+            <span className="text-primary text-glow"> Modules</span>
           </h2>
+          <p className="text-sm font-body text-muted-foreground mt-4 max-w-xl">
+            Each module adds a new encrypted capability. All composable — payment data feeds governance, vault positions inform AI scoring, compliance gates premium access.
+          </p>
         </motion.div>
 
         <div className="grid gap-3">

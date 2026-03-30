@@ -45,6 +45,7 @@ export function useMintObs() {
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas,
+          gas: 500_000n,
         });
 
         setTxHash(hash);

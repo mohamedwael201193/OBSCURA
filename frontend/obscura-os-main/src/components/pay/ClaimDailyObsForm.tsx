@@ -73,6 +73,7 @@ export default function ClaimDailyObsForm() {
         account: address,
         chain: arbitrumSepolia,
         maxFeePerGas,
+        gas: 400_000n,
       });
 
       setTxHash(hash);

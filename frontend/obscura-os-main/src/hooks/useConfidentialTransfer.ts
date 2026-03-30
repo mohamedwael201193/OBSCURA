@@ -44,6 +44,7 @@ export function useConfidentialTransfer() {
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas,
+          gas: 500_000n,
         });
 
         setTxHash(hash);
@@ -76,6 +77,7 @@ export function useConfidentialTransfer() {
         account: address,
         chain: arbitrumSepolia,
         maxFeePerGas,
+        gas: 150_000n,
       });
 
       setTxHash(hash);

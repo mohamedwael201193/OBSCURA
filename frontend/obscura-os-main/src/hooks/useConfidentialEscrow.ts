@@ -5,7 +5,7 @@ import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount, encryptAddressAndAmount, decryptBalance, getOrCreatePermit } from '@/lib/fhe';
 import { arbitrumSepolia } from 'viem/chains';
-import { encodePacked } from 'viem';
+import { encodeAbiParameters } from 'viem';
 
 export function useConfidentialEscrow() {
   const publicClient = usePublicClient();
@@ -52,8 +52,9 @@ export function useConfidentialEscrow() {
         // Build resolver data
         let resolverData: `0x${string}` = '0x';
         if (resolver && conditionType !== undefined && conditionParam !== undefined) {
-          resolverData = encodePacked(
-            ['uint8', 'uint256'],
+          // Must use standard ABI encoding (not packed) — Solidity abi.decode expects 32-byte aligned words
+          resolverData = encodeAbiParameters(
+            [{ type: 'uint8' }, { type: 'uint256' }],
             [conditionType, conditionParam]
           );
         }
@@ -76,6 +77,7 @@ export function useConfidentialEscrow() {
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas,
+          gas: 1_200_000n,
         });
 
         setTxHash(hash);
@@ -119,6 +121,7 @@ export function useConfidentialEscrow() {
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas,
+          gas: 600_000n,
         });
 
         setTxHash(hash);
@@ -154,6 +157,7 @@ export function useConfidentialEscrow() {
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas,
+          gas: 800_000n,
         });
 
         setTxHash(hash);
@@ -189,6 +193,7 @@ export function useConfidentialEscrow() {
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas,
+          gas: 200_000n,
         });
 
         setTxHash(hash);

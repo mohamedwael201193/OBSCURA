@@ -4,38 +4,38 @@ import { Shield, Eye, Lock, Zap, Layers, Globe } from "lucide-react";
 const features = [
   {
     icon: Shield,
-    title: "FHE-Powered ACL",
-    description: "Role-based access control using FHE.allow(), FHE.allowThis(), and FHE.allowTransient() — cryptographic permissions, not trust.",
+    title: "Silent Failure Pattern",
+    description: "Unauthorized escrow redemptions return zero tokens via FHE.select() — no revert, no error, completely indistinguishable from success. Privacy through indistinguishability.",
     tag: "CORE",
   },
   {
     icon: Eye,
     title: "\"What's Private?\" Panel",
-    description: "Every page shows ciphertext handle IDs, ACL permissions, and who can decrypt what. Encryption made tangible.",
+    description: "Live ciphertext handle IDs, ACL permission states, and per-role decryption access — across every encrypted value on the platform. Encryption made tangible.",
     tag: "UX",
   },
   {
     icon: Lock,
-    title: "EIP-712 Permits",
-    description: "Sign-to-decrypt authorization. Employees sign a permit to reveal their salary. Auditors sign to see aggregate totals only.",
+    title: "EIP-712 Permit Decryption",
+    description: "Employees sign cryptographic permits to decrypt their own salary. Auditors sign scoped permits for aggregate totals only. No trust — only math.",
     tag: "AUTH",
   },
   {
     icon: Zap,
-    title: "Async Stepper UX",
-    description: "Visual progress for FHE operations: Encrypting → Computing on-chain → Ready to decrypt. Eliminates latency confusion.",
+    title: "Async FHE Stepper",
+    description: "Visual progress for CoFHE operations: Encrypting → Computing → Ready. Users see exactly where their transaction is in the FHE pipeline — no latency confusion.",
     tag: "UX",
   },
   {
     icon: Layers,
-    title: "Cross-Module Composability",
-    description: "Pay feeds Vote weight. Vault positions feed governance. Trust gates premium features. Mind scores everything. All on $OBS.",
+    title: "Composable Privacy Stack",
+    description: "Pay informs Vote weight. Vault positions feed Mind credit scoring. Trust gates premium access. Each module a building block — all powered by $OBS.",
     tag: "ARCH",
   },
   {
     icon: Globe,
-    title: "Multi-Chain Deploy",
-    description: "Primary on Arbitrum Sepolia, expanding to Base Sepolia in Wave 3+. Production-ready multi-chain infrastructure.",
+    title: "4 Contracts · 1 Dashboard",
+    description: "ObscuraToken, ObscuraPay, ObscuraEscrow, and ObscuraConditionResolver — all live on Arbitrum Sepolia, unified under one dark-mode React frontend.",
     tag: "INFRA",
   },
 ];
@@ -55,10 +55,10 @@ const FeaturesGrid = () => {
             Infrastructure
           </span>
           <h2 className="font-display text-3xl md:text-4xl mt-3 text-foreground tracking-tight">
-            Built for <span className="text-primary text-glow">Institutional</span> Privacy
+            Encryption That <span className="text-primary text-glow">Means Business</span>
           </h2>
           <p className="text-sm font-body text-muted-foreground mt-4 max-w-lg mx-auto">
-            Every component engineered to make encryption visible, composable, and enterprise-ready.
+            Every component engineered to make homomorphic encryption visible, composable, and enterprise-grade — from payroll to AI inference.
           </p>
         </motion.div>
 

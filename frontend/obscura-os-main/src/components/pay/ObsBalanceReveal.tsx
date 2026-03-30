@@ -86,7 +86,7 @@ export default function ObsBalanceReveal() {
         {isDecrypted ? (
           <>
             <EyeOff className="w-3.5 h-3.5 inline mr-2" />
-            Re-Encrypt
+            Hide Balance
           </>
         ) : isProcessing ? (
           "Decrypting..."
@@ -97,6 +97,9 @@ export default function ObsBalanceReveal() {
           </>
         )}
       </motion.button>
+      <p className="text-[9px] font-mono text-muted-foreground/40 mt-4">
+        &ldquo;Hide Balance&rdquo; clears the local view only — your balance stays encrypted on-chain.
+      </p>
 
       {OBSCURA_TOKEN_ADDRESS && (
         <p className="text-[9px] font-mono text-muted-foreground/40 mt-4">

@@ -92,7 +92,7 @@ export default function BalanceReveal() {
         {isDecrypted ? (
           <>
             <EyeOff className="w-3.5 h-3.5 inline mr-2" />
-            Re-Encrypt
+            Hide Balance
           </>
         ) : isProcessing ? (
           "Decrypting..."
@@ -104,7 +104,8 @@ export default function BalanceReveal() {
         )}
       </motion.button>
       <p className="text-[9px] font-mono text-muted-foreground/40 mt-4">
-        Signs EIP-712 permit to authorize decryption of your balance handle
+        Signs EIP-712 permit to authorize decryption of your balance handle.
+        &ldquo;Hide Balance&rdquo; clears the local view only — nothing changes on-chain.
       </p>
     </div>
   );

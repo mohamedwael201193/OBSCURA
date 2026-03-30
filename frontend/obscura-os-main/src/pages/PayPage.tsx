@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Lock, Wallet, Eye, Users, Shield, ChevronDown, ChevronUp } from "lucide-react";
+import { Lock, Wallet, Users, Shield, ChevronDown, ChevronUp, LayoutDashboard, Send, ArrowDownToLine, FileText, Settings } from "lucide-react";
 import { useAccount, useReadContract } from "wagmi";
 import ObscuraNav from "@/components/ObscuraNav";
 import ObscuraFooter from "@/components/ObscuraFooter";
@@ -12,24 +12,20 @@ import AuditView from "@/components/pay/AuditView";
 import MintObsForm from "@/components/pay/MintObsForm";
 import ObsBalanceReveal from "@/components/pay/ObsBalanceReveal";
 import ClaimDailyObsForm from "@/components/pay/ClaimDailyObsForm";
+import TransferForm from "@/components/pay/TransferForm";
+import CreateEscrowForm from "@/components/pay/CreateEscrowForm";
+import EscrowActions from "@/components/pay/EscrowActions";
+import EscrowList from "@/components/pay/EscrowList";
+import DashboardStats from "@/components/pay/DashboardStats";
 import { usePermissions } from "@/hooks/usePermissions";
-import { OBSCURA_PAY_ABI, OBSCURA_PAY_ADDRESS } from "@/config/contracts";
-import { EXPLORER_URL } from "@/lib/constants";
+import { OBSCURA_PAY_ABI, OBSCURA_PAY_ADDRESS, OBSCURA_ESCROW_ADDRESS, OBSCURA_TOKEN_ADDRESS } from "@/config/contracts";
 
-type Tab = "employer" | "employee" | "auditor";
+type Tab = "dashboard" | "pay" | "receive" | "escrows" | "admin";
 
 const PayPage = () => {
   const { address, isConnected } = useAccount();
   const { isOwner, isEmployee, isAuditor } = usePermissions();
   const [privacyOpen, setPrivacyOpen] = useState(true);
-
-  // Read employees list for privacy panel
-  const { data: employees } = useReadContract({
-    address: OBSCURA_PAY_ADDRESS,
-    abi: OBSCURA_PAY_ABI,
-    functionName: "getEmployees",
-    query: { enabled: !!OBSCURA_PAY_ADDRESS },
-  });
 
   const { data: employeeCount } = useReadContract({
     address: OBSCURA_PAY_ADDRESS,
@@ -38,19 +34,14 @@ const PayPage = () => {
     query: { enabled: !!OBSCURA_PAY_ADDRESS },
   });
 
-  // Auto-detect which tab to show based on connected wallet role
-  const getDefaultTab = (): Tab => {
-    if (isAuditor && !isOwner) return "auditor";
-    if (isEmployee && !isOwner) return "employee";
-    return "employer"; // Everyone can pay employees
-  };
-
-  const [tab, setTab] = useState<Tab>(getDefaultTab());
+  const [tab, setTab] = useState<Tab>("dashboard");
 
   const tabs: { key: Tab; label: string; icon: typeof Users }[] = [
-    { key: "employer", label: "Employer", icon: Users },
-    { key: "employee", label: "Employee", icon: Wallet },
-    { key: "auditor", label: "Auditor", icon: Shield },
+    { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { key: "pay", label: "Pay", icon: Send },
+    { key: "receive", label: "Receive", icon: ArrowDownToLine },
+    { key: "escrows", label: "Escrows", icon: FileText },
+    { key: "admin", label: "Admin", icon: Settings },
   ];
 
   return (
@@ -73,7 +64,7 @@ const PayPage = () => {
             Obscura<span className="text-primary text-glow">Pay</span>
           </h1>
           <p className="text-sm font-body text-muted-foreground mt-2 max-w-lg">
-            Encrypted enterprise payroll. Employers pay, Arbiscan shows nothing, employees decrypt their salary.
+            Complete encrypted payment platform — payroll, P2P transfers, escrows with silent failure pattern. All on Fhenix CoFHE.
           </p>
         </motion.div>
 
@@ -113,37 +104,42 @@ const PayPage = () => {
             )}
 
             <AnimatePresence mode="wait">
-              {tab === "employer" && (
-                <motion.div key="employer" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
+              {tab === "dashboard" && (
+                <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
+                  <DashboardStats />
+                  <ClaimDailyObsForm />
+                </motion.div>
+              )}
+
+              {tab === "pay" && (
+                <motion.div key="pay" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                   {!isConnected ? (
                     <div className="glass-panel rounded-sm p-8 text-center">
                       <Wallet className="w-8 h-8 text-primary/40 mx-auto mb-3" />
-                      <p className="text-sm font-mono text-muted-foreground">Connect your wallet to access employer functions</p>
+                      <p className="text-sm font-mono text-muted-foreground">Connect your wallet to send payments</p>
                     </div>
                   ) : (
                     <>
+                      <TransferForm />
                       <PayrollForm />
                       <EmployeeList />
-                      {isOwner && <MintObsForm />}
-                      <ClaimDailyObsForm />
                     </>
                   )}
                 </motion.div>
               )}
 
-              {tab === "employee" && (
-                <motion.div key="employee" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
+              {tab === "receive" && (
+                <motion.div key="receive" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                   {!isConnected ? (
                     <div className="glass-panel rounded-sm p-8 text-center">
                       <Wallet className="w-8 h-8 text-primary/40 mx-auto mb-3" />
-                      <p className="text-sm font-mono text-muted-foreground">Connect your wallet to view your encrypted balance</p>
+                      <p className="text-sm font-mono text-muted-foreground">Connect your wallet to view your encrypted balances</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       <div className="text-[9px] font-mono text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
-                        Two separate encrypted balances — both need a permit signature to reveal.
-                        Payroll comes from the employer via <span className="text-primary/60">Pay Employee</span>.
-                        $OBS tokens come from <span className="text-primary/60">Mint $OBS</span> or the <span className="text-primary/60">Daily Claim</span>.
+                        Three encrypted balance types — payroll salary, $OBS token balance, and escrow redemptions.
+                        Each requires an EIP-712 permit signature to reveal.
                       </div>
                       <ClaimDailyObsForm />
                       <BalanceReveal />
@@ -153,20 +149,41 @@ const PayPage = () => {
                 </motion.div>
               )}
 
-              {tab === "auditor" && (
-                <motion.div key="auditor" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
+              {tab === "escrows" && (
+                <motion.div key="escrows" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                   {!isConnected ? (
                     <div className="glass-panel rounded-sm p-8 text-center">
                       <Wallet className="w-8 h-8 text-primary/40 mx-auto mb-3" />
-                      <p className="text-sm font-mono text-muted-foreground">Connect your wallet to access audit functions</p>
-                    </div>
-                  ) : !isAuditor && !isOwner ? (
-                    <div className="glass-panel rounded-sm p-8 text-center">
-                      <Shield className="w-8 h-8 text-primary/40 mx-auto mb-3" />
-                      <p className="text-sm font-mono text-muted-foreground">Auditor access required. Ask the contract owner to grant audit access.</p>
+                      <p className="text-sm font-mono text-muted-foreground">Connect your wallet to manage escrows</p>
                     </div>
                   ) : (
-                    <AuditView />
+                    <>
+                      <CreateEscrowForm />
+                      <EscrowActions />
+                      <EscrowList />
+                    </>
+                  )}
+                </motion.div>
+              )}
+
+              {tab === "admin" && (
+                <motion.div key="admin" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
+                  {!isConnected ? (
+                    <div className="glass-panel rounded-sm p-8 text-center">
+                      <Wallet className="w-8 h-8 text-primary/40 mx-auto mb-3" />
+                      <p className="text-sm font-mono text-muted-foreground">Connect your wallet to access admin functions</p>
+                    </div>
+                  ) : (
+                    <>
+                      {(isAuditor || isOwner) && <AuditView />}
+                      {isOwner && <MintObsForm />}
+                      {!isAuditor && !isOwner && (
+                        <div className="glass-panel rounded-sm p-8 text-center">
+                          <Shield className="w-8 h-8 text-primary/40 mx-auto mb-3" />
+                          <p className="text-sm font-mono text-muted-foreground">Admin/Auditor access required for this tab.</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </motion.div>
               )}
@@ -205,6 +222,22 @@ const PayPage = () => {
                           label: "Aggregate Total",
                           acl: ["Contract", "Auditor"],
                         },
+                        {
+                          handle: OBSCURA_ESCROW_ADDRESS
+                            ? `${OBSCURA_ESCROW_ADDRESS.slice(0, 6)}...esc`
+                            : "Not deployed",
+                          type: "eaddress + euint64",
+                          label: "Escrow Owner & Amount",
+                          acl: ["Contract", "Creator"],
+                        },
+                        {
+                          handle: OBSCURA_TOKEN_ADDRESS
+                            ? `${OBSCURA_TOKEN_ADDRESS.slice(0, 6)}...txf`
+                            : "Not deployed",
+                          type: "euint64",
+                          label: "P2P Transfer Amount",
+                          acl: ["Sender", "Recipient"],
+                        },
                       ].map((h, i) => (
                         <div key={`${h.handle}-${i}`} className="p-3 bg-secondary/30 rounded-sm border border-border/30">
                           <div className="flex justify-between mb-1.5">
@@ -224,9 +257,11 @@ const PayPage = () => {
                     {/* Contract info */}
                     <div className="p-4 border-t border-border/50">
                       <div className="text-[9px] font-mono text-muted-foreground/50 space-y-1">
-                        <div>Contract: <span className="text-foreground/70">{OBSCURA_PAY_ADDRESS ? `${OBSCURA_PAY_ADDRESS.slice(0, 10)}...${OBSCURA_PAY_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
+                        <div>Pay: <span className="text-foreground/70">{OBSCURA_PAY_ADDRESS ? `${OBSCURA_PAY_ADDRESS.slice(0, 10)}...${OBSCURA_PAY_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
+                        <div>Token: <span className="text-foreground/70">{OBSCURA_TOKEN_ADDRESS ? `${OBSCURA_TOKEN_ADDRESS.slice(0, 10)}...${OBSCURA_TOKEN_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
+                        <div>Escrow: <span className="text-foreground/70">{OBSCURA_ESCROW_ADDRESS ? `${OBSCURA_ESCROW_ADDRESS.slice(0, 10)}...${OBSCURA_ESCROW_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
                         <div>Network: <span className="text-primary">Arbitrum Sepolia (421614)</span></div>
-                        <div>FHE Ops: <span className="text-foreground/70">asEuint64, add, allow, allowThis</span></div>
+                        <div>FHE Ops: <span className="text-foreground/70">asEuint64, asEaddress, eq, select, and, not, add, sub, gte, allow</span></div>
                         <div>Employees: <span className="text-foreground/70">{employeeCount?.toString() ?? "0"}</span></div>
                       </div>
                     </div>
@@ -247,6 +282,8 @@ const PayPage = () => {
               <div className="space-y-1.5">
                 {[
                   { name: "ObscuraPay", wave: 1, active: true },
+                  { name: "ObscuraEscrow", wave: 1, active: true },
+                  { name: "ObscuraToken", wave: 1, active: true },
                   { name: "ObscuraVote", wave: 2, locked: true },
                   { name: "ObscuraVault", wave: 3, locked: true },
                   { name: "ObscuraTrust", wave: 4, locked: true },

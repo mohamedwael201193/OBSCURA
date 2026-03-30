@@ -16,7 +16,7 @@ function saveDeployment(network: string, contracts: Record<string, string>) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
-task("deploy-obscura", "Deploy ObscuraPay and ObscuraToken contracts").setAction(
+task("deploy-obscura", "Deploy all Obscura contracts (v3)").setAction(
   async (_, hre: HardhatRuntimeEnvironment) => {
     const { ethers, network } = hre;
     const [deployer] = await ethers.getSigners();
@@ -27,26 +27,44 @@ task("deploy-obscura", "Deploy ObscuraPay and ObscuraToken contracts").setAction
       `Balance: ${ethers.formatEther(await ethers.provider.getBalance(deployer.address))} ETH`
     );
 
-    // Deploy ObscuraPay
-    console.log("\nDeploying ObscuraPay...");
-    const ObscuraPay = await ethers.getContractFactory("ObscuraPay");
-    const obscuraPay = await ObscuraPay.deploy();
-    await obscuraPay.waitForDeployment();
-    const payAddress = await obscuraPay.getAddress();
-    console.log(`ObscuraPay deployed to: ${payAddress}`);
-
-    // Deploy ObscuraToken
-    console.log("\nDeploying ObscuraToken...");
+    // 1. Deploy ObscuraToken (no constructor args)
+    console.log("\n[1/4] Deploying ObscuraToken...");
     const ObscuraToken = await ethers.getContractFactory("ObscuraToken");
     const obscuraToken = await ObscuraToken.deploy();
     await obscuraToken.waitForDeployment();
     const tokenAddress = await obscuraToken.getAddress();
     console.log(`ObscuraToken deployed to: ${tokenAddress}`);
 
+    // 2. Deploy ObscuraPay (no constructor args)
+    console.log("\n[2/4] Deploying ObscuraPay...");
+    const ObscuraPay = await ethers.getContractFactory("ObscuraPay");
+    const obscuraPay = await ObscuraPay.deploy();
+    await obscuraPay.waitForDeployment();
+    const payAddress = await obscuraPay.getAddress();
+    console.log(`ObscuraPay deployed to: ${payAddress}`);
+
+    // 3. Deploy ObscuraEscrow (requires tokenAddress)
+    console.log("\n[3/4] Deploying ObscuraEscrow...");
+    const ObscuraEscrow = await ethers.getContractFactory("ObscuraEscrow");
+    const obscuraEscrow = await ObscuraEscrow.deploy(tokenAddress);
+    await obscuraEscrow.waitForDeployment();
+    const escrowAddress = await obscuraEscrow.getAddress();
+    console.log(`ObscuraEscrow deployed to: ${escrowAddress}`);
+
+    // 4. Deploy ObscuraConditionResolver (requires escrowAddress)
+    console.log("\n[4/4] Deploying ObscuraConditionResolver...");
+    const ObscuraConditionResolver = await ethers.getContractFactory("ObscuraConditionResolver");
+    const resolver = await ObscuraConditionResolver.deploy(escrowAddress);
+    await resolver.waitForDeployment();
+    const resolverAddress = await resolver.getAddress();
+    console.log(`ObscuraConditionResolver deployed to: ${resolverAddress}`);
+
     // Save deployment addresses
     saveDeployment(network.name, {
-      ObscuraPay: payAddress,
       ObscuraToken: tokenAddress,
+      ObscuraPay: payAddress,
+      ObscuraEscrow: escrowAddress,
+      ObscuraConditionResolver: resolverAddress,
       deployer: deployer.address,
       timestamp: new Date().toISOString(),
     });
@@ -56,8 +74,10 @@ task("deploy-obscura", "Deploy ObscuraPay and ObscuraToken contracts").setAction
     console.log("\n--- Copy to frontend/obscura-os-main/.env ---");
     console.log(`VITE_OBSCURA_PAY_ADDRESS=${payAddress}`);
     console.log(`VITE_OBSCURA_TOKEN_ADDRESS=${tokenAddress}`);
+    console.log(`VITE_OBSCURA_ESCROW_ADDRESS=${escrowAddress}`);
+    console.log(`VITE_OBSCURA_CONDITION_RESOLVER_ADDRESS=${resolverAddress}`);
     console.log(`VITE_CHAIN_ID=421614`);
 
-    return { payAddress, tokenAddress };
+    return { payAddress, tokenAddress, escrowAddress, resolverAddress };
   }
 );

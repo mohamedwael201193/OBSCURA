@@ -64,3 +64,4 @@ coverage/
 # ── Playwright ──────────────────────────────────────────────────────────────────
 test-results/
 playwright-report/
+projects.md

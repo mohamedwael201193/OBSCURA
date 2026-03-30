@@ -4,10 +4,11 @@ pragma solidity ^0.8.25;
 import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import "./ObscuraPermissions.sol";
 
-/// @title ObscuraPay — encrypted payroll, open to any employer
+/// @title ObscuraPay — encrypted payroll with payment history
 /// @notice Any wallet can act as an employer and pay employees.
 ///         Each employee accumulates encrypted salary from any employer.
 ///         Aggregate total is owner-auditable; any address can request audit access.
+///         Payment history is tracked per-address for the frontend dashboard.
 contract ObscuraPay is ObscuraPermissions {
     // Per-employee encrypted running balance (accumulates across all employers)
     mapping(address => euint64) private encryptedBalances;
@@ -16,6 +17,18 @@ contract ObscuraPay is ObscuraPermissions {
 
     address[] public employees;
     mapping(address => bool) public isEmployee;
+
+    // ─── Payment History ────────────────────────────────────────────────
+    struct PaymentRecord {
+        address from;
+        address to;
+        uint256 timestamp;
+        // Amount is encrypted — caller uses their permit to decrypt their own records
+    }
+
+    PaymentRecord[] public paymentLog;
+    // Index of payment records per address (as sender or receiver)
+    mapping(address => uint256[]) private paymentIndicesByAddress;
 
     event EmployeePaid(address indexed employer, address indexed employee);
     event AuditAccessGranted(address indexed auditor);
@@ -67,6 +80,16 @@ contract ObscuraPay is ObscuraPermissions {
         FHE.allowThis(encryptedBalances[_emp]);
         FHE.allowThis(totalPayroll);
 
+        // Record payment in history log
+        uint256 idx = paymentLog.length;
+        paymentLog.push(PaymentRecord({
+            from: msg.sender,
+            to: _emp,
+            timestamp: block.timestamp
+        }));
+        paymentIndicesByAddress[msg.sender].push(idx);
+        paymentIndicesByAddress[_emp].push(idx);
+
         emit EmployeePaid(msg.sender, _emp);
     }
 
@@ -94,5 +117,40 @@ contract ObscuraPay is ObscuraPermissions {
 
     function getEmployeeCount() external view returns (uint256) {
         return employees.length;
+    }
+
+    // ─── Payment History Views ──────────────────────────────────────────
+
+    /// @notice Total number of payment records.
+    function getPaymentCount() external view returns (uint256) {
+        return paymentLog.length;
+    }
+
+    /// @notice Number of payments involving a specific address (as sender or receiver).
+    function getMyPaymentCount() external view returns (uint256) {
+        return paymentIndicesByAddress[msg.sender].length;
+    }
+
+    /// @notice Get payment indices for the caller. Frontend can paginate and fetch details.
+    function getMyPaymentIndices(uint256 _offset, uint256 _limit) external view returns (uint256[] memory) {
+        uint256[] storage indices = paymentIndicesByAddress[msg.sender];
+        uint256 total = indices.length;
+        if (_offset >= total) {
+            return new uint256[](0);
+        }
+        uint256 end = _offset + _limit;
+        if (end > total) end = total;
+        uint256[] memory result = new uint256[](end - _offset);
+        for (uint256 i = _offset; i < end; i++) {
+            result[i - _offset] = indices[i];
+        }
+        return result;
+    }
+
+    /// @notice Get payment record by index.
+    function getPaymentRecord(uint256 _index) external view returns (address from_, address to_, uint256 timestamp_) {
+        require(_index < paymentLog.length, "Index out of bounds");
+        PaymentRecord storage rec = paymentLog[_index];
+        return (rec.from, rec.to, rec.timestamp);
     }
 }

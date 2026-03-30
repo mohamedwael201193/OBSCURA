@@ -68,6 +68,47 @@ export async function encryptAmount(
 }
 
 /**
+ * Encrypt an address client-side for escrow owner field.
+ * Returns the encrypted address input struct.
+ */
+export async function encryptAddress(
+  address: string,
+  onStep?: StepCallback
+): Promise<any> {
+  if (!cofheClient) throw new Error('FHE client not initialized');
+
+  const result = await cofheClient
+    .encryptInputs([Encryptable.address(address)])
+    .onStep((step: string, ctx: any) => {
+      onStep?.(step, ctx);
+    })
+    .execute();
+
+  return result;
+}
+
+/**
+ * Encrypt multiple inputs (address + amount) in a single batch.
+ * Returns array of encrypted input structs.
+ */
+export async function encryptAddressAndAmount(
+  address: string,
+  amount: bigint,
+  onStep?: StepCallback
+): Promise<any> {
+  if (!cofheClient) throw new Error('FHE client not initialized');
+
+  const result = await cofheClient
+    .encryptInputs([Encryptable.address(address), Encryptable.uint64(amount)])
+    .onStep((step: string, ctx: any) => {
+      onStep?.(step, ctx);
+    })
+    .execute();
+
+  return result;
+}
+
+/**
  * Decrypt a ciphertext handle for UI display.
  */
 export async function decryptBalance(

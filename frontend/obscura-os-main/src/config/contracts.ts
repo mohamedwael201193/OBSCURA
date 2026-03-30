@@ -1,4 +1,4 @@
-export const OBSCURA_PAY_ADDRESS = import.meta.env.VITE_OBSCURA_PAY_ADDRESS as `0x${string}` | undefined;
+﻿export const OBSCURA_PAY_ADDRESS = import.meta.env.VITE_OBSCURA_PAY_ADDRESS as `0x${string}` | undefined;
 
 // InEuint64 tuple: { ctHash: uint256, securityZone: uint8, utype: uint8, signature: bytes }
 const InEuint64Components = [
@@ -34,11 +34,14 @@ export const OBSCURA_PAY_ABI = [
   },
   {
     anonymous: false,
-    inputs: [{ indexed: true, name: "employee", type: "address" }],
+    inputs: [
+      { indexed: true, name: "employer", type: "address" },
+      { indexed: true, name: "employee", type: "address" },
+    ],
     name: "EmployeePaid",
     type: "event",
   },
-  // payEmployee(address, InEuint64)
+  // payEmployee(address, InEuint64) â€” open to any wallet
   {
     name: "payEmployee",
     type: "function",
@@ -60,7 +63,7 @@ export const OBSCURA_PAY_ABI = [
     ],
     outputs: [],
   },
-  // getMyBalance() returns (euint64 → uint256 bigint)
+  // getMyBalance() returns (euint64 â†’ uint256 bigint)
   {
     name: "getMyBalance",
     type: "function",
@@ -68,7 +71,7 @@ export const OBSCURA_PAY_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
   },
-  // grantAuditAccess(address)
+  // grantAuditAccess(address) â€” owner only
   {
     name: "grantAuditAccess",
     type: "function",
@@ -76,7 +79,7 @@ export const OBSCURA_PAY_ABI = [
     inputs: [{ name: "_auditor", type: "address" }],
     outputs: [],
   },
-  // getAggregateTotal() returns (euint64 → uint256 bigint)
+  // getAggregateTotal() returns (euint64 â†’ uint256 bigint) â€” auditor/owner only
   {
     name: "getAggregateTotal",
     type: "function",
@@ -132,7 +135,7 @@ export const OBSCURA_PAY_ABI = [
     inputs: [{ name: "", type: "uint256" }],
     outputs: [{ name: "", type: "address" }],
   },
-  // grantRole(address, uint8)
+  // grantRole(address, uint8) â€” owner only
   {
     name: "grantRole",
     type: "function",
@@ -143,7 +146,7 @@ export const OBSCURA_PAY_ABI = [
     ],
     outputs: [],
   },
-  // revokeRole(address)
+  // revokeRole(address) â€” owner only
   {
     name: "revokeRole",
     type: "function",
@@ -156,7 +159,7 @@ export const OBSCURA_PAY_ABI = [
 export const OBSCURA_TOKEN_ADDRESS = import.meta.env.VITE_OBSCURA_TOKEN_ADDRESS as `0x${string}` | undefined;
 
 export const OBSCURA_TOKEN_ABI = [
-  // mint(address, InEuint64) — owner only
+  // mint(address, InEuint64) â€” owner only
   {
     name: "mint",
     type: "function",
@@ -164,17 +167,52 @@ export const OBSCURA_TOKEN_ABI = [
     inputs: [
       { name: "_to", type: "address" },
       {
-        name: "_encAmount",
+        name: "_amount",
         type: "tuple",
-        components: [
-          { name: "ctHash", type: "uint256" },
-          { name: "securityZone", type: "uint8" },
-          { name: "utype", type: "uint8" },
-          { name: "signature", type: "bytes" },
-        ],
+        components: [...InEuint64Components],
       },
     ],
     outputs: [],
+  },
+  // claimDailyTokens() â€” public, 100 $OBS per 24h
+  {
+    name: "claimDailyTokens",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [],
+    outputs: [],
+  },
+  // nextClaimIn() returns seconds until next allowed claim (0 = can claim now)
+  {
+    name: "nextClaimIn",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  // lastClaim(address) returns (uint256)
+  {
+    name: "lastClaim",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  // DAILY_CLAIM_AMOUNT returns (uint64)
+  {
+    name: "DAILY_CLAIM_AMOUNT",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint64" }],
+  },
+  // CLAIM_COOLDOWN returns (uint256)
+  {
+    name: "CLAIM_COOLDOWN",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
   },
   // name() returns (string)
   {
@@ -200,7 +238,7 @@ export const OBSCURA_TOKEN_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "address" }],
   },
-  // balanceOf() returns (euint64 → uint256 bigint) — caller gets their own encrypted balance handle
+  // balanceOf() returns (euint64 â†’ uint256 bigint) â€” caller reads their own encrypted balance handle
   {
     name: "balanceOf",
     type: "function",
@@ -216,13 +254,36 @@ export const OBSCURA_TOKEN_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
   },
-  // Mint event — only emits the recipient address
+  // totalClaims() returns (uint256)
+  {
+    name: "totalClaims",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  // Mint event
+  {
+    anonymous: false,
+    inputs: [{ indexed: true, name: "to", type: "address" }],
+    name: "Mint",
+    type: "event",
+  },
+  // DailyClaim event
+  {
+    anonymous: false,
+    inputs: [{ indexed: true, name: "claimant", type: "address" }],
+    name: "DailyClaim",
+    type: "event",
+  },
+  // ConfidentialTransfer event
   {
     anonymous: false,
     inputs: [
+      { indexed: true, name: "from", type: "address" },
       { indexed: true, name: "to", type: "address" },
     ],
-    name: "Mint",
+    name: "ConfidentialTransfer",
     type: "event",
   },
 ] as const;

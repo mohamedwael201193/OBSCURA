@@ -3,69 +3,96 @@ pragma solidity ^0.8.25;
 
 import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
-/// @title ObscuraToken — $OBS FHERC20 stub for Wave 1
-/// @notice Full FHERC20 implementation deferred to Wave 2.
-///         This contract reserves the token identity and provides
-///         a minimal encrypted balance framework.
+/// @title ObscuraToken — $OBS encrypted token with public daily faucet
+/// @notice Any wallet can claim 100 $OBS once every 24 hours for free.
+///         Owner can mint arbitrary amounts to any address.
+///         Balances are fully encrypted (euint64) — only the holder can decrypt.
 contract ObscuraToken {
     string public constant name = "Obscura Token";
     string public constant symbol = "OBS";
     uint8 public constant decimals = 18;
 
+    /// Amount dispensed per daily claim (100 tokens)
+    uint64 public constant DAILY_CLAIM_AMOUNT = 100;
+    /// Cooldown period: 24 hours
+    uint256 public constant CLAIM_COOLDOWN = 24 hours;
+
     address public owner;
     uint256 public totalMinted;
+    uint256 public totalClaims;
 
     mapping(address => euint64) private encryptedBalances;
+    /// Timestamp of last claim per address
+    mapping(address => uint256) public lastClaim;
 
     event Mint(address indexed to);
+    event DailyClaim(address indexed claimant);
     event ConfidentialTransfer(address indexed from, address indexed to);
 
     constructor() {
         owner = msg.sender;
     }
 
+    /// @notice Owner mints a custom encrypted amount to any address.
     function mint(address _to, InEuint64 calldata _amount) external {
         require(msg.sender == owner, "Only owner");
-        euint64 amount = FHE.asEuint64(_amount);
-
-        if (FHE.isInitialized(encryptedBalances[_to])) {
-            encryptedBalances[_to] = FHE.add(encryptedBalances[_to], amount);
-        } else {
-            encryptedBalances[_to] = amount;
-        }
-
-        FHE.allow(encryptedBalances[_to], _to);
-        FHE.allowThis(encryptedBalances[_to]);
-
+        _creditBalance(_to, FHE.asEuint64(_amount));
         totalMinted++;
         emit Mint(_to);
     }
 
+    /// @notice Any wallet claims 100 $OBS — once every 24 hours, no cost.
+    function claimDailyTokens() external {
+        require(
+            block.timestamp >= lastClaim[msg.sender] + CLAIM_COOLDOWN,
+            "Already claimed today"
+        );
+        lastClaim[msg.sender] = block.timestamp;
+
+        euint64 amount = FHE.asEuint64(uint256(DAILY_CLAIM_AMOUNT));
+        _creditBalance(msg.sender, amount);
+
+        totalClaims++;
+        emit DailyClaim(msg.sender);
+    }
+
+    /// @notice Seconds until msg.sender can claim again (0 = can claim now).
+    function nextClaimIn() external view returns (uint256) {
+        uint256 next = lastClaim[msg.sender] + CLAIM_COOLDOWN;
+        if (block.timestamp >= next) return 0;
+        return next - block.timestamp;
+    }
+
+    /// @notice Read caller's encrypted balance handle for off-chain decryption.
     function balanceOf() external view returns (euint64) {
         require(FHE.isInitialized(encryptedBalances[msg.sender]), "No balance");
         return encryptedBalances[msg.sender];
     }
 
+    /// @notice Encrypted transfer to another address.
     function confidentialTransfer(address _to, InEuint64 calldata _amount) external {
+        require(_to != address(0), "Invalid recipient");
         require(FHE.isInitialized(encryptedBalances[msg.sender]), "No balance");
 
         euint64 amount = FHE.asEuint64(_amount);
         encryptedBalances[msg.sender] = FHE.sub(encryptedBalances[msg.sender], amount);
 
-        if (FHE.isInitialized(encryptedBalances[_to])) {
-            encryptedBalances[_to] = FHE.add(encryptedBalances[_to], amount);
-        } else {
-            encryptedBalances[_to] = amount;
-        }
-
-        // ACL for sender's new balance
         FHE.allow(encryptedBalances[msg.sender], msg.sender);
         FHE.allowThis(encryptedBalances[msg.sender]);
 
-        // ACL for recipient's new balance
+        _creditBalance(_to, amount);
+        emit ConfidentialTransfer(msg.sender, _to);
+    }
+
+    // ─── Internal ───────────────────────────────────────────────────────────
+
+    function _creditBalance(address _to, euint64 _amount) internal {
+        if (FHE.isInitialized(encryptedBalances[_to])) {
+            encryptedBalances[_to] = FHE.add(encryptedBalances[_to], _amount);
+        } else {
+            encryptedBalances[_to] = _amount;
+        }
         FHE.allow(encryptedBalances[_to], _to);
         FHE.allowThis(encryptedBalances[_to]);
-
-        emit ConfidentialTransfer(msg.sender, _to);
     }
 }

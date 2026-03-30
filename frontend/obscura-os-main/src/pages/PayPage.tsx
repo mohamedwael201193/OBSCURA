@@ -11,6 +11,7 @@ import BalanceReveal from "@/components/pay/BalanceReveal";
 import AuditView from "@/components/pay/AuditView";
 import MintObsForm from "@/components/pay/MintObsForm";
 import ObsBalanceReveal from "@/components/pay/ObsBalanceReveal";
+import ClaimDailyObsForm from "@/components/pay/ClaimDailyObsForm";
 import { usePermissions } from "@/hooks/usePermissions";
 import { OBSCURA_PAY_ABI, OBSCURA_PAY_ADDRESS } from "@/config/contracts";
 import { EXPLORER_URL } from "@/lib/constants";
@@ -39,10 +40,9 @@ const PayPage = () => {
 
   // Auto-detect which tab to show based on connected wallet role
   const getDefaultTab = (): Tab => {
-    if (isOwner) return "employer";
-    if (isAuditor) return "auditor";
-    if (isEmployee) return "employee";
-    return "employer"; // Default for non-connected
+    if (isAuditor && !isOwner) return "auditor";
+    if (isEmployee && !isOwner) return "employee";
+    return "employer"; // Everyone can pay employees
   };
 
   const [tab, setTab] = useState<Tab>(getDefaultTab());
@@ -104,7 +104,7 @@ const PayPage = () => {
                 <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                 Connected as:{" "}
                 <span className="text-primary">
-                  {isOwner ? "Owner/Employer" : isAuditor ? "Auditor" : isEmployee ? "Employee" : "Unknown Role"}
+                  {isOwner ? "Owner/Employer" : isAuditor ? "Auditor" : isEmployee ? "Employee" : "Employer"}
                 </span>
                 <span className="text-muted-foreground/40">
                   ({address?.slice(0, 6)}...{address?.slice(-4)})
@@ -120,16 +120,12 @@ const PayPage = () => {
                       <Wallet className="w-8 h-8 text-primary/40 mx-auto mb-3" />
                       <p className="text-sm font-mono text-muted-foreground">Connect your wallet to access employer functions</p>
                     </div>
-                  ) : !isOwner ? (
-                    <div className="glass-panel rounded-sm p-8 text-center">
-                      <Lock className="w-8 h-8 text-primary/40 mx-auto mb-3" />
-                      <p className="text-sm font-mono text-muted-foreground">Only the contract owner can access employer functions</p>
-                    </div>
                   ) : (
                     <>
                       <PayrollForm />
                       <EmployeeList />
-                      <MintObsForm />
+                      {isOwner && <MintObsForm />}
+                      <ClaimDailyObsForm />
                     </>
                   )}
                 </motion.div>
@@ -147,8 +143,9 @@ const PayPage = () => {
                       <div className="text-[9px] font-mono text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
                         Two separate encrypted balances — both need a permit signature to reveal.
                         Payroll comes from the employer via <span className="text-primary/60">Pay Employee</span>.
-                        $OBS tokens come from <span className="text-primary/60">Mint $OBS</span>.
+                        $OBS tokens come from <span className="text-primary/60">Mint $OBS</span> or the <span className="text-primary/60">Daily Claim</span>.
                       </div>
+                      <ClaimDailyObsForm />
                       <BalanceReveal />
                       <ObsBalanceReveal />
                     </div>

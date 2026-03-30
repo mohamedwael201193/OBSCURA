@@ -28,10 +28,10 @@ export default function ObsBalanceReveal() {
         <Coins className="w-6 h-6 text-primary" />
       </div>
       <h3 className="font-display text-lg tracking-wider text-foreground mb-1">
-        Your $OBS Balance
+        Your $OBS Token Balance
       </h3>
       <p className="text-[9px] font-mono text-muted-foreground/60 mb-4">
-        Encrypted on-chain. MetaMask shows 0 — decrypt here to see the real amount.
+        $OBS governance tokens minted to you — separate from payroll, held in ObscuraToken.
       </p>
 
       <div className="glass-panel rounded-sm p-6 my-4 max-w-sm mx-auto border-glow">
@@ -59,9 +59,9 @@ export default function ObsBalanceReveal() {
             </motion.div>
           )}
         </AnimatePresence>
-        {ctHash !== undefined && (
+        {ctHash != null && (
           <div className="text-[9px] font-mono text-muted-foreground/50 mt-2">
-            Handle: {ctHash.slice(0, 10)}...
+            Handle: {ctHash.toString().slice(0, 10)}...
           </div>
         )}
       </div>

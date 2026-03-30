@@ -32,9 +32,12 @@ export default function BalanceReveal() {
       <div className="w-16 h-16 mx-auto mb-4 rounded-full border border-primary/30 flex items-center justify-center bg-primary/5">
         <Wallet className="w-6 h-6 text-primary" />
       </div>
-      <h3 className="font-display text-lg tracking-wider text-foreground mb-2">
-        Your Encrypted Balance
+      <h3 className="font-display text-lg tracking-wider text-foreground mb-1">
+        Your Payroll Balance
       </h3>
+      <p className="text-[9px] font-mono text-muted-foreground/60 mb-4">
+        Salary received via ObscuraPay — encrypted on-chain, visible only to you.
+      </p>
 
       <div className="glass-panel rounded-sm p-6 my-6 max-w-sm mx-auto border-glow">
         <div className="text-[9px] tracking-[0.2em] uppercase text-muted-foreground font-mono mb-3">
@@ -61,10 +64,9 @@ export default function BalanceReveal() {
             </motion.div>
           )}
         </AnimatePresence>
-        {ctHash && (
+        {ctHash != null && (
           <div className="text-[9px] font-mono text-muted-foreground/50 mt-2">
-            Handle: {ctHash.toString(16).slice(0, 8)}...
-            {ctHash.toString(16).slice(-4)}
+            Handle: {ctHash.toString().slice(0, 10)}...{ctHash.toString().slice(-4)}
           </div>
         )}
       </div>

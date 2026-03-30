@@ -13,6 +13,8 @@ export function useDecryptBalance() {
   const [decryptedBalance, setDecryptedBalance] = useState<bigint | null>(null);
 
   // Read the encrypted balance handle from contract
+  // account: address is REQUIRED — getMyBalance() uses msg.sender; without it,
+  // the eth_call has no `from` so msg.sender == address(0) and the call reverts.
   const {
     data: ctHash,
     refetch: refetchBalance,
@@ -21,6 +23,7 @@ export function useDecryptBalance() {
     address: OBSCURA_PAY_ADDRESS,
     abi: OBSCURA_PAY_ABI,
     functionName: 'getMyBalance',
+    account: address,
     query: { enabled: false }, // Only fetch on demand
   });
 
@@ -45,7 +48,9 @@ export function useDecryptBalance() {
       const handle = result.data;
 
       if (!handle) {
-        throw new Error('No encrypted balance found');
+        throw new Error(
+          'No payroll balance found. You need to receive a payment via ObscuraPay first (Employer tab → Pay Employee).'
+        );
       }
 
       // Decrypt the handle
@@ -60,7 +65,7 @@ export function useDecryptBalance() {
       fheStatus.setStep(FHEStepStatus.ERROR, (error as Error).message);
       throw error;
     }
-  }, [publicClient, walletClient, refetchBalance, fheStatus]);
+  }, [publicClient, walletClient, address, refetchBalance, fheStatus]);
 
   const reEncrypt = useCallback(() => {
     setDecryptedBalance(null);
@@ -76,10 +81,6 @@ export function useDecryptBalance() {
     ...fheStatus,
   };
 }
-
-/**
- * Hook for auditor to decrypt aggregate total.
- */
 export function useDecryptAggregate() {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();

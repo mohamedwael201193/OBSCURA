@@ -144,6 +144,11 @@ const PayPage = () => {
                     </div>
                   ) : (
                     <div className="space-y-4">
+                      <div className="text-[9px] font-mono text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
+                        Two separate encrypted balances — both need a permit signature to reveal.
+                        Payroll comes from the employer via <span className="text-primary/60">Pay Employee</span>.
+                        $OBS tokens come from <span className="text-primary/60">Mint $OBS</span>.
+                      </div>
                       <BalanceReveal />
                       <ObsBalanceReveal />
                     </div>

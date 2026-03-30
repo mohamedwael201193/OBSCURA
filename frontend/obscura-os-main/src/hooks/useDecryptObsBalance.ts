@@ -1,17 +1,20 @@
 import { useState, useCallback } from 'react';
-import { useReadContract, usePublicClient, useWalletClient } from 'wagmi';
+import { useReadContract, usePublicClient, useWalletClient, useAccount } from 'wagmi';
 import { OBSCURA_TOKEN_ABI, OBSCURA_TOKEN_ADDRESS } from '@/config/contracts';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, decryptBalance, getOrCreatePermit } from '@/lib/fhe';
 
 export function useDecryptObsBalance() {
+  const { address } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const fheStatus = useFHEStatus();
   const [decryptedBalance, setDecryptedBalance] = useState<bigint | null>(null);
 
   // Read the encrypted balance handle from ObscuraToken
+  // account: address is REQUIRED — balanceOf() uses msg.sender; without it,
+  // the eth_call has no `from` so msg.sender == address(0) and the call reverts.
   const {
     data: ctHash,
     refetch: refetchBalance,
@@ -19,6 +22,7 @@ export function useDecryptObsBalance() {
     address: OBSCURA_TOKEN_ADDRESS,
     abi: OBSCURA_TOKEN_ABI,
     functionName: 'balanceOf',
+    account: address,
     query: { enabled: false },
   });
 
@@ -39,7 +43,9 @@ export function useDecryptObsBalance() {
       const handle = result.data;
 
       if (!handle) {
-        throw new Error('No OBS balance found — you may not have been minted any tokens yet');
+        throw new Error(
+          'No $OBS balance found. Ask the employer to mint tokens to your address (Employer tab → Mint $OBS).'
+        );
       }
 
       const plaintext = await decryptBalance(handle, (step) => {
@@ -53,7 +59,7 @@ export function useDecryptObsBalance() {
       fheStatus.setStep(FHEStepStatus.ERROR, (error as Error).message);
       throw error;
     }
-  }, [publicClient, walletClient, refetchBalance, fheStatus]);
+  }, [publicClient, walletClient, address, refetchBalance, fheStatus]);
 
   const reset = useCallback(() => {
     setDecryptedBalance(null);
@@ -61,7 +67,7 @@ export function useDecryptObsBalance() {
   }, [fheStatus]);
 
   return {
-    ctHash: ctHash as `0x${string}` | undefined,
+    ctHash: ctHash as bigint | undefined,
     decryptedBalance,
     decrypt,
     reset,

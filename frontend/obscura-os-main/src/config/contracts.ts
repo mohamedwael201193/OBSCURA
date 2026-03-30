@@ -60,13 +60,13 @@ export const OBSCURA_PAY_ABI = [
     ],
     outputs: [],
   },
-  // getMyBalance() returns (euint64 → bytes32)
+  // getMyBalance() returns (euint64 → uint256 bigint)
   {
     name: "getMyBalance",
     type: "function",
     stateMutability: "view",
     inputs: [],
-    outputs: [{ name: "", type: "bytes32" }],
+    outputs: [{ name: "", type: "uint256" }],
   },
   // grantAuditAccess(address)
   {
@@ -76,13 +76,13 @@ export const OBSCURA_PAY_ABI = [
     inputs: [{ name: "_auditor", type: "address" }],
     outputs: [],
   },
-  // getAggregateTotal() returns (euint64 → bytes32)
+  // getAggregateTotal() returns (euint64 → uint256 bigint)
   {
     name: "getAggregateTotal",
     type: "function",
     stateMutability: "view",
     inputs: [],
-    outputs: [{ name: "", type: "bytes32" }],
+    outputs: [{ name: "", type: "uint256" }],
   },
   // getEmployees() returns (address[])
   {
@@ -200,13 +200,13 @@ export const OBSCURA_TOKEN_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "address" }],
   },
-  // balanceOf() returns (euint64 → bytes32) — caller gets their own encrypted balance handle
+  // balanceOf() returns (euint64 → uint256 bigint) — caller gets their own encrypted balance handle
   {
     name: "balanceOf",
     type: "function",
     stateMutability: "view",
     inputs: [],
-    outputs: [{ name: "", type: "bytes32" }],
+    outputs: [{ name: "", type: "uint256" }],
   },
   // totalMinted() returns (uint256)
   {
@@ -216,12 +216,11 @@ export const OBSCURA_TOKEN_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
   },
-  // Mint event
+  // Mint event — only emits the recipient address
   {
     anonymous: false,
     inputs: [
       { indexed: true, name: "to", type: "address" },
-      { indexed: false, name: "ctHash", type: "uint256" },
     ],
     name: "Mint",
     type: "event",

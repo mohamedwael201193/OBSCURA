@@ -14,30 +14,30 @@ export async function initFHEClient(
   publicClient: PublicClient,
   walletClient: WalletClient
 ): Promise<any> {
-  if (cofheClient) return cofheClient;
   if (isInitializing) {
-    // Wait for existing init
+    // Wait for concurrent init to finish
     while (isInitializing) {
       await new Promise((r) => setTimeout(r, 100));
     }
     return cofheClient;
   }
 
-  isInitializing = true;
-  try {
-    const { createCofheClient, createCofheConfig } = await import('@cofhe/sdk/web');
-    const { arbSepolia } = await import('@cofhe/sdk/chains');
-
-    const config = createCofheConfig({
-      supportedChains: [arbSepolia],
-    });
-
-    cofheClient = createCofheClient(config);
-    await cofheClient.connect(publicClient, walletClient);
-    return cofheClient;
-  } finally {
-    isInitializing = false;
+  if (!cofheClient) {
+    isInitializing = true;
+    try {
+      const { createCofheClient, createCofheConfig } = await import('@cofhe/sdk/web');
+      const { arbSepolia } = await import('@cofhe/sdk/chains');
+      const config = createCofheConfig({ supportedChains: [arbSepolia] });
+      cofheClient = createCofheClient(config);
+    } finally {
+      isInitializing = false;
+    }
   }
+
+  // Always (re-)connect so the SDK's internal state stays in sync with the
+  // current publicClient / walletClient (handles wallet switches, reconnects).
+  await cofheClient.connect(publicClient, walletClient);
+  return cofheClient;
 }
 
 /**

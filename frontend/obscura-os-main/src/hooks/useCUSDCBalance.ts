@@ -37,7 +37,14 @@ export function useCUSDCBalance() {
   });
 
   const reveal = useCallback(async () => {
-    if (!publicClient || !walletClient || !address || handle === undefined) return;
+    if (!publicClient || !walletClient || !address) {
+      setError("Wallet not connected");
+      return;
+    }
+    if (handle === undefined || handle === null) {
+      setError("No encrypted balance found");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -45,7 +52,10 @@ export function useCUSDCBalance() {
       const plain = await decryptBalance(handle as bigint);
       setDecrypted(plain);
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message || "Decrypt failed";
+      console.error("[cUSDC reveal]", e);
+      setError(msg);
+      throw e; // re-throw so caller can toast
     } finally {
       setBusy(false);
     }

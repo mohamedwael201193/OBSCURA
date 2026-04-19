@@ -27,6 +27,7 @@ import StealthInbox from "@/components/pay-v4/StealthInbox";
 import CrossChainFundForm from "@/components/pay-v4/CrossChainFundForm";
 import BuyCoverageForm from "@/components/pay-v4/BuyCoverageForm";
 import DisputeForm from "@/components/pay-v4/DisputeForm";
+import StakePoolForm from "@/components/pay-v4/StakePoolForm";
 
 type Tab = "dashboard" | "pay" | "receive" | "escrows" | "streams" | "crosschain" | "insurance" | "stealth" | "admin";
 
@@ -300,6 +301,7 @@ const PayPage = () => {
                       </div>
                       <BuyCoverageForm />
                       <DisputeForm />
+                      <StakePoolForm />
                     </>
                   )}
                 </motion.div>

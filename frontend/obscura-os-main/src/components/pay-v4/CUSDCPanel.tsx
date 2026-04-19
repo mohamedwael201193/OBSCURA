@@ -5,7 +5,7 @@ import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
 import { toast } from "sonner";
 
 export default function CUSDCPanel() {
-  const { handle, decrypted, reveal, wrap, approveStream, busy } = useCUSDCBalance();
+  const { handle, decrypted, reveal, wrap, approveStream, busy, error } = useCUSDCBalance();
   const [wrapAmount, setWrapAmount] = useState("");
   const [maxApprove, setMaxApprove] = useState("");
 
@@ -39,13 +39,27 @@ export default function CUSDCPanel() {
 
       <div className="grid grid-cols-2 gap-2">
         <button
-          onClick={reveal}
+          onClick={async () => {
+            try {
+              toast.info("Decrypting… sign the permit in your wallet");
+              await reveal();
+              toast.success("Balance decrypted!");
+            } catch (e) {
+              toast.error((e as Error).message || "Decrypt failed");
+            }
+          }}
           disabled={busy || !handle}
           className="py-2 text-[10px] tracking-[0.2em] uppercase font-mono bg-secondary/30 border border-border/50 rounded-sm hover:border-primary/40 disabled:opacity-50 flex items-center justify-center gap-1.5"
         >
-          <Eye className="w-3 h-3" /> Reveal
+          <Eye className="w-3 h-3" /> {busy ? "Decrypting…" : "Reveal"}
         </button>
       </div>
+
+      {error && (
+        <div className="text-[9px] font-mono text-red-400 bg-red-500/10 px-3 py-2 rounded-sm border border-red-500/20">
+          {error}
+        </div>
+      )}
 
       <div className="border-t border-border/30 pt-4 space-y-3">
         <div>

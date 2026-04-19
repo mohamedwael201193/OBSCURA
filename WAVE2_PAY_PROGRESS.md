@@ -54,6 +54,8 @@
 | 34 | Wrap fix — auto-approve plain USDC before wrapping to cUSDC | `src/hooks/useCUSDCBalance.ts`, `src/config/wave2.ts` | ✅ Done |
 | 35 | USDC Arb Sepolia address added (`0x75faf114…6AA4d`) | `src/config/wave2.ts` | ✅ Done |
 | 36 | RPC rate-limit fix — 2s delay between approve + wrap txs, fresh gas per tx | `src/hooks/useCUSDCBalance.ts` | ✅ Done |
+| 37 | cUSDC Reveal fix — error feedback, toast, loading state, re-throw errors | `src/hooks/useCUSDCBalance.ts`, `CUSDCPanel.tsx` | ✅ Done |
+| 38 | StakePoolForm — deposit cUSDC into InsurancePool (encrypted stake) | `src/components/pay-v4/StakePoolForm.tsx`, `PayPage.tsx` | ✅ Done |
 
 ---
 

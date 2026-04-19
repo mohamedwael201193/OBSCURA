@@ -71,7 +71,7 @@ export function deriveStealthPayment(meta: MetaAddress): StealthPayment {
   const stealthPoint = spendingPoint.add(sharedG);
   const uncompressed = stealthPoint.toRawBytes(false); // 65 bytes, leading 0x04
   const hash = keccak_256(uncompressed.slice(1));
-  const addr = getAddress("0x" + bytesToHex(hash.slice(12)));
+  const addr = getAddress(bytesToHex(hash.slice(12)));
 
   return {
     stealthAddress: addr,
@@ -104,7 +104,7 @@ export function scanAnnouncement(
   );
   const stealthPoint = spendingPoint.add(sharedG);
   const hash = keccak_256(stealthPoint.toRawBytes(false).slice(1));
-  return getAddress("0x" + bytesToHex(hash.slice(12)));
+  return getAddress(bytesToHex(hash.slice(12)));
 }
 
 /**

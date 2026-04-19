@@ -106,7 +106,11 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
               <div>
                 <div className="text-[10px] font-mono text-foreground">Stream #{s.id.toString()}</div>
                 <div className="text-[9px] font-mono text-muted-foreground/70">
-                  every {Math.round(Number(s.periodSeconds) / 86_400)}d · {s.cyclesPaid.toString()} paid
+                  every {Number(s.periodSeconds) >= 86400
+                    ? `${Math.round(Number(s.periodSeconds) / 86400)}d`
+                    : Number(s.periodSeconds) >= 3600
+                      ? `${Math.round(Number(s.periodSeconds) / 3600)}h`
+                      : `${Number(s.periodSeconds)}s`} · {s.cyclesPaid.toString()} paid
                 </div>
               </div>
               <div className="flex items-center gap-1 text-[9px] font-mono text-primary">

@@ -121,12 +121,37 @@ export async function decryptBalance(
 ): Promise<bigint> {
   if (!cofheClient) throw new Error('FHE client not initialized');
 
-  const result = await cofheClient
-    .decryptForView(ctHash, FheTypes.Uint64)
-    .withPermit()
-    .execute();
+  const handle = typeof ctHash === 'string' ? BigInt(ctHash) : ctHash;
 
-  return result;
+  // Attempt 1: use existing permit
+  onStep?.('Decrypting');
+  try {
+    const result = (await cofheClient
+      .decryptForView(handle, FheTypes.Uint64)
+      .execute()) as bigint;
+    return result;
+  } catch (err: any) {
+    console.error('[fhe] sealOutput attempt 1 failed:', err?.message);
+  }
+
+  // Attempt 2: remove stale permit, create fresh one, retry
+  onStep?.('Refreshing permit');
+  try {
+    const chainId = cofheClient.chainId ?? 421614;
+    const acc = lastConnectedAccount;
+    if (acc) {
+      await cofheClient.permits.removeActivePermit(chainId, acc);
+    }
+    await cofheClient.permits.getOrCreateSelfPermit();
+    onStep?.('Decrypting (retry)');
+    const result = (await cofheClient
+      .decryptForView(handle, FheTypes.Uint64)
+      .execute()) as bigint;
+    return result;
+  } catch (retryErr: any) {
+    console.error('[fhe] sealOutput attempt 2 failed:', retryErr?.message);
+    throw retryErr;
+  }
 }
 
 /**

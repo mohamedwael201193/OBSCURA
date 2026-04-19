@@ -5,9 +5,16 @@ import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
 import { toast } from "sonner";
 
 export default function CUSDCPanel() {
-  const { handle, decrypted, reveal, wrap, approveStream, busy, error } = useCUSDCBalance();
+  const { handle, decrypted, usdcBalance, trackedCusdc, reveal, wrap, approveStream, busy, error } = useCUSDCBalance();
   const [wrapAmount, setWrapAmount] = useState("");
   const [maxApprove, setMaxApprove] = useState("");
+
+  // Best available balance: on-chain decrypt > tracked from wraps
+  const displayBalance = decrypted !== null
+    ? `${(Number(decrypted) / 1_000_000).toFixed(6)} cUSDC`
+    : trackedCusdc
+      ? `~${trackedCusdc} cUSDC (tracked)`
+      : "Reveal to view";
 
   return (
     <div className="glass-panel rounded-sm p-6 space-y-4">
@@ -20,20 +27,22 @@ export default function CUSDCPanel() {
       </div>
 
       <p className="text-[10px] font-mono text-muted-foreground/70">
-        cUSDC is an encrypted version of USDC. Your balance is hidden on-chain — only you can see it by clicking Reveal.
+        cUSDC is an encrypted version of USDC. Your balance is hidden on-chain.
         You need cUSDC to create payroll streams and buy insurance.
       </p>
 
       <div className="text-[10px] font-mono space-y-1">
         <div className="flex justify-between">
+          <span className="text-muted-foreground">Plain USDC Balance</span>
+          <span className="text-foreground">{usdcBalance !== null ? `${usdcBalance} USDC` : "—"}</span>
+        </div>
+        <div className="flex justify-between">
           <span className="text-muted-foreground">Encrypted Handle</span>
           <span className="text-foreground">{handle ? handle.toString().slice(0, 18) + "…" : "—"}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Decrypted Balance</span>
-          <span className="text-primary">
-            {decrypted !== null ? `${(Number(decrypted) / 1_000_000).toFixed(6)} cUSDC` : "Reveal to view"}
-          </span>
+          <span className="text-muted-foreground">cUSDC Balance</span>
+          <span className="text-primary">{displayBalance}</span>
         </div>
       </div>
 
@@ -43,7 +52,7 @@ export default function CUSDCPanel() {
             try {
               toast.info("Decrypting… sign the permit in your wallet");
               await reveal();
-              toast.success("Balance decrypted!");
+              if (!error) toast.success("Balance decrypted!");
             } catch (e) {
               toast.error((e as Error).message || "Decrypt failed");
             }

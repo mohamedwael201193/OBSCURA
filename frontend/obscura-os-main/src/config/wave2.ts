@@ -301,6 +301,13 @@ export const REINEIRA_CUSDC_ABI = [
   },
   {
     type: "function",
+    name: "confidentialBalanceOf",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }], // euint64 handle
+  },
+  {
+    type: "function",
     name: "wrap",
     stateMutability: "nonpayable",
     inputs: [

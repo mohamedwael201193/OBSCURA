@@ -1,4 +1,4 @@
-﻿import { useCallback, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import {
   useAccount,
   usePublicClient,
@@ -7,7 +7,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import { arbitrumSepolia } from "viem/chains";
-import { parseUnits } from "viem";
+import { formatUnits, parseUnits } from "viem";
 import {
   REINEIRA_CUSDC_ABI,
   REINEIRA_CUSDC_ADDRESS,
@@ -15,9 +15,19 @@ import {
   USDC_ARB_SEPOLIA,
   ERC20_APPROVE_ABI,
 } from "@/config/wave2";
-import { initFHEClient, encryptAmount, decryptBalance } from "@/lib/fhe";
+import { initFHEClient, encryptAmount, decryptBalance, getOrCreatePermit } from "@/lib/fhe";
 
 const USDC_DECIMALS = 6;
+
+const USDC_BALANCE_ABI = [
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+] as const;
 
 export function useCUSDCBalance() {
   const { address } = useAccount();
@@ -27,39 +37,85 @@ export function useCUSDCBalance() {
   const [decrypted, setDecrypted] = useState<bigint | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
+  const [trackedCusdc, setTrackedCusdc] = useState<string | null>(null);
 
   const { data: handle, refetch } = useReadContract({
     address: REINEIRA_CUSDC_ADDRESS,
     abi: REINEIRA_CUSDC_ABI,
-    functionName: "balanceOf",
+    functionName: "confidentialBalanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: !!address && !!REINEIRA_CUSDC_ADDRESS },
+    account: address,
+    query: { enabled: false },
   });
+
+  // Fetch handle + USDC balance on mount
+  useEffect(() => {
+    if (address && REINEIRA_CUSDC_ADDRESS) refetch();
+    if (address && publicClient) {
+      publicClient.readContract({
+        address: USDC_ARB_SEPOLIA,
+        abi: USDC_BALANCE_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      }).then((bal) => {
+        setUsdcBalance(formatUnits(bal as bigint, USDC_DECIMALS));
+      }).catch(() => {});
+    }
+    // Restore tracked cUSDC from localStorage
+    if (address) {
+      const saved = localStorage.getItem(`cusdc_tracked_${address}`);
+      if (saved) setTrackedCusdc(saved);
+    }
+  }, [address, publicClient, refetch]);
 
   const reveal = useCallback(async () => {
     if (!publicClient || !walletClient || !address) {
       setError("Wallet not connected");
       return;
     }
-    if (handle === undefined || handle === null) {
-      setError("No encrypted balance found");
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
       await initFHEClient(publicClient, walletClient);
-      const plain = await decryptBalance(handle as bigint);
+      await getOrCreatePermit();
+
+      const result = await refetch();
+      const freshHandle = result.data;
+
+      if (!freshHandle) {
+        throw new Error("No cUSDC balance found. Wrap some USDC first.");
+      }
+
+      const plain = await decryptBalance(freshHandle as bigint);
       setDecrypted(plain);
     } catch (e) {
       const msg = (e as Error).message || "Decrypt failed";
       console.error("[cUSDC reveal]", e);
+
+      // If 403 (ACL not granted by Reineira contract), fall back to tracked balance
+      if (msg.includes("403") || msg.includes("sealOutput")) {
+        if (trackedCusdc) {
+          setError(
+            `The Reineira cUSDC contract doesn't grant decrypt access (HTTP 403). ` +
+            `Showing your last known balance: ~${trackedCusdc} cUSDC.`
+          );
+        } else {
+          setError(
+            `The Reineira cUSDC contract doesn't grant decrypt access (HTTP 403). ` +
+            `Your encrypted handle exists — the balance is on-chain but can't be revealed from the browser. ` +
+            `Wrap USDC below to track your balance.`
+          );
+        }
+        return; // Don't re-throw — we handled it
+      }
+
       setError(msg);
-      throw e; // re-throw so caller can toast
+      throw e;
     } finally {
       setBusy(false);
     }
-  }, [publicClient, walletClient, address, handle]);
+  }, [publicClient, walletClient, address, refetch, trackedCusdc]);
 
   const approveStream = useCallback(
     async (maxAmount: bigint) => {
@@ -155,6 +211,23 @@ export function useCUSDCBalance() {
       });
       await publicClient.waitForTransactionReceipt({ hash });
       await refetch();
+
+      // Track wrapped cUSDC balance locally (Reineira doesn't allow on-chain decrypt)
+      const prev = parseFloat(trackedCusdc || "0");
+      const newTotal = (prev + parseFloat(amountUSDC)).toFixed(6);
+      setTrackedCusdc(newTotal);
+      localStorage.setItem(`cusdc_tracked_${address}`, newTotal);
+
+      // Refresh USDC balance
+      publicClient.readContract({
+        address: USDC_ARB_SEPOLIA,
+        abi: USDC_BALANCE_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      }).then((bal) => {
+        setUsdcBalance(formatUnits(bal as bigint, USDC_DECIMALS));
+      }).catch(() => {});
+
       return hash;
     },
     [publicClient, address, writeContractAsync, refetch]
@@ -163,6 +236,8 @@ export function useCUSDCBalance() {
   return {
     handle: handle as bigint | undefined,
     decrypted,
+    usdcBalance,
+    trackedCusdc,
     reveal,
     wrap,
     approveStream,

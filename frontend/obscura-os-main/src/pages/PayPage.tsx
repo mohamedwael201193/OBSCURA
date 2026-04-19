@@ -130,7 +130,7 @@ const PayPage = () => {
                       <li className="flex gap-2"><span className="text-primary font-bold">1.</span> <span><b className="text-foreground">Connect wallet</b> — MetaMask or any EVM wallet on Arbitrum Sepolia.</span></li>
                       <li className="flex gap-2"><span className="text-primary font-bold">2.</span> <span><b className="text-foreground">Claim free $OBS</b> — 100 tokens daily (below). Used for transfers, payroll and escrows.</span></li>
                       <li className="flex gap-2"><span className="text-primary font-bold">3.</span> <span><b className="text-foreground">Send encrypted payments</b> — Go to <b className="text-primary">Pay</b> tab. Amounts are encrypted before they leave your browser.</span></li>
-                      <li className="flex gap-2"><span className="text-primary font-bold">4.</span> <span><b className="text-foreground">Stream with cUSDC</b> — Go to <b className="text-primary">Streams</b> tab. Recurring payroll using real encrypted USDC (cUSDC).</span></li>
+                      <li className="flex gap-2"><span className="text-primary font-bold">4.</span> <span><b className="text-foreground">Stream with cUSDC</b> — Go to <b className="text-primary">Streams</b> tab. Follow the numbered step-by-step guide to set up encrypted payroll.</span></li>
                       <li className="flex gap-2"><span className="text-primary font-bold">5.</span> <span><b className="text-foreground">Check balances</b> — Go to <b className="text-primary">Receive</b> tab. Sign a permit to decrypt your balances locally.</span></li>
                     </ol>
                     <div className="text-[9px] font-mono text-muted-foreground/50 pt-1 border-t border-border/30">
@@ -229,22 +229,63 @@ const PayPage = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="glass-panel rounded-sm p-4 border-l-2 border-cyan-500/40 space-y-2">
-                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-cyan-400">Recurring Payroll with cUSDC</h3>
+                      {/* Master guide — numbered steps */}
+                      <div className="glass-panel rounded-sm p-5 border-l-2 border-cyan-500/40 space-y-3">
+                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-cyan-400">Encrypted Payroll Streams — Complete Setup Guide</h3>
                         <p className="text-[10px] font-mono text-muted-foreground/70">
-                          Streams let employers schedule automatic encrypted salary payments using <b className="text-cyan-400">cUSDC</b> (encrypted USDC stablecoin).
-                          Each pay cycle creates a private escrow sent to the employee&apos;s stealth address — no one can link payments to the recipient.
+                          Follow these steps in order. Each section below matches a step number.
+                          cUSDC streams send encrypted salary to stealth addresses — nobody can see who gets paid or how much.
                         </p>
-                        <ol className="space-y-1 text-[9px] font-mono text-muted-foreground/60">
-                          <li><span className="text-cyan-400">Step 1:</span> Get cUSDC — wrap regular USDC below, or bridge from another chain via Cross-Chain tab.</li>
-                          <li><span className="text-cyan-400">Step 2:</span> Approve the PayStream contract to spend your cUSDC.</li>
-                          <li><span className="text-cyan-400">Step 3:</span> Create a stream (set recipient, cadence, duration).</li>
-                          <li><span className="text-cyan-400">Step 4:</span> Tick each cycle to send encrypted payment to a new stealth address.</li>
-                        </ol>
+                        <div className="grid gap-2">
+                          {[
+                            { n: "1", title: "Get cUSDC", desc: "Wrap your USDC into encrypted cUSDC (one-time)" },
+                            { n: "2", title: "Authorize PayStream", desc: "Let the stream contract move your cUSDC (one-time)" },
+                            { n: "3", title: "Recipient Registers Stealth Address", desc: "The person you're paying must register once (Stealth Setup below)" },
+                            { n: "4", title: "Create Stream", desc: "Set recipient, frequency, and duration" },
+                            { n: "5", title: "Send Cycles", desc: "Each period, click Send Next Cycle to pay" },
+                          ].map((s) => (
+                            <div key={s.n} className="flex items-start gap-3 p-2 rounded-sm bg-secondary/20 border border-border/20">
+                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-[10px] font-mono flex items-center justify-center font-bold">{s.n}</span>
+                              <div>
+                                <div className="text-[10px] font-mono text-foreground font-medium">{s.title}</div>
+                                <div className="text-[9px] font-mono text-muted-foreground/60">{s.desc}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <CUSDCPanel />
-                      <CreateStreamForm />
-                      <StreamList mode="employer" />
+
+                      {/* Step 1 & 2: cUSDC wallet (wrap + authorize) */}
+                      <div className="relative">
+                        <div className="absolute -top-2 left-4 px-2 py-0.5 bg-background text-[9px] font-mono text-cyan-400 border border-cyan-500/30 rounded-sm z-10">STEP 1 & 2</div>
+                        <CUSDCPanel />
+                      </div>
+
+                      {/* Step 3: Stealth address registration (for recipient) */}
+                      <div className="relative">
+                        <div className="absolute -top-2 left-4 px-2 py-0.5 bg-background text-[9px] font-mono text-cyan-400 border border-cyan-500/30 rounded-sm z-10">STEP 3 — RECIPIENT SETUP</div>
+                        <div className="glass-panel rounded-sm p-5 pt-6 space-y-3 border border-cyan-500/10">
+                          <p className="text-[10px] font-mono text-muted-foreground/70">
+                            <b className="text-foreground">Important:</b> The recipient wallet must register a stealth address before you can send them payments.
+                            If you&apos;re testing with your own wallet, register below. If paying someone else, they need to do this from their wallet.
+                          </p>
+                          <RegisterMetaAddressForm />
+                        </div>
+                      </div>
+
+                      {/* Step 4: Create stream */}
+                      <div className="relative">
+                        <div className="absolute -top-2 left-4 px-2 py-0.5 bg-background text-[9px] font-mono text-cyan-400 border border-cyan-500/30 rounded-sm z-10">STEP 4</div>
+                        <CreateStreamForm />
+                      </div>
+
+                      {/* Step 5: Active streams + tick */}
+                      <div className="relative">
+                        <div className="absolute -top-2 left-4 px-2 py-0.5 bg-background text-[9px] font-mono text-cyan-400 border border-cyan-500/30 rounded-sm z-10">STEP 5</div>
+                        <StreamList mode="employer" />
+                      </div>
+
+                      {/* Incoming streams */}
                       <StreamList mode="recipient" />
                     </>
                   )}
@@ -322,12 +363,11 @@ const PayPage = () => {
                           Stealth addresses hide <i>who</i> is being paid. Each payroll cycle goes to a brand new address that only you can link back to yourself.
                           No one watching the blockchain can tell you received anything.
                         </p>
-                        <ol className="space-y-1 text-[9px] font-mono text-muted-foreground/60">
-                          <li><span className="text-cyan-400">1.</span> <b className="text-foreground">Generate a meta-address</b> (one-time setup below). This creates a keypair stored in your browser.</li>
-                          <li><span className="text-cyan-400">2.</span> <b className="text-foreground">Share it on-chain</b> so your employer can send to you.</li>
-                          <li><span className="text-cyan-400">3.</span> <b className="text-foreground">Scan your inbox</b> below to find cycles addressed to you.</li>
-                          <li><span className="text-cyan-400">4.</span> <b className="text-foreground">Reveal the claim key</b> for each cycle, import it into a new wallet, and redeem the escrow.</li>
-                        </ol>
+                        <div className="text-[9px] font-mono text-amber-400/80 bg-amber-500/10 px-3 py-2 rounded-sm border border-amber-500/20">
+                          <b>Note:</b> You must register your stealth address before anyone can pay you via streams.
+                          If you&apos;re setting up as a payroll recipient, do Step 1 below, then tell your employer to create a stream.
+                          This is also available in the <b className="text-cyan-400">Streams</b> tab (Step 3).
+                        </div>
                       </div>
                       <RegisterMetaAddressForm />
                       <StealthInbox />

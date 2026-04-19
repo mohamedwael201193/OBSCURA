@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useReadContract, useWriteContract } from "wagmi";
 import { arbitrumSepolia } from "viem/chains";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
@@ -20,6 +20,7 @@ import {
  */
 export function useStealthMetaAddress() {
   const { address } = useAccount();
+  const publicClient = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
   const [keys, setKeys] = useState<MetaAddressKeys | null>(() => loadStoredKeys(address));
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,7 @@ export function useStealthMetaAddress() {
     : null;
 
   const generateAndPublish = useCallback(async () => {
-    if (!address || !OBSCURA_STEALTH_REGISTRY_ADDRESS) {
+    if (!address || !publicClient || !OBSCURA_STEALTH_REGISTRY_ADDRESS) {
       throw new Error("Wallet not connected");
     }
     setError(null);
@@ -49,7 +50,12 @@ export function useStealthMetaAddress() {
       persistKeys(address, fresh);
       setKeys(fresh);
 
-      await writeContractAsync({
+      const feeData = await publicClient.estimateFeesPerGas();
+      const maxFeePerGas = feeData.maxFeePerGas
+        ? (feeData.maxFeePerGas * 130n) / 100n
+        : undefined;
+
+      const hash = await writeContractAsync({
         address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
         abi: OBSCURA_STEALTH_REGISTRY_ABI,
         functionName: "setMetaAddress",
@@ -57,7 +63,9 @@ export function useStealthMetaAddress() {
         account: address,
         chain: arbitrumSepolia,
         gas: 200_000n,
+        maxFeePerGas,
       });
+      await publicClient.waitForTransactionReceipt({ hash });
       await refetch();
       return fresh;
     } catch (e) {

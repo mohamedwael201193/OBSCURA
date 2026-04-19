@@ -43,24 +43,24 @@ export default function StakePoolForm() {
       toast.info("Encrypting stake amount…");
       await initFHEClient(publicClient, walletClient);
       const encrypted = await encryptAmount(rawAmount);
-      const ctHash = (encrypted[0] as { ctHash: bigint }).ctHash;
 
-      // 2. Approve the pool to spend cUSDC (pass the ct handle)
-      toast.info("Step 1/2: Approving pool to spend cUSDC…");
+      // 2. Authorize the pool as operator (time-bounded, 30 days)
+      toast.info("Step 1/2: Authorizing pool as operator…");
       const feeData = await publicClient.estimateFeesPerGas();
       const maxFee = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
+      const untilTimestamp = BigInt(Math.floor(Date.now() / 1000) + 30 * 86400);
 
-      const approveTx = await writeContractAsync({
+      const authTx = await writeContractAsync({
         address: REINEIRA_CUSDC_ADDRESS,
         abi: REINEIRA_CUSDC_ABI,
-        functionName: "approve",
-        args: [REINEIRA_INSURANCE_POOL_ADDRESS as `0x${string}`, ctHash],
+        functionName: "setOperator",
+        args: [REINEIRA_INSURANCE_POOL_ADDRESS as `0x${string}`, untilTimestamp],
         account: address,
         chain: arbitrumSepolia,
         maxFeePerGas: maxFee,
-        gas: 300_000n,
+        gas: 100_000n,
       });
-      await publicClient.waitForTransactionReceipt({ hash: approveTx });
+      await publicClient.waitForTransactionReceipt({ hash: authTx });
 
       // Wait to avoid RPC rate-limit
       await new Promise((r) => setTimeout(r, 2000));

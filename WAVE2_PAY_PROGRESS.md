@@ -56,6 +56,10 @@
 | 36 | RPC rate-limit fix — 2s delay between approve + wrap txs, fresh gas per tx | `src/hooks/useCUSDCBalance.ts` | ✅ Done |
 | 37 | cUSDC Reveal fix — error feedback, toast, loading state, re-throw errors | `src/hooks/useCUSDCBalance.ts`, `CUSDCPanel.tsx` | ✅ Done |
 | 38 | StakePoolForm — deposit cUSDC into InsurancePool (encrypted stake) | `src/components/pay-v4/StakePoolForm.tsx`, `PayPage.tsx` | ✅ Done |
+| 39 | cUSDC Reveal fix — switch to `confidentialBalanceOf` (proper ACL read) | `src/hooks/useCUSDCBalance.ts`, `src/config/wave2.ts` | ✅ Done |
+| 40 | Decrypt fix — remove `.withPermit()`, add 2-attempt retry with permit refresh | `src/lib/fhe.ts` | ✅ Done |
+| 41 | CUSDCPanel — show plain USDC balance, encrypted handle, decrypted cUSDC | `src/components/pay-v4/CUSDCPanel.tsx`, `src/hooks/useCUSDCBalance.ts` | ✅ Done |
+| 42 | FHERC-20 approve fix — replace `approve()` with `setOperator()` (Reineira reverts approve) | `wave2.ts`, `useCUSDCBalance.ts`, `CUSDCPanel.tsx`, `StakePoolForm.tsx` | ✅ Done |
 
 ---
 
@@ -143,7 +147,8 @@ Re-audited the full pay stack against the Fhenix CoFHE April 13 2026 changes:
 | `@cofhe/sdk` version | ✅ `^0.4.0` | `npm view @cofhe/sdk version` → `0.4.0` (latest) |
 | Deprecated `cofhejs` references | ✅ zero | confirmed via grep over `frontend/**` |
 | Deprecated `FHE.decrypt()` in contracts | ✅ zero | confirmed via grep over all 10 `.sol` files |
-| `lib/fhe.ts` decrypt call | ✅ uses new API | `client.decryptForView(ctHash, FheTypes.Uint64).withPermit().execute()` |
+| `lib/fhe.ts` decrypt call | ✅ uses new API | `client.decryptForView(handle, FheTypes.Uint64).execute()` — NO `.withPermit()` (causes 403 on Reineira cUSDC) |
+| `lib/fhe.ts` decrypt retry | ✅ 2-attempt | attempt 1 → on 403 removes stale permit → creates fresh → attempt 2 |
 | `lib/fhe.ts` permits | ✅ correct | `client.permits.getOrCreateSelfPermit()` |
 | `lib/fhe.ts` encrypt | ✅ correct | `client.encryptInputs([Encryptable.address(...), Encryptable.uint64(...)]).execute()` |
 | `FHE.allow / allowThis / allowPublic` calls | ✅ present | proper ACLs in `ObscuraVote`, `ObscuraPay`, `ObscuraToken`, `ObscuraEscrow`, plus all 4 wave-2 contracts |
@@ -159,8 +164,8 @@ Re-audited the full pay stack against the Fhenix CoFHE April 13 2026 changes:
 
 Wave 2 Pay deliberately keeps **all** values encrypted on-chain for the full
 lifetime of every escrow, stream, coverage and stake. Recipients decrypt
-their own balances **off-chain** using the new `decryptForView().withPermit()`
-flow (signed permit, not a tx). There is no contract path that benefits from
+their own balances **off-chain** using `decryptForView().execute()`
+(permit created separately via `getOrCreateSelfPermit()`, not chained). There is no contract path that benefits from
 publishing a plaintext on-chain — doing so would leak salary, coverage size,
 and pool liquidity to the entire network. If a future feature needs an
 on-chain reveal (e.g. public payroll totals for a DAO), it would call:

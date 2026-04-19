@@ -284,11 +284,21 @@ export const OBSCURA_PAY_STREAM_ABI = [
 export const REINEIRA_CUSDC_ABI = [
   {
     type: "function",
-    name: "approve",
+    name: "setOperator",
     stateMutability: "nonpayable",
     inputs: [
+      { name: "operator", type: "address" },
+      { name: "until", type: "uint48" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "isOperator",
+    stateMutability: "view",
+    inputs: [
+      { name: "holder", type: "address" },
       { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" }, // euint64 handle
     ],
     outputs: [{ name: "", type: "bool" }],
   },

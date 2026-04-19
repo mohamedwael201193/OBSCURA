@@ -7,7 +7,7 @@ import { toast } from "sonner";
 export default function CUSDCPanel() {
   const { handle, decrypted, usdcBalance, trackedCusdc, reveal, wrap, approveStream, busy, error } = useCUSDCBalance();
   const [wrapAmount, setWrapAmount] = useState("");
-  const [maxApprove, setMaxApprove] = useState("");
+  const [maxApprove, setMaxApprove] = useState("30");
 
   // Best available balance: on-chain decrypt > tracked from wraps
   const displayBalance = decrypted !== null
@@ -107,30 +107,38 @@ export default function CUSDCPanel() {
 
         <div>
           <label className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
-            Approve PayStream to Spend cUSDC
+            Authorize PayStream as Operator
           </label>
           <div className="flex gap-2">
-            <input
-              type="number"
-              placeholder="10000"
+            <select
               value={maxApprove}
               onChange={(e) => setMaxApprove(e.target.value)}
               className="flex-1 px-3 py-2 bg-background border border-border/50 rounded-sm text-xs font-mono"
-            />
+            >
+              <option value="7">7 days</option>
+              <option value="30">30 days</option>
+              <option value="90">90 days</option>
+              <option value="365">1 year</option>
+            </select>
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={async () => {
                 try {
-                  await approveStream(BigInt(Math.floor(Number(maxApprove) * 1_000_000)));
-                  toast.success("Approved");
+                  const days = Number(maxApprove) || 30;
+                  toast.info(`Authorizing PayStream for ${days} days…`);
+                  await approveStream(days);
+                  toast.success(`PayStream authorized for ${days} days`);
                 } catch (e) {
                   toast.error((e as Error).message);
                 }
               }}
               className="px-4 text-[10px] tracking-[0.2em] uppercase font-mono bg-primary text-primary-foreground rounded-sm"
             >
-              Approve
+              Authorize
             </motion.button>
+          </div>
+          <div className="text-[9px] font-mono text-muted-foreground/60 mt-1">
+            This lets PayStream transfer your cUSDC when creating streams. No amount limit — it's time-bounded.
           </div>
         </div>
       </div>

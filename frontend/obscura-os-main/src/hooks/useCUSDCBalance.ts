@@ -118,19 +118,17 @@ export function useCUSDCBalance() {
   }, [publicClient, walletClient, address, refetch, trackedCusdc]);
 
   const approveStream = useCallback(
-    async (maxAmount: bigint) => {
+    async (durationDays: number) => {
       if (
         !publicClient ||
-        !walletClient ||
         !address ||
         !OBSCURA_PAY_STREAM_ADDRESS ||
         !REINEIRA_CUSDC_ADDRESS
       ) {
         throw new Error("Wallet or contracts not configured");
       }
-      await initFHEClient(publicClient, walletClient);
-      const enc = await encryptAmount(maxAmount);
-      const ctHash = (enc[0] as { ctHash: bigint }).ctHash;
+
+      const untilTimestamp = BigInt(Math.floor(Date.now() / 1000) + durationDays * 86400);
 
       const feeData = await publicClient.estimateFeesPerGas();
       const maxFeePerGas = feeData.maxFeePerGas
@@ -140,17 +138,17 @@ export function useCUSDCBalance() {
       const hash = await writeContractAsync({
         address: REINEIRA_CUSDC_ADDRESS,
         abi: REINEIRA_CUSDC_ABI,
-        functionName: "approve",
-        args: [OBSCURA_PAY_STREAM_ADDRESS, ctHash],
+        functionName: "setOperator",
+        args: [OBSCURA_PAY_STREAM_ADDRESS, untilTimestamp],
         account: address,
         chain: arbitrumSepolia,
         maxFeePerGas,
-        gas: 500_000n,
+        gas: 100_000n,
       });
       await publicClient.waitForTransactionReceipt({ hash });
       return hash;
     },
-    [publicClient, walletClient, address, writeContractAsync]
+    [publicClient, address, writeContractAsync]
   );
 
   const wrap = useCallback(

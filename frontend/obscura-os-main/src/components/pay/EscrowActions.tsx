@@ -86,7 +86,7 @@ export default function EscrowActions() {
 
       <p className="text-[10px] font-mono text-muted-foreground/70">
         Fund, redeem, or cancel existing escrows. Redemption uses the silent failure pattern —
-        unauthorized attempts return zero tokens without reverting.
+        if you’re not the rightful owner, the transaction goes through but returns zero tokens (no error, no leak).
       </p>
 
       <div className="space-y-3">

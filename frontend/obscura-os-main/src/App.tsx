@@ -10,6 +10,8 @@ import PayPage from "./pages/PayPage.tsx";
 import DocsPage from "./pages/DocsPage.tsx";
 import PrivacyPage from "./pages/PrivacyPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import VotePage from "./pages/VotePage.tsx";
+import PMFPage from "./pages/PMFPage.tsx";
 
 const queryClient = new QueryClient();
 
@@ -23,8 +25,10 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/pay" element={<PayPage />} />
+            <Route path="/vote" element={<VotePage />} />
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/pmf" element={<PMFPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -50,7 +50,7 @@ export default function TransferForm() {
 
       <p className="text-[10px] font-mono text-muted-foreground/70">
         Send $OBS tokens to any address. The transfer amount is fully encrypted —
-        Arbiscan reveals nothing about how much was sent.
+        no one (not even block explorers) can see how much was sent.
       </p>
 
       <div className="space-y-3">

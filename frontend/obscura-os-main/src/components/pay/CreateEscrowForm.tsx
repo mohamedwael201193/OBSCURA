@@ -82,7 +82,7 @@ export default function CreateEscrowForm() {
       </div>
 
       <p className="text-[10px] font-mono text-muted-foreground/70">
-        Lock $OBS in an encrypted escrow. Owner address and amount are both FHE ciphertexts.
+        Lock $OBS in an encrypted escrow. The owner address and locked amount are both encrypted on-chain.
         Add optional time-lock or manual approval conditions.
       </p>
 

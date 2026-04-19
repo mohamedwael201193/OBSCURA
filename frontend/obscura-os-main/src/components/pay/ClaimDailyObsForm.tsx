@@ -111,6 +111,7 @@ export default function ClaimDailyObsForm() {
       <p className="text-[10px] font-mono text-muted-foreground/70">
         Claim 100 encrypted $OBS tokens once every 24 hours. No cost except gas.
         Your balance stays fully encrypted on-chain — only you can decrypt it.
+        For real USDC payroll, check the Streams tab.
       </p>
 
       {/* Cooldown display */}

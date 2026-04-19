@@ -7,7 +7,7 @@ import WalletConnect from "./wallet/WalletConnect";
 
 const navItems = [
   { label: "Pay", path: "/pay", active: true },
-  { label: "Vote", locked: true },
+  { label: "Vote", path: "/vote", active: true },
   { label: "Vault", locked: true },
   { label: "Trust", locked: true },
   { label: "Mind", locked: true },

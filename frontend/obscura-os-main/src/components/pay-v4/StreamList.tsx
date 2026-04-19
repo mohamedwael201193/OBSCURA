@@ -1,18 +1,22 @@
-import { useAccount } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import { motion } from "framer-motion";
-import { useStreamList } from "@/hooks/useStreamList";
+import { useStreamList, type StreamSummary } from "@/hooks/useStreamList";
 import { useTickStream } from "@/hooks/useTickStream";
-import { useStealthMetaAddress } from "@/hooks/useStealthMetaAddress";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Play, Clock, Ban, Timer } from "lucide-react";
+import {
+  OBSCURA_STEALTH_REGISTRY_ABI,
+  OBSCURA_STEALTH_REGISTRY_ADDRESS,
+} from "@/config/wave2";
+import type { MetaAddress } from "@/lib/stealth";
 
 export default function StreamList({ mode }: { mode: "employer" | "recipient" }) {
   const { address } = useAccount();
+  const publicClient = usePublicClient();
   const filter = mode === "employer" ? { employer: address } : { recipient: address };
   const { streams, isLoading, refresh } = useStreamList(filter);
   const { tick, isTicking } = useTickStream();
-  const { onChainMeta } = useStealthMetaAddress();
   const [tickAmount, setTickAmount] = useState("");
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
@@ -22,9 +26,9 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
     return () => clearInterval(iv);
   });
 
-  const tickOne = async (streamId: bigint) => {
-    if (!onChainMeta) {
-      toast.error("Recipient has no on-chain meta-address yet");
+  const tickOne = async (stream: StreamSummary) => {
+    if (!publicClient || !OBSCURA_STEALTH_REGISTRY_ADDRESS) {
+      toast.error("Not connected");
       return;
     }
     const amt = BigInt(Math.floor(Number(tickAmount) * 1_000_000));
@@ -32,9 +36,27 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
       toast.error("Enter a per-cycle amount in cUSDC");
       return;
     }
+
+    // Fetch the RECIPIENT's meta-address from the registry
     try {
-      await tick({ streamId, amount: amt, recipientMeta: onChainMeta });
-      toast.success(`Cycle settled for stream #${streamId.toString()}`);
+      const meta = (await publicClient.readContract({
+        address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+        abi: OBSCURA_STEALTH_REGISTRY_ABI,
+        functionName: "getMetaAddress",
+        args: [stream.recipientHint],
+      })) as readonly [`0x${string}`, `0x${string}`, bigint];
+
+      const [s, v, ts] = meta;
+      if (ts === 0n) {
+        toast.error(
+          `Recipient ${stream.recipientHint.slice(0, 8)}… hasn't registered a stealth meta-address yet. They need to go to the Stealth tab first.`
+        );
+        return;
+      }
+
+      const recipientMeta: MetaAddress = { spendingPubKey: s, viewingPubKey: v };
+      await tick({ streamId: stream.id, amount: amt, recipientMeta });
+      toast.success(`Cycle settled for stream #${stream.id.toString()}`);
       refresh();
     } catch (e) {
       toast.error((e as Error).message);
@@ -99,7 +121,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 disabled={isTicking}
-                onClick={() => tickOne(s.id)}
+                onClick={() => tickOne(s)}
                 className="w-full py-2 text-[10px] tracking-[0.2em] uppercase font-mono bg-primary/10 text-primary border border-primary/30 rounded-sm hover:bg-primary/20 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <Play className="w-3 h-3" /> {isTicking ? "Sending…" : "Send Next Cycle"}

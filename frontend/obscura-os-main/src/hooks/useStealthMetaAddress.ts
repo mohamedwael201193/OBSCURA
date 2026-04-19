@@ -62,7 +62,7 @@ export function useStealthMetaAddress() {
         args: [fresh.meta.spendingPubKey, fresh.meta.viewingPubKey],
         account: address,
         chain: arbitrumSepolia,
-        gas: 200_000n,
+        gas: 500_000n,
         maxFeePerGas,
       });
       await publicClient.waitForTransactionReceipt({ hash });

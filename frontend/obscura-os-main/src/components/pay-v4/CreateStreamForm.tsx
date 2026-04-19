@@ -5,6 +5,8 @@ import { useCreateStream } from "@/hooks/useCreateStream";
 import { toast } from "sonner";
 
 const PERIODS = [
+  { label: "1 Min", seconds: 60 },
+  { label: "5 Min", seconds: 300 },
   { label: "Daily", seconds: 86_400 },
   { label: "Weekly", seconds: 604_800 },
   { label: "Bi-Weekly", seconds: 1_209_600 },
@@ -13,7 +15,7 @@ const PERIODS = [
 
 export default function CreateStreamForm() {
   const [hint, setHint] = useState("");
-  const [period, setPeriod] = useState(PERIODS[1].seconds);
+  const [period, setPeriod] = useState(PERIODS[0].seconds);
   const [durationDays, setDurationDays] = useState("90");
   const { create, isPending, error } = useCreateStream();
 

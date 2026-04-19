@@ -5,7 +5,7 @@ import { useTickStream } from "@/hooks/useTickStream";
 import { useStealthMetaAddress } from "@/hooks/useStealthMetaAddress";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Play, Clock } from "lucide-react";
+import { Play, Clock, Ban, Timer } from "lucide-react";
 
 export default function StreamList({ mode }: { mode: "employer" | "recipient" }) {
   const { address } = useAccount();
@@ -14,6 +14,13 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   const { tick, isTicking } = useTickStream();
   const { onChainMeta } = useStealthMetaAddress();
   const [tickAmount, setTickAmount] = useState("");
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+
+  // Auto-refresh "next due" countdown every 5s
+  useState(() => {
+    const iv = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 5000);
+    return () => clearInterval(iv);
+  });
 
   const tickOne = async (streamId: bigint) => {
     if (!onChainMeta) {
@@ -97,6 +104,51 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
               >
                 <Play className="w-3 h-3" /> {isTicking ? "Sending…" : "Send Next Cycle"}
               </motion.button>
+            )}
+            {mode === "employer" && s.pendingCycles === 0n && !s.paused && (() => {
+              const nextDue = Number(s.lastTickTime) + Number(s.periodSeconds);
+              const secsLeft = nextDue - now;
+              const display = secsLeft > 86400
+                ? `${Math.ceil(secsLeft / 86400)}d`
+                : secsLeft > 3600
+                  ? `${Math.ceil(secsLeft / 3600)}h`
+                  : secsLeft > 60
+                    ? `${Math.ceil(secsLeft / 60)}m`
+                    : secsLeft > 0
+                      ? `${secsLeft}s`
+                      : "now";
+              return (
+                <div className="space-y-2">
+                  <button
+                    disabled
+                    className="w-full py-2 text-[10px] tracking-[0.2em] uppercase font-mono bg-secondary/20 text-muted-foreground border border-border/30 rounded-sm flex items-center justify-center gap-2 opacity-60"
+                  >
+                    <Timer className="w-3 h-3" /> Next cycle due in {display}
+                  </button>
+                  {secsLeft <= 0 && (
+                    <button
+                      onClick={() => refresh()}
+                      className="w-full py-1.5 text-[9px] tracking-[0.15em] uppercase font-mono text-primary hover:text-primary/80"
+                    >
+                      Refresh to check
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+            {mode === "employer" && !s.paused && (
+              <button
+                onClick={async () => {
+                  // cancel is just setting paused
+                  toast.info("Pause/cancel not yet wired — coming soon");
+                }}
+                className="mt-1 w-full py-1.5 text-[9px] tracking-[0.15em] uppercase font-mono text-red-400/70 hover:text-red-400 flex items-center justify-center gap-1"
+              >
+                <Ban className="w-3 h-3" /> Cancel Stream
+              </button>
+            )}
+            {s.paused && (
+              <div className="mt-1 text-[9px] font-mono text-amber-400/80 text-center">Stream paused / cancelled</div>
             )}
           </div>
         ))}

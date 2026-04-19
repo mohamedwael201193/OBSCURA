@@ -3,6 +3,7 @@ import { Encryptable, FheTypes } from '@cofhe/sdk';
 
 let cofheClient: any = null;
 let isInitializing = false;
+let lastConnectedAccount: string | null = null;
 
 export type StepCallback = (step: string, context?: any) => void;
 
@@ -34,9 +35,12 @@ export async function initFHEClient(
     }
   }
 
-  // Always (re-)connect so the SDK's internal state stays in sync with the
-  // current publicClient / walletClient (handles wallet switches, reconnects).
-  await cofheClient.connect(publicClient, walletClient);
+  // Only reconnect if wallet changed — avoids slow redundant connect() calls
+  const currentAccount = walletClient.account?.address ?? null;
+  if (currentAccount !== lastConnectedAccount) {
+    await cofheClient.connect(publicClient, walletClient);
+    lastConnectedAccount = currentAccount;
+  }
   return cofheClient;
 }
 

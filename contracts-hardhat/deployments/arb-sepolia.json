@@ -4,5 +4,6 @@
   "deployer": "0xf76e6B0920e9332fF4410f6dD53F01722AbC71a3",
   "timestamp": "2026-03-30T05:45:54.677Z",
   "ObscuraEscrow": "0xa1fF40D70089A6AE45BC6824bca5C54bB7E7059A",
-  "ObscuraConditionResolver": "0xd9aDaab0E9660777B979D4C44294bE07E10470c8"
+  "ObscuraConditionResolver": "0xd9aDaab0E9660777B979D4C44294bE07E10470c8",
+  "ObscuraVote": "0x5d91B5ccb581F543f7399eea1c65Dfa88b3f9B7a"
 }

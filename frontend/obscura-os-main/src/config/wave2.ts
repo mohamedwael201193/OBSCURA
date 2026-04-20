@@ -346,6 +346,21 @@ export const REINEIRA_CUSDC_ABI = [
     ],
     outputs: [{ name: "", type: "bool" }],
   },
+  // InEuint64-accepting overload (selector 0xa794ee95) — for EOA callers
+  {
+    type: "function",
+    name: "confidentialTransfer",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "to", type: "address" },
+      {
+        name: "amount",
+        type: "tuple",
+        components: [...InEuint64Components],
+      },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
 ] as const;
 
 // ─── Reineira ConfidentialEscrow ABI — minimal ──────────────────────────

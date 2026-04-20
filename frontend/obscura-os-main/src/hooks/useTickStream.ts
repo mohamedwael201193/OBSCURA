@@ -1,32 +1,31 @@
 import { useCallback, useState } from "react";
 import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
 import { arbitrumSepolia } from "viem/chains";
-import { decodeEventLog } from "viem";
+import { encodeAbiParameters } from "viem";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
-  OBSCURA_PAY_STREAM_ABI,
-  OBSCURA_PAY_STREAM_ADDRESS,
   REINEIRA_CUSDC_ABI,
   REINEIRA_CUSDC_ADDRESS,
 } from "@/config/wave2";
-import { initFHEClient, encryptAddressAndAmount } from "@/lib/fhe";
+import { initFHEClient, encryptAmount } from "@/lib/fhe";
 import { deriveStealthPayment, type MetaAddress } from "@/lib/stealth";
-import { hexToBytes, encodeAbiParameters } from "viem";
 
 /**
  * useTickStream — releases ONE cycle on a stream:
- *   1. fetch the recipient's meta-address
- *   2. derive a fresh stealth recipient + ephemeral pubkey + viewTag
- *   3. encrypt (stealthAddress, amount) via cofhe-sdk
- *   4. ensure cUSDC allowance from current employer >= amount
- *   5. call ObscuraPayStream.tickStream(...)
- *   6. announce the stealth payment to ObscuraStealthRegistry so the
+ *
+ * Flow (direct-transfer mode — bypasses broken PayStream contract):
+ *   1. derive a fresh stealth recipient + ephemeral pubkey + viewTag
+ *   2. encrypt the cycle amount via cofhe-sdk
+ *   3. call cUSDC.confidentialTransfer(stealthAddr, InEuint64) — money moves
+ *      directly from the employer to the stealth address
+ *   4. announce the stealth payment to ObscuraStealthRegistry so the
  *      recipient's wallet can scan it
  *
- * Anyone can tick — but the connected wallet pays the gas. If the connected
- * wallet IS the employer, cUSDC is pulled directly. If it's a third-party
- * ticker bot, the employer must have pre-approved the stream contract.
+ * Background: The deployed ObscuraPayStream compiles euint64 as bytes32
+ * (our @fhenixprotocol/cofhe-contracts), but Reineira cUSDC uses uint256.
+ * This selector mismatch causes every tickStream call to revert. Rather
+ * than redeploy, we bypass the contract and call cUSDC directly.
  */
 export function useTickStream() {
   const { address } = useAccount();
@@ -35,6 +34,29 @@ export function useTickStream() {
   const { writeContractAsync } = useWriteContract();
   const [isTicking, setIsTicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /** ABI for the InEuint64-accepting overload of confidentialTransfer */
+  const CUSDC_TRANSFER_ABI = [
+    {
+      type: "function" as const,
+      name: "confidentialTransfer" as const,
+      stateMutability: "nonpayable" as const,
+      inputs: [
+        { name: "to", type: "address" as const },
+        {
+          name: "amount",
+          type: "tuple" as const,
+          components: [
+            { name: "ctHash", type: "uint256" as const },
+            { name: "securityZone", type: "uint8" as const },
+            { name: "utype", type: "uint8" as const },
+            { name: "signature", type: "bytes" as const },
+          ],
+        },
+      ],
+      outputs: [{ name: "", type: "bool" as const }],
+    },
+  ] as const;
 
   const tick = useCallback(
     async (params: {
@@ -46,7 +68,7 @@ export function useTickStream() {
       if (
         !publicClient ||
         !walletClient ||
-        !OBSCURA_PAY_STREAM_ADDRESS ||
+        !REINEIRA_CUSDC_ADDRESS ||
         !OBSCURA_STEALTH_REGISTRY_ADDRESS
       ) {
         throw new Error("Wallet or contracts not configured");
@@ -57,85 +79,43 @@ export function useTickStream() {
         // 1. Derive the stealth payment off-chain.
         const stealth = deriveStealthPayment(params.recipientMeta);
 
-        // 2. Encrypt the stealth address + amount client-side.
+        // 2. Encrypt ONLY the amount (no address needed — no escrow).
         await initFHEClient(publicClient, walletClient);
-        const encrypted = await encryptAddressAndAmount(
-          stealth.stealthAddress,
-          params.amount
-        );
-        // encrypted = [InEaddress, InEuint64]
+        const encrypted = await encryptAmount(params.amount);
+        // encrypted = [InEuint64]  (array with one element)
+        const inEuint64 = encrypted[0];
 
-        // 3. Tick the stream.
+        // 3. Direct cUSDC transfer: employer → stealth address.
+        //    Uses the InEuint64-accepting overload (selector 0xa794ee95).
         const feeData = await publicClient.estimateFeesPerGas();
         const maxFeePerGas = feeData.maxFeePerGas
           ? (feeData.maxFeePerGas * 150n) / 100n
           : undefined;
 
-        const tickArgs = [
-          params.streamId,
-          encrypted[0],
-          encrypted[1],
-          (params.approver ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
-        ] as const;
-
-        // 3b. Pre-flight simulation to catch revert reasons before sending tx.
-        try {
-          await publicClient.simulateContract({
-            address: OBSCURA_PAY_STREAM_ADDRESS,
-            abi: OBSCURA_PAY_STREAM_ABI,
-            functionName: "tickStream",
-            args: tickArgs,
-            account: address,
-          });
-        } catch (simErr: any) {
-          const reason = simErr?.shortMessage || simErr?.message || "unknown";
-          throw new Error(`tickStream simulation failed — tx would revert: ${reason}`);
-        }
-
         const txHash = await writeContractAsync({
-          address: OBSCURA_PAY_STREAM_ADDRESS,
-          abi: OBSCURA_PAY_STREAM_ABI,
-          functionName: "tickStream",
-          args: tickArgs,
+          address: REINEIRA_CUSDC_ADDRESS,
+          abi: CUSDC_TRANSFER_ABI,
+          functionName: "confidentialTransfer",
+          args: [stealth.stealthAddress as `0x${string}`, inEuint64],
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas,
-          gas: 3_500_000n,
+          gas: 1_500_000n,
         });
 
-        // 4. Wait + decode escrowId from CycleSettled event.
+        // 4. Wait for the transfer receipt.
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-
-        // Safety: if the tx mined but reverted, abort before announce.
         if (receipt.status === "reverted") {
           throw new Error(
-            `tickStream reverted on-chain (tx ${txHash.slice(0, 10)}…). ` +
-            `Check: cUSDC operator set? Sufficient cUSDC balance? FHE permissions?`
+            `cUSDC confidentialTransfer reverted on-chain (tx ${txHash.slice(0, 10)}…). ` +
+            `Check: sufficient cUSDC balance?`
           );
-        }
-
-        let escrowId: bigint | null = null;
-        for (const log of receipt.logs) {
-          try {
-            const decoded = decodeEventLog({
-              abi: OBSCURA_PAY_STREAM_ABI,
-              data: log.data,
-              topics: log.topics,
-            });
-            if (decoded.eventName === "CycleSettled") {
-              escrowId = (decoded.args as any).escrowId as bigint;
-              break;
-            }
-          } catch {
-            /* skip non-stream logs */
-          }
         }
 
         // 5. Announce so the recipient can find it.
         //    Small delay to avoid MetaMask RPC rate-limiting (back-to-back txs).
         await new Promise((r) => setTimeout(r, 2_000));
 
-        // Re-estimate gas price for the second tx (avoids stale nonce/fee issues).
         const feeData2 = await publicClient.estimateFeesPerGas();
         const maxFeePerGas2 = feeData2.maxFeePerGas
           ? (feeData2.maxFeePerGas * 150n) / 100n
@@ -146,7 +126,7 @@ export function useTickStream() {
             { name: "streamId", type: "uint256" },
             { name: "escrowId", type: "uint256" },
           ],
-          [params.streamId, escrowId ?? 0n]
+          [params.streamId, 0n]
         );
         await writeContractAsync({
           address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
@@ -159,7 +139,7 @@ export function useTickStream() {
           gas: 500_000n,
         });
 
-        return { txHash, escrowId, stealth };
+        return { txHash, escrowId: null, stealth };
       } catch (e) {
         const msg = (e as Error).message ?? "tick failed";
         setError(msg);
@@ -174,7 +154,5 @@ export function useTickStream() {
   return { tick, isTicking, error };
 }
 
-// Suppress unused import warnings for utilities used by other hooks elsewhere.
+// Suppress unused import warnings for re-exports used by other modules.
 void REINEIRA_CUSDC_ABI;
-void REINEIRA_CUSDC_ADDRESS;
-void hexToBytes;

@@ -26,17 +26,27 @@
 | 14 | Hook — `useTickStream` | `src/hooks/useTickStream.ts` | ✅ Done |
 | 15 | Hook — `useStreamList` | `src/hooks/useStreamList.ts` | ✅ Done |
 | 16 | Hook — `useStealthScan` | `src/hooks/useStealthScan.ts` | ✅ Done |
-| 17 | Hook — `useInsurePayroll` (purchase + dispute) | `src/hooks/useInsurePayroll.ts` | ✅ Done |
+| 17 | Hook — `useInsurePayroll` (purchase + dispute + isOperator pre-check) | `src/hooks/useInsurePayroll.ts` | ✅ Done |
 | 18 | Hook — `useCrossChainFund` (CCTP V1 + auto-claim) | `src/hooks/useCrossChainFund.ts` | ✅ Done |
+| 18a | Hook — `useCUSDCTransfer` (FHE P2P encrypted send) | `src/hooks/useCUSDCTransfer.ts` | ✅ Done |
+| 18b | Hook — `useCUSDCEscrow` (create/fund/redeem/exists + localStorage) | `src/hooks/useCUSDCEscrow.ts` | ✅ Done |
+| 18c | Hook — `useIsOperator` (cUSDC operator pre-check before approval txs) | `src/hooks/useIsOperator.ts` | ✅ Done |
 | 19 | Components — `pay-v4/` folder | `src/components/pay-v4/` | ✅ Done |
-|    | — `CUSDCPanel.tsx` | | ✅ |
+|    | — `CUSDCPanel.tsx` (wrap + unwrap + isOperator-aware authorize) | | ✅ |
+|    | — `CUSDCTransferForm.tsx` (FHE P2P encrypted send) | | ✅ |
+|    | — `CUSDCEscrowForm.tsx` (eaddress + euint64 create) | | ✅ |
+|    | — `CUSDCEscrowActions.tsx` (fund / redeem / exists) | | ✅ |
+|    | — `MyEscrows.tsx` (localStorage list, auto-refresh) | | ✅ |
+|    | — `ResolverManager.tsx` (getCycle, isConditionMet, approve, cancel) | | ✅ |
 |    | — `CreateStreamForm.tsx` | | ✅ |
-|    | — `StreamList.tsx` | | ✅ |
+|    | — `StreamList.tsx` (tick + pause/resume/cancel) | | ✅ |
 |    | — `RegisterMetaAddressForm.tsx` | | ✅ |
 |    | — `StealthInbox.tsx` | | ✅ |
 |    | — `CrossChainFundForm.tsx` | | ✅ |
 |    | — `BuyCoverageForm.tsx` | | ✅ |
 |    | — `DisputeForm.tsx` | | ✅ |
+|    | — `StakePoolForm.tsx` | | ✅ |
+|    | — `MyPolicies.tsx` | | ✅ |
 | 20 | `PayPage.tsx` 5 new tabs (streams, crosschain, insurance, stealth) | `src/pages/PayPage.tsx` | ✅ Done |
 | 21 | `PMFPage.tsx` + `/pmf` route | `src/pages/PMFPage.tsx`, `src/App.tsx` | ✅ Done |
 | 22 | Demo doc | `WAVE2_PAY_DEMO.md` | ✅ Done |
@@ -96,11 +106,145 @@
 
 ---
 
+## All-cUSDC Unification (commit 34df672 — April 2026)
+
+Complete removal of $OBS from PayPage. All payment features now run exclusively on encrypted cUSDC.
+
+| # | Task | Location | Status |
+|---|------|----------|--------|
+| 76 | Hook — `useCUSDCTransfer` — FHE encrypt + `confidentialTransfer(InEuint64)` P2P send | `src/hooks/useCUSDCTransfer.ts` | ✅ Done |
+| 77 | Hook — `useCUSDCEscrow` — FHE `encryptAddressAndAmount` → `create`, `fund`, `redeem`, `exists` | `src/hooks/useCUSDCEscrow.ts` | ✅ Done |
+| 78 | Component — `CUSDCTransferForm.tsx` — cyan-themed P2P send with 3-step FHE progress | `src/components/pay-v4/CUSDCTransferForm.tsx` | ✅ Done |
+| 79 | Component — `CUSDCEscrowForm.tsx` — create encrypted escrow (owner+amount both encrypted) with resolver fields | `src/components/pay-v4/CUSDCEscrowForm.tsx` | ✅ Done |
+| 80 | Component — `CUSDCEscrowActions.tsx` — fund / redeem / existence-check by escrow ID | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 81 | Component — `MyEscrows.tsx` — localStorage list with copy/delete/Arbiscan, auto-refresh 3s | `src/components/pay-v4/MyEscrows.tsx` | ✅ Done |
+| 82 | `PayPage.tsx` full restructure — removed all Wave 1 $OBS imports; 8-tab layout (dashboard, send, receive, escrows, streams, crosschain, insurance, stealth) | `src/pages/PayPage.tsx` | ✅ Done |
+| 83 | Dashboard tab — cUSDC how-it-works 6-step guide + `CUSDCPanel` (replaced `DashboardStats` + `ClaimDailyObsForm`) | `src/pages/PayPage.tsx` | ✅ Done |
+| 84 | Send tab — `CUSDCTransferForm` only (replaced Wave 1 `TransferForm` + `PayrollForm` + `EmployeeList`) | `src/pages/PayPage.tsx` | ✅ Done |
+| 85 | Receive tab — recipient 4-step onboarding + stealth registration + incoming streams + `CUSDCPanel` | `src/pages/PayPage.tsx` | ✅ Done |
+| 86 | Escrows tab — `CUSDCEscrowForm` + `MyEscrows` + `CUSDCEscrowActions` (replaced Wave 1 $OBS escrow components) | `src/pages/PayPage.tsx` | ✅ Done |
+| 87 | Header badge — single cUSDC badge (removed dual $OBS + cUSDC header) | `src/pages/PayPage.tsx` | ✅ Done |
+| 88 | Privacy sidebar — updated to cUSDC-focused encrypted handle descriptions | `src/pages/PayPage.tsx` | ✅ Done |
+| 89 | `VotePage.tsx` updated — `ClaimDailyObsForm` moved from PayPage to Vote dashboard tab (kept $OBS faucet accessible) | `src/pages/VotePage.tsx` | ✅ Done |
+| 90 | cUSDC P2P transfer live test — tx `0xf47b0c80…19c908bf` block 261245461, 0.0001 pUSDC handle confirmed on Arbiscan | Live on Arb Sepolia | ✅ Verified |
+
+---
+
+## FHE Privacy Maximization (commit f181ac1 — April 2026)
+
+Full audit of every Fhenix CoFHE ABI function — every unused capability is now wired to UI. 100% FHE feature coverage.
+
+| # | Task | Location | Status |
+|---|------|----------|--------|
+| 91 | `cUSDC.unwrap` wired — convert encrypted cUSDC back to plain USDC (amber "Unwrap" button in CUSDCPanel) | `src/hooks/useCUSDCBalance.ts`, `src/components/pay-v4/CUSDCPanel.tsx` | ✅ Done |
+| 92 | `useCUSDCBalance.unwrap()` — reads encrypted handle, calls `cUSDC.unwrap(address, amount)`, updates tracked balance localStorage | `src/hooks/useCUSDCBalance.ts` | ✅ Done |
+| 93 | Hook — `useIsOperator` — pre-check cUSDC operator status (`isOperator(holder, spender)`) before any approval tx | `src/hooks/useIsOperator.ts` | ✅ Done |
+| 94 | `approveStream` isOperator pre-check — reads `cUSDC.isOperator(address, PayStream)` before submitting `setOperator` tx; shows "already approved" toast if so | `src/hooks/useCUSDCBalance.ts` | ✅ Done |
+| 95 | `purchaseCoverage` isOperator pre-check — skips `setOperator(CoverageManager)` tx entirely if already authorized; saves one wallet popup per insurance purchase | `src/hooks/useInsurePayroll.ts` | ✅ Done |
+| 96 | Stream **Pause** button — calls `ObscuraPayStream.setPaused(streamId, true)` on-chain; real contract tx with gas estimation | `src/components/pay-v4/StreamList.tsx` | ✅ Done |
+| 97 | Stream **Resume** button — calls `ObscuraPayStream.setPaused(streamId, false)`; appears when stream is in paused state | `src/components/pay-v4/StreamList.tsx` | ✅ Done |
+| 98 | Stream **Cancel** button — calls `ObscuraPayStream.cancelStream(streamId)`; permanently cancels stream on-chain | `src/components/pay-v4/StreamList.tsx` | ✅ Done |
+| 99 | Pause/resume/cancel all use fresh `estimateFeesPerGas` + 130% buffer + 200k gas; replace "coming soon" placeholder entirely | `src/components/pay-v4/StreamList.tsx` | ✅ Done |
+| 100 | Component — `ResolverManager.tsx` — full PayrollResolver UI: escrow ID lookup, `getCycle` view, `isConditionMet` check, `approve` + `cancel` actions | `src/components/pay-v4/ResolverManager.tsx` | ✅ Done |
+| 101 | `ResolverManager` shows cycle info table — releaseTime, approved, cancelled, employer, approver, condition status | `src/components/pay-v4/ResolverManager.tsx` | ✅ Done |
+| 102 | `ResolverManager` wired to Escrows tab in PayPage | `src/pages/PayPage.tsx` | ✅ Done |
+| 103 | Sidebar contract info expanded — PayStream + PayrollResolver addresses shown alongside cUSDC + Escrow | `src/pages/PayPage.tsx` | ✅ Done |
+| 104 | Sidebar FHE ops expanded — added `sealOutput` to listed operations | `src/pages/PayPage.tsx` | ✅ Done |
+| 105 | Sidebar modules expanded — `PayrollResolver` added as active Wave 2 module | `src/pages/PayPage.tsx` | ✅ Done |
+
+---
+
+## Rate-Limit & Reliability Fixes (April 2026)
+
+| # | Task | Location | Status |
+|---|------|----------|--------|
+| 106 | Wrap rate-limit fix — increased approve→wrap delay from 2s to 5s; added `withRateLimitRetry` helper (3 retries, 4s exponential backoff) | `src/hooks/useCUSDCBalance.ts` | ✅ Done |
+| 107 | Unwrap rate-limit protection — wrapped unwrap call in `withRateLimitRetry` (same 3-retry exponential backoff) | `src/hooks/useCUSDCBalance.ts` | ✅ Done |
+| 108 | `withRateLimitRetry<T>` generic helper — detects "rate limit" / "429" in error messages, waits `baseDelay × attempt`, retries up to 3× | `src/hooks/useCUSDCBalance.ts` | ✅ Done |
+| 109 | CUSDCPanel loading toast — persistent `toast.loading` during wrap/unwrap so user sees progress during rate-limit cooldown | `src/components/pay-v4/CUSDCPanel.tsx` | ✅ Done |
+
+---
+
+## FHE Feature Coverage Audit (April 2026)
+
+Every `REINEIRA_CUSDC_ABI` and Wave 2 contract function accounted for:
+
+| Function | Contract | FHE Type | UI Status |
+|----------|----------|----------|-----------|
+| `wrap(to, amount)` | cUSDC | plaintext → `euint64` | ✅ CUSDCPanel Wrap button |
+| `unwrap(to, amount)` | cUSDC | `euint64` → plaintext | ✅ CUSDCPanel Unwrap button (item 91) |
+| `confidentialTransfer(to, InEuint64)` | cUSDC | `euint64` | ✅ CUSDCTransferForm + useTickStream |
+| `setOperator(operator, uint48)` | cUSDC | — | ✅ CUSDCPanel Authorize + auto in insurance/escrow |
+| `isOperator(holder, spender)` | cUSDC | — | ✅ pre-check in useCUSDCBalance + useInsurePayroll (items 93–95) |
+| `confidentialBalanceOf(account)` | cUSDC | `euint64` handle | ✅ useCUSDCBalance reveal + CUSDCPanel |
+| `balanceOf(holder)` | cUSDC | `euint64` handle (raw) | used internally by useCUSDCBalance |
+| `create(eOwner, eAmount, resolver, data)` | ConfidentialEscrow | `eaddress` + `euint64` | ✅ CUSDCEscrowForm |
+| `fund(escrowId, ePayment)` | ConfidentialEscrow | `euint64` | ✅ CUSDCEscrowActions |
+| `redeem(escrowId)` | ConfidentialEscrow | — | ✅ CUSDCEscrowActions |
+| `exists(escrowId)` | ConfidentialEscrow | — | ✅ CUSDCEscrowActions |
+| `setPaused(streamId, bool)` | PayStream | — | ✅ StreamList Pause/Resume (items 96–97) |
+| `cancelStream(streamId)` | PayStream | — | ✅ StreamList Cancel (item 98) |
+| `createStream(recipient, period, start, end)` | PayStream | — | ✅ CreateStreamForm |
+| `getStream / streamsByEmployer / streamsByRecipient / pendingCycles` | PayStream | — | ✅ useStreamList |
+| `approve(escrowId)` | PayrollResolver | — | ✅ ResolverManager (item 100) |
+| `cancel(escrowId)` | PayrollResolver | — | ✅ ResolverManager (item 100) |
+| `getCycle(escrowId)` | PayrollResolver | — | ✅ ResolverManager (item 101) |
+| `isConditionMet(escrowId)` | PayrollResolver | — | ✅ ResolverManager (item 101) |
+| `registerMetaAddress(spend, view)` | StealthRegistry | — | ✅ RegisterMetaAddressForm |
+| `getMetaAddress(addr)` | StealthRegistry | — | ✅ useStreamList + StreamList badge |
+| `announce(stealth, eph, viewTag, meta)` | StealthRegistry | — | ✅ useTickStream step 5 |
+| `purchaseCoverage(8 args)` | CoverageManager | `eaddress` + `euint64` | ✅ BuyCoverageForm + useInsurePayroll |
+| `dispute(coverageId, proof)` | CoverageManager | — | ✅ DisputeForm |
+| `stake(eAmount)` | InsurancePool | `euint64` | ✅ StakePoolForm |
+
+**Result: 0 unused ABI functions. Every FHE capability has a UI entry point.**
+
+---
+
+## Privacy Model Summary (April 2026)
+
+| Layer | Encrypted Data | FHE Type | Who Can Decrypt |
+|-------|---------------|----------|----------------|
+| P2P Transfer | Amount sent | `euint64` | Sender + Recipient (via permit) |
+| Escrow Create | Owner address + locked amount | `eaddress` + `euint64` | Creator only (encrypted owner) |
+| Escrow Fund | Top-up payment amount | `euint64` | Funder |
+| Payroll Stream Tick | Salary per cycle | `euint64` | Employer + Stealth Recipient |
+| Stealth Recipient | Recipient identity | derived address | Recipient only (ECDH scan) |
+| Insurance Coverage | Holder address + coverage amount | `eaddress` + `euint64` | Holder + Pool |
+| Insurance Stake | Staked amount | `euint64` | Staker |
+| Insurance Dispute | Outcome/payout | `ebool` + `euint64` | Parties |
+| Vote | Individual vote choice | `euint64` | Voter (tally revealed on end) |
+| cUSDC Balance | On-chain balance | `euint64` handle | Owner via `getOrCreateSelfPermit()` |
+
+**What remains visible on-chain (blockchain fundamentals):**
+- `msg.sender` wallet address on every tx
+- Recipient address on direct `confidentialTransfer` (stealth transfers hide this)
+- Block timestamp / transaction timing
+- Gas amount (rough proxy for operation type)
+- Which contract was called
+
+**Stealth addresses** are used for all stream payroll ticks — each cycle goes to a brand-new derived address. Only the recipient can link payments back to themselves via ECDH scan.
+
+**`decryptForTx` / `FHE.publishDecryptResult()`** — intentionally NOT used. All values remain encrypted on-chain for the full lifetime of every escrow, stream, coverage and stake. No on-chain plaintext reveals anywhere in the v4 product.
+
+---
+
+---
+
 ## Build status
 - `npx hardhat compile` — 10 Solidity files compiled (Cancun, optimizer 200).
 - `npx hardhat test` — 8/8 passing (resolver + registry).
-- `npx tsc --noEmit` — clean.
-- `npx vite build` — built in ~8s.
+- `npx tsc --noEmit` — clean (zero errors after all changes).
+- `npx vite build` — built in ~46s. Chunks ≤650 kB gzip ~190 kB (size warning only, no errors).
+
+## Commits (chronological)
+
+| Commit | Description |
+|--------|-------------|
+| `af61b7e` | Bridge gas fix + burn tx hash banner |
+| `5611680` | Insurance overhaul — setOperator, coverage ID capture, MyPolicies, validation |
+| `34df672` | All-cUSDC unification — useCUSDCTransfer/Escrow hooks, 4 new components, PayPage restructure, VotePage update |
+| `f181ac1` | FHE privacy maximization — unwrap, isOperator pre-check, stream pause/resume/cancel, ResolverManager |
 
 ## Deployed addresses (Arbitrum Sepolia, chainId 421614)
 

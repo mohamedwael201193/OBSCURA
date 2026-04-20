@@ -89,7 +89,9 @@ export default function CUSDCPanel() {
               onClick={async () => {
                 try {
                   toast.info("Step 1: Approving USDC spend…");
+                  const toastId = toast.loading("Wrapping… this may take a moment (rate-limit cooldown)");
                   await wrap(wrapAmount);
+                  toast.dismiss(toastId);
                   toast.success("Wrapped! Your cUSDC balance is updated.");
                   setWrapAmount("");
                 } catch (e) {
@@ -122,8 +124,9 @@ export default function CUSDCPanel() {
               whileTap={{ scale: 0.98 }}
               onClick={async () => {
                 try {
-                  toast.info("Unwrapping cUSDC → USDC…");
+                  const toastId = toast.loading("Unwrapping cUSDC → USDC…");
                   await unwrap(unwrapAmount);
+                  toast.dismiss(toastId);
                   toast.success("Unwrapped! Your USDC balance is updated.");
                   setUnwrapAmount("");
                 } catch (e) {

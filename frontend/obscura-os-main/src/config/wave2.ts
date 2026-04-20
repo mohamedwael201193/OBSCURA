@@ -456,8 +456,9 @@ export const REINEIRA_COVERAGE_MANAGER_ABI = [
 // ─── USDC on Arbitrum Sepolia (underlying asset for cUSDC wrap) ─────────
 export const USDC_ARB_SEPOLIA = "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d" as const;
 
-// ─── Circle CCTP V2 TokenMessenger (Ethereum Sepolia, domain 0) ─────────
-// Used by useCrossChainFund — the user signs depositForBurnWithHook on Sepolia.
+// ─── Circle CCTP V1 TokenMessenger (Ethereum Sepolia, domain 0) ─────────
+// Used by useCrossChainFund — the user signs depositForBurn on Sepolia.
+// V2 (depositForBurnWithHook) is NOT deployed on Sepolia testnet.
 export const CCTP_TOKEN_MESSENGER_SEPOLIA = "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5" as const;
 export const USDC_SEPOLIA = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238" as const;
 export const ARBITRUM_SEPOLIA_DOMAIN = 3 as const;
@@ -465,19 +466,15 @@ export const ARBITRUM_SEPOLIA_DOMAIN = 3 as const;
 export const CCTP_TOKEN_MESSENGER_ABI = [
   {
     type: "function",
-    name: "depositForBurnWithHook",
+    name: "depositForBurn",
     stateMutability: "nonpayable",
     inputs: [
       { name: "amount", type: "uint256" },
       { name: "destinationDomain", type: "uint32" },
       { name: "mintRecipient", type: "bytes32" },
       { name: "burnToken", type: "address" },
-      { name: "destinationCaller", type: "bytes32" },
-      { name: "maxFee", type: "uint256" },
-      { name: "minFinalityThreshold", type: "uint32" },
-      { name: "hookData", type: "bytes" },
     ],
-    outputs: [],
+    outputs: [{ name: "_nonce", type: "uint64" }],
   },
 ] as const;
 

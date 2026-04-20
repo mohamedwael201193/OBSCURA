@@ -107,6 +107,15 @@ export function useTickStream() {
         }
 
         // 5. Announce so the recipient can find it.
+        //    Small delay to avoid MetaMask RPC rate-limiting (back-to-back txs).
+        await new Promise((r) => setTimeout(r, 2_000));
+
+        // Re-estimate gas price for the second tx (avoids stale nonce/fee issues).
+        const feeData2 = await publicClient.estimateFeesPerGas();
+        const maxFeePerGas2 = feeData2.maxFeePerGas
+          ? (feeData2.maxFeePerGas * 150n) / 100n
+          : undefined;
+
         const metadata = encodeAbiParameters(
           [
             { name: "streamId", type: "uint256" },
@@ -121,8 +130,8 @@ export function useTickStream() {
           args: [stealth.stealthAddress, stealth.ephemeralPubKey, stealth.viewTag, metadata],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas,
-          gas: 200_000n,
+          maxFeePerGas: maxFeePerGas2,
+          gas: 500_000n,
         });
 
         return { txHash, escrowId, stealth };

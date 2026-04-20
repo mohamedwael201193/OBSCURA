@@ -60,6 +60,16 @@
 | 40 | Decrypt fix — remove `.withPermit()`, add 2-attempt retry with permit refresh | `src/lib/fhe.ts` | ✅ Done |
 | 41 | CUSDCPanel — show plain USDC balance, encrypted handle, decrypted cUSDC | `src/components/pay-v4/CUSDCPanel.tsx`, `src/hooks/useCUSDCBalance.ts` | ✅ Done |
 | 42 | FHERC-20 approve fix — replace `approve()` with `setOperator()` (Reineira reverts approve) | `wave2.ts`, `useCUSDCBalance.ts`, `CUSDCPanel.tsx`, `StakePoolForm.tsx` | ✅ Done |
+| 43 | Stealth registration gas fix — 200k→500k (Arbitrum L1 data costs for `bytes` storage) | `src/hooks/useStealthMetaAddress.ts` | ✅ Done |
+| 44 | Double `0x` prefix fix — `bytesToHex()` already returns `0x`-prefixed, removed redundant concat | `src/lib/stealth.ts` | ✅ Done |
+| 45 | Stream list instant refresh — `onCreated` callback + key-based remount + 8s refetchInterval | `useStreamList.ts`, `CreateStreamForm.tsx`, `PayPage.tsx` | ✅ Done |
+| 46 | Self-test "Me" button — auto-fills own address as recipient for testing | `CreateStreamForm.tsx` | ✅ Done |
+| 47 | Live recipient stealth check — green/red badge in CreateStreamForm, blocks unregistered | `CreateStreamForm.tsx`, `useRecipientStealthCheck.ts` | ✅ Done |
+| 48 | Employer invite message — "Copy Invite" button generates onboarding instructions for recipient | `CreateStreamForm.tsx` | ✅ Done |
+| 49 | Receive tab rebuild — 4-step recipient onboarding guide + stealth reg + incoming streams | `PayPage.tsx` | ✅ Done |
+| 50 | Per-stream stealth status — "stealth ready" / "no stealth" badge per stream in StreamList | `StreamList.tsx` | ✅ Done |
+| 51 | Announce gas fix — 200k→500k + 2s delay between tick & announce (MetaMask rate limit) | `src/hooks/useTickStream.ts` | ✅ Done |
+| 52 | Announce fresh gas estimation — re-estimate `maxFeePerGas` for second tx after delay | `src/hooks/useTickStream.ts` | ✅ Done |
 
 ---
 

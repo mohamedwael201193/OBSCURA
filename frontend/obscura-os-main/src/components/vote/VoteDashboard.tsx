@@ -1,13 +1,20 @@
 import { motion } from "framer-motion";
-import { BarChart3, Vote, Users, Coins, Shield, Hash } from "lucide-react";
+import { BarChart3, Hash, Users, Shield, ExternalLink, Clock } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useProposalCount, useVoterParticipation } from "@/hooks/useProposals";
 import { OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
+
+const DEPLOY_DATE = "Apr 2025";
+const NETWORK = "Arbitrum Sepolia";
+const CHAIN_ID = 421614;
 
 export default function VoteDashboard() {
   const { address, isConnected } = useAccount();
   const { data: proposalCount } = useProposalCount();
   const { data: participation } = useVoterParticipation(address as `0x${string}` | undefined);
+
+  const now = new Date();
+  const dateLabel = now.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 
   const stats = [
     {
@@ -29,10 +36,10 @@ export default function VoteDashboard() {
       color: isConnected ? "text-primary" : "text-muted-foreground",
     },
     {
-      label: "Governance",
-      value: "FHE Encrypted",
-      icon: Coins,
-      color: "text-purple-400",
+      label: "Today",
+      value: dateLabel,
+      icon: Clock,
+      color: "text-amber-400",
     },
   ];
 
@@ -56,71 +63,46 @@ export default function VoteDashboard() {
         ))}
       </div>
 
-      {/* Privacy info */}
-      <div className="glass-panel rounded-md p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Vote className="w-4 h-4 text-primary" />
-          <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
-            Vote Privacy Model
-          </span>
-        </div>
-        <div className="grid md:grid-cols-3 gap-3">
-          <PrivacyItem
-            label="Individual Votes"
-            type="euint64"
-            acl="Contract + Voter (allowThis + allow)"
-          />
-          <PrivacyItem
-            label="Aggregate Tally"
-            type="euint64 × N options"
-            acl="Public after finalization (allowPublic)"
-          />
-          <PrivacyItem
-            label="Revote + Verify"
-            type="eq + select + add"
-            acl="Anti-coercion revote + self-decrypt ballot"
-          />
-        </div>
-      </div>
-
-      {/* FHE Operations summary */}
-      <div className="glass-panel rounded-md p-4">
+      {/* Contract status */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="glass-panel rounded-md p-4"
+      >
         <div className="flex items-center gap-2 mb-3">
           <Shield className="w-4 h-4 text-primary" />
           <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
-            FHE Operations
+            Contract Status
+          </span>
+          <span className="ml-auto flex items-center gap-1.5 text-xs text-green-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            Live
           </span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {[
-            { op: "asEuint64", desc: "Encrypt plaintext/input" },
-            { op: "eq + select", desc: "Match option homomorphically" },
-            { op: "add / sub", desc: "Tally & revote arithmetic" },
-            { op: "allowPublic", desc: "Reveal aggregate after finalize" },
-            { op: "allow", desc: "Voter self-verification" },
-            { op: "allowThis", desc: "Contract retains access" },
-          ].map((item) => (
-            <div key={item.op} className="p-2 bg-secondary/30 rounded-md border border-border/30">
-              <div className="font-mono text-xs text-primary font-semibold">{item.op}</div>
-              <div className="text-[11px] text-muted-foreground/70 mt-0.5">{item.desc}</div>
-            </div>
-          ))}
+        <div className="grid md:grid-cols-3 gap-3">
+          <div className="p-3 bg-secondary/30 rounded-md border border-border/30 space-y-1">
+            <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Contract</div>
+            <a
+              href={`https://sepolia.arbiscan.io/address/${OBSCURA_VOTE_ADDRESS}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-xs text-primary hover:underline inline-flex items-center gap-1"
+            >
+              {OBSCURA_VOTE_ADDRESS.slice(0, 8)}...{OBSCURA_VOTE_ADDRESS.slice(-6)}
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="p-3 bg-secondary/30 rounded-md border border-border/30 space-y-1">
+            <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Network</div>
+            <div className="font-mono text-xs text-primary">{NETWORK} ({CHAIN_ID})</div>
+          </div>
+          <div className="p-3 bg-secondary/30 rounded-md border border-border/30 space-y-1">
+            <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Deployed</div>
+            <div className="font-mono text-xs text-foreground/70">{DEPLOY_DATE}</div>
+          </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function PrivacyItem({ label, type, acl }: { label: string; type: string; acl: string }) {
-  return (
-    <div className="p-3 bg-secondary/30 rounded-md border border-border/30">
-      <div className="text-sm text-foreground mb-1">{label}</div>
-      <div className="text-[11px] text-muted-foreground">
-        Type: <span className="font-mono text-primary">{type}</span>
-      </div>
-      <div className="text-[11px] text-muted-foreground">
-        ACL: <span className="text-foreground/70">{acl}</span>
-      </div>
+      </motion.div>
     </div>
   );
 }

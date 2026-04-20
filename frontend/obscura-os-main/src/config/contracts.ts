@@ -1,7 +1,7 @@
 ﻿export const OBSCURA_PAY_ADDRESS = import.meta.env.VITE_OBSCURA_PAY_ADDRESS as `0x${string}` | undefined;
 export const OBSCURA_ESCROW_ADDRESS = import.meta.env.VITE_OBSCURA_ESCROW_ADDRESS as `0x${string}` | undefined;
 export const OBSCURA_CONDITION_RESOLVER_ADDRESS = import.meta.env.VITE_OBSCURA_CONDITION_RESOLVER_ADDRESS as `0x${string}` | undefined;
-export const OBSCURA_VOTE_ADDRESS = import.meta.env.VITE_OBSCURA_VOTE_ADDRESS as `0x${string}` | undefined;
+export const OBSCURA_VOTE_ADDRESS = (import.meta.env.VITE_OBSCURA_VOTE_ADDRESS ?? "0x5d91B5ccb581F543f7399eea1c65Dfa88b3f9B7a") as `0x${string}`;
 
 // InEuint64 tuple: { ctHash: uint256, securityZone: uint8, utype: uint8, signature: bytes }
 const InEuint64Components = [

@@ -190,6 +190,8 @@ Full audit of every Fhenix CoFHE ABI function — every unused capability is now
 | 128 | **Post-redeem existence check** — after redeem tx, auto-calls `exists()` to verify escrow was consumed; shows warning if still active (silent failure) | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
 | 129 | **CUSDCPanel balance source label** — shows "(on-chain decrypted)" or "(tracked — wraps only, click REVEAL)" under balance amount | `src/components/pay-v4/CUSDCPanel.tsx` | ✅ Done |
 | 130 | **Silent failure loss warning** — updated all warnings to state that wrong-wallet redeem permanently consumes the escrow and funds are lost | `CUSDCEscrowActions.tsx`, `PayPage.tsx` | ✅ Done |
+| 131 | **MyEscrows formatAmount fix** — removed `> 1000` heuristic; ALL stored amounts are raw micro-USDC, always `formatUnits(n, 6)` — escrow #75 now correctly shows 0.000002 cUSDC instead of "2 cUSDC" | `src/components/pay-v4/MyEscrows.tsx` | ✅ Done |
+| 132 | **"BAD AMOUNT" badge** — red warning tag on escrows with < 1000 raw units (created before parseUnits fix), prevents users from wasting gas redeeming worthless escrows | `src/components/pay-v4/MyEscrows.tsx` | ✅ Done |
 
 ---
 

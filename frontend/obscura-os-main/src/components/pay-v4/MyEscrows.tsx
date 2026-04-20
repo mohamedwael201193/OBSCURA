@@ -30,13 +30,11 @@ export default function MyEscrows() {
     };
   }, []);
 
-  // Format amount — handle both raw bigint strings and human-readable strings
+  // Format amount — stored values are always raw bigint (micro-USDC, 6 decimals)
   const formatAmount = (raw: string) => {
     try {
       const n = BigInt(raw);
-      // If > 1000, it's likely raw units (6 decimals), format it
-      if (n > 1000n) return formatUnits(n, 6);
-      return raw;
+      return formatUnits(n, 6);
     } catch {
       return raw;
     }
@@ -87,6 +85,8 @@ export default function MyEscrows() {
       <div className="space-y-2">
         {escrows.map((escrow) => {
           const isRecipient = address?.toLowerCase() === escrow.recipient.toLowerCase();
+          const formattedAmt = formatAmount(escrow.amount);
+          const isTinyAmount = (() => { try { return BigInt(escrow.amount) < 1000n; } catch { return false; } })();
           return (
           <motion.div
             key={escrow.txHash}
@@ -104,14 +104,19 @@ export default function MyEscrows() {
                     <Copy className="w-3 h-3 text-muted-foreground/50" />
                   )}
                 </button>
-                {isRecipient && (
+                {isRecipient && !isTinyAmount && (
                   <span className="text-[7px] font-mono bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded-sm border border-green-500/20">
                     YOU CAN REDEEM
                   </span>
                 )}
+                {isTinyAmount && (
+                  <span className="text-[7px] font-mono bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded-sm border border-red-500/20">
+                    BAD AMOUNT — CREATED BEFORE FIX
+                  </span>
+                )}
               </div>
               <div className="text-[8px] font-mono text-muted-foreground/40 mt-0.5">
-                {formatAmount(escrow.amount)} cUSDC · to {escrow.recipient.slice(0, 8)}... · {new Date(escrow.createdAt).toLocaleDateString()}
+                {formattedAmt} cUSDC · to {escrow.recipient.slice(0, 8)}... · {new Date(escrow.createdAt).toLocaleDateString()}
               </div>
             </div>
             <div className="flex items-center gap-1.5 ml-2">

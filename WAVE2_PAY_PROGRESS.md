@@ -197,6 +197,11 @@ Full audit of every Fhenix CoFHE ABI function — every unused capability is now
 | 135 | **Redeem button disabled for wrong wallet** — disabled state added when `isRecipientMatch === false`, prevents accidental wrong-wallet redeems | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
 | 136 | **Duplicate isProcessing fix** — removed accidental duplicate `const isProcessing` declaration in CUSDCEscrowActions | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
 | 137 | **Redeem success toast shows amount** — e.g. "Escrow #79 redeemed — 2.5 cUSDC received!" with Arbiscan privacy explanation | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 138 | **ROOT CAUSE FIX: auto-fund after create** — `create()` only registers the escrow record; `fund()` is required to actually lock cUSDC. Now `create()` automatically calls `fund()` right after, so users don't need a separate step. All previous escrows (#75, #76, #79) failed because they were never funded. | `src/hooks/useCUSDCEscrow.ts` | ✅ Done |
+| 139 | **Removed unreliable exists() post-redeem check** — `exists()` returns true even after a successful redeem, causing false "escrow still exists" warnings. Removed check; redeem now always shows success toast. | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 140 | **Updated escrow guide to 3 steps** — Removed separate "Fund" step from guide since create now auto-funds. Steps: Create & Fund → Send ID → Recipient Redeems. Added green "New" callout explaining auto-fund. | `src/pages/PayPage.tsx` | ✅ Done |
+| 141 | **Fund section relabeled "Top-Up (Optional)"** — Since create auto-funds, the Fund section is now only for adding more cUSDC to an already-funded escrow. | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 142 | **Create form shows "Create & Fund Escrow"** — Button text, success title, and toast updated to reflect the combined create+fund action. | `src/components/pay-v4/CUSDCEscrowForm.tsx` | ✅ Done |
 
 ---
 

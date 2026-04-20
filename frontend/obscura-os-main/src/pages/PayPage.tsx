@@ -223,21 +223,20 @@ const PayPage = () => {
                         <ol className="space-y-2 text-[10px] font-mono text-muted-foreground/80">
                           <li className="flex gap-2">
                             <span className="text-cyan-400 font-bold shrink-0">Step 1.</span>
-                            <span><b className="text-foreground">Create an escrow</b> — Enter the recipient address (who can redeem), the cUSDC amount to lock, and optionally a resolver contract. The system auto-authorizes the escrow contract to handle your cUSDC.</span>
+                            <span><b className="text-foreground">Create &amp; fund an escrow</b> — Enter the recipient address (who can redeem), the cUSDC amount to lock, and optionally a resolver contract. The system encrypts the inputs, authorizes the escrow contract, creates the escrow, and <b className="text-green-400">automatically funds it</b> — all in one action. You&apos;ll confirm 2-3 MetaMask popups.</span>
                           </li>
                           <li className="flex gap-2">
                             <span className="text-cyan-400 font-bold shrink-0">Step 2.</span>
-                            <span><b className="text-foreground">Save your Escrow ID</b> — After creation you get an ID (e.g. #75). Copy it. You need this ID for every action below.</span>
+                            <span><b className="text-foreground">Send the Escrow ID to the recipient</b> — After creation you get an ID (e.g. #79). Copy it and share it with the recipient.</span>
                           </li>
                           <li className="flex gap-2">
                             <span className="text-cyan-400 font-bold shrink-0">Step 3.</span>
-                            <span><b className="text-foreground">Fund the escrow</b> (optional) — Add more cUSDC to an existing escrow by entering its ID and an amount below.</span>
-                          </li>
-                          <li className="flex gap-2">
-                            <span className="text-cyan-400 font-bold shrink-0">Step 4.</span>
-                            <span><b className="text-foreground">Redeem (from recipient wallet!)</b> — <b className="text-yellow-300">Switch MetaMask to the recipient account</b>, enter the Escrow ID and click Redeem. Only the encrypted owner receives the funds. After redeeming, go to Dashboard and click <b className="text-cyan-400">REVEAL</b> to see your updated cUSDC balance.</span>
+                            <span><b className="text-foreground">Recipient redeems (from their wallet!)</b> — <b className="text-yellow-300">The recipient switches MetaMask to their account</b>, enters the Escrow ID and clicks Redeem. Only the encrypted owner receives the funds. After redeeming, go to Dashboard and click <b className="text-cyan-400">REVEAL</b> to see the updated cUSDC balance.</span>
                           </li>
                         </ol>
+                        <div className="text-[9px] font-mono text-green-400/80 bg-green-500/5 border border-green-500/20 rounded-sm px-3 py-2">
+                          <b>New:</b> Create now auto-funds the escrow. You no longer need a separate Fund step. The &quot;Fund Escrow&quot; section below is for adding more cUSDC to an existing escrow if needed.
+                        </div>
                         <div className="text-[9px] font-mono text-yellow-400/80 bg-yellow-500/10 border border-yellow-500/20 rounded-sm px-3 py-2">
                           <b>Important:</b> The creator cannot redeem — only the recipient (owner) can. If the wrong wallet tries to redeem, the tx confirms but returns zero cUSDC.
                           After redeeming, your cUSDC balance is encrypted on-chain. Click <b>REVEAL</b> on the Dashboard tab to decrypt and see the updated amount.

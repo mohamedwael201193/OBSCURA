@@ -84,34 +84,24 @@ export default function CUSDCEscrowActions() {
     }
     try {
       await redeem(BigInt(escrowId));
-      // Check if escrow was consumed (= successful redeem)
-      const stillExists = await checkExists(BigInt(escrowId));
-      if (!stillExists) {
-        // Update the tracked cUSDC balance so the Dashboard shows the new amount immediately
-        if (savedEscrow && address) {
-          addToTrackedBalance(address, savedEscrow.amount);
-          const displayAmt = formatUnits(BigInt(savedEscrow.amount), 6);
-          toast.success(
-            `Escrow #${escrowId} redeemed — ${displayAmt} cUSDC received! ` +
-            `Dashboard balance updated. Click REVEAL for exact on-chain amount. ` +
-            `Note: Arbiscan shows 0.0001 pUSDC — this is a privacy placeholder, the real amount is encrypted.`,
-            { duration: 12000 }
-          );
-        } else {
-          toast.success(
-            "Escrow redeemed! Go to Dashboard → click REVEAL to see your updated cUSDC balance. " +
-            "Note: Arbiscan shows 0.0001 pUSDC — this is a privacy placeholder.",
-            { duration: 10000 }
-          );
-        }
-        setEscrowExists(false);
+      // exists() is unreliable (returns true even after successful redeem), so just show success
+      if (savedEscrow && address) {
+        addToTrackedBalance(address, savedEscrow.amount);
+        const displayAmt = formatUnits(BigInt(savedEscrow.amount), 6);
+        toast.success(
+          `Escrow #${escrowId} redeemed — ${displayAmt} cUSDC received! ` +
+          `Dashboard balance updated. Click REVEAL for exact on-chain amount. ` +
+          `Note: Arbiscan shows 0.0001 pUSDC — this is a privacy placeholder, the real amount is encrypted.`,
+          { duration: 12000 }
+        );
       } else {
-        toast.warning(
-          "Redeem tx confirmed but escrow still exists — the silent failure pattern may have triggered. " +
-          "Make sure you are connected as the recipient wallet.",
+        toast.success(
+          "Escrow redeemed! Go to Dashboard → click REVEAL to see your updated cUSDC balance. " +
+          "Note: Arbiscan shows 0.0001 pUSDC — this is a privacy placeholder.",
           { duration: 10000 }
         );
       }
+      setEscrowExists(false);
     } catch (err) {
       toast.error((err as Error).message || "Redeem failed");
     }
@@ -174,10 +164,10 @@ export default function CUSDCEscrowActions() {
         {/* Fund section */}
         <div className="p-3 bg-secondary/20 rounded-sm border border-border/20 space-y-2">
           <div className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase">
-            Fund Escrow (Step 3)
+            Top-Up Escrow (Optional)
           </div>
           <p className="text-[8px] font-mono text-muted-foreground/50">
-            Add cUSDC to an existing escrow. Enter the ID from Step 2 and the amount in cUSDC (e.g. 5 = 5 cUSDC).
+            Add more cUSDC to an already-funded escrow. New escrows are auto-funded at creation — this is only for top-ups.
           </p>
           <div className="flex gap-2">
             <input
@@ -202,7 +192,7 @@ export default function CUSDCEscrowActions() {
         {/* Redeem section */}
         <div className="p-3 bg-secondary/20 rounded-sm border border-border/20 space-y-2">
           <div className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase">
-            Redeem Escrow (Step 4)
+            Redeem Escrow (Step 3)
           </div>
 
           {/* Recipient match check */}

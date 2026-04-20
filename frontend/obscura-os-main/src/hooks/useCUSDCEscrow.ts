@@ -193,6 +193,35 @@ export function useCUSDCEscrow() {
         saveEscrow(saved);
         setEscrows(loadEscrows());
 
+        // Auto-fund the escrow immediately after creation
+        // create() only registers the escrow — fund() actually locks the cUSDC
+        console.log(`[Escrow] Auto-funding escrow #${escrowId} with ${amount} raw units...`);
+
+        // Re-encrypt the amount for the fund call (separate input needed)
+        const fundEncrypted = await encryptAmount(amount, (step) =>
+          console.log('[FHE Escrow Auto-Fund Encrypt]', step)
+        );
+
+        const fundHash = await withRateLimitRetry(async () => {
+          const feeData = await publicClient.estimateFeesPerGas();
+          const maxFeePerGas = feeData.maxFeePerGas
+            ? (feeData.maxFeePerGas * 130n) / 100n
+            : undefined;
+
+          return writeContractAsync({
+            address: REINEIRA_ESCROW_ADDRESS,
+            abi: REINEIRA_ESCROW_ABI,
+            functionName: 'fund',
+            args: [BigInt(escrowId), fundEncrypted[0]],
+            account: address,
+            chain: arbitrumSepolia,
+            maxFeePerGas,
+            gas: 600_000n,
+          });
+        });
+        await publicClient.waitForTransactionReceipt({ hash: fundHash });
+        console.log(`[Escrow] Auto-fund tx confirmed: ${fundHash}`);
+
         fheStatus.setStep(FHEStepStatus.READY);
         return hash;
       } catch (error) {

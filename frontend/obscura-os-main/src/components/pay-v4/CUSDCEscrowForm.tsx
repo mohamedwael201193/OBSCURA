@@ -39,7 +39,7 @@ export default function CUSDCEscrowForm() {
         : ("0x" as `0x${string}`);
 
       await create(ownerAddr as `0x${string}`, parsedAmount, resolverAddr, data);
-      toast.success("Encrypted cUSDC escrow created");
+      toast.success("Escrow created & auto-funded with cUSDC! Send the ID to the recipient.", { duration: 8000 });
       setOwnerAddr("");
       setAmount("");
       setResolver("");
@@ -62,7 +62,7 @@ export default function CUSDCEscrowForm() {
       <div className="glass-panel rounded-sm p-6 space-y-4">
         <div className="flex items-center gap-2">
           <CheckCircle className="w-4 h-4 text-green-400" />
-          <h3 className="font-display text-sm tracking-wider text-green-400">Escrow Created</h3>
+          <h3 className="font-display text-sm tracking-wider text-green-400">Escrow Created &amp; Funded</h3>
         </div>
         <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-sm space-y-2">
           <div className="text-[10px] font-mono text-muted-foreground">Escrow ID:</div>
@@ -73,7 +73,7 @@ export default function CUSDCEscrowForm() {
             </button>
           </div>
           <p className="text-[9px] font-mono text-muted-foreground/60">
-            Save this ID — you need it to fund or redeem this escrow.
+            Escrow created and funded automatically. Send this ID to the recipient so they can redeem.
           </p>
         </div>
         {txHash && (
@@ -187,7 +187,7 @@ export default function CUSDCEscrowForm() {
           className="w-full py-3 text-xs tracking-[0.2em] uppercase font-mono bg-cyan-600 text-white rounded-sm hover:bg-cyan-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           <Plus className="w-3.5 h-3.5" />
-          {isProcessing ? "Processing..." : "Create Encrypted Escrow"}
+          {isProcessing ? "Creating & Funding..." : "Create & Fund Escrow"}
         </motion.button>
       )}
 

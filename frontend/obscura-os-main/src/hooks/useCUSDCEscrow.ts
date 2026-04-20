@@ -10,6 +10,7 @@ import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount, encryptAddressAndAmount } from '@/lib/fhe';
 import { arbitrumSepolia } from 'viem/chains';
+import { parseUnits } from 'viem';
 
 const STORAGE_KEY = 'obscura_cusdc_escrows';
 
@@ -47,6 +48,42 @@ export function useCUSDCEscrow() {
 
   const { writeContractAsync, isPending: isTxPending } = useWriteContract();
 
+  // Ensure the Escrow contract is authorized as cUSDC operator
+  const ensureOperator = useCallback(async () => {
+    if (!publicClient || !address || !REINEIRA_CUSDC_ADDRESS || !REINEIRA_ESCROW_ADDRESS) return;
+
+    try {
+      const isOp = await publicClient.readContract({
+        address: REINEIRA_CUSDC_ADDRESS,
+        abi: REINEIRA_CUSDC_ABI,
+        functionName: 'isOperator',
+        args: [address, REINEIRA_ESCROW_ADDRESS],
+      });
+      if (isOp as boolean) return; // already approved
+    } catch { /* proceed with approval */ }
+
+    // Approve for 90 days
+    const expiry = BigInt(Math.floor(Date.now() / 1000) + 90 * 86400);
+    const feeData = await publicClient.estimateFeesPerGas();
+    const maxFeePerGas = feeData.maxFeePerGas
+      ? (feeData.maxFeePerGas * 130n) / 100n
+      : undefined;
+
+    const hash = await writeContractAsync({
+      address: REINEIRA_CUSDC_ADDRESS,
+      abi: REINEIRA_CUSDC_ABI,
+      functionName: 'setOperator',
+      args: [REINEIRA_ESCROW_ADDRESS, expiry],
+      account: address,
+      chain: arbitrumSepolia,
+      maxFeePerGas,
+      gas: 150_000n,
+    });
+    await publicClient.waitForTransactionReceipt({ hash });
+    // Wait for RPC cooldown
+    await new Promise((r) => setTimeout(r, 3000));
+  }, [publicClient, address, writeContractAsync]);
+
   // Refresh escrows from localStorage periodically
   useEffect(() => {
     const interval = setInterval(() => setEscrows(loadEscrows()), 3000);
@@ -79,7 +116,9 @@ export function useCUSDCEscrow() {
           (step) => console.log('[FHE cUSDC Escrow Encrypt]', step)
         );
 
+        // Authorize escrow contract as cUSDC operator (required to lock funds)
         fheStatus.setStep(FHEStepStatus.COMPUTING);
+        await ensureOperator();
 
         const feeData = await publicClient.estimateFeesPerGas();
         const maxFeePerGas = feeData.maxFeePerGas
@@ -134,7 +173,7 @@ export function useCUSDCEscrow() {
         throw error;
       }
     },
-    [publicClient, walletClient, writeContractAsync, address, fheStatus]
+    [publicClient, walletClient, writeContractAsync, address, fheStatus, ensureOperator]
   );
 
   const fund = useCallback(
@@ -151,7 +190,9 @@ export function useCUSDCEscrow() {
           console.log('[FHE Fund Encrypt]', step);
         });
 
+        // Authorize escrow contract as cUSDC operator (required to pull funds)
         fheStatus.setStep(FHEStepStatus.COMPUTING);
+        await ensureOperator();
 
         const feeData = await publicClient.estimateFeesPerGas();
         const maxFeePerGas = feeData.maxFeePerGas
@@ -177,7 +218,7 @@ export function useCUSDCEscrow() {
         throw error;
       }
     },
-    [publicClient, walletClient, writeContractAsync, address, fheStatus]
+    [publicClient, walletClient, writeContractAsync, address, fheStatus, ensureOperator]
   );
 
   const redeem = useCallback(

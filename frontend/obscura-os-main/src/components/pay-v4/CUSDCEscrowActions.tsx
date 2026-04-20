@@ -4,6 +4,7 @@ import { DollarSign, Unlock } from "lucide-react";
 import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
+import { parseUnits } from "viem";
 
 export default function CUSDCEscrowActions() {
   const [escrowId, setEscrowId] = useState("");
@@ -30,7 +31,7 @@ export default function CUSDCEscrowActions() {
       return;
     }
     try {
-      await fund(BigInt(escrowId), BigInt(Math.floor(Number(fundAmount))));
+      await fund(BigInt(escrowId), parseUnits(fundAmount, 6));
       toast.success("Escrow funded with encrypted cUSDC");
       setFundAmount("");
     } catch (err) {
@@ -108,8 +109,11 @@ export default function CUSDCEscrowActions() {
         {/* Fund section */}
         <div className="p-3 bg-secondary/20 rounded-sm border border-border/20 space-y-2">
           <div className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase">
-            Fund Escrow
+            Fund Escrow (Step 3)
           </div>
+          <p className="text-[8px] font-mono text-muted-foreground/50">
+            Add cUSDC to an existing escrow. Enter the ID from Step 2 and the amount in cUSDC (e.g. 5 = 5 cUSDC).
+          </p>
           <div className="flex gap-2">
             <input
               type="number"
@@ -133,7 +137,7 @@ export default function CUSDCEscrowActions() {
         {/* Redeem section */}
         <div className="p-3 bg-secondary/20 rounded-sm border border-border/20 space-y-2">
           <div className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase">
-            Redeem Escrow
+            Redeem Escrow (Step 4)
           </div>
           <p className="text-[8px] font-mono text-muted-foreground/50">
             Only the encrypted owner can redeem. Unauthorized attempts succeed silently but return zero.

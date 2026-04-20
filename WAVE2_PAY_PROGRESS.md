@@ -165,6 +165,21 @@ Full audit of every Fhenix CoFHE ABI function — every unused capability is now
 
 ---
 
+## Escrow Fixes & UX Overhaul (April 2026)
+
+| # | Task | Location | Status |
+|---|------|----------|--------|
+| 110 | **Escrow fund/redeem revert fix** — added `ensureOperator()` pre-check: reads `cUSDC.isOperator(user, EscrowContract)`, calls `setOperator(EscrowContract, 90d)` if not authorized | `src/hooks/useCUSDCEscrow.ts` | ✅ Done |
+| 111 | `ensureOperator` called before both `create` and `fund` — escrow contract now authorized to pull cUSDC before any FHE transfer | `src/hooks/useCUSDCEscrow.ts` | ✅ Done |
+| 112 | Amount decimal fix (escrow) — replaced `BigInt(Math.floor(Number(amount)))` with `parseUnits(amount, 6)` — 6 = USDC decimals | `src/components/pay-v4/CUSDCEscrowForm.tsx`, `CUSDCEscrowActions.tsx` | ✅ Done |
+| 113 | Amount decimal fix (P2P transfer) — same `parseUnits(amount, 6)` fix in `CUSDCTransferForm.tsx` | `src/components/pay-v4/CUSDCTransferForm.tsx` | ✅ Done |
+| 114 | Escrow tab 4-step guide — clear numbered instructions (Create → Save ID → Fund → Redeem) with tip about resolvers | `src/pages/PayPage.tsx` | ✅ Done |
+| 115 | Escrow Actions step labels — "Fund Escrow (Step 3)" and "Redeem Escrow (Step 4)" with inline help text | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 116 | Resolver Manager labeled "Advanced" — moved under a labeled divider so normal users aren't confused by it | `src/pages/PayPage.tsx` | ✅ Done |
+| 117 | Escrow form description updated — tells user to wrap USDC first in Dashboard tab | `src/components/pay-v4/CUSDCEscrowForm.tsx` | ✅ Done |
+
+---
+
 ## FHE Feature Coverage Audit (April 2026)
 
 Every `REINEIRA_CUSDC_ABI` and Wave 2 contract function accounted for:

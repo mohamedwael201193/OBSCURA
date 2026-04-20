@@ -4,6 +4,7 @@ import { Lock, Plus, Copy, CheckCircle } from "lucide-react";
 import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
+import { parseUnits } from "viem";
 
 export default function CUSDCEscrowForm() {
   const [ownerAddr, setOwnerAddr] = useState("");
@@ -29,7 +30,7 @@ export default function CUSDCEscrowForm() {
     }
 
     try {
-      const parsedAmount = BigInt(Math.floor(Number(amount)));
+      const parsedAmount = parseUnits(amount, 6);
       const resolverAddr = isValidAddress(resolver)
         ? (resolver as `0x${string}`)
         : ("0x0000000000000000000000000000000000000000" as `0x${string}`);
@@ -109,7 +110,7 @@ export default function CUSDCEscrowForm() {
 
       <p className="text-[10px] font-mono text-muted-foreground/70">
         Lock cUSDC in an encrypted escrow. The owner address and locked amount are both encrypted on-chain.
-        Optionally attach a resolver contract for conditional release.
+        You must have enough cUSDC balance (wrap USDC first in Dashboard tab).
       </p>
 
       {!isProcessing && (

@@ -213,18 +213,53 @@ const PayPage = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="glass-panel rounded-sm p-4 border-l-2 border-cyan-500/40 space-y-2">
-                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-cyan-400">Encrypted cUSDC Escrows</h3>
+                      {/* Step-by-step guide */}
+                      <div className="glass-panel rounded-sm p-5 border-l-2 border-cyan-500/40 space-y-4">
+                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-cyan-400">How Encrypted Escrows Work</h3>
                         <p className="text-[10px] font-mono text-muted-foreground/70">
-                          Lock cUSDC in an encrypted escrow with an optional resolver contract for conditional release.
-                          The locked amount and owner address are both encrypted — only the escrow creator can see the details.
-                          Unauthorized redemption attempts succeed but return zero (no error = no information leak).
+                          Escrows let you lock cUSDC in a smart contract so it can only be released to the designated owner.
+                          Both the locked amount and the owner address are FHE-encrypted — nobody can see them on-chain.
                         </p>
+                        <ol className="space-y-2 text-[10px] font-mono text-muted-foreground/80">
+                          <li className="flex gap-2">
+                            <span className="text-cyan-400 font-bold shrink-0">Step 1.</span>
+                            <span><b className="text-foreground">Create an escrow</b> — Enter the recipient address (who can redeem), the cUSDC amount to lock, and optionally a resolver contract. The system auto-authorizes the escrow contract to handle your cUSDC.</span>
+                          </li>
+                          <li className="flex gap-2">
+                            <span className="text-cyan-400 font-bold shrink-0">Step 2.</span>
+                            <span><b className="text-foreground">Save your Escrow ID</b> — After creation you get an ID (e.g. #75). Copy it. You need this ID for every action below.</span>
+                          </li>
+                          <li className="flex gap-2">
+                            <span className="text-cyan-400 font-bold shrink-0">Step 3.</span>
+                            <span><b className="text-foreground">Fund the escrow</b> (optional) — Add more cUSDC to an existing escrow by entering its ID and an amount below.</span>
+                          </li>
+                          <li className="flex gap-2">
+                            <span className="text-cyan-400 font-bold shrink-0">Step 4.</span>
+                            <span><b className="text-foreground">Redeem</b> — The designated owner enters the Escrow ID and clicks Redeem. If you're the encrypted owner, you receive the funds. If not, the tx succeeds silently but returns nothing (no information leak).</span>
+                          </li>
+                        </ol>
+                        <div className="text-[9px] font-mono text-amber-400/70 bg-amber-500/5 border border-amber-500/20 rounded-sm px-3 py-2">
+                          <b>Tip:</b> If you set a resolver contract (e.g. PayrollResolver), the escrow can only be released when the resolver's conditions are met.
+                          Use the Resolver Manager at the bottom to check conditions and approve releases.
+                        </div>
                       </div>
+
+                      {/* Create Escrow */}
                       <CUSDCEscrowForm />
+
+                      {/* My Escrows list */}
                       <MyEscrows />
+
+                      {/* Fund / Redeem / Check */}
                       <CUSDCEscrowActions />
-                      <ResolverManager />
+
+                      {/* Resolver Manager (for advanced users with resolver-gated escrows) */}
+                      <div className="space-y-2">
+                        <div className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.1em] uppercase px-1">
+                          Advanced: Resolver-Gated Escrows
+                        </div>
+                        <ResolverManager />
+                      </div>
                     </>
                   )}
                 </motion.div>

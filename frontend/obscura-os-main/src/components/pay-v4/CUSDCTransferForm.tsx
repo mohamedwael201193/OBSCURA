@@ -4,6 +4,7 @@ import { Send, ArrowRight } from "lucide-react";
 import { useCUSDCTransfer } from "@/hooks/useCUSDCTransfer";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
+import { parseUnits } from "viem";
 
 export default function CUSDCTransferForm() {
   const [recipient, setRecipient] = useState("");
@@ -24,7 +25,7 @@ export default function CUSDCTransferForm() {
     }
 
     try {
-      const parsed = BigInt(Math.floor(Number(amount)));
+      const parsed = parseUnits(amount, 6);
       await transfer(recipient as `0x${string}`, parsed);
       toast.success("Confidential cUSDC transfer submitted");
       setRecipient("");

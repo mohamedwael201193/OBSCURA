@@ -242,6 +242,11 @@ const PayPage = () => {
                           <b>Important:</b> The creator cannot redeem — only the recipient (owner) can. If the wrong wallet tries to redeem, the tx confirms but returns zero cUSDC.
                           After redeeming, your cUSDC balance is encrypted on-chain. Click <b>REVEAL</b> on the Dashboard tab to decrypt and see the updated amount.
                         </div>
+                        <div className="text-[9px] font-mono text-cyan-400/70 bg-cyan-500/5 border border-cyan-500/20 rounded-sm px-3 py-2">
+                          <b>Arbiscan note:</b> Because cUSDC is an FHERC-20 encrypted token, Arbiscan will always show <b>0.0001 pUSDC</b> for every transfer —
+                          this is a <b>privacy placeholder</b>, not the real amount. The actual encrypted amount is processed on-chain via FHE.
+                          Click REVEAL on the Dashboard to see your true decrypted balance.
+                        </div>
                         <div className="text-[9px] font-mono text-amber-400/70 bg-amber-500/5 border border-amber-500/20 rounded-sm px-3 py-2">
                           <b>Tip:</b> If you set a resolver contract (e.g. PayrollResolver), the escrow can only be released when the resolver's conditions are met.
                           Use the Resolver Manager at the bottom to check conditions and approve releases.

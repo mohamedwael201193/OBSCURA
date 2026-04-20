@@ -192,6 +192,11 @@ Full audit of every Fhenix CoFHE ABI function — every unused capability is now
 | 130 | **Silent failure loss warning** — updated all warnings to state that wrong-wallet redeem permanently consumes the escrow and funds are lost | `CUSDCEscrowActions.tsx`, `PayPage.tsx` | ✅ Done |
 | 131 | **MyEscrows formatAmount fix** — removed `> 1000` heuristic; ALL stored amounts are raw micro-USDC, always `formatUnits(n, 6)` — escrow #75 now correctly shows 0.000002 cUSDC instead of "2 cUSDC" | `src/components/pay-v4/MyEscrows.tsx` | ✅ Done |
 | 132 | **"BAD AMOUNT" badge** — red warning tag on escrows with < 1000 raw units (created before parseUnits fix), prevents users from wasting gas redeeming worthless escrows | `src/components/pay-v4/MyEscrows.tsx` | ✅ Done |
+| 133 | **FHERC-20 Arbiscan privacy note** — cyan info box explaining that 0.0001 pUSDC on Arbiscan is a privacy placeholder, not the real amount | `src/pages/PayPage.tsx`, `CUSDCEscrowActions.tsx` | ✅ Done |
+| 134 | **Auto-update tracked balance after redeem** — on successful redeem (escrow consumed), adds redeemed amount to `cusdc_tracked_` localStorage so Dashboard shows updated balance immediately | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 135 | **Redeem button disabled for wrong wallet** — disabled state added when `isRecipientMatch === false`, prevents accidental wrong-wallet redeems | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 136 | **Duplicate isProcessing fix** — removed accidental duplicate `const isProcessing` declaration in CUSDCEscrowActions | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 137 | **Redeem success toast shows amount** — e.g. "Escrow #79 redeemed — 2.5 cUSDC received!" with Arbiscan privacy explanation | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
 
 ---
 

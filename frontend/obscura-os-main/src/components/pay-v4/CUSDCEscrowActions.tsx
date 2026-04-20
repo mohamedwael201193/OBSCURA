@@ -5,12 +5,22 @@ import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
 import type { SavedEscrow } from "@/hooks/useCUSDCEscrow";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
-import { parseUnits } from "viem";
+import { parseUnits, formatUnits } from "viem";
 import { useAccount } from "wagmi";
 
 const STORAGE_KEY = 'obscura_cusdc_escrows';
 function loadSavedEscrows(): SavedEscrow[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+}
+
+/** After a successful redeem, add the redeemed amount to the tracked cUSDC balance */
+function addToTrackedBalance(address: string, rawAmount: string) {
+  try {
+    const key = `cusdc_tracked_${address}`;
+    const current = parseFloat(localStorage.getItem(key) || '0');
+    const redeemed = Number(formatUnits(BigInt(rawAmount), 6));
+    localStorage.setItem(key, (current + redeemed).toFixed(6));
+  } catch { /* ignore */ }
 }
 
 export default function CUSDCEscrowActions() {
@@ -32,8 +42,6 @@ export default function CUSDCEscrowActions() {
   const isRecipientMatch = savedEscrow && address
     ? savedEscrow.recipient.toLowerCase() === address.toLowerCase()
     : null; // null = unknown (escrow not in localStorage)
-
-  const isProcessing = status !== "idle" && status !== "ready" && status !== "error";
 
   const handleCheckExists = async () => {
     if (!escrowId) return;
@@ -76,17 +84,30 @@ export default function CUSDCEscrowActions() {
     }
     try {
       await redeem(BigInt(escrowId));
-      // Check if escrow still exists after redeem
+      // Check if escrow was consumed (= successful redeem)
       const stillExists = await checkExists(BigInt(escrowId));
       if (!stillExists) {
-        toast.success(
-          "Escrow redeemed and consumed! Go to Dashboard → click REVEAL to see your updated cUSDC balance.",
-          { duration: 8000 }
-        );
+        // Update the tracked cUSDC balance so the Dashboard shows the new amount immediately
+        if (savedEscrow && address) {
+          addToTrackedBalance(address, savedEscrow.amount);
+          const displayAmt = formatUnits(BigInt(savedEscrow.amount), 6);
+          toast.success(
+            `Escrow #${escrowId} redeemed — ${displayAmt} cUSDC received! ` +
+            `Dashboard balance updated. Click REVEAL for exact on-chain amount. ` +
+            `Note: Arbiscan shows 0.0001 pUSDC — this is a privacy placeholder, the real amount is encrypted.`,
+            { duration: 12000 }
+          );
+        } else {
+          toast.success(
+            "Escrow redeemed! Go to Dashboard → click REVEAL to see your updated cUSDC balance. " +
+            "Note: Arbiscan shows 0.0001 pUSDC — this is a privacy placeholder.",
+            { duration: 10000 }
+          );
+        }
         setEscrowExists(false);
       } else {
         toast.warning(
-          "Redeem tx confirmed but escrow still exists — this may mean the silent failure pattern triggered. " +
+          "Redeem tx confirmed but escrow still exists — the silent failure pattern may have triggered. " +
           "Make sure you are connected as the recipient wallet.",
           { duration: 10000 }
         );
@@ -219,7 +240,7 @@ export default function CUSDCEscrowActions() {
           )}
           <motion.button
             onClick={handleRedeem}
-            disabled={isProcessing || isTxPending || !escrowId}
+            disabled={isProcessing || isTxPending || !escrowId || isRecipientMatch === false}
             whileHover={!isProcessing ? { scale: 1.02 } : {}}
             whileTap={!isProcessing ? { scale: 0.98 } : {}}
             className="px-4 py-1.5 text-[9px] tracking-[0.15em] uppercase font-mono border border-cyan-500/30 text-cyan-400 rounded-sm hover:bg-cyan-500/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
@@ -227,6 +248,9 @@ export default function CUSDCEscrowActions() {
             <Unlock className="w-3 h-3" />
             Redeem
           </motion.button>
+          <p className="text-[7px] font-mono text-muted-foreground/40 leading-relaxed">
+            Arbiscan will show <b>0.0001 pUSDC</b> — this is a privacy placeholder. The real encrypted amount is processed via FHE. Click REVEAL on Dashboard to see your true balance.
+          </p>
         </div>
       </div>
 

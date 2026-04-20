@@ -6,7 +6,7 @@ import {
   useWalletClient,
   useWriteContract,
 } from "wagmi";
-import { sepolia } from "viem/chains";
+import { sepolia, arbitrumSepolia } from "viem/chains";
 import { pad, parseUnits } from "viem";
 import {
   CCTP_TOKEN_MESSENGER_SEPOLIA,
@@ -18,17 +18,16 @@ import {
 
 const USDC_DECIMALS = 6;
 
-/**
- * useCrossChainFund — bridge USDC from Ethereum Sepolia to the user's address
- * on Arbitrum Sepolia using CCTP V1 depositForBurn.
- *
- * Flow:
- *   1. Switch wallet to Sepolia (11155111).
- *   2. Approve TokenMessenger to pull USDC.
- *   3. Call depositForBurn(amount, destinationDomain, mintRecipient, burnToken).
- *   4. USDC is minted on Arb Sepolia after Circle attestation (~minutes).
- *      User can then wrap USDC → cUSDC via the existing wrap flow.
- */
+export type BridgeStep =
+  | "idle"
+  | "switching-to-sepolia"
+  | "approve-pending"      // waiting for wallet signature
+  | "approve-confirming"   // tx sent, waiting for receipt
+  | "burn-pending"         // waiting for wallet signature
+  | "burn-confirming"      // tx sent, waiting for receipt
+  | "switching-back"       // switching wallet back to Arb Sepolia
+  | "done";                // complete — USDC in transit
+
 export function useCrossChainFund() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
@@ -36,7 +35,8 @@ export function useCrossChainFund() {
   const { writeContractAsync } = useWriteContract();
   const { switchChainAsync } = useSwitchChain();
   const [isPending, setIsPending] = useState(false);
-  const [step, setStep] = useState<string>("idle");
+  const [step, setStep] = useState<BridgeStep>("idle");
+  const [burnTxHash, setBurnTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fund = useCallback(
@@ -46,13 +46,16 @@ export function useCrossChainFund() {
       }
       setIsPending(true);
       setError(null);
+      setBurnTxHash(null);
       try {
-        setStep("switching-chain");
+        // 1. Switch to Sepolia
+        setStep("switching-to-sepolia");
         await switchChainAsync({ chainId: sepolia.id });
 
         const amount = parseUnits(params.amountUSDC, USDC_DECIMALS);
 
-        setStep("approving-usdc");
+        // 2. Approve USDC
+        setStep("approve-pending");
         const approveHash = await writeContractAsync({
           address: USDC_SEPOLIA,
           abi: ERC20_APPROVE_ABI,
@@ -61,11 +64,12 @@ export function useCrossChainFund() {
           account: address,
           chain: sepolia,
         });
+        setStep("approve-confirming");
         await publicClient!.waitForTransactionReceipt({ hash: approveHash });
 
-        setStep("burning");
+        // 3. Burn USDC via CCTP
+        setStep("burn-pending");
         const mintRecipient = pad(address, { size: 32 });
-
         const burnHash = await writeContractAsync({
           address: CCTP_TOKEN_MESSENGER_SEPOLIA,
           abi: CCTP_TOKEN_MESSENGER_ABI,
@@ -80,8 +84,19 @@ export function useCrossChainFund() {
           chain: sepolia,
           gas: 300_000n,
         });
+        setStep("burn-confirming");
+        setBurnTxHash(burnHash);
+        await publicClient!.waitForTransactionReceipt({ hash: burnHash });
 
-        setStep("submitted");
+        // 4. Switch back to Arb Sepolia
+        setStep("switching-back");
+        try {
+          await switchChainAsync({ chainId: arbitrumSepolia.id });
+        } catch {
+          // non-critical — user can switch manually
+        }
+
+        setStep("done");
         return burnHash;
       } catch (e) {
         setError((e as Error).message);
@@ -93,5 +108,11 @@ export function useCrossChainFund() {
     [walletClient, address, switchChainAsync, writeContractAsync, publicClient]
   );
 
-  return { fund, isPending, step, error };
+  const reset = useCallback(() => {
+    setStep("idle");
+    setBurnTxHash(null);
+    setError(null);
+  }, []);
+
+  return { fund, isPending, step, burnTxHash, error, reset };
 }

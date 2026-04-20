@@ -27,7 +27,7 @@
 | 15 | Hook — `useStreamList` | `src/hooks/useStreamList.ts` | ✅ Done |
 | 16 | Hook — `useStealthScan` | `src/hooks/useStealthScan.ts` | ✅ Done |
 | 17 | Hook — `useInsurePayroll` (purchase + dispute) | `src/hooks/useInsurePayroll.ts` | ✅ Done |
-| 18 | Hook — `useCrossChainFund` (CCTP V2) | `src/hooks/useCrossChainFund.ts` | ✅ Done |
+| 18 | Hook — `useCrossChainFund` (CCTP V1 + auto-claim) | `src/hooks/useCrossChainFund.ts` | ✅ Done |
 | 19 | Components — `pay-v4/` folder | `src/components/pay-v4/` | ✅ Done |
 |    | — `CUSDCPanel.tsx` | | ✅ |
 |    | — `CreateStreamForm.tsx` | | ✅ |
@@ -78,6 +78,12 @@
 | 58 | Client-side paid cycle tracking — localStorage counter (on-chain counter not updated since PayStream bypassed) | `StreamList.tsx` | ✅ Done |
 | 59 | Payment success banner — green animated "Payment sent!" with tx hash, dismissable | `StreamList.tsx` | ✅ Done |
 | 60 | Effective pending cycles — uses local lastTick timestamp to correct countdown after direct transfer | `StreamList.tsx` | ✅ Done |
+| 61 | CCTP V2→V1 downgrade — CCTP V2 not deployed on Sepolia testnet, switched to `depositForBurn` (V1) | `wave2.ts`, `useCrossChainFund.ts` | ✅ Done |
+| 62 | Sepolia chain added to wagmi config — required for wallet switching to Eth Sepolia | `src/config/wagmi.ts` | ✅ Done |
+| 63 | StreamList SWC parse fix — extracted IIFE into `CountdownTimer` component (vite-plugin-react-swc limitation) | `StreamList.tsx` | ✅ Done |
+| 64 | Bridge step-by-step UX — 6-step progress indicator during burn flow | `CrossChainFundForm.tsx` | ✅ Done |
+| 65 | CCTP V1 auto-claim — poll Circle attestation API + `receiveMessage` on Arb Sepolia MessageTransmitter | `useCrossChainFund.ts`, `CrossChainFundForm.tsx` | ✅ Done |
+| 66 | Bridge state persistence — localStorage save/resume so attestation polling survives tab switches | `useCrossChainFund.ts`, `CrossChainFundForm.tsx` | ✅ Done |
 
 ---
 
@@ -175,7 +181,7 @@ Re-audited the full pay stack against the Fhenix CoFHE April 13 2026 changes:
 | Real ConfidentialEscrow integration | ✅ Reineira `0xC433…60Fa` | escrow create / setCondition called for every cycle |
 | Real ConfidentialCoverageManager | ✅ Reineira `0x766e…F6f6` | full 8-arg `purchaseCoverage` now wired |
 | Real PoolFactory / PolicyRegistry | ✅ Reineira `0x03bA…cBFD` / `0xf421…3c8E` | wired via `setupReineiraPool.ts` |
-| Real CCTP V2 Sepolia → Arbitrum | ✅ Circle `0x9f3B…0AA5` | `depositForBurnWithHook` with `abi.encode(escrowId)` hookData |
+| Real CCTP V1 Sepolia → Arbitrum (auto-claim) | ✅ Circle `0x9f3B…0AA5` | `depositForBurn` + poll attestation + `receiveMessage` on Arb Sepolia `0xaCF1…4872` |
 | ERC-5564 stealth (recipient redeem) | ✅ Reveal Claim Key UI | derives spending key client-side via `secp256k1` ECDH; sanity-checked against the on-chain `stealthAddress`; copy + warning |
 
 ### `decryptForTx` / `FHE.publishDecryptResult()` — intentionally NOT used

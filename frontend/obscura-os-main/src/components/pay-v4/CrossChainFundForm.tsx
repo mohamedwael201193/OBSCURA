@@ -65,7 +65,10 @@ function StepProgress({ current, attestationProgress }: { current: BridgeStep; a
 
 export default function CrossChainFundForm() {
   const [amount, setAmount] = useState("");
-  const { fund, isPending, step, burnTxHash, error, reset, attestationProgress } = useCrossChainFund();
+  const { fund, isPending, step, burnTxHash, error, reset, attestationProgress, savedAmount } = useCrossChainFund();
+
+  // Use savedAmount (from localStorage restore) when local amount is empty
+  const displayAmount = amount || savedAmount;
 
   const submit = async () => {
     if (!amount || Number(amount) <= 0) {
@@ -91,7 +94,7 @@ export default function CrossChainFundForm() {
 
         <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-sm space-y-3">
           <p className="text-[11px] font-mono text-green-300">
-            {amount} USDC has been bridged and minted on Arbitrum Sepolia!
+            {displayAmount} USDC has been bridged and minted on Arbitrum Sepolia!
           </p>
           <p className="text-[10px] font-mono text-muted-foreground/70">
             Your USDC balance on Arb Sepolia has been updated. Go to the <span className="text-primary">Pay</span> tab and

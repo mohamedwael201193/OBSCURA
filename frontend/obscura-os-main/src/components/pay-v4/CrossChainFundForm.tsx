@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Globe2, ArrowRightLeft, CheckCircle2, Loader2, ExternalLink } from "lucide-react";
+import { Globe2, ArrowRightLeft, CheckCircle2, Loader2, ExternalLink, RotateCcw } from "lucide-react";
 import { useCrossChainFund, type BridgeStep } from "@/hooks/useCrossChainFund";
 import { toast } from "sonner";
 
@@ -67,7 +67,9 @@ function StepProgress({ current, attestationProgress }: { current: BridgeStep; a
 
 export default function CrossChainFundForm() {
   const [amount, setAmount] = useState("");
-  const { fund, claim, isPending, step, burnTxHash, error, reset, attestationProgress, savedAmount } = useCrossChainFund();
+  const [recoverHash, setRecoverHash] = useState("");
+  const [showRecover, setShowRecover] = useState(false);
+  const { fund, claim, recover, isPending, step, burnTxHash, error, reset, attestationProgress, savedAmount } = useCrossChainFund();
 
   // Use savedAmount (from localStorage restore) when local amount is empty
   const displayAmount = amount || savedAmount;
@@ -91,6 +93,18 @@ export default function CrossChainFundForm() {
       toast.success("USDC claimed on Arb Sepolia! Check your USDC balance.");
     } catch (e) {
       toast.error((e as Error).message?.slice(0, 200) ?? "Claim failed");
+    }
+  };
+
+  const submitRecover = async () => {
+    if (!recoverHash || !recoverHash.startsWith("0x")) {
+      toast.error("Paste a valid Sepolia burn tx hash (starts with 0x)");
+      return;
+    }
+    try {
+      await recover(recoverHash);
+    } catch (e) {
+      toast.error((e as Error).message?.slice(0, 200) ?? "Recovery failed");
     }
   };
 
@@ -164,6 +178,48 @@ export default function CrossChainFundForm() {
               placeholder="100"
               className="w-full px-3 py-2 bg-background border border-border/50 rounded-sm text-xs font-mono"
             />
+          </div>
+
+          {/* Recover previous bridge */}
+          <div className="border-t border-border/20 pt-2">
+            <button
+              onClick={() => setShowRecover(!showRecover)}
+              className="flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground/60 hover:text-muted-foreground"
+            >
+              <RotateCcw className="w-3 h-3" />
+              {showRecover ? "Hide" : "Burned USDC but never received it? Recover here"}
+            </button>
+            {showRecover && (
+              <div className="mt-2 space-y-2">
+                <p className="text-[9px] font-mono text-muted-foreground/50">
+                  Paste your Sepolia burn tx hash below. We&apos;ll check Circle&apos;s attestation and let you claim.
+                </p>
+                <input
+                  value={recoverHash}
+                  onChange={(e) => setRecoverHash(e.target.value)}
+                  placeholder="0x48e09cc1..."
+                  className="w-full px-3 py-2 bg-background border border-border/50 rounded-sm text-xs font-mono"
+                />
+                <motion.button
+                  onClick={submitRecover}
+                  disabled={isPending}
+                  whileTap={{ scale: 0.99 }}
+                  className="w-full py-2 text-[10px] tracking-[0.15em] uppercase font-mono bg-amber-600/80 text-white rounded-sm hover:bg-amber-500 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Checking…
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="w-3 h-3" />
+                      Recover Bridge
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            )}
           </div>
         </div>
       )}

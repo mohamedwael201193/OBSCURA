@@ -388,5 +388,76 @@ export function useCrossChainFund() {
     if (abortRef.current) abortRef.current.abort();
   }, []);
 
-  return { fund, claim, isPending, step, burnTxHash, error, reset, attestationProgress, savedAmount };
+  /** Recover a previous bridge from a Sepolia burn tx hash */
+  const recover = useCallback(async (txHash: string) => {
+    setIsPending(true);
+    setError(null);
+    try {
+      setStep("burn-confirming");
+      setBurnTxHash(txHash);
+
+      // Fetch receipt from Sepolia
+      const receipt = await sepoliaClient.getTransactionReceipt({
+        hash: txHash as `0x${string}`,
+      });
+
+      // Extract messageBytes
+      const msgLog = receipt.logs.find(
+        (l) => l.topics[0] === MESSAGE_SENT_TOPIC
+      );
+      if (!msgLog) throw new Error("No MessageSent event found in this tx — is this a CCTP burn tx?");
+
+      const [messageBytes] = decodeAbiParameters(
+        [{ name: "message", type: "bytes" }],
+        msgLog.data
+      );
+      const messageHash = keccak256(messageBytes);
+
+      // Check attestation
+      setStep("waiting-attestation");
+      const resp = await fetch(`${CIRCLE_ATTESTATION_API}/${messageHash}`);
+      const data = await resp.json();
+
+      if (data.status === "complete" && data.attestation) {
+        // Attestation ready — save and show claim button
+        saveBridgeState({
+          messageBytes: messageBytes as string,
+          messageHash,
+          burnTxHash: txHash,
+          amountUSDC: "?",
+          startedAt: Date.now(),
+          attestation: data.attestation,
+        });
+        setSavedAmount("");
+        setStep("ready-to-claim");
+      } else {
+        // Not ready yet — save and start polling
+        saveBridgeState({
+          messageBytes: messageBytes as string,
+          messageHash,
+          burnTxHash: txHash,
+          amountUSDC: "?",
+          startedAt: Date.now(),
+        });
+
+        const ac = new AbortController();
+        abortRef.current = ac;
+        const attestation = await pollAttestation(
+          messageHash as `0x${string}`,
+          (tries) => { if (mountedRef.current) setAttestationProgress(tries); },
+          ac.signal
+        );
+        const updated = loadBridgeState();
+        if (updated) saveBridgeState({ ...updated, attestation });
+        setStep("ready-to-claim");
+      }
+    } catch (e) {
+      setError((e as Error).message);
+      setStep("idle");
+    } finally {
+      setIsPending(false);
+    }
+  }, []);
+
+  return { fund, claim, recover, isPending, step, burnTxHash, error, reset, attestationProgress, savedAmount };
 }

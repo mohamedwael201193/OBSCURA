@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Globe2, ArrowRightLeft, CheckCircle2, Loader2, ExternalLink, RotateCcw } from "lucide-react";
+import { Globe2, ArrowRightLeft, CheckCircle2, Loader2, ExternalLink, RotateCcw, Copy } from "lucide-react";
 import { useCrossChainFund, type BridgeStep } from "@/hooks/useCrossChainFund";
 import { toast } from "sonner";
 
@@ -30,6 +30,31 @@ const STEP_ORDER: BridgeStep[] = [
   "claiming",
   "done",
 ];
+
+/** Small banner showing the burn tx hash with copy + etherscan link */
+function BurnTxBanner({ hash }: { hash: string }) {
+  const short = `${hash.slice(0, 10)}…${hash.slice(-8)}`;
+  return (
+    <div className="flex items-center gap-2 p-2 bg-cyan-500/10 border border-cyan-500/20 rounded-sm">
+      <ExternalLink className="w-3 h-3 text-cyan-400 flex-shrink-0" />
+      <a
+        href={`https://sepolia.etherscan.io/tx/${hash}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[9px] font-mono text-cyan-400 hover:text-cyan-300 truncate"
+      >
+        {short}
+      </a>
+      <button
+        onClick={() => { navigator.clipboard.writeText(hash); toast.success("Tx hash copied!"); }}
+        className="ml-auto text-muted-foreground/50 hover:text-muted-foreground flex-shrink-0"
+      >
+        <Copy className="w-3 h-3" />
+      </button>
+      <span className="text-[8px] font-mono text-muted-foreground/40 flex-shrink-0">SAVE THIS</span>
+    </div>
+  );
+}
 
 function StepProgress({ current, attestationProgress }: { current: BridgeStep; attestationProgress: number }) {
   if (current === "idle") return null;
@@ -224,10 +249,16 @@ export default function CrossChainFundForm() {
         </div>
       )}
 
-      {step !== "idle" && step !== "ready-to-claim" && <StepProgress current={step} attestationProgress={attestationProgress} />}
+      {step !== "idle" && step !== "ready-to-claim" && (
+        <>
+          {burnTxHash && <BurnTxBanner hash={burnTxHash} />}
+          <StepProgress current={step} attestationProgress={attestationProgress} />
+        </>
+      )}
 
       {step === "ready-to-claim" && (
         <div className="space-y-3">
+          {burnTxHash && <BurnTxBanner hash={burnTxHash} />}
           <StepProgress current={step} attestationProgress={attestationProgress} />
           <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-sm">
             <p className="text-[10px] font-mono text-green-300">

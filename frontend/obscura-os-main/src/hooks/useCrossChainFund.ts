@@ -102,6 +102,22 @@ const sepoliaClient = createPublicClient({
   transport: http("https://ethereum-sepolia-rpc.publicnode.com"),
 });
 
+/** Arb Sepolia client for gas estimation */
+const arbSepoliaClient = createPublicClient({
+  chain: arbitrumSepolia,
+  transport: http("https://arbitrum-sepolia-rpc.publicnode.com"),
+});
+
+/** Wait + fetch fresh gas params from Arb Sepolia RPC (avoids stale MetaMask data after chain switch) */
+async function getFreshGasParams() {
+  await new Promise((r) => setTimeout(r, 2000)); // let MetaMask catch up
+  const fee = await arbSepoliaClient.estimateFeesPerGas();
+  return {
+    maxFeePerGas: fee.maxFeePerGas! * 2n,  // 2x buffer for L2 volatility
+    maxPriorityFeePerGas: fee.maxPriorityFeePerGas! * 2n,
+  };
+}
+
 /**
  * Poll Circle attestation. Handles 404 (unknown hash) by giving up after
  * a few consecutive 404s instead of retrying forever.
@@ -240,6 +256,7 @@ export function useCrossChainFund() {
       try { await switchChainAsync({ chainId: arbitrumSepolia.id }); } catch { /* already there */ }
 
       setStep("claiming");
+      const gasParams = await getFreshGasParams();
       await writeContractAsync({
         address: ARB_SEPOLIA_MESSAGE_TRANSMITTER,
         abi: MESSAGE_TRANSMITTER_ABI,
@@ -248,6 +265,7 @@ export function useCrossChainFund() {
         account: address,
         chain: arbitrumSepolia,
         gas: 400_000n,
+        ...gasParams,
       });
 
       clearBridgeState();
@@ -355,6 +373,7 @@ export function useCrossChainFund() {
         if (updated) saveBridgeState({ ...updated, attestation });
 
         setStep("claiming");
+        const gasParams = await getFreshGasParams();
         await writeContractAsync({
           address: ARB_SEPOLIA_MESSAGE_TRANSMITTER,
           abi: MESSAGE_TRANSMITTER_ABI,
@@ -363,6 +382,7 @@ export function useCrossChainFund() {
           account: address,
           chain: arbitrumSepolia,
           gas: 400_000n,
+          ...gasParams,
         });
 
         clearBridgeState();

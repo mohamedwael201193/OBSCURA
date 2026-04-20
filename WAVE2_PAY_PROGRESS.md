@@ -84,6 +84,9 @@
 | 64 | Bridge step-by-step UX — 6-step progress indicator during burn flow | `CrossChainFundForm.tsx` | ✅ Done |
 | 65 | CCTP V1 auto-claim — poll Circle attestation API + `receiveMessage` on Arb Sepolia MessageTransmitter | `useCrossChainFund.ts`, `CrossChainFundForm.tsx` | ✅ Done |
 | 66 | Bridge state persistence — localStorage save/resume so attestation polling survives tab switches | `useCrossChainFund.ts`, `CrossChainFundForm.tsx` | ✅ Done |
+| 67 | Bridge Recover UI — paste burn tx hash to recover unclaimed bridge, checks attestation + shows Claim | `useCrossChainFund.ts`, `CrossChainFundForm.tsx` | ✅ Done |
+| 68 | Claim gas fix — fetch fresh `maxFeePerGas` from Arb Sepolia RPC after chain switch (avoids stale MetaMask gas) | `useCrossChainFund.ts` | ✅ Done |
+| 69 | Burn tx hash banner — shows tx hash with copy button + Etherscan link during bridge flow | `CrossChainFundForm.tsx` | ✅ Done |
 
 ---
 

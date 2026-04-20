@@ -1,12 +1,13 @@
 import { motion } from "framer-motion";
-import { Coins, Eye, ArrowDownToLine } from "lucide-react";
+import { Coins, Eye, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { useState } from "react";
 import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
 import { toast } from "sonner";
 
 export default function CUSDCPanel() {
-  const { handle, decrypted, usdcBalance, trackedCusdc, reveal, wrap, approveStream, busy, error } = useCUSDCBalance();
+  const { handle, decrypted, usdcBalance, trackedCusdc, reveal, wrap, unwrap, approveStream, busy, error } = useCUSDCBalance();
   const [wrapAmount, setWrapAmount] = useState("");
+  const [unwrapAmount, setUnwrapAmount] = useState("");
   const [maxApprove, setMaxApprove] = useState("30");
 
   // Best available balance: on-chain decrypt > tracked from wraps
@@ -107,6 +108,40 @@ export default function CUSDCPanel() {
 
         <div>
           <label className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+            Unwrap cUSDC → USDC
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="100"
+              value={unwrapAmount}
+              onChange={(e) => setUnwrapAmount(e.target.value)}
+              className="flex-1 px-3 py-2 bg-background border border-border/50 rounded-sm text-xs font-mono"
+            />
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={async () => {
+                try {
+                  toast.info("Unwrapping cUSDC → USDC…");
+                  await unwrap(unwrapAmount);
+                  toast.success("Unwrapped! Your USDC balance is updated.");
+                  setUnwrapAmount("");
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
+              }}
+              className="px-4 text-[10px] tracking-[0.2em] uppercase font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-sm flex items-center gap-1.5"
+            >
+              <ArrowUpFromLine className="w-3 h-3" /> Unwrap
+            </motion.button>
+          </div>
+          <div className="text-[9px] font-mono text-muted-foreground/60 mt-1">
+            Convert encrypted cUSDC back to regular USDC. The amount is decrypted on-chain and sent to your wallet.
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
             Authorize PayStream as Operator
           </label>
           <div className="flex gap-2">
@@ -125,9 +160,13 @@ export default function CUSDCPanel() {
               onClick={async () => {
                 try {
                   const days = Number(maxApprove) || 30;
-                  toast.info(`Authorizing PayStream for ${days} days…`);
-                  await approveStream(days);
-                  toast.success(`PayStream authorized for ${days} days`);
+                  toast.info(`Checking operator status…`);
+                  const result = await approveStream(days);
+                  if (result === "already-approved") {
+                    toast.success(`PayStream already authorized — no tx needed!`);
+                  } else {
+                    toast.success(`PayStream authorized for ${days} days`);
+                  }
                 } catch (e) {
                   toast.error((e as Error).message);
                 }

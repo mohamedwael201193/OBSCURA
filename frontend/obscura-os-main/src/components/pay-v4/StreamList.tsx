@@ -1,13 +1,16 @@
-import { useAccount, usePublicClient } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { motion } from "framer-motion";
 import { useStreamList, type StreamSummary } from "@/hooks/useStreamList";
 import { useTickStream } from "@/hooks/useTickStream";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Play, Clock, Ban, Timer, CheckCircle2, XCircle, Check } from "lucide-react";
+import { Play, Clock, Ban, Timer, CheckCircle2, XCircle, Check, Pause, PlayCircle } from "lucide-react";
+import { arbitrumSepolia } from "viem/chains";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
+  OBSCURA_PAY_STREAM_ABI,
+  OBSCURA_PAY_STREAM_ADDRESS,
 } from "@/config/wave2";
 import type { MetaAddress } from "@/lib/stealth";
 
@@ -79,9 +82,11 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   const filter = mode === "employer" ? { employer: address } : { recipient: address };
   const { streams, isLoading, refresh } = useStreamList(filter);
   const { tick, isTicking } = useTickStream();
+  const { writeContractAsync } = useWriteContract();
   const [tickAmount, setTickAmount] = useState("");
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [lastPayment, setLastPayment] = useState<{ streamId: string; txHash: string; amount: string } | null>(null);
+  const [streamAction, setStreamAction] = useState<string | null>(null);
 
   // Track paid cycles in localStorage (on-chain counter won't update since we bypass PayStream)
   const getLocalPaid = useCallback((streamId: bigint): number => {
@@ -275,18 +280,112 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
               <CountdownTimer nextDue={nextDue} now={now} onRefresh={refresh} />
             )}
             {mode === "employer" && !s.paused && (
-              <button
-                onClick={async () => {
-                  // cancel is just setting paused
-                  toast.info("Pause/cancel not yet wired — coming soon");
-                }}
-                className="mt-1 w-full py-1.5 text-[9px] tracking-[0.15em] uppercase font-mono text-red-400/70 hover:text-red-400 flex items-center justify-center gap-1"
-              >
-                <Ban className="w-3 h-3" /> Cancel Stream
-              </button>
+              <div className="mt-1 flex gap-1">
+                <button
+                  disabled={streamAction === s.id.toString()}
+                  onClick={async () => {
+                    if (!publicClient || !OBSCURA_PAY_STREAM_ADDRESS) return;
+                    setStreamAction(s.id.toString());
+                    try {
+                      const feeData = await publicClient.estimateFeesPerGas();
+                      const maxFeePerGas = feeData.maxFeePerGas
+                        ? (feeData.maxFeePerGas * 130n) / 100n
+                        : undefined;
+                      const hash = await writeContractAsync({
+                        address: OBSCURA_PAY_STREAM_ADDRESS,
+                        abi: OBSCURA_PAY_STREAM_ABI,
+                        functionName: "setPaused",
+                        args: [s.id, true],
+                        account: address,
+                        chain: arbitrumSepolia,
+                        maxFeePerGas,
+                        gas: 200_000n,
+                      });
+                      await publicClient.waitForTransactionReceipt({ hash });
+                      toast.success(`Stream #${s.id.toString()} paused`);
+                      refresh();
+                    } catch (e) {
+                      toast.error((e as Error).message || "Pause failed");
+                    } finally {
+                      setStreamAction(null);
+                    }
+                  }}
+                  className="flex-1 py-1.5 text-[9px] tracking-[0.15em] uppercase font-mono text-amber-400/70 hover:text-amber-400 border border-amber-500/20 rounded-sm flex items-center justify-center gap-1 disabled:opacity-50"
+                >
+                  <Pause className="w-3 h-3" /> {streamAction === s.id.toString() ? "Pausing…" : "Pause"}
+                </button>
+                <button
+                  disabled={streamAction === s.id.toString()}
+                  onClick={async () => {
+                    if (!publicClient || !OBSCURA_PAY_STREAM_ADDRESS) return;
+                    setStreamAction(s.id.toString());
+                    try {
+                      const feeData = await publicClient.estimateFeesPerGas();
+                      const maxFeePerGas = feeData.maxFeePerGas
+                        ? (feeData.maxFeePerGas * 130n) / 100n
+                        : undefined;
+                      const hash = await writeContractAsync({
+                        address: OBSCURA_PAY_STREAM_ADDRESS,
+                        abi: OBSCURA_PAY_STREAM_ABI,
+                        functionName: "cancelStream",
+                        args: [s.id],
+                        account: address,
+                        chain: arbitrumSepolia,
+                        maxFeePerGas,
+                        gas: 200_000n,
+                      });
+                      await publicClient.waitForTransactionReceipt({ hash });
+                      toast.success(`Stream #${s.id.toString()} cancelled permanently`);
+                      refresh();
+                    } catch (e) {
+                      toast.error((e as Error).message || "Cancel failed");
+                    } finally {
+                      setStreamAction(null);
+                    }
+                  }}
+                  className="flex-1 py-1.5 text-[9px] tracking-[0.15em] uppercase font-mono text-red-400/70 hover:text-red-400 border border-red-500/20 rounded-sm flex items-center justify-center gap-1 disabled:opacity-50"
+                >
+                  <Ban className="w-3 h-3" /> Cancel
+                </button>
+              </div>
             )}
             {s.paused && (
-              <div className="mt-1 text-[9px] font-mono text-amber-400/80 text-center">Stream paused / cancelled</div>
+              <div className="mt-1 flex gap-1 items-center">
+                <div className="flex-1 text-[9px] font-mono text-amber-400/80 text-center">Stream paused / cancelled</div>
+                <button
+                  disabled={streamAction === s.id.toString()}
+                  onClick={async () => {
+                    if (!publicClient || !OBSCURA_PAY_STREAM_ADDRESS) return;
+                    setStreamAction(s.id.toString());
+                    try {
+                      const feeData = await publicClient.estimateFeesPerGas();
+                      const maxFeePerGas = feeData.maxFeePerGas
+                        ? (feeData.maxFeePerGas * 130n) / 100n
+                        : undefined;
+                      const hash = await writeContractAsync({
+                        address: OBSCURA_PAY_STREAM_ADDRESS,
+                        abi: OBSCURA_PAY_STREAM_ABI,
+                        functionName: "setPaused",
+                        args: [s.id, false],
+                        account: address,
+                        chain: arbitrumSepolia,
+                        maxFeePerGas,
+                        gas: 200_000n,
+                      });
+                      await publicClient.waitForTransactionReceipt({ hash });
+                      toast.success(`Stream #${s.id.toString()} resumed`);
+                      refresh();
+                    } catch (e) {
+                      toast.error((e as Error).message || "Resume failed");
+                    } finally {
+                      setStreamAction(null);
+                    }
+                  }}
+                  className="py-1.5 px-3 text-[9px] tracking-[0.15em] uppercase font-mono text-green-400/70 hover:text-green-400 border border-green-500/20 rounded-sm flex items-center justify-center gap-1 disabled:opacity-50"
+                >
+                  <PlayCircle className="w-3 h-3" /> {streamAction === s.id.toString() ? "Resuming…" : "Resume"}
+                </button>
+              </div>
             )}
           </div>
         );

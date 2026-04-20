@@ -128,6 +128,19 @@ export function useCUSDCBalance() {
         throw new Error("Wallet or contracts not configured");
       }
 
+      // Pre-check: skip if already an operator
+      try {
+        const isOp = await publicClient.readContract({
+          address: REINEIRA_CUSDC_ADDRESS,
+          abi: REINEIRA_CUSDC_ABI,
+          functionName: "isOperator",
+          args: [address, OBSCURA_PAY_STREAM_ADDRESS],
+        });
+        if (isOp as boolean) {
+          return "already-approved";
+        }
+      } catch { /* proceed with approval */ }
+
       const untilTimestamp = BigInt(Math.floor(Date.now() / 1000) + durationDays * 86400);
 
       const feeData = await publicClient.estimateFeesPerGas();
@@ -231,6 +244,52 @@ export function useCUSDCBalance() {
     [publicClient, address, writeContractAsync, refetch]
   );
 
+  const unwrap = useCallback(
+    async (amountCUSDC: string) => {
+      if (!publicClient || !address || !REINEIRA_CUSDC_ADDRESS) {
+        throw new Error("Wallet not configured");
+      }
+      const amount = parseUnits(amountCUSDC, USDC_DECIMALS);
+
+      const feeData = await publicClient.estimateFeesPerGas();
+      const maxFee = feeData.maxFeePerGas
+        ? (feeData.maxFeePerGas * 130n) / 100n
+        : undefined;
+
+      const hash = await writeContractAsync({
+        address: REINEIRA_CUSDC_ADDRESS,
+        abi: REINEIRA_CUSDC_ABI,
+        functionName: "unwrap",
+        args: [address, amount],
+        account: address,
+        chain: arbitrumSepolia,
+        maxFeePerGas: maxFee,
+        gas: 600_000n,
+      });
+      await publicClient.waitForTransactionReceipt({ hash });
+      await refetch();
+
+      // Update tracked cUSDC balance
+      const prev = parseFloat(trackedCusdc || "0");
+      const newTotal = Math.max(0, prev - parseFloat(amountCUSDC)).toFixed(6);
+      setTrackedCusdc(newTotal);
+      localStorage.setItem(`cusdc_tracked_${address}`, newTotal);
+
+      // Refresh USDC balance
+      publicClient.readContract({
+        address: USDC_ARB_SEPOLIA,
+        abi: USDC_BALANCE_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      }).then((bal) => {
+        setUsdcBalance(formatUnits(bal as bigint, USDC_DECIMALS));
+      }).catch(() => {});
+
+      return hash;
+    },
+    [publicClient, address, writeContractAsync, refetch, trackedCusdc]
+  );
+
   return {
     handle: handle as bigint | undefined,
     decrypted,
@@ -238,6 +297,7 @@ export function useCUSDCBalance() {
     trackedCusdc,
     reveal,
     wrap,
+    unwrap,
     approveStream,
     refetch,
     busy,

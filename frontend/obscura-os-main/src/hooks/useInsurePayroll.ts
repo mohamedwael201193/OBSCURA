@@ -117,30 +117,44 @@ export function useInsurePayroll() {
           [params.streamId]
         );
 
-        // 2. Authorize CoverageManager as cUSDC operator (30 days)
+        // 2. Authorize CoverageManager as cUSDC operator (30 days) — skip if already approved
         setStep("authorizing");
-        const feeData1 = await publicClient.estimateFeesPerGas();
-        const maxFee1 = feeData1.maxFeePerGas
-          ? (feeData1.maxFeePerGas * 130n) / 100n
-          : undefined;
-        const untilTs = BigInt(
-          Math.floor(Date.now() / 1000) + 30 * 86400
-        );
 
-        const authTx = await writeContractAsync({
-          address: REINEIRA_CUSDC_ADDRESS,
-          abi: REINEIRA_CUSDC_ABI,
-          functionName: "setOperator",
-          args: [REINEIRA_COVERAGE_MANAGER_ADDRESS, untilTs],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas: maxFee1,
-          gas: 100_000n,
-        });
-        await publicClient.waitForTransactionReceipt({ hash: authTx });
+        let needsOperator = true;
+        try {
+          const isOp = await publicClient.readContract({
+            address: REINEIRA_CUSDC_ADDRESS,
+            abi: REINEIRA_CUSDC_ABI,
+            functionName: "isOperator",
+            args: [address, REINEIRA_COVERAGE_MANAGER_ADDRESS],
+          });
+          needsOperator = !(isOp as boolean);
+        } catch { /* default to needing approval */ }
 
-        // Short delay to avoid RPC rate-limit
-        await new Promise((r) => setTimeout(r, 2000));
+        if (needsOperator) {
+          const feeData1 = await publicClient.estimateFeesPerGas();
+          const maxFee1 = feeData1.maxFeePerGas
+            ? (feeData1.maxFeePerGas * 130n) / 100n
+            : undefined;
+          const untilTs = BigInt(
+            Math.floor(Date.now() / 1000) + 30 * 86400
+          );
+
+          const authTx = await writeContractAsync({
+            address: REINEIRA_CUSDC_ADDRESS,
+            abi: REINEIRA_CUSDC_ABI,
+            functionName: "setOperator",
+            args: [REINEIRA_COVERAGE_MANAGER_ADDRESS, untilTs],
+            account: address,
+            chain: arbitrumSepolia,
+            maxFeePerGas: maxFee1,
+            gas: 100_000n,
+          });
+          await publicClient.waitForTransactionReceipt({ hash: authTx });
+
+          // Short delay to avoid RPC rate-limit
+          await new Promise((r) => setTimeout(r, 2000));
+        }
 
         // 3. Purchase coverage
         setStep("purchasing");

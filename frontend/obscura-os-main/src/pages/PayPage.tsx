@@ -19,7 +19,8 @@ import BuyCoverageForm from "@/components/pay-v4/BuyCoverageForm";
 import DisputeForm from "@/components/pay-v4/DisputeForm";
 import StakePoolForm from "@/components/pay-v4/StakePoolForm";
 import MyPolicies from "@/components/pay-v4/MyPolicies";
-import { REINEIRA_CUSDC_ADDRESS, REINEIRA_ESCROW_ADDRESS } from "@/config/wave2";
+import ResolverManager from "@/components/pay-v4/ResolverManager";
+import { REINEIRA_CUSDC_ADDRESS, REINEIRA_ESCROW_ADDRESS, OBSCURA_PAYROLL_RESOLVER_ADDRESS, OBSCURA_PAY_STREAM_ADDRESS } from "@/config/wave2";
 
 type Tab = "dashboard" | "send" | "receive" | "escrows" | "streams" | "crosschain" | "insurance" | "stealth";
 
@@ -223,6 +224,7 @@ const PayPage = () => {
                       <CUSDCEscrowForm />
                       <MyEscrows />
                       <CUSDCEscrowActions />
+                      <ResolverManager />
                     </>
                   )}
                 </motion.div>
@@ -462,8 +464,10 @@ const PayPage = () => {
                       <div className="text-[9px] font-mono text-muted-foreground/50 space-y-1">
                         <div>cUSDC: <span className="text-foreground/70">{REINEIRA_CUSDC_ADDRESS ? `${REINEIRA_CUSDC_ADDRESS.slice(0, 10)}...${REINEIRA_CUSDC_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
                         <div>Escrow: <span className="text-foreground/70">{REINEIRA_ESCROW_ADDRESS ? `${REINEIRA_ESCROW_ADDRESS.slice(0, 10)}...${REINEIRA_ESCROW_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
+                        <div>PayStream: <span className="text-foreground/70">{OBSCURA_PAY_STREAM_ADDRESS ? `${OBSCURA_PAY_STREAM_ADDRESS.slice(0, 10)}...${OBSCURA_PAY_STREAM_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
+                        <div>Resolver: <span className="text-foreground/70">{OBSCURA_PAYROLL_RESOLVER_ADDRESS ? `${OBSCURA_PAYROLL_RESOLVER_ADDRESS.slice(0, 10)}...${OBSCURA_PAYROLL_RESOLVER_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
                         <div>Network: <span className="text-cyan-400">Arbitrum Sepolia (421614)</span></div>
-                        <div>FHE Ops: <span className="text-foreground/70">asEuint64, asEaddress, eq, select, add, sub, gte, allow</span></div>
+                        <div>FHE Ops: <span className="text-foreground/70">asEuint64, asEaddress, eq, select, add, sub, gte, allow, sealOutput</span></div>
                       </div>
                     </div>
 
@@ -485,6 +489,7 @@ const PayPage = () => {
                   { name: "ConfidentialUSDC (cUSDC)", wave: 2, active: true },
                   { name: "ConfidentialEscrow", wave: 2, active: true },
                   { name: "PayStream (cUSDC)", wave: 2, active: true },
+                  { name: "PayrollResolver", wave: 2, active: true },
                   { name: "StealthRegistry", wave: 2, active: true },
                   { name: "PayrollInsurance", wave: 2, active: true },
                   { name: "CCTP Bridge", wave: 2, active: true },

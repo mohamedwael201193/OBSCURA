@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { motion } from "framer-motion";
-import { Repeat, Calendar, User } from "lucide-react";
+import { Repeat, Calendar, User, CheckCircle2, XCircle, Loader2, Copy, Link2 } from "lucide-react";
 import { useCreateStream } from "@/hooks/useCreateStream";
+import { useRecipientStealthCheck } from "@/hooks/useRecipientStealthCheck";
 import { toast } from "sonner";
 
 const PERIODS = [
@@ -20,10 +21,22 @@ export default function CreateStreamForm({ onCreated }: { onCreated?: () => void
   const [period, setPeriod] = useState(PERIODS[0].seconds);
   const [durationDays, setDurationDays] = useState("90");
   const { create, isPending, error } = useCreateStream();
+  const recipientStatus = useRecipientStealthCheck(hint);
+
+  const copyInviteLink = () => {
+    const url = `${window.location.origin}/pay?tab=stealth`;
+    const msg = `You've been invited to receive encrypted payroll on Obscura.\n\nBefore I can pay you, you need to register your stealth address (one-time, takes 10 seconds):\n\n1. Go to: ${url}\n2. Connect your wallet (${hint})\n3. Click "Generate & Publish"\n\nThat's it! Once registered, I'll start your encrypted salary stream.`;
+    navigator.clipboard.writeText(msg);
+    toast.success("Invite message copied to clipboard — send it to your recipient");
+  };
 
   const submit = async () => {
     if (!/^0x[a-fA-F0-9]{40}$/.test(hint)) {
       toast.error("Invalid recipient hint address");
+      return;
+    }
+    if (recipientStatus === "not-registered") {
+      toast.error("This recipient hasn't registered a stealth address yet. Send them the invite link below.");
       return;
     }
     const days = Number(durationDays);
@@ -87,6 +100,41 @@ export default function CreateStreamForm({ onCreated }: { onCreated?: () => void
               </button>
             )}
           </div>
+
+          {/* Live stealth registration status */}
+          {hint && /^0x[a-fA-F0-9]{40}$/.test(hint) && (
+            <div className="mt-2">
+              {recipientStatus === "checking" && (
+                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Checking stealth registration…
+                </div>
+              )}
+              {recipientStatus === "registered" && (
+                <div className="flex items-center gap-2 text-[9px] font-mono text-green-400">
+                  <CheckCircle2 className="w-3 h-3" /> Stealth address registered — ready to receive streams
+                </div>
+              )}
+              {recipientStatus === "not-registered" && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-[9px] font-mono text-red-400">
+                    <XCircle className="w-3 h-3" /> Not registered — this address cannot receive stealth payments yet
+                  </div>
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-sm space-y-2">
+                    <p className="text-[9px] font-mono text-amber-400">
+                      The recipient needs to register their stealth address first. Send them this invite:
+                    </p>
+                    <button
+                      type="button"
+                      onClick={copyInviteLink}
+                      className="w-full py-2 text-[9px] font-mono text-amber-400 border border-amber-500/30 rounded-sm hover:bg-amber-500/10 flex items-center justify-center gap-2"
+                    >
+                      <Copy className="w-3 h-3" /> Copy Invite Message
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div>

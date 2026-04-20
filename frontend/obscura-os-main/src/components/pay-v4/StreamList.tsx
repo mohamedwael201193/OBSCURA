@@ -2,14 +2,45 @@ import { useAccount, usePublicClient } from "wagmi";
 import { motion } from "framer-motion";
 import { useStreamList, type StreamSummary } from "@/hooks/useStreamList";
 import { useTickStream } from "@/hooks/useTickStream";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Play, Clock, Ban, Timer } from "lucide-react";
+import { Play, Clock, Ban, Timer, CheckCircle2, XCircle } from "lucide-react";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
 } from "@/config/wave2";
 import type { MetaAddress } from "@/lib/stealth";
+
+function RecipientStatus({ address: addr }: { address: `0x${string}` }) {
+  const publicClient = usePublicClient();
+  const [registered, setRegistered] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!publicClient || !OBSCURA_STEALTH_REGISTRY_ADDRESS) return;
+    let cancelled = false;
+    publicClient
+      .readContract({
+        address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+        abi: OBSCURA_STEALTH_REGISTRY_ABI,
+        functionName: "getMetaAddress",
+        args: [addr],
+      })
+      .then((r) => {
+        if (cancelled) return;
+        const [, , ts] = r as readonly [`0x${string}`, `0x${string}`, bigint];
+        setRegistered(ts > 0n);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [addr, publicClient]);
+
+  if (registered === null) return null;
+  return registered ? (
+    <span className="inline-flex items-center gap-1 text-[8px] font-mono text-green-400"><CheckCircle2 className="w-2.5 h-2.5" /> stealth ready</span>
+  ) : (
+    <span className="inline-flex items-center gap-1 text-[8px] font-mono text-red-400"><XCircle className="w-2.5 h-2.5" /> no stealth</span>
+  );
+}
 
 export default function StreamList({ mode }: { mode: "employer" | "recipient" }) {
   const { address } = useAccount();
@@ -118,8 +149,9 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                 {s.pendingCycles.toString()} pending
               </div>
             </div>
-            <div className="text-[8px] font-mono text-muted-foreground/50 truncate mb-2">
-              recipient: {s.recipientHint}
+            <div className="text-[8px] font-mono text-muted-foreground/50 truncate mb-2 flex items-center gap-2">
+              <span className="truncate">recipient: {s.recipientHint}</span>
+              {mode === "employer" && <RecipientStatus address={s.recipientHint} />}
             </div>
             {mode === "employer" && s.pendingCycles > 0n && (
               <motion.button

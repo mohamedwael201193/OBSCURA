@@ -178,16 +178,48 @@ const PayPage = () => {
                     </div>
                   ) : (
                     <div className="space-y-4">
+                      {/* Recipient onboarding guide */}
+                      <div className="glass-panel rounded-sm p-5 border-l-2 border-primary/40 space-y-3">
+                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-primary">Getting Paid? Start Here</h3>
+                        <p className="text-[10px] font-mono text-muted-foreground/70">
+                          If your employer is paying you through Obscura, follow these steps to receive encrypted payments:
+                        </p>
+                        <div className="grid gap-2">
+                          {[
+                            { n: "1", title: "Register Stealth Address", desc: "One-time setup below — lets your employer send to hidden addresses only you can claim" },
+                            { n: "2", title: "Tell Your Employer", desc: "Share your wallet address — they'll create a stream pointing to you" },
+                            { n: "3", title: "Check Incoming Streams", desc: "Streams paying you appear below once your employer sets them up" },
+                            { n: "4", title: "Scan & Claim", desc: "Go to the Stealth tab to scan for incoming payments and claim funds" },
+                          ].map((s) => (
+                            <div key={s.n} className="flex items-start gap-3 p-2 rounded-sm bg-secondary/20 border border-border/20">
+                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 border border-primary/30 text-primary text-[10px] font-mono flex items-center justify-center font-bold">{s.n}</span>
+                              <div>
+                                <div className="text-[10px] font-mono text-foreground font-medium">{s.title}</div>
+                                <div className="text-[9px] font-mono text-muted-foreground/60">{s.desc}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Step 1: Register stealth (recipient flow) */}
+                      <div className="relative">
+                        <div className="absolute -top-2 left-4 px-2 py-0.5 bg-background text-[9px] font-mono text-primary border border-primary/30 rounded-sm z-10">STEP 1 — REGISTER</div>
+                        <RegisterMetaAddressForm />
+                      </div>
+
+                      {/* Step 3: Incoming streams */}
+                      <div className="relative">
+                        <div className="absolute -top-2 left-4 px-2 py-0.5 bg-background text-[9px] font-mono text-primary border border-primary/30 rounded-sm z-10">STEP 3 — INCOMING STREAMS</div>
+                        <StreamList mode="recipient" />
+                      </div>
+
+                      {/* Existing balance reveals */}
                       <div className="glass-panel rounded-sm p-4 border-l-2 border-primary/40 space-y-2">
                         <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-primary">Your Encrypted Balances</h3>
                         <p className="text-[10px] font-mono text-muted-foreground/70">
-                          Your balances are stored fully encrypted on-chain. To see them, you sign a one-time permit with your wallet — this proves you own the account without sending a transaction.
-                          No one else can ever see your balances.
+                          Your balances are stored fully encrypted on-chain. Sign a permit to decrypt them locally.
                         </p>
-                        <div className="flex gap-3 text-[9px] font-mono">
-                          <span className="px-2 py-0.5 rounded-sm bg-primary/10 text-primary border border-primary/20">Payroll Balance — $OBS from employer</span>
-                          <span className="px-2 py-0.5 rounded-sm bg-primary/10 text-primary border border-primary/20">Token Balance — $OBS claimed or received</span>
-                        </div>
                       </div>
                       <ClaimDailyObsForm />
                       <BalanceReveal />

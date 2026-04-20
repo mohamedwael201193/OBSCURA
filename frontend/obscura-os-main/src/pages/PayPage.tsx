@@ -28,6 +28,7 @@ import CrossChainFundForm from "@/components/pay-v4/CrossChainFundForm";
 import BuyCoverageForm from "@/components/pay-v4/BuyCoverageForm";
 import DisputeForm from "@/components/pay-v4/DisputeForm";
 import StakePoolForm from "@/components/pay-v4/StakePoolForm";
+import MyPolicies from "@/components/pay-v4/MyPolicies";
 
 type Tab = "dashboard" | "pay" | "receive" | "escrows" | "streams" | "crosschain" | "insurance" | "stealth" | "admin";
 
@@ -369,12 +370,17 @@ const PayPage = () => {
                           Everything — premium, coverage amount, dispute outcome — stays fully encrypted.
                         </p>
                         <ol className="space-y-1 text-[9px] font-mono text-muted-foreground/60">
-                          <li><span className="text-cyan-400">1.</span> Buy coverage on a specific pay cycle (enter stream + escrow ID below).</li>
-                          <li><span className="text-cyan-400">2.</span> If the employer misses it, file a dispute with the missed cycle number.</li>
-                          <li><span className="text-cyan-400">3.</span> The on-chain judge evaluates encrypted evidence and pays out automatically.</li>
+                          <li><span className="text-cyan-400">1.</span> You need a stream ID (from the <b>Streams</b> tab) and an escrow ID for the cycle you want insured.</li>
+                          <li><span className="text-cyan-400">2.</span> Buy coverage below — you'll sign 2 transactions (authorize + purchase). Save the coverage ID shown after.</li>
+                          <li><span className="text-cyan-400">3.</span> If the employer misses a cycle, paste your coverage ID in "File a Dispute" and the missed cycle number.</li>
+                          <li><span className="text-cyan-400">4.</span> The on-chain judge evaluates encrypted evidence and pays you automatically from the pool.</li>
                         </ol>
+                        <p className="text-[9px] font-mono text-amber-400/70 mt-1">
+                          Liquidity providers: use "Stake to Insurance Pool" at the bottom to seed payout funds and earn premiums.
+                        </p>
                       </div>
                       <BuyCoverageForm />
+                      <MyPolicies />
                       <DisputeForm />
                       <StakePoolForm />
                     </>

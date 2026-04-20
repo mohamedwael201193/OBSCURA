@@ -87,6 +87,12 @@
 | 67 | Bridge Recover UI — paste burn tx hash to recover unclaimed bridge, checks attestation + shows Claim | `useCrossChainFund.ts`, `CrossChainFundForm.tsx` | ✅ Done |
 | 68 | Claim gas fix — fetch fresh `maxFeePerGas` from Arb Sepolia RPC after chain switch (avoids stale MetaMask gas) | `useCrossChainFund.ts` | ✅ Done |
 | 69 | Burn tx hash banner — shows tx hash with copy button + Etherscan link during bridge flow | `CrossChainFundForm.tsx` | ✅ Done |
+| 70 | Insurance `setOperator` fix — authorize CoverageManager as cUSDC operator before `purchaseCoverage` (was missing → revert) | `useInsurePayroll.ts` | ✅ Done |
+| 71 | Insurance step progress — encrypting → authorizing → purchasing flow with spinner labels | `useInsurePayroll.ts`, `BuyCoverageForm.tsx` | ✅ Done |
+| 72 | Coverage ID capture — parse tx receipt logs for coverage ID, save to localStorage | `useInsurePayroll.ts`, `BuyCoverageForm.tsx` | ✅ Done |
+| 73 | My Policies panel — show saved coverage IDs with copy, Arbiscan link, quick-fill into disputes | `MyPolicies.tsx`, `DisputeForm.tsx`, `PayPage.tsx` | ✅ Done |
+| 74 | Insurance input validation — BigInt crash protection, clear error messages, field hints | `BuyCoverageForm.tsx`, `DisputeForm.tsx` | ✅ Done |
+| 75 | Insurance tab guide rewrite — 4-step plain-English instructions + LP note | `PayPage.tsx` | ✅ Done |
 
 ---
 

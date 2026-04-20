@@ -13,6 +13,7 @@ const STEP_LABELS: Record<BridgeStep, string> = {
   "burn-confirming": "Burn tx sent — waiting for confirmation on Sepolia…",
   "switching-back": "Switching wallet back to Arbitrum Sepolia…",
   "waiting-attestation": "Waiting for Circle attestation (this takes a few minutes)…",
+  "ready-to-claim": "Attestation received! Click below to claim your USDC.",
   "claiming": "Confirm claim transaction — minting USDC on Arb Sepolia…",
   done: "",
 };
@@ -25,6 +26,7 @@ const STEP_ORDER: BridgeStep[] = [
   "burn-confirming",
   "switching-back",
   "waiting-attestation",
+  "ready-to-claim",
   "claiming",
   "done",
 ];
@@ -65,7 +67,7 @@ function StepProgress({ current, attestationProgress }: { current: BridgeStep; a
 
 export default function CrossChainFundForm() {
   const [amount, setAmount] = useState("");
-  const { fund, isPending, step, burnTxHash, error, reset, attestationProgress, savedAmount } = useCrossChainFund();
+  const { fund, claim, isPending, step, burnTxHash, error, reset, attestationProgress, savedAmount } = useCrossChainFund();
 
   // Use savedAmount (from localStorage restore) when local amount is empty
   const displayAmount = amount || savedAmount;
@@ -80,6 +82,15 @@ export default function CrossChainFundForm() {
       toast.success("USDC claimed on Arb Sepolia! Check your USDC balance.");
     } catch (e) {
       toast.error((e as Error).message?.slice(0, 200) ?? "Bridge failed");
+    }
+  };
+
+  const submitClaim = async () => {
+    try {
+      await claim();
+      toast.success("USDC claimed on Arb Sepolia! Check your USDC balance.");
+    } catch (e) {
+      toast.error((e as Error).message?.slice(0, 200) ?? "Claim failed");
     }
   };
 
@@ -157,7 +168,42 @@ export default function CrossChainFundForm() {
         </div>
       )}
 
-      {step !== "idle" && <StepProgress current={step} attestationProgress={attestationProgress} />}
+      {step !== "idle" && step !== "ready-to-claim" && <StepProgress current={step} attestationProgress={attestationProgress} />}
+
+      {step === "ready-to-claim" && (
+        <div className="space-y-3">
+          <StepProgress current={step} attestationProgress={attestationProgress} />
+          <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-sm">
+            <p className="text-[10px] font-mono text-green-300">
+              Circle attestation received! Click below to mint {displayAmount} USDC on Arbitrum Sepolia.
+            </p>
+          </div>
+          <motion.button
+            onClick={submitClaim}
+            disabled={isPending}
+            whileTap={{ scale: 0.99 }}
+            className="w-full py-3 text-xs tracking-[0.2em] uppercase font-mono bg-green-600 text-white rounded-sm hover:bg-green-500 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Claiming…
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Claim {displayAmount} USDC on Arb Sepolia
+              </>
+            )}
+          </motion.button>
+          <button
+            onClick={() => { reset(); setAmount(""); }}
+            className="w-full py-1.5 text-[9px] font-mono text-muted-foreground/50 hover:text-muted-foreground"
+          >
+            Cancel &amp; start over
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="text-[10px] font-mono text-red-400 p-2 bg-red-500/10 border border-red-500/20 rounded-sm">
@@ -165,24 +211,27 @@ export default function CrossChainFundForm() {
         </div>
       )}
 
-      <motion.button
-        onClick={submit}
-        disabled={isPending}
-        whileTap={{ scale: 0.99 }}
-        className="w-full py-3 text-xs tracking-[0.2em] uppercase font-mono bg-primary text-primary-foreground rounded-sm hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
-      >
-        {isPending ? (
-          <>
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            Processing…
-          </>
-        ) : (
-          <>
-            <ArrowRightLeft className="w-3.5 h-3.5" />
-            Bridge USDC
-          </>
-        )}
-      </motion.button>
+      {step === "idle" && (
+        <motion.button
+          onClick={submit}
+          disabled={isPending}
+          whileTap={{ scale: 0.99 }}
+          className="w-full py-3 text-xs tracking-[0.2em] uppercase font-mono bg-primary text-primary-foreground rounded-sm hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          <ArrowRightLeft className="w-3.5 h-3.5" />
+          Bridge USDC
+        </motion.button>
+      )}
+
+      {step !== "idle" && step !== "ready-to-claim" && step !== "done" && (
+        <motion.button
+          disabled
+          className="w-full py-3 text-xs tracking-[0.2em] uppercase font-mono bg-primary/50 text-primary-foreground/70 rounded-sm flex items-center justify-center gap-2"
+        >
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Processing…
+        </motion.button>
+      )}
     </div>
   );
 }

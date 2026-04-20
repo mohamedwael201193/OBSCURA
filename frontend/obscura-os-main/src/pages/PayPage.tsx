@@ -1,24 +1,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Lock, Wallet, Users, Shield, ChevronDown, ChevronUp, LayoutDashboard, Send, ArrowDownToLine, FileText, Settings, Repeat, Globe2, Eye } from "lucide-react";
-import { useAccount, useReadContract } from "wagmi";
+import { Lock, Wallet, Users, Shield, ChevronDown, ChevronUp, LayoutDashboard, Send, ArrowDownToLine, FileText, Repeat, Globe2, Eye } from "lucide-react";
+import { useAccount } from "wagmi";
 import ObscuraNav from "@/components/ObscuraNav";
 import ObscuraFooter from "@/components/ObscuraFooter";
-import PayrollForm from "@/components/pay/PayrollForm";
-import EmployeeList from "@/components/pay/EmployeeList";
-import BalanceReveal from "@/components/pay/BalanceReveal";
-import AuditView from "@/components/pay/AuditView";
-import MintObsForm from "@/components/pay/MintObsForm";
-import ObsBalanceReveal from "@/components/pay/ObsBalanceReveal";
-import ClaimDailyObsForm from "@/components/pay/ClaimDailyObsForm";
-import TransferForm from "@/components/pay/TransferForm";
-import CreateEscrowForm from "@/components/pay/CreateEscrowForm";
-import EscrowActions from "@/components/pay/EscrowActions";
-import EscrowList from "@/components/pay/EscrowList";
-import DashboardStats from "@/components/pay/DashboardStats";
-import { usePermissions } from "@/hooks/usePermissions";
-import { OBSCURA_PAY_ABI, OBSCURA_PAY_ADDRESS, OBSCURA_ESCROW_ADDRESS, OBSCURA_TOKEN_ADDRESS } from "@/config/contracts";
+import CUSDCTransferForm from "@/components/pay-v4/CUSDCTransferForm";
+import CUSDCEscrowForm from "@/components/pay-v4/CUSDCEscrowForm";
+import CUSDCEscrowActions from "@/components/pay-v4/CUSDCEscrowActions";
+import MyEscrows from "@/components/pay-v4/MyEscrows";
 import CreateStreamForm from "@/components/pay-v4/CreateStreamForm";
 import StreamList from "@/components/pay-v4/StreamList";
 import CUSDCPanel from "@/components/pay-v4/CUSDCPanel";
@@ -29,20 +19,13 @@ import BuyCoverageForm from "@/components/pay-v4/BuyCoverageForm";
 import DisputeForm from "@/components/pay-v4/DisputeForm";
 import StakePoolForm from "@/components/pay-v4/StakePoolForm";
 import MyPolicies from "@/components/pay-v4/MyPolicies";
+import { REINEIRA_CUSDC_ADDRESS, REINEIRA_ESCROW_ADDRESS } from "@/config/wave2";
 
-type Tab = "dashboard" | "pay" | "receive" | "escrows" | "streams" | "crosschain" | "insurance" | "stealth" | "admin";
+type Tab = "dashboard" | "send" | "receive" | "escrows" | "streams" | "crosschain" | "insurance" | "stealth";
 
 const PayPage = () => {
   const { address, isConnected } = useAccount();
-  const { isOwner, isEmployee, isAuditor } = usePermissions();
   const [privacyOpen, setPrivacyOpen] = useState(true);
-
-  const { data: employeeCount } = useReadContract({
-    address: OBSCURA_PAY_ADDRESS,
-    abi: OBSCURA_PAY_ABI,
-    functionName: "getEmployeeCount",
-    query: { enabled: !!OBSCURA_PAY_ADDRESS },
-  });
 
   const [tab, setTab] = useState<Tab>("dashboard");
   const [streamRefreshKey, setStreamRefreshKey] = useState(0);
@@ -50,14 +33,13 @@ const PayPage = () => {
 
   const tabs: { key: Tab; label: string; icon: typeof Users }[] = [
     { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { key: "pay", label: "Pay", icon: Send },
+    { key: "send", label: "Send", icon: Send },
     { key: "receive", label: "Receive", icon: ArrowDownToLine },
     { key: "escrows", label: "Escrows", icon: FileText },
     { key: "streams", label: "Streams", icon: Repeat },
     { key: "crosschain", label: "Cross-Chain", icon: Globe2 },
     { key: "insurance", label: "Insurance", icon: Shield },
     { key: "stealth", label: "Stealth", icon: Eye },
-    { key: "admin", label: "Admin", icon: Settings },
   ];
 
   return (
@@ -83,8 +65,7 @@ const PayPage = () => {
             Send, stream, and insure payments — all fully encrypted on-chain. Nobody (not even block explorers) can see amounts, recipients, or balances.
           </p>
           <div className="mt-3 flex flex-wrap gap-3 text-[9px] font-mono">
-            <span className="px-2 py-1 rounded-sm border border-primary/20 bg-primary/5 text-primary">$OBS — governance token (claim free daily, pay employees, P2P transfers)</span>
-            <span className="px-2 py-1 rounded-sm border border-cyan-500/20 bg-cyan-500/5 text-cyan-400">cUSDC — encrypted stablecoin (recurring streams, insurance, cross-chain)</span>
+            <span className="px-2 py-1 rounded-sm border border-cyan-500/20 bg-cyan-500/5 text-cyan-400">cUSDC — encrypted stablecoin for all payments, streams, escrows & insurance</span>
           </div>
         </motion.div>
 
@@ -112,13 +93,10 @@ const PayPage = () => {
             {/* Connected wallet role indicator */}
             {isConnected && (
               <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                Connected as:{" "}
-                <span className="text-primary">
-                  {isOwner ? "Owner/Employer" : isAuditor ? "Auditor" : isEmployee ? "Employee" : "Employer"}
-                </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                Connected:
                 <span className="text-muted-foreground/40">
-                  ({address?.slice(0, 6)}...{address?.slice(-4)})
+                  {address?.slice(0, 6)}...{address?.slice(-4)}
                 </span>
               </div>
             )}
@@ -127,44 +105,41 @@ const PayPage = () => {
               {tab === "dashboard" && (
                 <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                   {/* Getting Started guide */}
-                  <div className="glass-panel rounded-sm p-5 border-l-2 border-primary/40 space-y-3">
-                    <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-primary">How It Works</h3>
+                  <div className="glass-panel rounded-sm p-5 border-l-2 border-cyan-500/40 space-y-3">
+                    <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-cyan-400">How It Works — cUSDC Payments</h3>
                     <ol className="space-y-2 text-[10px] font-mono text-muted-foreground/80">
-                      <li className="flex gap-2"><span className="text-primary font-bold">1.</span> <span><b className="text-foreground">Connect wallet</b> — MetaMask or any EVM wallet on Arbitrum Sepolia.</span></li>
-                      <li className="flex gap-2"><span className="text-primary font-bold">2.</span> <span><b className="text-foreground">Claim free $OBS</b> — 100 tokens daily (below). Used for transfers, payroll and escrows.</span></li>
-                      <li className="flex gap-2"><span className="text-primary font-bold">3.</span> <span><b className="text-foreground">Send encrypted payments</b> — Go to <b className="text-primary">Pay</b> tab. Amounts are encrypted before they leave your browser.</span></li>
-                      <li className="flex gap-2"><span className="text-primary font-bold">4.</span> <span><b className="text-foreground">Stream with cUSDC</b> — Go to <b className="text-primary">Streams</b> tab. Follow the numbered step-by-step guide to set up encrypted payroll.</span></li>
-                      <li className="flex gap-2"><span className="text-primary font-bold">5.</span> <span><b className="text-foreground">Check balances</b> — Go to <b className="text-primary">Receive</b> tab. Sign a permit to decrypt your balances locally.</span></li>
+                      <li className="flex gap-2"><span className="text-cyan-400 font-bold">1.</span> <span><b className="text-foreground">Connect wallet</b> — MetaMask or any EVM wallet on Arbitrum Sepolia.</span></li>
+                      <li className="flex gap-2"><span className="text-cyan-400 font-bold">2.</span> <span><b className="text-foreground">Get cUSDC</b> — Bridge USDC via <b className="text-cyan-400">Cross-Chain</b> tab, then wrap to cUSDC below.</span></li>
+                      <li className="flex gap-2"><span className="text-cyan-400 font-bold">3.</span> <span><b className="text-foreground">Send encrypted payments</b> — Go to <b className="text-cyan-400">Send</b> tab. Amounts are encrypted before they leave your browser.</span></li>
+                      <li className="flex gap-2"><span className="text-cyan-400 font-bold">4.</span> <span><b className="text-foreground">Stream payroll</b> — Go to <b className="text-cyan-400">Streams</b> tab. Follow the numbered guide to set up encrypted payroll.</span></li>
+                      <li className="flex gap-2"><span className="text-cyan-400 font-bold">5.</span> <span><b className="text-foreground">Lock in escrow</b> — Go to <b className="text-cyan-400">Escrows</b> tab. Create encrypted escrows with optional resolvers.</span></li>
+                      <li className="flex gap-2"><span className="text-cyan-400 font-bold">6.</span> <span><b className="text-foreground">Insure payroll</b> — Go to <b className="text-cyan-400">Insurance</b> tab. Buy coverage so you get paid even if your employer misses a cycle.</span></li>
                     </ol>
                     <div className="text-[9px] font-mono text-muted-foreground/50 pt-1 border-t border-border/30">
-                      All encryption uses <span className="text-primary">Fhenix CoFHE</span> (Fully Homomorphic Encryption). Your data stays encrypted even while the smart contract processes it.
+                      All encryption uses <span className="text-cyan-400">Fhenix CoFHE</span> (Fully Homomorphic Encryption). Your data stays encrypted even while the smart contract processes it.
                     </div>
                   </div>
-                  <DashboardStats />
-                  <ClaimDailyObsForm />
+                  <CUSDCPanel />
                 </motion.div>
               )}
 
-              {tab === "pay" && (
-                <motion.div key="pay" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
+              {tab === "send" && (
+                <motion.div key="send" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                   {!isConnected ? (
                     <div className="glass-panel rounded-sm p-8 text-center">
-                      <Wallet className="w-8 h-8 text-primary/40 mx-auto mb-3" />
+                      <Wallet className="w-8 h-8 text-cyan-400/40 mx-auto mb-3" />
                       <p className="text-sm font-mono text-muted-foreground">Connect your wallet to send payments</p>
                     </div>
                   ) : (
                     <>
-                      <div className="glass-panel rounded-sm p-4 border-l-2 border-primary/40 space-y-2">
-                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-primary">Send Encrypted $OBS Payments</h3>
+                      <div className="glass-panel rounded-sm p-4 border-l-2 border-cyan-500/40 space-y-2">
+                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-cyan-400">Send Encrypted cUSDC</h3>
                         <p className="text-[10px] font-mono text-muted-foreground/70">
-                          Use $OBS (Obscura's encrypted governance token) for instant P2P transfers and batch payroll.
-                          Amounts are encrypted in your browser before they ever touch the blockchain.
-                          For real USDC payroll, use the <b className="text-cyan-400">Streams</b> tab.
+                          Send cUSDC (encrypted stablecoin) to any address. The transfer amount is encrypted in your browser
+                          before it touches the blockchain — nobody can see what was sent.
                         </p>
                       </div>
-                      <TransferForm />
-                      <PayrollForm />
-                      <EmployeeList />
+                      <CUSDCTransferForm />
                     </>
                   )}
                 </motion.div>
@@ -174,16 +149,16 @@ const PayPage = () => {
                 <motion.div key="receive" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                   {!isConnected ? (
                     <div className="glass-panel rounded-sm p-8 text-center">
-                      <Wallet className="w-8 h-8 text-primary/40 mx-auto mb-3" />
+                      <Wallet className="w-8 h-8 text-cyan-400/40 mx-auto mb-3" />
                       <p className="text-sm font-mono text-muted-foreground">Connect your wallet to view your encrypted balances</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {/* Recipient onboarding guide */}
-                      <div className="glass-panel rounded-sm p-5 border-l-2 border-primary/40 space-y-3">
-                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-primary">Getting Paid? Start Here</h3>
+                      <div className="glass-panel rounded-sm p-5 border-l-2 border-cyan-500/40 space-y-3">
+                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-cyan-400">Getting Paid? Start Here</h3>
                         <p className="text-[10px] font-mono text-muted-foreground/70">
-                          If your employer is paying you through Obscura, follow these steps to receive encrypted payments:
+                          If your employer is paying you through Obscura, follow these steps to receive encrypted cUSDC payments:
                         </p>
                         <div className="grid gap-2">
                           {[
@@ -193,7 +168,7 @@ const PayPage = () => {
                             { n: "4", title: "Scan & Claim", desc: "Go to the Stealth tab to scan for incoming payments and claim funds" },
                           ].map((s) => (
                             <div key={s.n} className="flex items-start gap-3 p-2 rounded-sm bg-secondary/20 border border-border/20">
-                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 border border-primary/30 text-primary text-[10px] font-mono flex items-center justify-center font-bold">{s.n}</span>
+                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-[10px] font-mono flex items-center justify-center font-bold">{s.n}</span>
                               <div>
                                 <div className="text-[10px] font-mono text-foreground font-medium">{s.title}</div>
                                 <div className="text-[9px] font-mono text-muted-foreground/60">{s.desc}</div>
@@ -205,26 +180,24 @@ const PayPage = () => {
 
                       {/* Step 1: Register stealth (recipient flow) */}
                       <div className="relative">
-                        <div className="absolute -top-2 left-4 px-2 py-0.5 bg-background text-[9px] font-mono text-primary border border-primary/30 rounded-sm z-10">STEP 1 — REGISTER</div>
+                        <div className="absolute -top-2 left-4 px-2 py-0.5 bg-background text-[9px] font-mono text-cyan-400 border border-cyan-500/30 rounded-sm z-10">STEP 1 — REGISTER</div>
                         <RegisterMetaAddressForm />
                       </div>
 
                       {/* Step 3: Incoming streams */}
                       <div className="relative">
-                        <div className="absolute -top-2 left-4 px-2 py-0.5 bg-background text-[9px] font-mono text-primary border border-primary/30 rounded-sm z-10">STEP 3 — INCOMING STREAMS</div>
+                        <div className="absolute -top-2 left-4 px-2 py-0.5 bg-background text-[9px] font-mono text-cyan-400 border border-cyan-500/30 rounded-sm z-10">STEP 3 — INCOMING STREAMS</div>
                         <StreamList mode="recipient" />
                       </div>
 
-                      {/* Existing balance reveals */}
-                      <div className="glass-panel rounded-sm p-4 border-l-2 border-primary/40 space-y-2">
-                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-primary">Your Encrypted Balances</h3>
+                      {/* cUSDC wallet */}
+                      <div className="glass-panel rounded-sm p-4 border-l-2 border-cyan-500/40 space-y-2">
+                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-cyan-400">Your cUSDC Wallet</h3>
                         <p className="text-[10px] font-mono text-muted-foreground/70">
-                          Your balances are stored fully encrypted on-chain. Sign a permit to decrypt them locally.
+                          Wrap/unwrap USDC and check your encrypted cUSDC balance.
                         </p>
                       </div>
-                      <ClaimDailyObsForm />
-                      <BalanceReveal />
-                      <ObsBalanceReveal />
+                      <CUSDCPanel />
                     </div>
                   )}
                 </motion.div>
@@ -234,22 +207,22 @@ const PayPage = () => {
                 <motion.div key="escrows" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                   {!isConnected ? (
                     <div className="glass-panel rounded-sm p-8 text-center">
-                      <Wallet className="w-8 h-8 text-primary/40 mx-auto mb-3" />
+                      <Wallet className="w-8 h-8 text-cyan-400/40 mx-auto mb-3" />
                       <p className="text-sm font-mono text-muted-foreground">Connect your wallet to manage escrows</p>
                     </div>
                   ) : (
                     <>
-                      <div className="glass-panel rounded-sm p-4 border-l-2 border-primary/40 space-y-2">
-                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-primary">Encrypted Escrows</h3>
+                      <div className="glass-panel rounded-sm p-4 border-l-2 border-cyan-500/40 space-y-2">
+                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-cyan-400">Encrypted cUSDC Escrows</h3>
                         <p className="text-[10px] font-mono text-muted-foreground/70">
-                          An escrow locks $OBS until conditions are met (time-lock, manual release, or both).
-                          The locked amount and owner address are fully encrypted — only the escrow creator can see the details.
-                          Unauthorized redemption attempts succeed but return zero tokens (no error = no information leak).
+                          Lock cUSDC in an encrypted escrow with an optional resolver contract for conditional release.
+                          The locked amount and owner address are both encrypted — only the escrow creator can see the details.
+                          Unauthorized redemption attempts succeed but return zero (no error = no information leak).
                         </p>
                       </div>
-                      <CreateEscrowForm />
-                      <EscrowActions />
-                      <EscrowList />
+                      <CUSDCEscrowForm />
+                      <MyEscrows />
+                      <CUSDCEscrowActions />
                     </>
                   )}
                 </motion.div>
@@ -416,27 +389,6 @@ const PayPage = () => {
                 </motion.div>
               )}
 
-              {tab === "admin" && (
-                <motion.div key="admin" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
-                  {!isConnected ? (
-                    <div className="glass-panel rounded-sm p-8 text-center">
-                      <Wallet className="w-8 h-8 text-primary/40 mx-auto mb-3" />
-                      <p className="text-sm font-mono text-muted-foreground">Connect your wallet to access admin functions</p>
-                    </div>
-                  ) : (
-                    <>
-                      {(isAuditor || isOwner) && <AuditView />}
-                      {isOwner && <MintObsForm />}
-                      {!isAuditor && !isOwner && (
-                        <div className="glass-panel rounded-sm p-8 text-center">
-                          <Shield className="w-8 h-8 text-primary/40 mx-auto mb-3" />
-                          <p className="text-sm font-mono text-muted-foreground">Admin/Auditor access required for this tab.</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </motion.div>
-              )}
             </AnimatePresence>
           </div>
 
@@ -460,28 +412,16 @@ const PayPage = () => {
                       </div>
                       {[
                         {
-                          handle: "Salary Balance",
+                          handle: "P2P Transfer",
                           type: "euint64",
-                          label: "$OBS payroll balance — only you see your salary",
-                          acl: ["Employee"],
-                        },
-                        {
-                          handle: "Payroll Total",
-                          type: "euint64",
-                          label: "Aggregate of all salaries — for auditing",
-                          acl: ["Auditor"],
+                          label: "Transfer amount — cUSDC encrypted sends",
+                          acl: ["Sender", "Recipient"],
                         },
                         {
                           handle: "Escrow Deposit",
                           type: "eaddress + euint64",
-                          label: "Escrow owner + amount — $OBS or cUSDC",
+                          label: "Escrow owner + amount — cUSDC locked funds",
                           acl: ["Creator", "Owner"],
-                        },
-                        {
-                          handle: "P2P Transfer",
-                          type: "euint64",
-                          label: "Transfer amount — $OBS token sends",
-                          acl: ["Sender", "Recipient"],
                         },
                         {
                           handle: "cUSDC Stream",
@@ -494,6 +434,12 @@ const PayPage = () => {
                           type: "euint64 + ebool",
                           label: "Coverage amount, premium & dispute outcome",
                           acl: ["Holder", "Pool"],
+                        },
+                        {
+                          handle: "Stealth Address",
+                          type: "eaddress",
+                          label: "Recipient identity hidden per payroll cycle",
+                          acl: ["Recipient Only"],
                         },
                       ].map((h, i) => (
                         <div key={`${h.handle}-${i}`} className="p-3 bg-secondary/30 rounded-sm border border-border/30">
@@ -514,12 +460,10 @@ const PayPage = () => {
                     {/* Contract info */}
                     <div className="p-4 border-t border-border/50">
                       <div className="text-[9px] font-mono text-muted-foreground/50 space-y-1">
-                        <div>Pay: <span className="text-foreground/70">{OBSCURA_PAY_ADDRESS ? `${OBSCURA_PAY_ADDRESS.slice(0, 10)}...${OBSCURA_PAY_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
-                        <div>Token: <span className="text-foreground/70">{OBSCURA_TOKEN_ADDRESS ? `${OBSCURA_TOKEN_ADDRESS.slice(0, 10)}...${OBSCURA_TOKEN_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
-                        <div>Escrow: <span className="text-foreground/70">{OBSCURA_ESCROW_ADDRESS ? `${OBSCURA_ESCROW_ADDRESS.slice(0, 10)}...${OBSCURA_ESCROW_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
-                        <div>Network: <span className="text-primary">Arbitrum Sepolia (421614)</span></div>
-                        <div>FHE Ops: <span className="text-foreground/70">asEuint64, asEaddress, eq, select, and, not, add, sub, gte, allow</span></div>
-                        <div>Employees: <span className="text-foreground/70">{employeeCount?.toString() ?? "0"}</span></div>
+                        <div>cUSDC: <span className="text-foreground/70">{REINEIRA_CUSDC_ADDRESS ? `${REINEIRA_CUSDC_ADDRESS.slice(0, 10)}...${REINEIRA_CUSDC_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
+                        <div>Escrow: <span className="text-foreground/70">{REINEIRA_ESCROW_ADDRESS ? `${REINEIRA_ESCROW_ADDRESS.slice(0, 10)}...${REINEIRA_ESCROW_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
+                        <div>Network: <span className="text-cyan-400">Arbitrum Sepolia (421614)</span></div>
+                        <div>FHE Ops: <span className="text-foreground/70">asEuint64, asEaddress, eq, select, add, sub, gte, allow</span></div>
                       </div>
                     </div>
 
@@ -538,13 +482,13 @@ const PayPage = () => {
               <div className="text-[9px] tracking-[0.2em] uppercase text-muted-foreground font-mono mb-3">Modules</div>
               <div className="space-y-1.5">
                 {[
-                  { name: "ObscuraPay", wave: 1, active: true },
-                  { name: "ObscuraEscrow", wave: 1, active: true },
-                  { name: "ObscuraToken ($OBS)", wave: 1, active: true },
+                  { name: "ConfidentialUSDC (cUSDC)", wave: 2, active: true },
+                  { name: "ConfidentialEscrow", wave: 2, active: true },
                   { name: "PayStream (cUSDC)", wave: 2, active: true },
                   { name: "StealthRegistry", wave: 2, active: true },
                   { name: "PayrollInsurance", wave: 2, active: true },
-                  { name: "ObscuraVote", wave: 2, locked: true },
+                  { name: "CCTP Bridge", wave: 2, active: true },
+                  { name: "ObscuraVote ($OBS)", wave: 2, locked: true },
                   { name: "ObscuraVault", wave: 3, locked: true },
                   { name: "ObscuraTrust", wave: 4, locked: true },
                   { name: "ObscuraMind", wave: 5, locked: true },

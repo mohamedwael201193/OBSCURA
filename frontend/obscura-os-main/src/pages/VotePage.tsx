@@ -12,6 +12,7 @@ import TallyReveal from "@/components/vote/TallyReveal";
 import CreateProposalForm from "@/components/vote/CreateProposalForm";
 import VotingHistory from "@/components/vote/VotingHistory";
 import AdminControls from "@/components/vote/AdminControls";
+import ClaimDailyObsForm from "@/components/pay/ClaimDailyObsForm";
 import { useVoteOwner, useVoteRole } from "@/hooks/useProposals";
 import { OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
 import { Role } from "@/lib/constants";
@@ -116,6 +117,13 @@ const VotePage = () => {
               {tab === "dashboard" && (
                 <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                   <VoteDashboard />
+                  <div className="glass-panel rounded-sm p-4 border-l-2 border-primary/40 space-y-2">
+                    <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-primary">Claim $OBS to Vote</h3>
+                    <p className="text-[10px] font-mono text-muted-foreground/70">
+                      You need $OBS tokens to participate in governance votes. Claim 100 free tokens daily below.
+                    </p>
+                  </div>
+                  <ClaimDailyObsForm />
                 </motion.div>
               )}
 

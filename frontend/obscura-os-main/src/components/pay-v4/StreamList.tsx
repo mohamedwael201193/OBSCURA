@@ -2,9 +2,9 @@ import { useAccount, usePublicClient } from "wagmi";
 import { motion } from "framer-motion";
 import { useStreamList, type StreamSummary } from "@/hooks/useStreamList";
 import { useTickStream } from "@/hooks/useTickStream";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Play, Clock, Ban, Timer, CheckCircle2, XCircle } from "lucide-react";
+import { Play, Clock, Ban, Timer, CheckCircle2, XCircle, Check } from "lucide-react";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
@@ -50,6 +50,37 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   const { tick, isTicking } = useTickStream();
   const [tickAmount, setTickAmount] = useState("");
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  const [lastPayment, setLastPayment] = useState<{ streamId: string; txHash: string; amount: string } | null>(null);
+
+  // Track paid cycles in localStorage (on-chain counter won't update since we bypass PayStream)
+  const getLocalPaid = useCallback((streamId: bigint): number => {
+    try {
+      const key = `obscura_paid_${streamId.toString()}`;
+      return parseInt(localStorage.getItem(key) ?? "0", 10);
+    } catch { return 0; }
+  }, []);
+
+  const incrementLocalPaid = useCallback((streamId: bigint) => {
+    try {
+      const key = `obscura_paid_${streamId.toString()}`;
+      const cur = parseInt(localStorage.getItem(key) ?? "0", 10);
+      localStorage.setItem(key, String(cur + 1));
+    } catch { /* noop */ }
+  }, []);
+
+  const getLastLocalTick = useCallback((streamId: bigint): number => {
+    try {
+      const key = `obscura_lastTick_${streamId.toString()}`;
+      return parseInt(localStorage.getItem(key) ?? "0", 10);
+    } catch { return 0; }
+  }, []);
+
+  const setLastLocalTick = useCallback((streamId: bigint) => {
+    try {
+      const key = `obscura_lastTick_${streamId.toString()}`;
+      localStorage.setItem(key, String(Math.floor(Date.now() / 1000)));
+    } catch { /* noop */ }
+  }, []);
 
   // Auto-refresh "next due" countdown every 5s
   useState(() => {
@@ -86,8 +117,17 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
       }
 
       const recipientMeta: MetaAddress = { spendingPubKey: s, viewingPubKey: v };
-      await tick({ streamId: stream.id, amount: amt, recipientMeta });
-      toast.success(`Cycle settled for stream #${stream.id.toString()}`);
+      const result = await tick({ streamId: stream.id, amount: amt, recipientMeta });
+      incrementLocalPaid(stream.id);
+      setLastLocalTick(stream.id);
+      setLastPayment({
+        streamId: stream.id.toString(),
+        txHash: result.txHash,
+        amount: tickAmount,
+      });
+      toast.success(
+        `✅ Sent ${tickAmount} cUSDC to stream #${stream.id.toString()} — stealth transfer + announcement confirmed!`
+      );
       refresh();
     } catch (e) {
       const msg = (e as Error).message ?? "tick failed";
@@ -128,13 +168,43 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
         </div>
       )}
 
+      {lastPayment && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-3 bg-green-500/10 border border-green-500/30 rounded-sm flex items-start gap-2"
+        >
+          <Check className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <div className="text-[10px] font-mono text-green-400">
+              Payment sent! {lastPayment.amount} cUSDC → Stream #{lastPayment.streamId}
+            </div>
+            <div className="text-[8px] font-mono text-green-400/60 mt-0.5">
+              tx: {lastPayment.txHash.slice(0, 14)}…{lastPayment.txHash.slice(-8)}
+            </div>
+          </div>
+          <button
+            onClick={() => setLastPayment(null)}
+            className="text-[8px] text-green-400/50 hover:text-green-400 ml-auto"
+          >✕</button>
+        </motion.div>
+      )}
+
       {isLoading && <div className="text-[10px] font-mono text-muted-foreground">Loading…</div>}
       {!isLoading && streams.length === 0 && (
         <div className="text-[10px] font-mono text-muted-foreground/60">No streams yet.</div>
       )}
 
       <div className="space-y-2">
-        {streams.map((s) => (
+        {streams.map((s) => {
+          const localPaid = getLocalPaid(s.id);
+          const totalPaid = Number(s.cyclesPaid) + localPaid;
+          const localLastTick = getLastLocalTick(s.id);
+          // Effective lastTickTime: use whichever is more recent
+          const effectiveLastTick = Math.max(Number(s.lastTickTime), localLastTick);
+          const nextDue = effectiveLastTick + Number(s.periodSeconds);
+          const effectivePending = Math.max(0, Math.floor((now - effectiveLastTick) / Number(s.periodSeconds)));
+          return (
           <div key={s.id.toString()} className="p-3 bg-secondary/20 border border-border/30 rounded-sm">
             <div className="flex justify-between items-start mb-2">
               <div>
@@ -144,19 +214,23 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                     ? `${Math.round(Number(s.periodSeconds) / 86400)}d`
                     : Number(s.periodSeconds) >= 3600
                       ? `${Math.round(Number(s.periodSeconds) / 3600)}h`
-                      : `${Number(s.periodSeconds)}s`} · {s.cyclesPaid.toString()} paid
+                      : `${Number(s.periodSeconds)}s`} · {totalPaid > 0 ? (
+                    <span className="text-green-400">{totalPaid} paid</span>
+                  ) : (
+                    <span>{totalPaid} paid</span>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-1 text-[9px] font-mono text-primary">
                 <Clock className="w-3 h-3" />
-                {s.pendingCycles.toString()} pending
+                {effectivePending} pending
               </div>
             </div>
             <div className="text-[8px] font-mono text-muted-foreground/50 truncate mb-2 flex items-center gap-2">
               <span className="truncate">recipient: {s.recipientHint}</span>
               {mode === "employer" && <RecipientStatus address={s.recipientHint} />}
             </div>
-            {mode === "employer" && s.pendingCycles > 0n && (
+            {mode === "employer" && effectivePending > 0 && (
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 disabled={isTicking}
@@ -166,8 +240,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                 <Play className="w-3 h-3" /> {isTicking ? "Sending…" : "Send Next Cycle"}
               </motion.button>
             )}
-            {mode === "employer" && s.pendingCycles === 0n && !s.paused && (() => {
-              const nextDue = Number(s.lastTickTime) + Number(s.periodSeconds);
+            {mode === "employer" && effectivePending === 0 && !s.paused && (() => {
               const secsLeft = nextDue - now;
               const display = secsLeft > 86400
                 ? `${Math.ceil(secsLeft / 86400)}d`
@@ -212,7 +285,8 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
               <div className="mt-1 text-[9px] font-mono text-amber-400/80 text-center">Stream paused / cancelled</div>
             )}
           </div>
-        ))}
+        );
+        })}
       </div>
     </div>
   );

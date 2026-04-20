@@ -70,6 +70,14 @@
 | 50 | Per-stream stealth status — "stealth ready" / "no stealth" badge per stream in StreamList | `StreamList.tsx` | ✅ Done |
 | 51 | Announce gas fix — 200k→500k + 2s delay between tick & announce (MetaMask rate limit) | `src/hooks/useTickStream.ts` | ✅ Done |
 | 52 | Announce fresh gas estimation — re-estimate `maxFeePerGas` for second tx after delay | `src/hooks/useTickStream.ts` | ✅ Done |
+| 53 | tickStream receipt check + pre-flight simulation — catches reverts before MetaMask popup | `src/hooks/useTickStream.ts` | ✅ Done |
+| 54 | **ROOT CAUSE: euint64 selector mismatch** — our SDK = bytes32, Reineira = uint256. All PayStream↔cUSDC calls used wrong selector | `ObscuraPayStream.sol` (deployed) | ✅ Diagnosed |
+| 55 | **FIX: bypass PayStream for transfers** — call `cUSDC.confidentialTransfer(stealthAddr, InEuint64)` directly from employer wallet | `src/hooks/useTickStream.ts`, `src/config/wave2.ts` | ✅ Done |
+| 56 | cUSDC ABI: add InEuint64-tuple overload for `confidentialTransfer` (selector 0xa794ee95) | `src/config/wave2.ts` | ✅ Done |
+| 57 | **FIRST SUCCESSFUL cUSDC PAYMENT** — 2 cUSDC sent via stealth, balance 10→8, both txs confirmed | Live on Arb Sepolia | ✅ Working |
+| 58 | Client-side paid cycle tracking — localStorage counter (on-chain counter not updated since PayStream bypassed) | `StreamList.tsx` | ✅ Done |
+| 59 | Payment success banner — green animated "Payment sent!" with tx hash, dismissable | `StreamList.tsx` | ✅ Done |
+| 60 | Effective pending cycles — uses local lastTick timestamp to correct countdown after direct transfer | `StreamList.tsx` | ✅ Done |
 
 ---
 

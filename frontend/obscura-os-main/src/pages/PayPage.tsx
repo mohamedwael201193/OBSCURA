@@ -336,15 +336,15 @@ const PayPage = () => {
                   ) : (
                     <>
                       <div className="glass-panel rounded-sm p-4 border-l-2 border-cyan-500/40 space-y-2">
-                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-cyan-400">Bridge & Fund in One Step</h3>
+                        <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-cyan-400">Bridge USDC to Arbitrum</h3>
                         <p className="text-[10px] font-mono text-muted-foreground/70">
-                          Send USDC from Ethereum Sepolia directly into an Obscura escrow on Arbitrum — no manual bridging needed.
-                          Uses Circle&apos;s CCTP V2 with hooks to auto-convert and deposit in a single transaction.
+                          Bridge USDC from Ethereum Sepolia to your wallet on Arbitrum Sepolia via Circle&apos;s CCTP.
+                          Once it arrives, wrap USDC → cUSDC using the button on the Pay tab.
                         </p>
                         <ol className="space-y-1 text-[9px] font-mono text-muted-foreground/60">
                           <li><span className="text-cyan-400">1.</span> Get Sepolia USDC from <span className="text-cyan-400">faucet.circle.com</span></li>
-                          <li><span className="text-cyan-400">2.</span> Enter the escrow ID you want to fund below</li>
-                          <li><span className="text-cyan-400">3.</span> Your wallet will switch to Sepolia, burn USDC, and it auto-arrives on Arb Sepolia as encrypted cUSDC</li>
+                          <li><span className="text-cyan-400">2.</span> Enter the amount below and click Bridge USDC</li>
+                          <li><span className="text-cyan-400">3.</span> Your wallet switches to Sepolia, burns USDC, and Circle mints it on Arb Sepolia (a few minutes)</li>
                         </ol>
                       </div>
                       <CrossChainFundForm />

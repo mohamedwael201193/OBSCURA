@@ -42,6 +42,37 @@ function RecipientStatus({ address: addr }: { address: `0x${string}` }) {
   );
 }
 
+function CountdownTimer({ nextDue, now, onRefresh }: { nextDue: number; now: number; onRefresh: () => void }) {
+  const secsLeft = nextDue - now;
+  const display = secsLeft > 86400
+    ? `${Math.ceil(secsLeft / 86400)}d`
+    : secsLeft > 3600
+      ? `${Math.ceil(secsLeft / 3600)}h`
+      : secsLeft > 60
+        ? `${Math.ceil(secsLeft / 60)}m`
+        : secsLeft > 0
+          ? `${secsLeft}s`
+          : "now";
+  return (
+    <div className="space-y-2">
+      <button
+        disabled
+        className="w-full py-2 text-[10px] tracking-[0.2em] uppercase font-mono bg-secondary/20 text-muted-foreground border border-border/30 rounded-sm flex items-center justify-center gap-2 opacity-60"
+      >
+        <Timer className="w-3 h-3" /> Next cycle due in {display}
+      </button>
+      {secsLeft <= 0 && (
+        <button
+          onClick={() => onRefresh()}
+          className="w-full py-1.5 text-[9px] tracking-[0.15em] uppercase font-mono text-primary hover:text-primary/80"
+        >
+          Refresh to check
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function StreamList({ mode }: { mode: "employer" | "recipient" }) {
   const { address } = useAccount();
   const publicClient = usePublicClient();
@@ -240,36 +271,9 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                 <Play className="w-3 h-3" /> {isTicking ? "Sending…" : "Send Next Cycle"}
               </motion.button>
             )}
-            {mode === "employer" && effectivePending === 0 && !s.paused && (() => {
-              const secsLeft = nextDue - now;
-              const display = secsLeft > 86400
-                ? `${Math.ceil(secsLeft / 86400)}d`
-                : secsLeft > 3600
-                  ? `${Math.ceil(secsLeft / 3600)}h`
-                  : secsLeft > 60
-                    ? `${Math.ceil(secsLeft / 60)}m`
-                    : secsLeft > 0
-                      ? `${secsLeft}s`
-                      : "now";
-              return (
-                <div className="space-y-2">
-                  <button
-                    disabled
-                    className="w-full py-2 text-[10px] tracking-[0.2em] uppercase font-mono bg-secondary/20 text-muted-foreground border border-border/30 rounded-sm flex items-center justify-center gap-2 opacity-60"
-                  >
-                    <Timer className="w-3 h-3" /> Next cycle due in {display}
-                  </button>
-                  {secsLeft <= 0 && (
-                    <button
-                      onClick={() => refresh()}
-                      className="w-full py-1.5 text-[9px] tracking-[0.15em] uppercase font-mono text-primary hover:text-primary/80"
-                    >
-                      Refresh to check
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
+            {mode === "employer" && effectivePending === 0 && !s.paused && (
+              <CountdownTimer nextDue={nextDue} now={now} onRefresh={refresh} />
+            )}
             {mode === "employer" && !s.paused && (
               <button
                 onClick={async () => {

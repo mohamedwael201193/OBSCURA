@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useAccount } from "wagmi";
 import { motion } from "framer-motion";
-import { Repeat, Calendar } from "lucide-react";
+import { Repeat, Calendar, User } from "lucide-react";
 import { useCreateStream } from "@/hooks/useCreateStream";
 import { toast } from "sonner";
 
@@ -13,7 +14,8 @@ const PERIODS = [
   { label: "Monthly", seconds: 2_592_000 },
 ];
 
-export default function CreateStreamForm() {
+export default function CreateStreamForm({ onCreated }: { onCreated?: () => void } = {}) {
+  const { address } = useAccount();
   const [hint, setHint] = useState("");
   const [period, setPeriod] = useState(PERIODS[0].seconds);
   const [durationDays, setDurationDays] = useState("90");
@@ -38,8 +40,9 @@ export default function CreateStreamForm() {
         startTime: start,
         endTime: end,
       });
-      toast.success("Stream created");
+      toast.success("Stream created — it will appear below shortly");
       setHint("");
+      onCreated?.();
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -65,13 +68,25 @@ export default function CreateStreamForm() {
           <label className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
             Recipient Wallet Address
           </label>
-          <input
-            type="text"
-            placeholder="0x..."
-            value={hint}
-            onChange={(e) => setHint(e.target.value)}
-            className="w-full px-3 py-2 bg-background border border-border/50 rounded-sm text-xs font-mono text-foreground focus:border-primary/40 focus:outline-none"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="0x..."
+              value={hint}
+              onChange={(e) => setHint(e.target.value)}
+              className="flex-1 px-3 py-2 bg-background border border-border/50 rounded-sm text-xs font-mono text-foreground focus:border-primary/40 focus:outline-none"
+            />
+            {address && (
+              <button
+                type="button"
+                onClick={() => setHint(address)}
+                title="Use your own address (self-test)"
+                className="px-3 py-2 text-[9px] font-mono text-primary border border-primary/30 rounded-sm hover:bg-primary/10 flex items-center gap-1 whitespace-nowrap"
+              >
+                <User className="w-3 h-3" /> Me
+              </button>
+            )}
+          </div>
         </div>
 
         <div>

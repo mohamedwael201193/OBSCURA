@@ -23,12 +23,15 @@ export function useStreamList(filter: { employer?: `0x${string}`; recipient?: `0
   const [streams, setStreams] = useState<StreamSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { data: ids } = useReadContract({
+  const { data: ids, refetch: refetchIds } = useReadContract({
     address: OBSCURA_PAY_STREAM_ADDRESS,
     abi: OBSCURA_PAY_STREAM_ABI,
     functionName: filter.employer ? "streamsByEmployer" : "streamsByRecipient",
     args: [(filter.employer ?? filter.recipient) as `0x${string}`],
-    query: { enabled: !!(filter.employer ?? filter.recipient) && !!OBSCURA_PAY_STREAM_ADDRESS },
+    query: {
+      enabled: !!(filter.employer ?? filter.recipient) && !!OBSCURA_PAY_STREAM_ADDRESS,
+      refetchInterval: 8_000,
+    },
   });
 
   const refresh = useCallback(async () => {
@@ -83,5 +86,11 @@ export function useStreamList(filter: { employer?: `0x${string}`; recipient?: `0
     refresh();
   }, [refresh]);
 
-  return { streams, isLoading, refresh };
+  /** Force refetch stream IDs + details immediately */
+  const hardRefresh = useCallback(async () => {
+    await refetchIds();
+    await refresh();
+  }, [refetchIds, refresh]);
+
+  return { streams, isLoading, refresh, hardRefresh };
 }

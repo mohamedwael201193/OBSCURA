@@ -44,6 +44,8 @@ const PayPage = () => {
   });
 
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [streamRefreshKey, setStreamRefreshKey] = useState(0);
+  const refreshStreams = () => setStreamRefreshKey((k) => k + 1);
 
   const tabs: { key: Tab; label: string; icon: typeof Users }[] = [
     { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -276,17 +278,17 @@ const PayPage = () => {
                       {/* Step 4: Create stream */}
                       <div className="relative">
                         <div className="absolute -top-2 left-4 px-2 py-0.5 bg-background text-[9px] font-mono text-cyan-400 border border-cyan-500/30 rounded-sm z-10">STEP 4</div>
-                        <CreateStreamForm />
+                        <CreateStreamForm onCreated={refreshStreams} />
                       </div>
 
                       {/* Step 5: Active streams + tick */}
                       <div className="relative">
                         <div className="absolute -top-2 left-4 px-2 py-0.5 bg-background text-[9px] font-mono text-cyan-400 border border-cyan-500/30 rounded-sm z-10">STEP 5</div>
-                        <StreamList mode="employer" />
+                        <StreamList key={`emp-${streamRefreshKey}`} mode="employer" />
                       </div>
 
                       {/* Incoming streams */}
-                      <StreamList mode="recipient" />
+                      <StreamList key={`rec-${streamRefreshKey}`} mode="recipient" />
                     </>
                   )}
                 </motion.div>

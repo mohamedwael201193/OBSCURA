@@ -93,23 +93,23 @@ export default function StakePoolForm() {
   };
 
   return (
-    <div className="glass-panel rounded-sm p-6 space-y-4">
+    <div className="glass-panel rounded-md p-6 space-y-4">
       <div className="flex items-center gap-2">
         <Landmark className="w-4 h-4 text-primary" />
         <h3 className="font-display text-sm tracking-wider text-foreground">Stake to Insurance Pool</h3>
-        <span className="ml-auto text-[8px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-sm border border-cyan-500/20">
+        <span className="ml-auto text-[11px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
           SEED LIQUIDITY
         </span>
       </div>
 
-      <p className="text-[10px] font-mono text-muted-foreground/70">
+      <p className="text-sm text-muted-foreground/70">
         Deposit cUSDC into the insurance pool so dispute payouts can be funded.
         Anyone can stake — you earn a share of premiums paid by coverage buyers.
         The staked amount is fully encrypted.
       </p>
 
       <div>
-        <label className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+        <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
           Amount to Stake (cUSDC)
         </label>
         <div className="flex gap-2">
@@ -118,13 +118,13 @@ export default function StakePoolForm() {
             placeholder="10"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="flex-1 px-3 py-2 bg-background border border-border/50 rounded-sm text-xs font-mono"
+            className="flex-1 px-3 py-2 bg-background border border-border/50 rounded-md text-xs font-mono"
           />
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={handleStake}
             disabled={busy || !amount}
-            className="px-4 py-2 text-[10px] tracking-[0.2em] uppercase font-mono bg-primary text-primary-foreground rounded-sm disabled:opacity-50"
+            className="px-4 py-2 text-sm tracking-[0.2em] uppercase bg-primary text-primary-foreground rounded-md disabled:opacity-50"
           >
             {busy ? "Staking…" : "Stake"}
           </motion.button>

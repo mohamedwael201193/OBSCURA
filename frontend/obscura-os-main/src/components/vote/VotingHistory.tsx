@@ -30,13 +30,13 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
   }
 
   return (
-    <div className="p-3 bg-secondary/30 rounded-sm border border-border/30 space-y-2">
+    <div className="p-3 bg-secondary/30 rounded-md border border-border/30 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-mono text-foreground truncate">
+          <div className="text-xs text-foreground truncate">
             #{index} — {proposal.title}
           </div>
-          <div className="text-[9px] font-mono text-muted-foreground mt-0.5 flex items-center gap-2">
+          <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
             <span>{CATEGORY_LABELS[proposal.category] ?? "General"}</span>
             <span className="text-primary/50">|</span>
             <span>Deadline: {new Date(Number(proposal.deadline) * 1000).toLocaleDateString()}</span>
@@ -55,22 +55,22 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
           {isCancelled ? (
             <div className="flex items-center gap-1.5 text-red-400/50">
               <Ban className="w-3.5 h-3.5" />
-              <span className="text-[9px] font-mono">Cancelled</span>
+              <span className="text-xs font-mono">Cancelled</span>
             </div>
           ) : voted ? (
             <div className="flex items-center gap-1.5 text-green-400">
               <CheckCircle className="w-3.5 h-3.5" />
-              <span className="text-[9px] font-mono">Voted</span>
+              <span className="text-xs font-mono">Voted</span>
             </div>
           ) : ended ? (
             <div className="flex items-center gap-1.5 text-muted-foreground/40">
               <XCircle className="w-3.5 h-3.5" />
-              <span className="text-[9px] font-mono">Missed</span>
+              <span className="text-xs font-mono">Missed</span>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 text-yellow-400">
               <Clock className="w-3.5 h-3.5" />
-              <span className="text-[9px] font-mono">Pending</span>
+              <span className="text-xs font-mono">Pending</span>
             </div>
           )}
         </div>
@@ -80,7 +80,7 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
       {voted && !isCancelled && (
         <div className="pl-0">
           {myVoteIndex !== null ? (
-            <div className="text-[9px] font-mono text-primary flex items-center gap-1.5">
+            <div className="text-xs text-primary flex items-center gap-1.5">
               <Eye className="w-3 h-3" />
               Your vote: <span className="font-semibold">{options[myVoteIndex] ?? `Option ${myVoteIndex}`}</span>
             </div>
@@ -92,14 +92,14 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
               <button
                 onClick={handleVerify}
                 disabled={status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
-                className="text-[9px] font-mono text-primary hover:underline flex items-center gap-1 disabled:opacity-30"
+                className="text-xs text-primary hover:underline flex items-center gap-1 disabled:opacity-30"
               >
                 <Eye className="w-3 h-3" /> Verify My Vote
               </button>
             </>
           )}
           {(error || fheError) && (
-            <div className="flex items-center gap-1 text-red-400 text-[9px] font-mono mt-1">
+            <div className="flex items-center gap-1 text-red-400 text-xs mt-1">
               <AlertCircle className="w-3 h-3" /> {error || fheError}
             </div>
           )}
@@ -115,25 +115,25 @@ export default function VotingHistory() {
   const proposalCount = Number(count ?? 0);
 
   return (
-    <div className="glass-panel rounded-sm p-6 space-y-4">
+    <div className="glass-panel rounded-md p-6 space-y-4">
       <div className="flex items-center gap-2">
         <History className="w-4 h-4 text-primary" />
-        <span className="text-[10px] tracking-[0.2em] uppercase text-primary font-mono">
+        <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
           Your Voting History
         </span>
       </div>
 
-      <div className="text-[9px] font-mono text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
+      <div className="text-xs text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
         Track which proposals you've voted on. Use "Verify My Vote" to self-decrypt your
         encrypted ballot via FHE.allow — only you can see your own choice.
       </div>
 
       {!isConnected ? (
-        <div className="text-sm font-mono text-muted-foreground text-center py-6">
+        <div className="text-sm text-muted-foreground text-center py-6">
           Connect your wallet to see voting history.
         </div>
       ) : proposalCount === 0 ? (
-        <div className="text-sm font-mono text-muted-foreground text-center py-6">
+        <div className="text-sm text-muted-foreground text-center py-6">
           No proposals yet.
         </div>
       ) : (

@@ -1,50 +1,82 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { Shield, Vote, Server, Lock, Brain, Landmark } from "lucide-react";
 
-const waves = [
+const products = [
   {
-    wave: 1,
+    icon: Shield,
     name: "ObscuraPay",
-    category: "Payments",
-    status: "ACTIVE",
-    fheOps: "add, eq, gte, select, asEaddress",
-    description: "Complete encrypted payment platform. 4 contracts live — payroll, P2P transfers, encrypted escrow engine with silent failure, conditional release. Daily $OBS faucet. Arbiscan shows nothing.",
-    active: true,
+    tagline: "Encrypted Financial Infrastructure",
+    path: "/pay",
+    status: "live",
+    features: [
+      "Confidential cUSDC transfers with FHE-encrypted amounts",
+      "Encrypted escrows with silent failure pattern",
+      "Payroll streams to stealth recipient addresses",
+      "Cross-chain funding via Circle CCTP bridge",
+      "Payroll insurance with on-chain dispute resolution",
+      "Stealth addresses via ERC-5564 / ECDH",
+    ],
   },
   {
-    wave: 2,
+    icon: Vote,
     name: "ObscuraVote",
-    category: "Governance",
-    status: "ACTIVE",
-    fheOps: "add, sub, allowPublic",
-    description: "Coercion-resistant on-chain governance. Votes encrypted — FHE.add() tallies without revealing individual choices. Anti-coercion revote window. $OBS holder gating.",
-    active: true,
+    tagline: "Coercion-Resistant Governance",
+    path: "/vote",
+    status: "live",
+    features: [
+      "Encrypted ballots — votes hidden until tally finalized",
+      "FHE.add() tallies without revealing individual choices",
+      "Multi-option proposals with configurable deadlines",
+      "Anti-coercion revote before deadline",
+      "Token-gated proposal creation",
+      "Full voting history with cryptographic verification",
+    ],
   },
   {
-    wave: 3,
+    icon: Landmark,
     name: "ObscuraVault",
-    category: "DeFi",
-    status: "WAVE 3",
-    fheOps: "gt, gte, select, add, sub",
-    description: "Sealed-bid auctions and MEV-protected yield vaults. FHE.gt() selects auction winners without revealing losing bids. Zero front-running. Zero MEV extraction.",
-    active: false,
+    tagline: "MEV-Protected DeFi",
+    path: undefined,
+    status: "upcoming",
+    features: [
+      "Sealed-bid auctions — FHE.gt() selects winner privately",
+      "MEV-protected yield vaults with encrypted positions",
+      "Hidden deposit/withdrawal amounts on-chain",
+      "FHE.select() routes tokens without revealing bids",
+      "Vault positions feed governance weight",
+      "Zero front-running, zero MEV extraction",
+    ],
   },
   {
-    wave: 4,
+    icon: Lock,
     name: "ObscuraTrust",
-    category: "RWA / Compliance",
-    status: "WAVE 4",
-    fheOps: "eq, gte, allow, allowTransient",
-    description: "Encrypted identity and institutional compliance. FHE.gte() validates KYC thresholds without revealing data. Selective disclosure via FHE.allow() scopes regulatory access cryptographically.",
-    active: false,
+    tagline: "Selective Disclosure & Compliance",
+    path: undefined,
+    status: "upcoming",
+    features: [
+      "Encrypted identity attributes (ebool, euint8 ciphertexts)",
+      "FHE.gte() validates compliance without revealing data",
+      "Selective disclosure via FHE.allow(data, auditor)",
+      "Time-scoped audit signatures for regulators",
+      "Zero persistent exposure to third parties",
+      "Institutional-grade privacy with cryptographic proofs",
+    ],
   },
   {
-    wave: 5,
+    icon: Brain,
     name: "ObscuraMind",
-    category: "AI Inference",
-    status: "WAVE 5",
-    fheOps: "mul, add, div, gte, square",
-    description: "Privacy-preserving ML inference on encrypted data. Model weights as euint64 — FHE.mul() computes dot products on ciphertext. Outputs encrypted credit scores for under-collateralized lending.",
-    active: false,
+    tagline: "Privacy-Preserving AI Inference",
+    path: undefined,
+    status: "upcoming",
+    features: [
+      "ML inference on fully encrypted data",
+      "FHE.mul() computes weighted dot products on ciphertext",
+      "Cross-module data — Pay, Vault, Vote feed models",
+      "Encrypted credit scoring for under-collateralized lending",
+      "FHE.square() for polynomial feature computation",
+      "Model weights as euint64 — no plaintext exposure",
+    ],
   },
 ];
 
@@ -61,84 +93,78 @@ const WaveModules = () => {
           transition={{ duration: 0.8 }}
           className="mb-16"
         >
-          <span className="text-[10px] tracking-[0.3em] uppercase text-primary font-mono text-glow-sm">
-            Architecture
+          <span className="text-xs tracking-[0.2em] uppercase text-primary text-glow-sm">
+            Five Encrypted Modules
           </span>
           <h2 className="font-display text-3xl md:text-4xl mt-3 text-foreground tracking-tight">
-            Five Encrypted
-            <span className="text-primary text-glow"> Modules</span>
+            What We <span className="text-primary text-glow">Build</span>
           </h2>
-          <p className="text-sm font-body text-muted-foreground mt-4 max-w-xl">
-            Each module adds a new encrypted capability. All composable — payment data feeds governance, vault positions inform AI scoring, compliance gates premium access.
+          <p className="text-base text-muted-foreground mt-4 max-w-xl">
+            A complete privacy operating system — encrypted payments, governance, DeFi, compliance, and AI — all powered by Fully Homomorphic Encryption on Arbitrum.
           </p>
         </motion.div>
 
-        <div className="grid gap-3">
-          {waves.map((wave, i) => (
-            <motion.div
-              key={wave.name}
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1, duration: 0.6 }}
-              className={`glass-panel rounded-sm p-5 flex items-center justify-between group hover:border-primary/30 transition-all duration-500 ${
-                wave.active ? "border-primary/20 border-glow" : ""
-              }`}
-            >
-              <div className="flex items-center gap-6">
-                <span
-                  className={`font-display text-2xl ${
-                    wave.active
-                      ? "text-primary text-glow"
-                      : "text-muted-foreground/30"
-                  }`}
-                >
-                  {String(wave.wave).padStart(2, "0")}
-                </span>
-                <div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-display text-sm tracking-wider text-foreground">
-                      {wave.name}
-                    </span>
-                    <span
-                      className={`text-[9px] tracking-[0.2em] uppercase font-mono px-2 py-0.5 rounded-sm ${
-                        wave.active
-                          ? "bg-primary/10 text-primary border border-primary/20"
-                          : "bg-secondary text-muted-foreground"
-                      }`}
-                    >
-                      {wave.status}
-                    </span>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {products.map((product, i) => {
+            const isLive = product.status === "live";
+            const card = (
+              <motion.div
+                key={product.name}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.6 }}
+                className={`glass-card p-6 flex flex-col ${!isLive ? "opacity-60" : ""}`}
+              >
+                <div className="flex items-start justify-between mb-5">
+                  <div className={`w-12 h-12 flex items-center justify-center border rounded-lg ${isLive ? "border-primary/20 bg-primary/[0.06]" : "border-white/[0.06] bg-white/[0.02]"}`}>
+                    <product.icon className={`w-5 h-5 ${isLive ? "text-primary" : "text-muted-foreground/50"}`} />
                   </div>
-                  <p className="text-xs font-body text-muted-foreground mt-1">
-                    {wave.description}
-                  </p>
+                  <span className={`text-[10px] tracking-[0.15em] uppercase px-2.5 py-1 rounded-md ${isLive ? "text-primary bg-primary/10 border border-primary/20" : "text-muted-foreground/40 bg-white/[0.03] border border-white/[0.06]"}`}>
+                    {isLive ? "● Live" : "Coming Soon"}
+                  </span>
                 </div>
-              </div>
 
-              <div className="hidden md:flex items-center gap-8">
-                <div className="text-right">
-                  <span className="text-[9px] tracking-[0.2em] uppercase text-muted-foreground/50 font-mono block">
-                    FHE OPS
-                  </span>
-                  <span className="text-[10px] font-mono text-muted-foreground">
-                    {wave.fheOps}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[9px] tracking-[0.2em] uppercase text-muted-foreground/50 font-mono block">
-                    Category
-                  </span>
-                  <span className="text-[10px] font-mono text-muted-foreground">
-                    {wave.category}
-                  </span>
-                </div>
-                {!wave.active && (
-                  <span className="text-muted-foreground/20 text-sm">🔒</span>
+                <h3 className="font-display text-lg tracking-wide text-foreground mb-1">
+                  {product.name}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-5">
+                  {product.tagline}
+                </p>
+
+                <ul className="space-y-2.5 flex-1 mb-6">
+                  {product.features.map((feat) => (
+                    <li key={feat} className="flex items-start gap-2.5">
+                      <span className={`text-xs mt-1 shrink-0 ${isLive ? "text-primary" : "text-muted-foreground/30"}`}>◆</span>
+                      <span className="text-sm text-muted-foreground leading-snug">
+                        {feat}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {isLive ? (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full py-2.5 text-sm font-medium border border-primary/30 text-primary hover:bg-primary/10 transition-all duration-300 rounded-md"
+                  >
+                    Launch {product.name}
+                  </motion.button>
+                ) : (
+                  <div className="w-full py-2.5 text-sm font-medium border border-white/[0.06] text-muted-foreground/30 text-center rounded-md">
+                    In Development
+                  </div>
                 )}
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+
+            return isLive && product.path ? (
+              <Link key={product.name} to={product.path}>{card}</Link>
+            ) : (
+              <div key={product.name}>{card}</div>
+            );
+          })}
         </div>
       </div>
     </section>

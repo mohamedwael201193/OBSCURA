@@ -51,12 +51,12 @@ function ProposalAdminRow({ index }: { index: number }) {
   }
 
   return (
-    <div className="p-3 bg-secondary/30 rounded-sm border border-border/30 space-y-2">
+    <div className="p-3 bg-secondary/30 rounded-md border border-border/30 space-y-2">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-mono text-foreground truncate">
+        <div className="text-xs text-foreground truncate">
           #{index} — {proposal.title}
         </div>
-        <span className={`text-[9px] font-mono ${proposal.isFinalized ? "text-primary" : ended ? "text-yellow-400" : "text-green-400"}`}>
+        <span className={`text-xs ${proposal.isFinalized ? "text-primary" : ended ? "text-yellow-400" : "text-green-400"}`}>
           {proposal.isFinalized ? "Finalized" : ended ? "Ended" : "Active"}
         </span>
       </div>
@@ -66,7 +66,7 @@ function ProposalAdminRow({ index }: { index: number }) {
           <button
             onClick={handleCancel}
             disabled={cancelling}
-            className="flex items-center gap-1 text-[9px] font-mono px-2 py-1 rounded-sm border border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-30"
+            className="flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-red-500/30 text-red-400 hover:bg-red-500/10 disabled:opacity-30"
           >
             {cancelling ? <Loader2 className="w-3 h-3 animate-spin" /> : <Ban className="w-3 h-3" />}
             Cancel
@@ -80,12 +80,12 @@ function ProposalAdminRow({ index }: { index: number }) {
               min="1"
               value={extendHours}
               onChange={(e) => setExtendHours(e.target.value)}
-              className="w-12 text-[9px] font-mono bg-background/50 border border-border/30 rounded-sm px-1 py-0.5 text-center"
+              className="w-12 text-xs bg-background/50 border border-border/30 rounded-md px-1 py-0.5 text-center"
             />
             <button
               onClick={handleExtend}
               disabled={extending}
-              className="flex items-center gap-1 text-[9px] font-mono px-2 py-1 rounded-sm border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-30"
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-30"
             >
               {extending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
               Extend +{extendHours}h
@@ -95,7 +95,7 @@ function ProposalAdminRow({ index }: { index: number }) {
       </div>
 
       {feedback && (
-        <div className={`text-[9px] font-mono flex items-center gap-1 ${feedback.includes("sent") ? "text-green-400" : "text-red-400"}`}>
+        <div className={`text-xs flex items-center gap-1 ${feedback.includes("sent") ? "text-green-400" : "text-red-400"}`}>
           {feedback.includes("sent") ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
           {feedback}
         </div>
@@ -110,15 +110,15 @@ export default function AdminControls() {
 
   if (proposalCount === 0) {
     return (
-      <div className="glass-panel rounded-sm p-6 text-center">
-        <p className="text-sm font-mono text-muted-foreground">No proposals to manage.</p>
+      <div className="glass-panel rounded-md p-6 text-center">
+        <p className="text-sm text-muted-foreground">No proposals to manage.</p>
       </div>
     );
   }
 
   return (
-    <div className="glass-panel rounded-sm p-4 space-y-3">
-      <div className="text-[10px] tracking-[0.2em] uppercase text-primary font-mono mb-2">
+    <div className="glass-panel rounded-md p-4 space-y-3">
+      <div className="text-sm tracking-[0.2em] uppercase text-primary mb-2">
         Proposal Management
       </div>
       <div className="space-y-2">

@@ -45,11 +45,11 @@ export default function VoteDashboard() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="glass-panel rounded-sm p-4 text-center"
+            className="glass-panel rounded-md p-4 text-center"
           >
             <stat.icon className={`w-5 h-5 mx-auto mb-2 ${stat.color}`} />
             <div className="font-display text-lg text-foreground">{stat.value}</div>
-            <div className="text-[8px] font-mono text-muted-foreground tracking-[0.15em] uppercase mt-1">
+            <div className="text-[11px] text-muted-foreground tracking-[0.15em] uppercase mt-1">
               {stat.label}
             </div>
           </motion.div>
@@ -57,10 +57,10 @@ export default function VoteDashboard() {
       </div>
 
       {/* Privacy info */}
-      <div className="glass-panel rounded-sm p-4">
+      <div className="glass-panel rounded-md p-4">
         <div className="flex items-center gap-2 mb-3">
           <Vote className="w-4 h-4 text-primary" />
-          <span className="text-[10px] tracking-[0.2em] uppercase text-primary font-mono">
+          <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
             Vote Privacy Model
           </span>
         </div>
@@ -84,10 +84,10 @@ export default function VoteDashboard() {
       </div>
 
       {/* FHE Operations summary */}
-      <div className="glass-panel rounded-sm p-4">
+      <div className="glass-panel rounded-md p-4">
         <div className="flex items-center gap-2 mb-3">
           <Shield className="w-4 h-4 text-primary" />
-          <span className="text-[10px] tracking-[0.2em] uppercase text-primary font-mono">
+          <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
             FHE Operations
           </span>
         </div>
@@ -100,9 +100,9 @@ export default function VoteDashboard() {
             { op: "allow", desc: "Voter self-verification" },
             { op: "allowThis", desc: "Contract retains access" },
           ].map((item) => (
-            <div key={item.op} className="p-2 bg-secondary/30 rounded-sm border border-border/30">
-              <div className="text-[9px] font-mono text-primary font-semibold">{item.op}</div>
-              <div className="text-[8px] font-mono text-muted-foreground/70 mt-0.5">{item.desc}</div>
+            <div key={item.op} className="p-2 bg-secondary/30 rounded-md border border-border/30">
+              <div className="font-mono text-xs text-primary font-semibold">{item.op}</div>
+              <div className="text-[11px] text-muted-foreground/70 mt-0.5">{item.desc}</div>
             </div>
           ))}
         </div>
@@ -113,12 +113,12 @@ export default function VoteDashboard() {
 
 function PrivacyItem({ label, type, acl }: { label: string; type: string; acl: string }) {
   return (
-    <div className="p-3 bg-secondary/30 rounded-sm border border-border/30">
-      <div className="text-[10px] font-mono text-foreground mb-1">{label}</div>
-      <div className="text-[8px] font-mono text-muted-foreground">
-        Type: <span className="text-primary">{type}</span>
+    <div className="p-3 bg-secondary/30 rounded-md border border-border/30">
+      <div className="text-sm text-foreground mb-1">{label}</div>
+      <div className="text-[11px] text-muted-foreground">
+        Type: <span className="font-mono text-primary">{type}</span>
       </div>
-      <div className="text-[8px] font-mono text-muted-foreground">
+      <div className="text-[11px] text-muted-foreground">
         ACL: <span className="text-foreground/70">{acl}</span>
       </div>
     </div>

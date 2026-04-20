@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import DataTicker from "./DataTicker";
 
 const HeroSection = () => {
@@ -47,36 +48,36 @@ const HeroSection = () => {
             transition={{ delay: 0.2, duration: 0.8 }}
             className="flex items-center gap-3 mb-6"
           >
-            <span className="text-[10px] tracking-[0.3em] uppercase text-muted-foreground font-mono">
-              FHE-Powered
+            <span className="text-xs tracking-[0.2em] uppercase text-muted-foreground">
+              Powered by Fhenix FHE
             </span>
             <span className="text-muted-foreground/30">|</span>
-            <span className="text-[10px] tracking-[0.3em] uppercase text-muted-foreground font-mono">
-              Arbitrum Sepolia
+            <span className="text-xs tracking-[0.2em] uppercase text-muted-foreground">
+              Live on Arbitrum
             </span>
             <span className="text-muted-foreground/30">|</span>
-            <span className="text-[10px] tracking-[0.3em] uppercase text-primary font-mono text-glow-sm">
-              Wave 1 Active
-            </span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="text-xs tracking-[0.2em] uppercase text-primary text-glow-sm">
+                Operational
+              </span>
+            </div>
           </motion.div>
 
-          {/* Headline with glitch */}
+          {/* Headline */}
           <div className="relative mb-6">
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
               className="font-display text-5xl md:text-7xl font-bold leading-[0.95] tracking-tight text-foreground"
-              style={{ animation: "flicker 4s ease-in-out infinite" }}
             >
               The Dark
               <br />
-              Operating
+              Operating System
               <br />
               <span className="relative inline-block">
-                <span className="text-primary text-glow">[</span>
-                System
-                <span className="text-primary text-glow">]</span>
+                <span className="text-primary text-glow">For Onchain Privacy</span>
               </span>
             </motion.h1>
 
@@ -95,9 +96,9 @@ const HeroSection = () => {
             >
               The Dark
               <br />
-              Operating
+              Operating System
               <br />
-              [System]
+              For Onchain Privacy
             </motion.div>
           </div>
 
@@ -106,19 +107,20 @@ const HeroSection = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.8 }}
-            className="text-sm font-body text-muted-foreground leading-relaxed max-w-md mb-2"
+            className="text-base font-body text-muted-foreground leading-relaxed max-w-md mb-2"
           >
-            See only what you're meant to. Encrypted payroll, confidential governance,
-            and privacy-preserving DeFi — powered by Fully Homomorphic Encryption.
+            Five encrypted modules — Payments, Governance, DeFi Vaults, 
+            Compliance, and AI Inference — all powered by Fully Homomorphic 
+            Encryption. See only what you're meant to.
           </motion.p>
 
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8, duration: 0.8 }}
-            className="text-xs font-mono text-muted-foreground/50 mb-8"
+            className="text-sm text-muted-foreground/60 mb-8"
           >
-            Engineered for those who move before the market.
+            10+ smart contracts deployed · FHE on every value · Arbitrum Sepolia
           </motion.p>
 
           {/* CTAs */}
@@ -128,42 +130,27 @@ const HeroSection = () => {
             transition={{ delay: 0.9, duration: 0.8 }}
             className="flex items-center gap-4"
           >
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              className="px-6 py-3 text-xs tracking-[0.2em] uppercase font-mono border border-foreground/80 text-foreground hover:bg-foreground/10 transition-all duration-300 rounded-sm"
-            >
-              Launch Terminal
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2 px-6 py-3 text-xs tracking-[0.2em] uppercase font-mono border border-primary/40 text-primary hover:bg-primary/10 transition-all duration-300 rounded-sm group"
-            >
-              View Signals
-              <span className="group-hover:translate-x-1 transition-transform">
-                →
-              </span>
-            </motion.button>
-          </motion.div>
-
-          {/* Bottom status */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.4, duration: 1 }}
-            className="mt-12 flex items-center gap-6"
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              <span className="text-[10px] font-mono text-muted-foreground/60 tracking-wider">
-                ALL SYSTEMS NOMINAL
-              </span>
-            </div>
-            <span className="text-muted-foreground/20">|</span>
-            <span className="text-[10px] font-mono text-muted-foreground/40">
-              FHE LATENCY: 2.4s
-            </span>
+            <Link to="/pay">
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="px-6 py-3 text-sm tracking-wide font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 rounded-md border-glow"
+              >
+                Launch App
+              </motion.button>
+            </Link>
+            <Link to="/docs">
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="flex items-center gap-2 px-6 py-3 text-sm tracking-wide font-medium border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all duration-300 rounded-md group"
+              >
+                Read Docs
+                <span className="group-hover:translate-x-1 transition-transform">
+                  →
+                </span>
+              </motion.button>
+            </Link>
           </motion.div>
         </div>
 

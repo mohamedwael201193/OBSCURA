@@ -138,24 +138,24 @@ export default function ResolverManager() {
     a === "0x0000000000000000000000000000000000000000" ? "None" : `${a.slice(0, 8)}…${a.slice(-6)}`;
 
   return (
-    <div className="glass-panel rounded-sm p-6 space-y-4">
+    <div className="glass-panel rounded-md p-6 space-y-4">
       <div className="flex items-center gap-2">
         <Gavel className="w-4 h-4 text-cyan-400" />
         <h3 className="font-display text-sm tracking-wider text-foreground">
           Payroll Resolver
         </h3>
-        <span className="ml-auto text-[8px] font-mono text-muted-foreground bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-sm border border-cyan-500/20">
+        <span className="ml-auto text-[11px] text-muted-foreground bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-md border border-cyan-500/20">
           CONDITION GATE
         </span>
       </div>
 
-      <p className="text-[10px] font-mono text-muted-foreground/70">
+      <p className="text-sm text-muted-foreground/70">
         The PayrollResolver gates escrow releases. Look up any escrow to check its approval status,
         or approve/cancel it as the designated approver. All condition checks run on encrypted data.
       </p>
 
       <div>
-        <label className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+        <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
           Escrow ID
         </label>
         <div className="flex gap-2">
@@ -164,13 +164,13 @@ export default function ResolverManager() {
             placeholder="e.g. 42"
             value={escrowId}
             onChange={(e) => setEscrowId(e.target.value)}
-            className="flex-1 px-3 py-2 bg-background border border-border/50 rounded-sm text-xs font-mono text-foreground placeholder:text-muted-foreground/30 focus:border-cyan-500/40 focus:outline-none"
+            className="flex-1 px-3 py-2 bg-background border border-border/50 rounded-md font-mono text-xs text-foreground placeholder:text-muted-foreground/30 focus:border-cyan-500/40 focus:outline-none"
           />
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={fetchCycle}
             disabled={busy || !parsedId}
-            className="px-4 text-[10px] tracking-[0.2em] uppercase font-mono bg-secondary/30 border border-border/50 rounded-sm hover:border-primary/40 disabled:opacity-50 flex items-center gap-1.5"
+            className="px-4 text-sm tracking-[0.2em] uppercase bg-secondary/30 border border-border/50 rounded-md hover:border-primary/40 disabled:opacity-50 flex items-center gap-1.5"
           >
             <Search className="w-3 h-3" /> {busy ? "Loading…" : "Lookup"}
           </motion.button>
@@ -179,9 +179,9 @@ export default function ResolverManager() {
 
       {cycleInfo && (
         <div className="space-y-3">
-          <div className="p-3 bg-secondary/20 border border-border/30 rounded-sm space-y-2">
-            <div className="text-[10px] font-mono text-foreground font-medium">Cycle #{escrowId}</div>
-            <div className="grid grid-cols-2 gap-2 text-[9px] font-mono">
+          <div className="p-3 bg-secondary/20 border border-border/30 rounded-md space-y-2">
+            <div className="text-sm text-foreground font-medium">Cycle #{escrowId}</div>
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
               <div>
                 <span className="text-muted-foreground">Release Time</span>
                 <div className="text-foreground flex items-center gap-1">
@@ -227,7 +227,7 @@ export default function ResolverManager() {
                 whileTap={{ scale: 0.98 }}
                 onClick={approveCycle}
                 disabled={!!actionBusy}
-                className="flex-1 py-2.5 text-[10px] tracking-[0.2em] uppercase font-mono bg-green-500/10 text-green-400 border border-green-500/30 rounded-sm hover:bg-green-500/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 text-sm tracking-[0.2em] uppercase bg-green-500/10 text-green-400 border border-green-500/30 rounded-md hover:bg-green-500/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 <CheckCircle className="w-3.5 h-3.5" />
                 {actionBusy === "approve" ? "Approving…" : "Approve Release"}
@@ -236,7 +236,7 @@ export default function ResolverManager() {
                 whileTap={{ scale: 0.98 }}
                 onClick={cancelCycle}
                 disabled={!!actionBusy}
-                className="flex-1 py-2.5 text-[10px] tracking-[0.2em] uppercase font-mono bg-red-500/10 text-red-400 border border-red-500/30 rounded-sm hover:bg-red-500/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 text-sm tracking-[0.2em] uppercase bg-red-500/10 text-red-400 border border-red-500/30 rounded-md hover:bg-red-500/20 disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 <XCircle className="w-3.5 h-3.5" />
                 {actionBusy === "cancel" ? "Cancelling…" : "Cancel Escrow"}
@@ -245,12 +245,12 @@ export default function ResolverManager() {
           )}
 
           {cycleInfo.approved && (
-            <div className="p-2 bg-green-500/10 border border-green-500/30 rounded-sm text-[10px] font-mono text-green-400 text-center flex items-center justify-center gap-1.5">
+            <div className="p-2 bg-green-500/10 border border-green-500/30 rounded-md text-sm text-green-400 text-center flex items-center justify-center gap-1.5">
               <CheckCircle className="w-3.5 h-3.5" /> Already approved — escrow can be redeemed
             </div>
           )}
           {cycleInfo.cancelled && (
-            <div className="p-2 bg-red-500/10 border border-red-500/30 rounded-sm text-[10px] font-mono text-red-400 text-center flex items-center justify-center gap-1.5">
+            <div className="p-2 bg-red-500/10 border border-red-500/30 rounded-md text-sm text-red-400 text-center flex items-center justify-center gap-1.5">
               <XCircle className="w-3.5 h-3.5" /> Cancelled — funds cannot be released
             </div>
           )}

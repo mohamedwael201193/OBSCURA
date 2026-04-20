@@ -39,9 +39,9 @@ function RecipientStatus({ address: addr }: { address: `0x${string}` }) {
 
   if (registered === null) return null;
   return registered ? (
-    <span className="inline-flex items-center gap-1 text-[8px] font-mono text-green-400"><CheckCircle2 className="w-2.5 h-2.5" /> stealth ready</span>
+    <span className="inline-flex items-center gap-1 text-[11px] text-green-400"><CheckCircle2 className="w-2.5 h-2.5" /> stealth ready</span>
   ) : (
-    <span className="inline-flex items-center gap-1 text-[8px] font-mono text-red-400"><XCircle className="w-2.5 h-2.5" /> no stealth</span>
+    <span className="inline-flex items-center gap-1 text-[11px] text-red-400"><XCircle className="w-2.5 h-2.5" /> no stealth</span>
   );
 }
 
@@ -60,14 +60,14 @@ function CountdownTimer({ nextDue, now, onRefresh }: { nextDue: number; now: num
     <div className="space-y-2">
       <button
         disabled
-        className="w-full py-2 text-[10px] tracking-[0.2em] uppercase font-mono bg-secondary/20 text-muted-foreground border border-border/30 rounded-sm flex items-center justify-center gap-2 opacity-60"
+        className="w-full py-2 text-sm tracking-[0.2em] uppercase bg-secondary/20 text-muted-foreground border border-border/30 rounded-md flex items-center justify-center gap-2 opacity-60"
       >
         <Timer className="w-3 h-3" /> Next cycle due in {display}
       </button>
       {secsLeft <= 0 && (
         <button
           onClick={() => onRefresh()}
-          className="w-full py-1.5 text-[9px] tracking-[0.15em] uppercase font-mono text-primary hover:text-primary/80"
+          className="w-full py-1.5 text-xs tracking-[0.15em] uppercase text-primary hover:text-primary/80"
         >
           Refresh to check
         </button>
@@ -176,14 +176,14 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   if (!address) return null;
 
   return (
-    <div className="glass-panel rounded-sm p-6 space-y-4">
+    <div className="glass-panel rounded-md p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-sm tracking-wider text-foreground">
           {mode === "employer" ? "Streams You're Paying" : "Streams Paying You"}
         </h3>
         <button
           onClick={() => refresh()}
-          className="text-[9px] font-mono text-muted-foreground hover:text-primary"
+          className="text-xs text-muted-foreground hover:text-primary"
         >
           Refresh
         </button>
@@ -191,7 +191,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
 
       {mode === "employer" && (
         <div>
-          <label className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+          <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
             Amount Per Cycle (cUSDC)
           </label>
           <input
@@ -199,7 +199,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
             value={tickAmount}
             onChange={(e) => setTickAmount(e.target.value)}
             placeholder="e.g. 2500"
-            className="w-full px-3 py-2 bg-background border border-border/50 rounded-sm text-xs font-mono"
+            className="w-full px-3 py-2 bg-background border border-border/50 rounded-md text-xs font-mono"
           />
         </div>
       )}
@@ -208,27 +208,27 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-3 bg-green-500/10 border border-green-500/30 rounded-sm flex items-start gap-2"
+          className="p-3 bg-green-500/10 border border-green-500/30 rounded-md flex items-start gap-2"
         >
           <Check className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
           <div>
-            <div className="text-[10px] font-mono text-green-400">
+            <div className="text-sm text-green-400">
               Payment sent! {lastPayment.amount} cUSDC → Stream #{lastPayment.streamId}
             </div>
-            <div className="text-[8px] font-mono text-green-400/60 mt-0.5">
+            <div className="font-mono text-[11px] text-green-400/60 mt-0.5">
               tx: {lastPayment.txHash.slice(0, 14)}…{lastPayment.txHash.slice(-8)}
             </div>
           </div>
           <button
             onClick={() => setLastPayment(null)}
-            className="text-[8px] text-green-400/50 hover:text-green-400 ml-auto"
+            className="text-[11px] text-green-400/50 hover:text-green-400 ml-auto"
           >✕</button>
         </motion.div>
       )}
 
-      {isLoading && <div className="text-[10px] font-mono text-muted-foreground">Loading…</div>}
+      {isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}
       {!isLoading && streams.length === 0 && (
-        <div className="text-[10px] font-mono text-muted-foreground/60">No streams yet.</div>
+        <div className="text-sm text-muted-foreground/60">No streams yet.</div>
       )}
 
       <div className="space-y-2">
@@ -241,11 +241,11 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           const nextDue = effectiveLastTick + Number(s.periodSeconds);
           const effectivePending = Math.max(0, Math.floor((now - effectiveLastTick) / Number(s.periodSeconds)));
           return (
-          <div key={s.id.toString()} className="p-3 bg-secondary/20 border border-border/30 rounded-sm">
+          <div key={s.id.toString()} className="p-3 bg-secondary/20 border border-border/30 rounded-md">
             <div className="flex justify-between items-start mb-2">
               <div>
-                <div className="text-[10px] font-mono text-foreground">Stream #{s.id.toString()}</div>
-                <div className="text-[9px] font-mono text-muted-foreground/70">
+                <div className="text-sm text-foreground">Stream #{s.id.toString()}</div>
+                <div className="text-xs text-muted-foreground/70">
                   every {Number(s.periodSeconds) >= 86400
                     ? `${Math.round(Number(s.periodSeconds) / 86400)}d`
                     : Number(s.periodSeconds) >= 3600
@@ -257,13 +257,13 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1 text-[9px] font-mono text-primary">
+              <div className="flex items-center gap-1 text-xs text-primary">
                 <Clock className="w-3 h-3" />
                 {effectivePending} pending
               </div>
             </div>
-            <div className="text-[8px] font-mono text-muted-foreground/50 truncate mb-2 flex items-center gap-2">
-              <span className="truncate">recipient: {s.recipientHint}</span>
+            <div className="text-[11px] text-muted-foreground/50 truncate mb-2 flex items-center gap-2">
+              <span className="font-mono truncate">recipient: {s.recipientHint}</span>
               {mode === "employer" && <RecipientStatus address={s.recipientHint} />}
             </div>
             {mode === "employer" && effectivePending > 0 && (
@@ -271,7 +271,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                 whileTap={{ scale: 0.98 }}
                 disabled={isTicking}
                 onClick={() => tickOne(s)}
-                className="w-full py-2 text-[10px] tracking-[0.2em] uppercase font-mono bg-primary/10 text-primary border border-primary/30 rounded-sm hover:bg-primary/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-2 text-sm tracking-[0.2em] uppercase bg-primary/10 text-primary border border-primary/30 rounded-md hover:bg-primary/20 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <Play className="w-3 h-3" /> {isTicking ? "Sending…" : "Send Next Cycle"}
               </motion.button>
@@ -310,7 +310,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                       setStreamAction(null);
                     }
                   }}
-                  className="flex-1 py-1.5 text-[9px] tracking-[0.15em] uppercase font-mono text-amber-400/70 hover:text-amber-400 border border-amber-500/20 rounded-sm flex items-center justify-center gap-1 disabled:opacity-50"
+                  className="flex-1 py-1.5 text-xs tracking-[0.15em] uppercase text-amber-400/70 hover:text-amber-400 border border-amber-500/20 rounded-md flex items-center justify-center gap-1 disabled:opacity-50"
                 >
                   <Pause className="w-3 h-3" /> {streamAction === s.id.toString() ? "Pausing…" : "Pause"}
                 </button>
@@ -343,7 +343,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                       setStreamAction(null);
                     }
                   }}
-                  className="flex-1 py-1.5 text-[9px] tracking-[0.15em] uppercase font-mono text-red-400/70 hover:text-red-400 border border-red-500/20 rounded-sm flex items-center justify-center gap-1 disabled:opacity-50"
+                  className="flex-1 py-1.5 text-xs tracking-[0.15em] uppercase text-red-400/70 hover:text-red-400 border border-red-500/20 rounded-md flex items-center justify-center gap-1 disabled:opacity-50"
                 >
                   <Ban className="w-3 h-3" /> Cancel
                 </button>
@@ -351,7 +351,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
             )}
             {s.paused && (
               <div className="mt-1 flex gap-1 items-center">
-                <div className="flex-1 text-[9px] font-mono text-amber-400/80 text-center">Stream paused / cancelled</div>
+                <div className="flex-1 text-xs text-amber-400/80 text-center">Stream paused / cancelled</div>
                 <button
                   disabled={streamAction === s.id.toString()}
                   onClick={async () => {
@@ -381,7 +381,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                       setStreamAction(null);
                     }
                   }}
-                  className="py-1.5 px-3 text-[9px] tracking-[0.15em] uppercase font-mono text-green-400/70 hover:text-green-400 border border-green-500/20 rounded-sm flex items-center justify-center gap-1 disabled:opacity-50"
+                  className="py-1.5 px-3 text-xs tracking-[0.15em] uppercase text-green-400/70 hover:text-green-400 border border-green-500/20 rounded-md flex items-center justify-center gap-1 disabled:opacity-50"
                 >
                   <PlayCircle className="w-3 h-3" /> {streamAction === s.id.toString() ? "Resuming…" : "Resume"}
                 </button>

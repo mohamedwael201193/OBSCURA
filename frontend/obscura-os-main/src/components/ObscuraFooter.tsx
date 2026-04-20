@@ -1,22 +1,24 @@
+import { Link } from "react-router-dom";
+
 const ObscuraFooter = () => {
   return (
-    <footer className="border-t border-border/30 py-8 px-8">
+    <footer className="border-t border-white/[0.04] py-8 px-8">
       <div className="max-w-[1400px] mx-auto flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <span className="font-display text-xs tracking-[0.3em] text-muted-foreground/50">
+          <span className="font-display text-sm tracking-[0.2em] text-muted-foreground/50">
             OBSCURA
           </span>
-          <span className="text-[9px] font-mono text-muted-foreground/30">
-            The Dark Operating System
+          <span className="text-xs text-muted-foreground/30">
+            The Dark Operating System for Onchain Privacy
           </span>
         </div>
         <div className="flex items-center gap-6">
-          <span className="text-[9px] font-mono text-muted-foreground/30">
-            obscura.xyz
-          </span>
-          <span className="text-[9px] font-mono text-muted-foreground/30">
-            @obscuraOS
-          </span>
+          <Link to="/privacy" className="text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors">
+            Privacy
+          </Link>
+          <Link to="/docs" className="text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors">
+            Docs
+          </Link>
         </div>
       </div>
     </footer>

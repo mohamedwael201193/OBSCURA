@@ -1,12 +1,12 @@
 import { motion } from "framer-motion";
 
 const tickerData = [
-  { symbol: "$OBS", price: "██████", change: "ENCRYPTED", up: true },
-  { symbol: "FHE", status: "ACTIVE", change: "CoFHE v2", up: true },
-  { symbol: "PAY", txns: "████", change: "CONFIDENTIAL", up: true },
-  { symbol: "VAULT", price: "LOCKED", change: "Wave 3", up: false },
-  { symbol: "VOTE", tally: "███", change: "Wave 2", up: false },
-  { symbol: "TRUST", status: "SEALED", change: "Wave 4", up: false },
+  { symbol: "cUSDC", status: "ENCRYPTED", label: "Confidential USDC", up: true },
+  { symbol: "PAY", status: "ACTIVE", label: "Transfers & Payroll", up: true },
+  { symbol: "ESCROW", status: "ACTIVE", label: "Encrypted Escrows", up: true },
+  { symbol: "STREAM", status: "ACTIVE", label: "Payroll Streams", up: true },
+  { symbol: "VOTE", status: "ACTIVE", label: "Encrypted Governance", up: true },
+  { symbol: "STEALTH", status: "ACTIVE", label: "Stealth Addresses", up: true },
 ];
 
 const DataTicker = () => {
@@ -15,14 +15,15 @@ const DataTicker = () => {
       initial={{ opacity: 0, x: 40 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 1, delay: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="glass-panel rounded-sm p-4 w-[340px] border-glow"
+      className="glass-panel rounded-lg p-5 w-[360px] border-glow"
     >
-      <div className="flex items-center justify-between mb-3 pb-2 border-b border-border/50">
-        <span className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-mono">
-          Encrypted Assets
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/[0.06]">
+        <span className="text-xs tracking-[0.15em] uppercase text-muted-foreground">
+          System Status
         </span>
-        <span className="text-[10px] text-primary font-mono animate-[blink_1.5s_ease-in-out_infinite]">
-          ● LIVE
+        <span className="text-xs text-primary animate-[blink_1.5s_ease-in-out_infinite] flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+          LIVE
         </span>
       </div>
 
@@ -33,31 +34,25 @@ const DataTicker = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 1 + i * 0.1, duration: 0.5 }}
-            className="flex items-center justify-between py-1.5 px-2 hover:bg-secondary/50 transition-colors rounded-sm group"
+            className="flex items-center justify-between py-2 px-3 hover:bg-white/[0.02] transition-colors rounded-md group"
           >
             <div className="flex items-center gap-3">
-              <span className="text-xs font-display tracking-wider text-foreground">
+              <span className="text-sm font-display font-semibold tracking-wide text-foreground">
                 {item.symbol}
               </span>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-mono text-muted-foreground">
-                {item.price || item.status || item.txns}
-              </span>
-              <span
-                className={`text-[10px] font-mono ${
-                  item.up ? "text-primary" : "text-muted-foreground/50"
-                }`}
-              >
-                {item.change}
+              <span className="text-xs text-muted-foreground">
+                {item.label}
               </span>
             </div>
+            <span className="text-xs font-mono text-primary">
+              {item.status}
+            </span>
           </motion.div>
         ))}
       </div>
 
       {/* Mini chart placeholder */}
-      <div className="mt-3 pt-3 border-t border-border/50">
+      <div className="mt-4 pt-3 border-t border-white/[0.06]">
         <div className="flex items-end gap-[2px] h-8">
           {Array.from({ length: 40 }).map((_, i) => (
             <div
@@ -70,11 +65,11 @@ const DataTicker = () => {
             />
           ))}
         </div>
-        <div className="flex justify-between mt-1">
-          <span className="text-[8px] text-muted-foreground font-mono">
-            CIPHERTEXT VOL.
+        <div className="flex justify-between mt-2">
+          <span className="text-[11px] text-muted-foreground">
+            FHE Operations
           </span>
-          <span className="text-[8px] text-primary font-mono">24H</span>
+          <span className="text-[11px] text-primary font-mono">24H</span>
         </div>
       </div>
     </motion.div>

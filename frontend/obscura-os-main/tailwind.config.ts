@@ -14,9 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['"Orbitron"', 'sans-serif'],
+        display: ['"Space Grotesk"', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
-        body: ['"Inter"', 'sans-serif'],
+        body: ['"DM Sans"', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -60,6 +60,12 @@ export default {
         },
         surface: {
           glass: "hsl(var(--surface-glass))",
+        },
+        cyan: {
+          accent: "hsl(var(--accent-cyan))",
+        },
+        amber: {
+          accent: "hsl(var(--accent-amber))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",

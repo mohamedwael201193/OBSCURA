@@ -118,15 +118,15 @@ export default function CreateProposalForm() {
   }
 
   return (
-    <div className="glass-panel rounded-sm p-6 space-y-4">
+    <div className="glass-panel rounded-md p-6 space-y-4">
       <div className="flex items-center gap-2">
         <Plus className="w-4 h-4 text-primary" />
-        <span className="text-[10px] tracking-[0.2em] uppercase text-primary font-mono">
+        <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
           Create Proposal
         </span>
       </div>
 
-      <div className="text-[9px] font-mono text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
+      <div className="text-xs text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
         Create a multi-option proposal. Use a template or define custom choices (2-10).
         Set a quorum (0 = no minimum). After the deadline, anyone can finalize to reveal tallies.
       </div>
@@ -134,7 +134,7 @@ export default function CreateProposalForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Template selector */}
         <div>
-          <label className="text-[9px] font-mono text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
             Template
           </label>
           <div className="flex gap-2 flex-wrap">
@@ -143,7 +143,7 @@ export default function CreateProposalForm() {
                 key={t.label}
                 type="button"
                 onClick={() => applyTemplate(i)}
-                className={`px-3 py-1.5 text-[9px] font-mono rounded-sm border transition-all ${
+                className={`px-3 py-1.5 text-xs rounded-md border transition-all ${
                   selectedTemplate === i
                     ? "border-primary/40 text-primary bg-primary/10"
                     : "border-border/50 text-muted-foreground hover:border-primary/20"
@@ -157,7 +157,7 @@ export default function CreateProposalForm() {
 
         {/* Title */}
         <div>
-          <label className="text-[9px] font-mono text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
             Proposal Title
           </label>
           <input
@@ -165,13 +165,13 @@ export default function CreateProposalForm() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Increase treasury allocation by 10%"
-            className="w-full bg-secondary/50 border border-border/50 rounded-sm px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40"
+            className="w-full bg-secondary/50 border border-border/50 rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40"
           />
         </div>
 
         {/* Description */}
         <div>
-          <label className="text-[9px] font-mono text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
             Description (optional)
           </label>
           <textarea
@@ -179,19 +179,19 @@ export default function CreateProposalForm() {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Provide context for voters..."
             rows={2}
-            className="w-full bg-secondary/50 border border-border/50 rounded-sm px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40 resize-none"
+            className="w-full bg-secondary/50 border border-border/50 rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40 resize-none"
           />
         </div>
 
         {/* Options */}
         <div>
-          <label className="text-[9px] font-mono text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
             Options ({options.length}/10)
           </label>
           <div className="space-y-1.5">
             {options.map((opt, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="text-[9px] font-mono text-muted-foreground w-5">{i}</span>
+                <span className="text-xs text-muted-foreground w-5">{i}</span>
                 <input
                   type="text"
                   value={opt}
@@ -201,7 +201,7 @@ export default function CreateProposalForm() {
                     setOptions(updated);
                     setSelectedTemplate(2); // switch to Custom
                   }}
-                  className="flex-1 bg-secondary/50 border border-border/50 rounded-sm px-3 py-1.5 text-sm font-mono text-foreground focus:outline-none focus:border-primary/40"
+                  className="flex-1 bg-secondary/50 border border-border/50 rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary/40"
                 />
                 {options.length > 2 && (
                   <button type="button" onClick={() => removeOption(i)} className="text-muted-foreground hover:text-red-400 transition-colors">
@@ -219,9 +219,9 @@ export default function CreateProposalForm() {
                 onChange={(e) => setNewOption(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addOption(); } }}
                 placeholder="Add option..."
-                className="flex-1 bg-secondary/30 border border-border/30 rounded-sm px-3 py-1.5 text-sm font-mono text-foreground placeholder:text-muted-foreground/20 focus:outline-none focus:border-primary/40"
+                className="flex-1 bg-secondary/30 border border-border/30 rounded-md px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/20 focus:outline-none focus:border-primary/40"
               />
-              <button type="button" onClick={addOption} className="text-primary text-[9px] font-mono hover:underline">
+              <button type="button" onClick={addOption} className="text-primary text-xs hover:underline">
                 + Add
               </button>
             </div>
@@ -230,13 +230,13 @@ export default function CreateProposalForm() {
 
         {/* Category */}
         <div>
-          <label className="text-[9px] font-mono text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
             Category
           </label>
           <select
             value={category}
             onChange={(e) => setCategory(Number(e.target.value))}
-            className="w-full bg-secondary/50 border border-border/50 rounded-sm px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:border-primary/40"
+            className="w-full bg-secondary/50 border border-border/50 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40"
           >
             {CATEGORY_LABELS.map((label, i) => (
               <option key={label} value={i}>{label}</option>
@@ -246,7 +246,7 @@ export default function CreateProposalForm() {
 
         {/* Duration presets */}
         <div>
-          <label className="text-[9px] font-mono text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
             <Timer className="w-3 h-3 inline mr-1" /> Voting Duration
           </label>
           <div className="flex gap-2 flex-wrap">
@@ -255,7 +255,7 @@ export default function CreateProposalForm() {
                 key={d.label}
                 type="button"
                 onClick={() => setSelectedDuration(i)}
-                className={`px-3 py-1.5 text-[9px] font-mono rounded-sm border transition-all ${
+                className={`px-3 py-1.5 text-xs rounded-md border transition-all ${
                   selectedDuration === i
                     ? "border-primary/40 text-primary bg-primary/10"
                     : "border-border/50 text-muted-foreground hover:border-primary/20"
@@ -270,14 +270,14 @@ export default function CreateProposalForm() {
               type="datetime-local"
               value={customDeadline}
               onChange={(e) => setCustomDeadline(e.target.value)}
-              className="w-full bg-secondary/50 border border-border/50 rounded-sm px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:border-primary/40 mt-2"
+              className="w-full bg-secondary/50 border border-border/50 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40 mt-2"
             />
           )}
         </div>
 
         {/* Quorum */}
         <div>
-          <label className="text-[9px] font-mono text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
             Quorum (min votes, 0 = none)
           </label>
           <input
@@ -285,19 +285,19 @@ export default function CreateProposalForm() {
             min="0"
             value={quorum}
             onChange={(e) => setQuorum(e.target.value)}
-            className="w-full bg-secondary/50 border border-border/50 rounded-sm px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:border-primary/40"
+            className="w-full bg-secondary/50 border border-border/50 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40"
           />
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 text-red-400 text-[10px] font-mono">
+          <div className="flex items-center gap-2 text-red-400 text-sm font-mono">
             <AlertCircle className="w-3.5 h-3.5" />
             {error}
           </div>
         )}
 
         {txHash && (
-          <div className="flex items-center gap-2 text-green-400 text-[10px] font-mono">
+          <div className="flex items-center gap-2 text-green-400 text-sm font-mono">
             <CheckCircle className="w-3.5 h-3.5" />
             <span>TX submitted!</span>
             <a
@@ -314,7 +314,7 @@ export default function CreateProposalForm() {
         <button
           type="submit"
           disabled={!isConnected || isPending || !OBSCURA_VOTE_ADDRESS}
-          className="w-full py-3 rounded-sm border border-primary/40 text-primary text-[10px] tracking-[0.2em] uppercase font-mono hover:bg-primary/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-full py-3 rounded-md border border-primary/40 text-primary text-sm tracking-[0.2em] uppercase hover:bg-primary/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
         >
           {isPending ? "Sign in Wallet..." : "Create Proposal"}
         </button>

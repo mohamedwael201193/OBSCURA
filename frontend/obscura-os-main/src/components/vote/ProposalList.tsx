@@ -67,38 +67,38 @@ function ProposalRow({ proposalId, searchQuery, statusFilter }: { proposalId: bi
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-4 bg-secondary/30 rounded-sm border border-border/30 space-y-2"
+      className="p-4 bg-secondary/30 rounded-md border border-border/30 space-y-2"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <span className="text-[10px] font-mono text-muted-foreground/50 w-8 shrink-0 mt-0.5">
+          <span className="text-sm text-muted-foreground/50 w-8 shrink-0 mt-0.5">
             #{proposal.id.toString()}
           </span>
           <div className="min-w-0">
-            <div className="text-sm font-mono text-foreground">{proposal.title}</div>
+            <div className="text-sm text-foreground">{proposal.title}</div>
             {proposal.description && (
-              <div className="text-[9px] font-mono text-muted-foreground/60 mt-0.5 truncate">{proposal.description}</div>
+              <div className="text-xs text-muted-foreground/60 mt-0.5 truncate">{proposal.description}</div>
             )}
             <div className="flex flex-wrap gap-2 mt-1.5">
-              <span className="text-[8px] font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-sm">
+              <span className="text-[11px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-md">
                 {catLabel}
               </span>
-              <span className="text-[8px] font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-sm">
+              <span className="text-[11px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-md">
                 {proposal.numOptions} options
               </span>
-              <span className="text-[8px] font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-sm flex items-center gap-1">
+              <span className="text-[11px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-md flex items-center gap-1">
                 <Users className="w-2.5 h-2.5" /> {proposal.totalVoters.toString()}
                 {proposal.quorum > 0n && ` / ${proposal.quorum.toString()}`}
               </span>
             </div>
           </div>
         </div>
-        <span className={`text-[9px] tracking-[0.2em] uppercase font-mono px-2 py-0.5 rounded-sm border shrink-0 ${cfg.color}`}>
+        <span className={`text-xs tracking-[0.2em] uppercase px-2 py-0.5 rounded-md border shrink-0 ${cfg.color}`}>
           <cfg.icon className="w-3 h-3 inline mr-1" />
           {cfg.label}
         </span>
       </div>
-      <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground pl-11">
+      <div className="flex items-center justify-between text-xs text-muted-foreground pl-11">
         <span>Deadline: {deadlineDate.toLocaleString()}</span>
         {status === "active" && (
           <span className="flex items-center gap-1">
@@ -134,11 +134,11 @@ export default function ProposalList() {
   ];
 
   return (
-    <div className="glass-panel rounded-sm p-6 space-y-4">
+    <div className="glass-panel rounded-md p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-primary" />
-          <span className="text-[10px] tracking-[0.2em] uppercase text-primary font-mono">
+          <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
             All Proposals
           </span>
         </div>
@@ -160,7 +160,7 @@ export default function ProposalList() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search proposals..."
-            className="w-full bg-secondary/50 border border-border/50 rounded-sm pl-9 pr-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40"
+            className="w-full bg-secondary/50 border border-border/50 rounded-md pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40"
           />
         </div>
         <div className="flex gap-1.5 flex-wrap">
@@ -168,7 +168,7 @@ export default function ProposalList() {
             <button
               key={f.key}
               onClick={() => setStatusFilter(f.key)}
-              className={`px-2.5 py-1 text-[8px] font-mono rounded-sm border transition-all ${
+              className={`px-2.5 py-1 text-[11px] rounded-md border transition-all ${
                 statusFilter === f.key
                   ? "border-primary/40 text-primary bg-primary/10"
                   : "border-border/50 text-muted-foreground hover:border-primary/20"
@@ -181,9 +181,9 @@ export default function ProposalList() {
       </div>
 
       {isLoading ? (
-        <div className="text-sm font-mono text-muted-foreground text-center py-4">Loading...</div>
+        <div className="text-sm text-muted-foreground text-center py-4">Loading...</div>
       ) : proposalCount === 0 ? (
-        <div className="text-sm font-mono text-muted-foreground text-center py-8">
+        <div className="text-sm text-muted-foreground text-center py-8">
           No proposals created yet. Go to the Create tab to make one.
         </div>
       ) : (

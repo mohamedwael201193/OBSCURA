@@ -72,15 +72,15 @@ export default function CastVoteForm() {
   }
 
   return (
-    <div className="glass-panel rounded-sm p-6 space-y-4">
+    <div className="glass-panel rounded-md p-6 space-y-4">
       <div className="flex items-center gap-2">
         <Vote className="w-4 h-4 text-primary" />
-        <span className="text-[10px] tracking-[0.2em] uppercase text-primary font-mono">
+        <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
           Cast Encrypted Vote
         </span>
       </div>
 
-      <div className="text-[9px] font-mono text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
+      <div className="text-xs text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
         Your vote is encrypted client-side via FHE before submission. No one — including the
         contract — can see your individual choice. You can revote at any time before the deadline.
       </div>
@@ -88,11 +88,11 @@ export default function CastVoteForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* OBS Token requirement */}
         {isConnected && !hasClaimed && (
-          <div className="flex items-start gap-2 p-3 bg-yellow-400/5 border border-yellow-400/20 rounded-sm">
+          <div className="flex items-start gap-2 p-3 bg-yellow-400/5 border border-yellow-400/20 rounded-md">
             <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
             <div>
-              <div className="text-[10px] font-mono text-yellow-400 font-semibold">OBS Tokens Required</div>
-              <div className="text-[9px] font-mono text-yellow-400/70 mt-0.5">
+              <div className="text-sm text-yellow-400 font-semibold">OBS Tokens Required</div>
+              <div className="text-xs text-yellow-400/70 mt-0.5">
                 You must claim daily $OBS tokens before voting. Go to the{" "}
                 <a href="/pay" className="underline text-primary">Pay app</a> and click "Claim Daily OBS" first.
               </div>
@@ -102,7 +102,7 @@ export default function CastVoteForm() {
 
         {/* Proposal selector */}
         <div>
-          <label className="text-[9px] font-mono text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
             Select Proposal
           </label>
           <select
@@ -113,7 +113,7 @@ export default function CastVoteForm() {
               reset();
               setError(null);
             }}
-            className="w-full bg-secondary/50 border border-border/50 rounded-sm px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:border-primary/40"
+            className="w-full bg-secondary/50 border border-border/50 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40"
           >
             <option value="">Choose a proposal...</option>
             {Array.from({ length: proposalCount }, (_, i) => (
@@ -124,12 +124,12 @@ export default function CastVoteForm() {
 
         {/* Proposal info */}
         {hasSelection && proposal?.exists && (
-          <div className="p-3 bg-secondary/30 rounded-sm border border-border/30 space-y-1">
-            <div className="text-sm font-mono text-foreground">{proposal.title}</div>
+          <div className="p-3 bg-secondary/30 rounded-md border border-border/30 space-y-1">
+            <div className="text-sm text-foreground">{proposal.title}</div>
             {proposal.description && (
-              <div className="text-[9px] font-mono text-muted-foreground/70">{proposal.description}</div>
+              <div className="text-xs text-muted-foreground/70">{proposal.description}</div>
             )}
-            <div className="flex flex-wrap gap-2 text-[9px] font-mono text-muted-foreground mt-1">
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
               <span>Deadline: {new Date(Number(proposal.deadline) * 1000).toLocaleString()}</span>
               <span className="text-primary/50">|</span>
               <span>Category: <span className="text-primary">{CATEGORY_LABELS[proposal.category] ?? "General"}</span></span>
@@ -143,15 +143,15 @@ export default function CastVoteForm() {
               )}
             </div>
             {proposal.isCancelled && (
-              <div className="text-[9px] font-mono text-red-400 mt-1">This proposal was cancelled.</div>
+              <div className="text-xs text-red-400 mt-1">This proposal was cancelled.</div>
             )}
             {!isActive && !proposal.isCancelled && (
-              <span className="text-yellow-400 text-[9px] font-mono">
+              <span className="text-yellow-400 text-xs font-mono">
                 {proposal.isFinalized ? "(Finalized)" : "(Ended)"}
               </span>
             )}
             {alreadyVoted && (
-              <div className="text-[9px] font-mono text-primary mt-1">
+              <div className="text-xs text-primary mt-1">
                 You have already voted — submitting will change your vote (anti-coercion revote)
               </div>
             )}
@@ -161,7 +161,7 @@ export default function CastVoteForm() {
         {/* Multi-option vote buttons */}
         {hasSelection && isActive && proposal?.exists && optionLabels && (optionLabels as string[]).length > 0 && (
           <div>
-            <label className="text-[9px] font-mono text-muted-foreground tracking-wider uppercase block mb-1.5">
+            <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
               Your Vote
             </label>
             <div className="space-y-2">
@@ -170,7 +170,7 @@ export default function CastVoteForm() {
                   key={i}
                   type="button"
                   onClick={() => setSelectedOption(i)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-sm border transition-all font-mono text-sm text-left ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-md border transition-all text-sm text-left ${
                     selectedOption === i
                       ? "border-primary/40 text-primary bg-primary/10"
                       : "border-border/50 text-muted-foreground hover:border-primary/20 hover:text-foreground"
@@ -181,7 +181,7 @@ export default function CastVoteForm() {
                   }`}>
                     {selectedOption === i && <div className="w-2 h-2 rounded-full bg-primary" />}
                   </div>
-                  <span className="text-[9px] text-muted-foreground/50 w-4">{i}</span>
+                  <span className="text-xs text-muted-foreground/50 w-4">{i}</span>
                   {label}
                   {selectedOption === i && <CheckCircle2 className="w-4 h-4 ml-auto text-primary" />}
                 </button>
@@ -201,7 +201,7 @@ export default function CastVoteForm() {
 
         {/* Error */}
         {(error || fheError) && (
-          <div className="flex items-center gap-2 text-red-400 text-[10px] font-mono">
+          <div className="flex items-center gap-2 text-red-400 text-sm font-mono">
             <AlertCircle className="w-3.5 h-3.5" />
             {error || fheError}
           </div>
@@ -209,7 +209,7 @@ export default function CastVoteForm() {
 
         {/* TX hash */}
         {txHash && (
-          <div className="text-[9px] font-mono text-muted-foreground flex items-center gap-1">
+          <div className="text-xs text-muted-foreground flex items-center gap-1">
             TX:{" "}
             <a
               href={`https://sepolia.arbiscan.io/tx/${txHash}`}
@@ -227,7 +227,7 @@ export default function CastVoteForm() {
         <button
           type="submit"
           disabled={!isConnected || !hasClaimed || !isActive || selectedOption === null || isTxPending || status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
-          className="w-full py-3 rounded-sm border border-primary/40 text-primary text-[10px] tracking-[0.2em] uppercase font-mono hover:bg-primary/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-full py-3 rounded-md border border-primary/40 text-primary text-sm tracking-[0.2em] uppercase hover:bg-primary/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
         >
           {isTxPending ? "Submitting..." : alreadyVoted ? "Change Vote (Encrypted)" : "Cast Vote (Encrypted)"}
         </button>

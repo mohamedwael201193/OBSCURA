@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Lock, Wallet, Vote, ChevronDown, ChevronUp, LayoutDashboard, FileText, CheckSquare, BarChart3, Settings } from "lucide-react";
+import { Wallet, Vote, ChevronDown, ChevronUp, LayoutDashboard, FileText, CheckSquare, BarChart3, Settings } from "lucide-react";
 import { useAccount } from "wagmi";
 import ObscuraNav from "@/components/ObscuraNav";
 import ObscuraFooter from "@/components/ObscuraFooter";
@@ -51,11 +51,11 @@ const VotePage = () => {
           className="mb-8"
         >
           <div className="flex items-center gap-3 mb-2">
-            <span className="text-[10px] tracking-[0.3em] uppercase text-primary font-mono text-glow-sm">
-              Wave 2 — Active
+            <span className="text-xs tracking-[0.15em] uppercase text-primary text-glow-sm">
+              Encrypted Governance
             </span>
           </div>
-          <h1 className="font-display text-3xl md:text-4xl text-foreground tracking-tight">
+          <h1 className="font-display text-4xl md:text-5xl text-foreground tracking-tight">
             Obscura<span className="text-primary text-glow">Vote</span>
           </h1>
           <p className="text-sm font-body text-muted-foreground mt-2 max-w-lg">
@@ -70,9 +70,9 @@ const VotePage = () => {
               { label: "Trustless", desc: "Cryptographic verification" },
               { label: "Governance", desc: "Transparent aggregate results" },
             ].map((b) => (
-              <div key={b.label} className="p-3 bg-secondary/20 rounded-sm border border-border/30">
-                <div className="text-[9px] font-mono text-primary font-semibold">{b.label}</div>
-                <div className="text-[8px] font-mono text-muted-foreground/70 mt-1">{b.desc}</div>
+              <div key={b.label} className="p-3 bg-secondary/20 rounded-md border border-border/30">
+                <div className="text-xs text-primary font-semibold">{b.label}</div>
+                <div className="text-[11px] text-muted-foreground/70 mt-1">{b.desc}</div>
               </div>
             ))}
           </div>
@@ -87,7 +87,7 @@ const VotePage = () => {
                 <button
                   key={t.key}
                   onClick={() => setTab(t.key)}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-[10px] tracking-[0.15em] uppercase font-mono rounded-sm border transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2.5 text-sm tracking-[0.15em] uppercase rounded-md border transition-all ${
                     tab === t.key
                       ? "border-primary/40 text-primary bg-primary/5"
                       : "border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/20"
@@ -101,7 +101,7 @@ const VotePage = () => {
 
             {/* Connected wallet role indicator */}
             {isConnected && (
-              <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                 Connected as:{" "}
                 <span className="text-primary">
@@ -117,9 +117,9 @@ const VotePage = () => {
               {tab === "dashboard" && (
                 <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                   <VoteDashboard />
-                  <div className="glass-panel rounded-sm p-4 border-l-2 border-primary/40 space-y-2">
-                    <h3 className="text-xs font-mono tracking-[0.15em] uppercase text-primary">Claim $OBS to Vote</h3>
-                    <p className="text-[10px] font-mono text-muted-foreground/70">
+                  <div className="glass-panel rounded-md p-4 border-l-2 border-primary/40 space-y-2">
+                    <h3 className="text-xs tracking-[0.15em] uppercase text-primary">Claim $OBS to Vote</h3>
+                    <p className="text-sm text-muted-foreground/70">
                       You need $OBS tokens to participate in governance votes. Claim 100 free tokens daily below.
                     </p>
                   </div>
@@ -136,9 +136,9 @@ const VotePage = () => {
               {tab === "cast" && (
                 <motion.div key="cast" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                   {!isConnected ? (
-                    <div className="glass-panel rounded-sm p-8 text-center">
+                    <div className="glass-panel rounded-md p-8 text-center">
                       <Wallet className="w-8 h-8 text-primary/40 mx-auto mb-3" />
-                      <p className="text-sm font-mono text-muted-foreground">Connect your wallet to cast an encrypted vote</p>
+                      <p className="text-sm text-muted-foreground">Connect your wallet to cast an encrypted vote</p>
                     </div>
                   ) : (
                     <>
@@ -158,9 +158,9 @@ const VotePage = () => {
               {tab === "create" && (
                 <motion.div key="create" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
                   {!isConnected ? (
-                    <div className="glass-panel rounded-sm p-8 text-center">
+                    <div className="glass-panel rounded-md p-8 text-center">
                       <Wallet className="w-8 h-8 text-primary/40 mx-auto mb-3" />
-                      <p className="text-sm font-mono text-muted-foreground">Connect your wallet to create proposals</p>
+                      <p className="text-sm text-muted-foreground">Connect your wallet to create proposals</p>
                     </div>
                   ) : (
                     <>
@@ -175,12 +175,12 @@ const VotePage = () => {
 
           {/* Right sidebar — Privacy Panel */}
           <div className="space-y-4">
-            <div className="glass-panel rounded-sm border-glow sticky top-24">
+            <div className="glass-panel rounded-md border-glow sticky top-24">
               <button
                 onClick={() => setPrivacyOpen(!privacyOpen)}
                 className="w-full p-4 flex items-center justify-between border-b border-border/50"
               >
-                <span className="text-[10px] tracking-[0.2em] uppercase text-primary font-mono">◆ What's Private?</span>
+                <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">◆ What's Private?</span>
                 {privacyOpen ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
               </button>
 
@@ -206,15 +206,15 @@ const VotePage = () => {
                           acl: ["Public after finalize"],
                         },
                       ].map((h, i) => (
-                        <div key={`${h.handle}-${i}`} className="p-3 bg-secondary/30 rounded-sm border border-border/30">
+                        <div key={`${h.handle}-${i}`} className="p-3 bg-secondary/30 rounded-md border border-border/30">
                           <div className="flex justify-between mb-1.5">
-                            <span className="text-[10px] font-mono text-primary">{h.handle}</span>
-                            <span className="text-[8px] font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-sm">{h.type}</span>
+                            <span className="text-sm text-primary">{h.handle}</span>
+                            <span className="text-[11px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-md">{h.type}</span>
                           </div>
-                          <div className="text-[9px] font-mono text-muted-foreground/60 mb-1.5">{h.label}</div>
+                          <div className="text-xs text-muted-foreground/60 mb-1.5">{h.label}</div>
                           <div className="flex gap-1.5">
                             {h.acl.map((a) => (
-                              <span key={a} className="text-[8px] font-mono text-foreground/70 bg-secondary px-1.5 py-0.5 rounded-sm">{a}</span>
+                              <span key={a} className="text-[11px] text-foreground/70 bg-secondary px-1.5 py-0.5 rounded-md">{a}</span>
                             ))}
                           </div>
                         </div>
@@ -223,7 +223,7 @@ const VotePage = () => {
 
                     {/* Contract info */}
                     <div className="p-4 border-t border-border/50">
-                      <div className="text-[9px] font-mono text-muted-foreground/50 space-y-1">
+                      <div className="text-xs text-muted-foreground/50 space-y-1">
                         <div>Vote: <span className="text-foreground/70">{OBSCURA_VOTE_ADDRESS ? `${OBSCURA_VOTE_ADDRESS.slice(0, 10)}...${OBSCURA_VOTE_ADDRESS.slice(-6)}` : "Not deployed"}</span></div>
                         <div>Network: <span className="text-primary">Arbitrum Sepolia (421614)</span></div>
                         <div>FHE Ops: <span className="text-foreground/70">asEuint64, eq, select, add, sub, allow, allowThis, allowPublic</span></div>
@@ -231,7 +231,7 @@ const VotePage = () => {
                     </div>
 
                     <div className="p-4 border-t border-border/50">
-                      <Link to="/privacy" className="text-[9px] font-mono text-primary hover:underline">
+                      <Link to="/privacy" className="text-xs text-primary hover:underline">
                         View Privacy Center →
                       </Link>
                     </div>
@@ -240,25 +240,19 @@ const VotePage = () => {
               </AnimatePresence>
             </div>
 
-            {/* Module sidebar */}
-            <div className="glass-panel rounded-sm p-4">
-              <div className="text-[9px] tracking-[0.2em] uppercase text-muted-foreground font-mono mb-3">Modules</div>
+            {/* Active modules */}
+            <div className="glass-panel rounded-lg p-4">
+              <div className="text-xs tracking-[0.15em] uppercase text-muted-foreground mb-3">Active Modules</div>
               <div className="space-y-1.5">
                 {[
-                  { name: "ObscuraPay", wave: 1, active: true, path: "/pay" },
-                  { name: "ObscuraEscrow", wave: 1, active: true, path: "/pay" },
-                  { name: "ObscuraToken", wave: 1, active: true, path: "/pay" },
-                  { name: "ObscuraVote", wave: 2, active: true, path: "/vote" },
-                  { name: "ObscuraVault", wave: 3, locked: true },
-                  { name: "ObscuraTrust", wave: 4, locked: true },
-                  { name: "ObscuraMind", wave: 5, locked: true },
+                  { name: "ObscuraPay", path: "/pay" },
+                  { name: "ObscuraEscrow", path: "/pay" },
+                  { name: "ObscuraVote", path: "/vote" },
                 ].map((m) => (
-                  <div key={m.name} className={`flex items-center justify-between p-2 rounded-sm text-xs font-mono ${
-                    m.active ? "bg-primary/10 text-primary border border-primary/20" : "text-muted-foreground/40"
-                  }`}>
-                    <span>{'locked' in m && m.locked && <Lock className="w-3 h-3 inline mr-1.5 opacity-40" />}{m.name}</span>
-                    <span className="text-[8px]">W{m.wave}</span>
-                  </div>
+                  <Link key={m.name} to={m.path} className="flex items-center gap-2 p-2 rounded-md text-xs bg-primary/[0.06] text-primary border border-primary/15">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    {m.name}
+                  </Link>
                 ))}
               </div>
             </div>

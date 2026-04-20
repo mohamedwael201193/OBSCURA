@@ -1,17 +1,15 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
-import { Lock } from "lucide-react";
 import ObscuraLogo from "./ObscuraLogo";
 import WalletConnect from "./wallet/WalletConnect";
 
 const navItems = [
   { label: "Pay", path: "/pay", active: true },
   { label: "Vote", path: "/vote", active: true },
-  { label: "Vault", locked: true },
-  { label: "Trust", locked: true },
-  { label: "Mind", locked: true },
-  { label: "Privacy", path: "/privacy" },
+  { label: "Vault", path: undefined, active: false, soon: true },
+  { label: "Trust", path: undefined, active: false, soon: true },
+  { label: "Mind", path: undefined, active: false, soon: true },
   { label: "Docs", path: "/docs" },
 ];
 
@@ -36,7 +34,7 @@ const ObscuraNav = () => {
       <div className="hidden md:flex items-center gap-8">
         {navItems.map((item) => {
           const isCurrentPage = item.path && location.pathname === item.path;
-          const Wrapper = item.path && !item.locked ? Link : "button" as any;
+          const Wrapper = item.path ? Link : "button" as any;
 
           return (
             <Wrapper
@@ -44,19 +42,21 @@ const ObscuraNav = () => {
               to={item.path}
               onMouseEnter={() => setHovered(item.label)}
               onMouseLeave={() => setHovered(null)}
-              className={`relative text-xs tracking-[0.15em] uppercase transition-colors duration-300 font-mono ${
+              className={`relative text-sm tracking-wide transition-colors duration-300 flex items-center ${
                 isCurrentPage
                   ? "text-primary text-glow-sm"
+                  : (item as any).soon
+                  ? "text-muted-foreground/30 cursor-default"
                   : item.active && !isCurrentPage
-                  ? "text-primary/70"
-                  : item.locked
-                  ? "text-muted-foreground/40 cursor-not-allowed"
+                  ? "text-primary/70 hover:text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {item.locked && <Lock className="w-2.5 h-2.5 inline mr-1 opacity-40" />}
               {item.label}
-              {hovered === item.label && !item.locked && (
+              {(item as any).soon && (
+                <span className="ml-1 text-[9px] tracking-wider uppercase text-muted-foreground/40 bg-white/[0.04] px-1.5 py-0.5 rounded">soon</span>
+              )}
+              {hovered === item.label && !((item as any).soon) && (
                 <motion.div
                   layoutId="nav-underline"
                   className="absolute -bottom-1 left-0 right-0 h-px bg-primary"

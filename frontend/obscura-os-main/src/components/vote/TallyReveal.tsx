@@ -98,11 +98,11 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
   }
 
   return (
-    <div className="p-4 bg-secondary/30 rounded-sm border border-border/30 space-y-3">
+    <div className="p-4 bg-secondary/30 rounded-md border border-border/30 space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm font-mono text-foreground">{proposal.title}</div>
-          <div className="text-[9px] font-mono text-muted-foreground flex items-center gap-2">
+          <div className="text-sm text-foreground">{proposal.title}</div>
+          <div className="text-xs text-muted-foreground flex items-center gap-2">
             <span>#{proposalId.toString()}</span>
             <span className="text-primary/50">|</span>
             <span>{CATEGORY_LABELS[proposal.category] ?? "General"}</span>
@@ -121,34 +121,34 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
       </div>
 
       {isCancelled && (
-        <div className="flex items-center gap-2 text-[9px] font-mono text-red-400">
+        <div className="flex items-center gap-2 text-xs text-red-400">
           <Ban className="w-3.5 h-3.5" /> Proposal cancelled
         </div>
       )}
 
       {!isCancelled && !isFinalized && !deadlinePassed && (
-        <div className="text-[9px] font-mono text-muted-foreground/50">
+        <div className="text-xs text-muted-foreground/50">
           Voting still active. Results available after the deadline.
         </div>
       )}
 
       {canFinalize && (
         <div className="space-y-2">
-          <div className="text-[9px] font-mono text-yellow-400">
+          <div className="text-xs text-yellow-400">
             Voting ended.{!quorumMet ? " Quorum not reached — cannot finalize." : " Finalize to reveal the aggregate tally on-chain."}
           </div>
           {quorumMet && (
             <button
               onClick={handleFinalize}
               disabled={isFinalizePending}
-              className="w-full py-2.5 rounded-sm border border-yellow-400/40 text-yellow-400 text-[10px] tracking-[0.2em] uppercase font-mono hover:bg-yellow-400/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-full py-2.5 rounded-md border border-yellow-400/40 text-yellow-400 text-sm tracking-[0.2em] uppercase hover:bg-yellow-400/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <Unlock className="w-3.5 h-3.5 inline mr-2" />
               {isFinalizePending ? "Finalizing..." : "Finalize Vote"}
             </button>
           )}
           {finalizeTxHash && (
-            <div className="text-[9px] font-mono text-muted-foreground flex items-center gap-1">
+            <div className="text-xs text-muted-foreground flex items-center gap-1">
               TX:{" "}
               <a
                 href={`https://sepolia.arbiscan.io/tx/${finalizeTxHash}`}
@@ -165,7 +165,7 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
       )}
 
       {isFinalized && (
-        <div className="text-[9px] font-mono text-green-400">
+        <div className="text-xs text-green-400">
           ✓ Finalized — tally is publicly decryptable.
         </div>
       )}
@@ -186,7 +186,7 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
             return (
               <div key={i} className="flex items-center gap-3">
                 <div className="flex-1">
-                  <div className="flex justify-between text-[9px] font-mono mb-1">
+                  <div className="flex justify-between text-xs mb-1">
                     <span className={TEXT_COLORS[i % TEXT_COLORS.length]}>
                       {options[i] ?? `Option ${i}`}
                       {isWinner && " ★"}
@@ -204,7 +204,7 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
               </div>
             );
           })}
-          <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Total votes: {total?.toString()}</span>
             <button
               onClick={() => exportCSV(proposal.title, options, tallies)}
@@ -218,7 +218,7 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
         <button
           onClick={handleDecrypt}
           disabled={!isFinalized || status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
-          className="w-full py-2.5 rounded-sm border border-primary/40 text-primary text-[10px] tracking-[0.2em] uppercase font-mono hover:bg-primary/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-full py-2.5 rounded-md border border-primary/40 text-primary text-sm tracking-[0.2em] uppercase hover:bg-primary/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <Eye className="w-3.5 h-3.5 inline mr-2" />
           Decrypt Public Tally
@@ -226,7 +226,7 @@ function TallyResult({ proposalId }: { proposalId: bigint }) {
       )}
 
       {error && (
-        <div className="flex items-center gap-2 text-red-400 text-[10px] font-mono">
+        <div className="flex items-center gap-2 text-red-400 text-sm font-mono">
           <AlertCircle className="w-3.5 h-3.5" />
           {error}
         </div>
@@ -240,21 +240,21 @@ export default function TallyReveal() {
   const proposalCount = Number(count ?? 0);
 
   return (
-    <div className="glass-panel rounded-sm p-6 space-y-4">
+    <div className="glass-panel rounded-md p-6 space-y-4">
       <div className="flex items-center gap-2">
         <BarChart3 className="w-4 h-4 text-primary" />
-        <span className="text-[10px] tracking-[0.2em] uppercase text-primary font-mono">
+        <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
           Vote Results
         </span>
       </div>
 
-      <div className="text-[9px] font-mono text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
+      <div className="text-xs text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
         After finalization, the aggregate tally becomes publicly decryptable via FHE.allowPublic().
         Individual votes remain permanently encrypted. Export results to CSV after reveal.
       </div>
 
       {proposalCount === 0 ? (
-        <div className="text-sm font-mono text-muted-foreground text-center py-8">
+        <div className="text-sm text-muted-foreground text-center py-8">
           No proposals to show results for.
         </div>
       ) : (

@@ -180,6 +180,11 @@ Full audit of every Fhenix CoFHE ABI function — every unused capability is now
 | 118 | Escrow rate-limit retry — `withRateLimitRetry` added to `create`, `fund`, `redeem` calls (3 retries, 5s exponential backoff) | `src/hooks/useCUSDCEscrow.ts` | ✅ Done |
 | 119 | Operator→create cooldown increased from 3s to 6s — prevents rate-limit on create after setOperator | `src/hooks/useCUSDCEscrow.ts` | ✅ Done |
 | 120 | P2P transfer rate-limit retry — `withRateLimitRetry` added to `confidentialTransfer` call | `src/hooks/useCUSDCTransfer.ts` | ✅ Done |
+| 121 | **MyEscrows amount display fix** — raw bigint (e.g. "2500000") now formatted via `formatUnits(n, 6)` → shows "2.5 cUSDC" | `src/components/pay-v4/MyEscrows.tsx` | ✅ Done |
+| 122 | **MyEscrows "YOU CAN REDEEM" badge** — compares connected wallet to escrow recipient; shows green badge when match | `src/components/pay-v4/MyEscrows.tsx` | ✅ Done |
+| 123 | **Redeem wallet warning** — yellow alert box in CUSDCEscrowActions explains you must connect as recipient to redeem | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 124 | **Redeem success toast updated** — tells user to go to Dashboard → click REVEAL to see updated cUSDC balance | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 125 | **Escrow guide Step 4 rewrite** — bold "Switch MetaMask to recipient account" + separate "Important" callout about silent failure | `src/pages/PayPage.tsx` | ✅ Done |
 
 ---
 

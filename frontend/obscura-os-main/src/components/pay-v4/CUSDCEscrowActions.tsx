@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { DollarSign, Unlock } from "lucide-react";
+import { DollarSign, Unlock, AlertTriangle } from "lucide-react";
 import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
 import { parseUnits } from "viem";
+import { useAccount } from "wagmi";
 
 export default function CUSDCEscrowActions() {
+  const { address } = useAccount();
   const [escrowId, setEscrowId] = useState("");
   const [fundAmount, setFundAmount] = useState("");
   const [escrowExists, setEscrowExists] = useState<boolean | null>(null);
@@ -46,7 +48,7 @@ export default function CUSDCEscrowActions() {
     }
     try {
       await redeem(BigInt(escrowId));
-      toast.success("Escrow redemption submitted");
+      toast.success("Escrow redeemed! Go to Dashboard → click REVEAL to see updated cUSDC balance.", { duration: 8000 });
     } catch (err) {
       toast.error((err as Error).message || "Redeem failed");
     }
@@ -139,9 +141,18 @@ export default function CUSDCEscrowActions() {
           <div className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase">
             Redeem Escrow (Step 4)
           </div>
-          <p className="text-[8px] font-mono text-muted-foreground/50">
-            Only the encrypted owner can redeem. Unauthorized attempts succeed silently but return zero.
-          </p>
+          <div className="flex items-start gap-1.5 p-2 bg-yellow-500/5 border border-yellow-500/20 rounded-sm">
+            <AlertTriangle className="w-3 h-3 text-yellow-400 mt-0.5 flex-shrink-0" />
+            <p className="text-[8px] font-mono text-yellow-300/80 leading-relaxed">
+              <strong>You must be connected as the recipient (owner) wallet to redeem.</strong>{" "}
+              If the creator tries to redeem, the tx confirms but returns zero cUSDC — this is the privacy-preserving silent failure pattern.
+              {address && (
+                <span className="block mt-1 text-muted-foreground/50">
+                  Connected: {address.slice(0, 6)}...{address.slice(-4)}
+                </span>
+              )}
+            </p>
+          </div>
           <motion.button
             onClick={handleRedeem}
             disabled={isProcessing || isTxPending || !escrowId}

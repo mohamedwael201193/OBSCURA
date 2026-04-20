@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileText, Copy, Trash2, ExternalLink, CheckCircle } from "lucide-react";
+import { FileText, Copy, Trash2, ExternalLink, CheckCircle, AlertTriangle } from "lucide-react";
 import type { SavedEscrow } from "@/hooks/useCUSDCEscrow";
+import { formatUnits } from "viem";
+import { useAccount } from "wagmi";
 
 const STORAGE_KEY = 'obscura_cusdc_escrows';
 
@@ -14,6 +16,7 @@ function loadEscrows(): SavedEscrow[] {
 }
 
 export default function MyEscrows() {
+  const { address } = useAccount();
   const [escrows, setEscrows] = useState<SavedEscrow[]>(loadEscrows);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -26,6 +29,18 @@ export default function MyEscrows() {
       window.removeEventListener('storage', onStorage);
     };
   }, []);
+
+  // Format amount — handle both raw bigint strings and human-readable strings
+  const formatAmount = (raw: string) => {
+    try {
+      const n = BigInt(raw);
+      // If > 1000, it's likely raw units (6 decimals), format it
+      if (n > 1000n) return formatUnits(n, 6);
+      return raw;
+    } catch {
+      return raw;
+    }
+  };
 
   const handleCopy = (id: string) => {
     navigator.clipboard.writeText(id);
@@ -66,11 +81,13 @@ export default function MyEscrows() {
       </div>
 
       <p className="text-[9px] font-mono text-muted-foreground/50">
-        Escrows saved from this browser. Use the IDs below to fund or redeem.
+        Escrows created from this browser. Send the Escrow ID to the recipient — they must connect their wallet and click Redeem.
       </p>
 
       <div className="space-y-2">
-        {escrows.map((escrow) => (
+        {escrows.map((escrow) => {
+          const isRecipient = address?.toLowerCase() === escrow.recipient.toLowerCase();
+          return (
           <motion.div
             key={escrow.txHash}
             initial={{ opacity: 0, y: 5 }}
@@ -87,9 +104,14 @@ export default function MyEscrows() {
                     <Copy className="w-3 h-3 text-muted-foreground/50" />
                   )}
                 </button>
+                {isRecipient && (
+                  <span className="text-[7px] font-mono bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded-sm border border-green-500/20">
+                    YOU CAN REDEEM
+                  </span>
+                )}
               </div>
               <div className="text-[8px] font-mono text-muted-foreground/40 mt-0.5">
-                {escrow.amount} cUSDC · to {escrow.recipient.slice(0, 8)}... · {new Date(escrow.createdAt).toLocaleDateString()}
+                {formatAmount(escrow.amount)} cUSDC · to {escrow.recipient.slice(0, 8)}... · {new Date(escrow.createdAt).toLocaleDateString()}
               </div>
             </div>
             <div className="flex items-center gap-1.5 ml-2">
@@ -106,7 +128,8 @@ export default function MyEscrows() {
               </button>
             </div>
           </motion.div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

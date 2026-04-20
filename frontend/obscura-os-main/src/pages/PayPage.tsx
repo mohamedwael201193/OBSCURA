@@ -235,9 +235,13 @@ const PayPage = () => {
                           </li>
                           <li className="flex gap-2">
                             <span className="text-cyan-400 font-bold shrink-0">Step 4.</span>
-                            <span><b className="text-foreground">Redeem</b> — The designated owner enters the Escrow ID and clicks Redeem. If you're the encrypted owner, you receive the funds. If not, the tx succeeds silently but returns nothing (no information leak).</span>
+                            <span><b className="text-foreground">Redeem (from recipient wallet!)</b> — <b className="text-yellow-300">Switch MetaMask to the recipient account</b>, enter the Escrow ID and click Redeem. Only the encrypted owner receives the funds. After redeeming, go to Dashboard and click <b className="text-cyan-400">REVEAL</b> to see your updated cUSDC balance.</span>
                           </li>
                         </ol>
+                        <div className="text-[9px] font-mono text-yellow-400/80 bg-yellow-500/10 border border-yellow-500/20 rounded-sm px-3 py-2">
+                          <b>Important:</b> The creator cannot redeem — only the recipient (owner) can. If the wrong wallet tries to redeem, the tx confirms but returns zero cUSDC.
+                          After redeeming, your cUSDC balance is encrypted on-chain. Click <b>REVEAL</b> on the Dashboard tab to decrypt and see the updated amount.
+                        </div>
                         <div className="text-[9px] font-mono text-amber-400/70 bg-amber-500/5 border border-amber-500/20 rounded-sm px-3 py-2">
                           <b>Tip:</b> If you set a resolver contract (e.g. PayrollResolver), the escrow can only be released when the resolver's conditions are met.
                           Use the Resolver Manager at the bottom to check conditions and approve releases.

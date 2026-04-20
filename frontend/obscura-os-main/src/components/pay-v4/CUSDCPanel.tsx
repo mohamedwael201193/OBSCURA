@@ -14,8 +14,14 @@ export default function CUSDCPanel() {
   const displayBalance = decrypted !== null
     ? `${(Number(decrypted) / 1_000_000).toFixed(6)} cUSDC`
     : trackedCusdc
-      ? `~${trackedCusdc} cUSDC (tracked)`
+      ? `~${trackedCusdc} cUSDC`
       : "Reveal to view";
+
+  const balanceSource = decrypted !== null
+    ? "(on-chain decrypted)"
+    : trackedCusdc
+      ? "(tracked — wraps only, click REVEAL for actual balance)"
+      : "";
 
   return (
     <div className="glass-panel rounded-sm p-6 space-y-4">
@@ -45,6 +51,9 @@ export default function CUSDCPanel() {
           <span className="text-muted-foreground">cUSDC Balance</span>
           <span className="text-primary">{displayBalance}</span>
         </div>
+        {balanceSource && (
+          <div className="text-right text-[7px] font-mono text-muted-foreground/40">{balanceSource}</div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2">

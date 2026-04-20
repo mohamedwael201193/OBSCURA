@@ -185,6 +185,11 @@ Full audit of every Fhenix CoFHE ABI function — every unused capability is now
 | 123 | **Redeem wallet warning** — yellow alert box in CUSDCEscrowActions explains you must connect as recipient to redeem | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
 | 124 | **Redeem success toast updated** — tells user to go to Dashboard → click REVEAL to see updated cUSDC balance | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
 | 125 | **Escrow guide Step 4 rewrite** — bold "Switch MetaMask to recipient account" + separate "Important" callout about silent failure | `src/pages/PayPage.tsx` | ✅ Done |
+| 126 | **Redeem wallet-guard** — blocks redeem if connected wallet ≠ saved escrow recipient; shows red WRONG WALLET alert with instructions | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 127 | **Redeem recipient match indicator** — green "safe to redeem" / red "wrong wallet" / yellow "unknown" depending on escrow ID + wallet match | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 128 | **Post-redeem existence check** — after redeem tx, auto-calls `exists()` to verify escrow was consumed; shows warning if still active (silent failure) | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 129 | **CUSDCPanel balance source label** — shows "(on-chain decrypted)" or "(tracked — wraps only, click REVEAL)" under balance amount | `src/components/pay-v4/CUSDCPanel.tsx` | ✅ Done |
+| 130 | **Silent failure loss warning** — updated all warnings to state that wrong-wallet redeem permanently consumes the escrow and funds are lost | `CUSDCEscrowActions.tsx`, `PayPage.tsx` | ✅ Done |
 
 ---
 

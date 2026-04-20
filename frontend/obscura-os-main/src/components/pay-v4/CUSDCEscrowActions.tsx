@@ -1,11 +1,17 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { DollarSign, Unlock, AlertTriangle } from "lucide-react";
+import { DollarSign, Unlock, AlertTriangle, ShieldAlert } from "lucide-react";
 import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
+import type { SavedEscrow } from "@/hooks/useCUSDCEscrow";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
 import { parseUnits } from "viem";
 import { useAccount } from "wagmi";
+
+const STORAGE_KEY = 'obscura_cusdc_escrows';
+function loadSavedEscrows(): SavedEscrow[] {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+}
 
 export default function CUSDCEscrowActions() {
   const { address } = useAccount();
@@ -14,6 +20,18 @@ export default function CUSDCEscrowActions() {
   const [escrowExists, setEscrowExists] = useState<boolean | null>(null);
 
   const { fund, redeem, checkExists, txHash, isTxPending, status, stepIndex } = useCUSDCEscrow();
+
+  const isProcessing = status !== "idle" && status !== "ready" && status !== "error";
+
+  // Cross-reference entered escrow ID with saved escrows to check recipient match
+  const savedEscrow = useMemo(() => {
+    if (!escrowId) return null;
+    return loadSavedEscrows().find(e => e.escrowId === escrowId) ?? null;
+  }, [escrowId]);
+
+  const isRecipientMatch = savedEscrow && address
+    ? savedEscrow.recipient.toLowerCase() === address.toLowerCase()
+    : null; // null = unknown (escrow not in localStorage)
 
   const isProcessing = status !== "idle" && status !== "ready" && status !== "error";
 
@@ -46,9 +64,33 @@ export default function CUSDCEscrowActions() {
       toast.error("Enter escrow ID");
       return;
     }
+    // Warn if connected wallet doesn't match saved recipient
+    if (isRecipientMatch === false) {
+      toast.error(
+        `Your wallet (${address?.slice(0, 6)}...) is NOT the recipient for escrow #${escrowId}. ` +
+        `Switch to ${savedEscrow?.recipient.slice(0, 8)}... to redeem. ` +
+        `Redeeming from the wrong wallet will silently lose the funds!`,
+        { duration: 10000 }
+      );
+      return; // Block the redeem
+    }
     try {
       await redeem(BigInt(escrowId));
-      toast.success("Escrow redeemed! Go to Dashboard → click REVEAL to see updated cUSDC balance.", { duration: 8000 });
+      // Check if escrow still exists after redeem
+      const stillExists = await checkExists(BigInt(escrowId));
+      if (!stillExists) {
+        toast.success(
+          "Escrow redeemed and consumed! Go to Dashboard → click REVEAL to see your updated cUSDC balance.",
+          { duration: 8000 }
+        );
+        setEscrowExists(false);
+      } else {
+        toast.warning(
+          "Redeem tx confirmed but escrow still exists — this may mean the silent failure pattern triggered. " +
+          "Make sure you are connected as the recipient wallet.",
+          { duration: 10000 }
+        );
+      }
     } catch (err) {
       toast.error((err as Error).message || "Redeem failed");
     }
@@ -141,18 +183,40 @@ export default function CUSDCEscrowActions() {
           <div className="text-[9px] font-mono text-muted-foreground tracking-[0.15em] uppercase">
             Redeem Escrow (Step 4)
           </div>
-          <div className="flex items-start gap-1.5 p-2 bg-yellow-500/5 border border-yellow-500/20 rounded-sm">
-            <AlertTriangle className="w-3 h-3 text-yellow-400 mt-0.5 flex-shrink-0" />
-            <p className="text-[8px] font-mono text-yellow-300/80 leading-relaxed">
-              <strong>You must be connected as the recipient (owner) wallet to redeem.</strong>{" "}
-              If the creator tries to redeem, the tx confirms but returns zero cUSDC — this is the privacy-preserving silent failure pattern.
-              {address && (
-                <span className="block mt-1 text-muted-foreground/50">
-                  Connected: {address.slice(0, 6)}...{address.slice(-4)}
-                </span>
-              )}
-            </p>
-          </div>
+
+          {/* Recipient match check */}
+          {escrowId && isRecipientMatch === false && (
+            <div className="flex items-start gap-1.5 p-2 bg-red-500/10 border border-red-500/30 rounded-sm">
+              <ShieldAlert className="w-3.5 h-3.5 text-red-400 mt-0.5 flex-shrink-0" />
+              <p className="text-[8px] font-mono text-red-300/90 leading-relaxed">
+                <strong>WRONG WALLET!</strong> Escrow #{escrowId} belongs to <span className="text-cyan-400">{savedEscrow?.recipient.slice(0, 8)}…</span>.
+                You are connected as <span className="text-yellow-300">{address?.slice(0, 6)}…{address?.slice(-4)}</span>.
+                <span className="block mt-1">Switch MetaMask to the recipient account before redeeming. Redeeming from the wrong wallet will permanently consume the escrow and the funds are lost.</span>
+              </p>
+            </div>
+          )}
+          {escrowId && isRecipientMatch === true && (
+            <div className="flex items-center gap-1.5 p-2 bg-green-500/10 border border-green-500/20 rounded-sm">
+              <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+              <p className="text-[8px] font-mono text-green-300/80">
+                Wallet matches recipient for escrow #{escrowId} — you can safely redeem.
+              </p>
+            </div>
+          )}
+          {(!escrowId || isRecipientMatch === null) && (
+            <div className="flex items-start gap-1.5 p-2 bg-yellow-500/5 border border-yellow-500/20 rounded-sm">
+              <AlertTriangle className="w-3 h-3 text-yellow-400 mt-0.5 flex-shrink-0" />
+              <p className="text-[8px] font-mono text-yellow-300/80 leading-relaxed">
+                <strong>You must be connected as the recipient (owner) wallet to redeem.</strong>{" "}
+                If the creator tries to redeem, the tx confirms but returns zero cUSDC and the escrow is consumed — funds are lost forever.
+                {address && (
+                  <span className="block mt-1 text-muted-foreground/50">
+                    Connected: {address.slice(0, 6)}...{address.slice(-4)}
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
           <motion.button
             onClick={handleRedeem}
             disabled={isProcessing || isTxPending || !escrowId}

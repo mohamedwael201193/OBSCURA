@@ -55,22 +55,21 @@ export function useCUSDCTransfer() {
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        const hash = await withRateLimitRetry(async () => {
-          const feeData = await publicClient.estimateFeesPerGas();
-          const maxFeePerGas = feeData.maxFeePerGas
-            ? (feeData.maxFeePerGas * 130n) / 100n
-            : undefined;
+        // Fetch gas with retry, then call wallet exactly once (no retry on writeContractAsync)
+        const feeData = await withRateLimitRetry(() => publicClient.estimateFeesPerGas());
+        const maxFeePerGas = feeData.maxFeePerGas
+          ? (feeData.maxFeePerGas * 130n) / 100n
+          : undefined;
 
-          return writeContractAsync({
-            address: REINEIRA_CUSDC_ADDRESS,
-            abi: REINEIRA_CUSDC_ABI,
-            functionName: 'confidentialTransfer',
-            args: [to, encryptedInputs[0]],
-            account: address,
-            chain: arbitrumSepolia,
-            maxFeePerGas,
-            gas: 500_000n,
-          });
+        const hash = await writeContractAsync({
+          address: REINEIRA_CUSDC_ADDRESS,
+          abi: REINEIRA_CUSDC_ABI,
+          functionName: 'confidentialTransfer',
+          args: [to, encryptedInputs[0]],
+          account: address,
+          chain: arbitrumSepolia,
+          maxFeePerGas,
+          gas: 500_000n,
         });
 
         setTxHash(hash);

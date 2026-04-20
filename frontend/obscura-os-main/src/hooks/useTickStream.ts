@@ -71,16 +71,32 @@ export function useTickStream() {
           ? (feeData.maxFeePerGas * 150n) / 100n
           : undefined;
 
+        const tickArgs = [
+          params.streamId,
+          encrypted[0],
+          encrypted[1],
+          (params.approver ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
+        ] as const;
+
+        // 3b. Pre-flight simulation to catch revert reasons before sending tx.
+        try {
+          await publicClient.simulateContract({
+            address: OBSCURA_PAY_STREAM_ADDRESS,
+            abi: OBSCURA_PAY_STREAM_ABI,
+            functionName: "tickStream",
+            args: tickArgs,
+            account: address,
+          });
+        } catch (simErr: any) {
+          const reason = simErr?.shortMessage || simErr?.message || "unknown";
+          throw new Error(`tickStream simulation failed — tx would revert: ${reason}`);
+        }
+
         const txHash = await writeContractAsync({
           address: OBSCURA_PAY_STREAM_ADDRESS,
           abi: OBSCURA_PAY_STREAM_ABI,
           functionName: "tickStream",
-          args: [
-            params.streamId,
-            encrypted[0],
-            encrypted[1],
-            (params.approver ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
-          ],
+          args: tickArgs,
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas,
@@ -89,6 +105,15 @@ export function useTickStream() {
 
         // 4. Wait + decode escrowId from CycleSettled event.
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+        // Safety: if the tx mined but reverted, abort before announce.
+        if (receipt.status === "reverted") {
+          throw new Error(
+            `tickStream reverted on-chain (tx ${txHash.slice(0, 10)}…). ` +
+            `Check: cUSDC operator set? Sufficient cUSDC balance? FHE permissions?`
+          );
+        }
+
         let escrowId: bigint | null = null;
         for (const log of receipt.logs) {
           try {

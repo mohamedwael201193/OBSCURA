@@ -90,7 +90,10 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
       toast.success(`Cycle settled for stream #${stream.id.toString()}`);
       refresh();
     } catch (e) {
-      toast.error((e as Error).message);
+      const msg = (e as Error).message ?? "tick failed";
+      // Truncate for toast but log full error to console for debugging.
+      console.error("[tickOne] full error:", e);
+      toast.error(msg.length > 200 ? msg.slice(0, 200) + "…" : msg);
     }
   };
 

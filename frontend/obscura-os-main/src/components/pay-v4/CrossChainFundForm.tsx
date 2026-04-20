@@ -12,6 +12,8 @@ const STEP_LABELS: Record<BridgeStep, string> = {
   "burn-pending": "Confirm the burn transaction in your wallet…",
   "burn-confirming": "Burn tx sent — waiting for confirmation on Sepolia…",
   "switching-back": "Switching wallet back to Arbitrum Sepolia…",
+  "waiting-attestation": "Waiting for Circle attestation (this takes a few minutes)…",
+  "claiming": "Confirm claim transaction — minting USDC on Arb Sepolia…",
   done: "",
 };
 
@@ -22,10 +24,12 @@ const STEP_ORDER: BridgeStep[] = [
   "burn-pending",
   "burn-confirming",
   "switching-back",
+  "waiting-attestation",
+  "claiming",
   "done",
 ];
 
-function StepProgress({ current }: { current: BridgeStep }) {
+function StepProgress({ current, attestationProgress }: { current: BridgeStep; attestationProgress: number }) {
   if (current === "idle") return null;
   const currentIdx = STEP_ORDER.indexOf(current);
   return (
@@ -48,6 +52,9 @@ function StepProgress({ current }: { current: BridgeStep }) {
               }`}
             >
               {STEP_LABELS[s]}
+              {s === "waiting-attestation" && isActive && attestationProgress > 0 && (
+                <span className="text-muted-foreground/50"> (~{Math.round(attestationProgress * 5 / 60)}m elapsed)</span>
+              )}
             </span>
           </div>
         );
@@ -58,7 +65,7 @@ function StepProgress({ current }: { current: BridgeStep }) {
 
 export default function CrossChainFundForm() {
   const [amount, setAmount] = useState("");
-  const { fund, isPending, step, burnTxHash, error, reset } = useCrossChainFund();
+  const { fund, isPending, step, burnTxHash, error, reset, attestationProgress } = useCrossChainFund();
 
   const submit = async () => {
     if (!amount || Number(amount) <= 0) {
@@ -67,7 +74,7 @@ export default function CrossChainFundForm() {
     }
     try {
       await fund({ amountUSDC: amount });
-      toast.success("USDC burned! It will arrive on Arb Sepolia in ~15 minutes.");
+      toast.success("USDC claimed on Arb Sepolia! Check your USDC balance.");
     } catch (e) {
       toast.error((e as Error).message?.slice(0, 200) ?? "Bridge failed");
     }
@@ -79,19 +86,15 @@ export default function CrossChainFundForm() {
       <div className="glass-panel rounded-sm p-6 space-y-4">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-5 h-5 text-green-400" />
-          <h3 className="font-display text-sm tracking-wider text-green-400">Bridge Submitted!</h3>
+          <h3 className="font-display text-sm tracking-wider text-green-400">Bridge Complete!</h3>
         </div>
 
         <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-sm space-y-3">
           <p className="text-[11px] font-mono text-green-300">
-            Your {amount} USDC has been burned on Ethereum Sepolia.
+            {amount} USDC has been bridged and minted on Arbitrum Sepolia!
           </p>
           <p className="text-[10px] font-mono text-muted-foreground/70">
-            Circle&apos;s attestation service will mint the USDC on Arbitrum Sepolia.
-            This typically takes <span className="text-primary">10–20 minutes</span>.
-          </p>
-          <p className="text-[10px] font-mono text-muted-foreground/70">
-            Once it arrives, go to the <span className="text-primary">Pay</span> tab and
+            Your USDC balance on Arb Sepolia has been updated. Go to the <span className="text-primary">Pay</span> tab and
             wrap USDC → cUSDC to use it for encrypted payments.
           </p>
           {burnTxHash && (
@@ -129,9 +132,9 @@ export default function CrossChainFundForm() {
       </div>
 
       <p className="text-[10px] font-mono text-muted-foreground/70">
-        Bridge USDC from Ethereum Sepolia to your address on Arbitrum Sepolia via Circle&apos;s CCTP.
-        Your wallet switches to Sepolia, burns the USDC, and Circle mints it on Arb Sepolia (~15 min).
-        Once arrived, wrap USDC → cUSDC using the button on the Pay tab.
+        Bridge USDC from Ethereum Sepolia to Arbitrum Sepolia via Circle&apos;s CCTP.
+        The whole process (burn → attestation → claim) happens automatically — just confirm the wallet prompts.
+        Takes a few minutes for Circle to attest. Once done, wrap USDC → cUSDC on the Pay tab.
       </p>
 
       {step === "idle" && (
@@ -151,7 +154,7 @@ export default function CrossChainFundForm() {
         </div>
       )}
 
-      {step !== "idle" && <StepProgress current={step} />}
+      {step !== "idle" && <StepProgress current={step} attestationProgress={attestationProgress} />}
 
       {error && (
         <div className="text-[10px] font-mono text-red-400 p-2 bg-red-500/10 border border-red-500/20 rounded-sm">

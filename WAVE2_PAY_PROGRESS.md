@@ -177,6 +177,9 @@ Full audit of every Fhenix CoFHE ABI function — every unused capability is now
 | 115 | Escrow Actions step labels — "Fund Escrow (Step 3)" and "Redeem Escrow (Step 4)" with inline help text | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
 | 116 | Resolver Manager labeled "Advanced" — moved under a labeled divider so normal users aren't confused by it | `src/pages/PayPage.tsx` | ✅ Done |
 | 117 | Escrow form description updated — tells user to wrap USDC first in Dashboard tab | `src/components/pay-v4/CUSDCEscrowForm.tsx` | ✅ Done |
+| 118 | Escrow rate-limit retry — `withRateLimitRetry` added to `create`, `fund`, `redeem` calls (3 retries, 5s exponential backoff) | `src/hooks/useCUSDCEscrow.ts` | ✅ Done |
+| 119 | Operator→create cooldown increased from 3s to 6s — prevents rate-limit on create after setOperator | `src/hooks/useCUSDCEscrow.ts` | ✅ Done |
+| 120 | P2P transfer rate-limit retry — `withRateLimitRetry` added to `confidentialTransfer` call | `src/hooks/useCUSDCTransfer.ts` | ✅ Done |
 
 ---
 

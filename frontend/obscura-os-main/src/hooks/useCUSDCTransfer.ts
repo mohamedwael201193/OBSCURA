@@ -6,6 +6,30 @@ import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount } from '@/lib/fhe';
 import { arbitrumSepolia } from 'viem/chains';
 
+/** Retry helper for RPC rate-limit errors — exponential backoff */
+async function withRateLimitRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelayMs = 5000
+): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const msg = ((e as Error).message || "").toLowerCase();
+      const isRateLimit = msg.includes("rate limit") || msg.includes("rate-limit") || msg.includes("429");
+      if (isRateLimit && attempt < maxRetries) {
+        const delay = baseDelayMs * (attempt + 1);
+        console.warn(`[Transfer RPC rate-limit] retry ${attempt + 1}/${maxRetries} after ${delay}ms`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw new Error("Max retries exceeded");
+}
+
 export function useCUSDCTransfer() {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
@@ -31,20 +55,22 @@ export function useCUSDCTransfer() {
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        const hash = await withRateLimitRetry(async () => {
+          const feeData = await publicClient.estimateFeesPerGas();
+          const maxFeePerGas = feeData.maxFeePerGas
+            ? (feeData.maxFeePerGas * 130n) / 100n
+            : undefined;
 
-        const hash = await writeContractAsync({
-          address: REINEIRA_CUSDC_ADDRESS,
-          abi: REINEIRA_CUSDC_ABI,
-          functionName: 'confidentialTransfer',
-          args: [to, encryptedInputs[0]],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas,
-          gas: 500_000n,
+          return writeContractAsync({
+            address: REINEIRA_CUSDC_ADDRESS,
+            abi: REINEIRA_CUSDC_ABI,
+            functionName: 'confidentialTransfer',
+            args: [to, encryptedInputs[0]],
+            account: address,
+            chain: arbitrumSepolia,
+            maxFeePerGas,
+            gas: 500_000n,
+          });
         });
 
         setTxHash(hash);

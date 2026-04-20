@@ -14,6 +14,30 @@ import { parseUnits } from 'viem';
 
 const STORAGE_KEY = 'obscura_cusdc_escrows';
 
+/** Retry helper for RPC rate-limit errors — exponential backoff */
+async function withRateLimitRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelayMs = 5000
+): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const msg = ((e as Error).message || "").toLowerCase();
+      const isRateLimit = msg.includes("rate limit") || msg.includes("rate-limit") || msg.includes("429");
+      if (isRateLimit && attempt < maxRetries) {
+        const delay = baseDelayMs * (attempt + 1);
+        console.warn(`[Escrow RPC rate-limit] retry ${attempt + 1}/${maxRetries} after ${delay}ms`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw new Error("Max retries exceeded");
+}
+
 export interface SavedEscrow {
   escrowId: string;
   amount: string;
@@ -80,8 +104,8 @@ export function useCUSDCEscrow() {
       gas: 150_000n,
     });
     await publicClient.waitForTransactionReceipt({ hash });
-    // Wait for RPC cooldown
-    await new Promise((r) => setTimeout(r, 3000));
+    // Wait for RPC cooldown after operator tx
+    await new Promise((r) => setTimeout(r, 6000));
   }, [publicClient, address, writeContractAsync]);
 
   // Refresh escrows from localStorage periodically
@@ -120,25 +144,28 @@ export function useCUSDCEscrow() {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
         await ensureOperator();
 
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        // Create escrow (with rate-limit retry)
+        const hash = await withRateLimitRetry(async () => {
+          const feeData = await publicClient.estimateFeesPerGas();
+          const maxFeePerGas = feeData.maxFeePerGas
+            ? (feeData.maxFeePerGas * 130n) / 100n
+            : undefined;
 
-        const hash = await writeContractAsync({
-          address: REINEIRA_ESCROW_ADDRESS,
-          abi: REINEIRA_ESCROW_ABI,
-          functionName: 'create',
-          args: [
-            encryptedInputs[0], // encrypted owner address
-            encryptedInputs[1], // encrypted amount
-            resolver,
-            resolverData,
-          ],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas,
-          gas: 1_200_000n,
+          return writeContractAsync({
+            address: REINEIRA_ESCROW_ADDRESS,
+            abi: REINEIRA_ESCROW_ABI,
+            functionName: 'create',
+            args: [
+              encryptedInputs[0], // encrypted owner address
+              encryptedInputs[1], // encrypted amount
+              resolver,
+              resolverData,
+            ],
+            account: address,
+            chain: arbitrumSepolia,
+            maxFeePerGas,
+            gas: 1_200_000n,
+          });
         });
 
         // Parse escrow ID from tx receipt logs
@@ -194,20 +221,23 @@ export function useCUSDCEscrow() {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
         await ensureOperator();
 
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        // Fund escrow (with rate-limit retry)
+        const hash = await withRateLimitRetry(async () => {
+          const feeData = await publicClient.estimateFeesPerGas();
+          const maxFeePerGas = feeData.maxFeePerGas
+            ? (feeData.maxFeePerGas * 130n) / 100n
+            : undefined;
 
-        const hash = await writeContractAsync({
-          address: REINEIRA_ESCROW_ADDRESS,
-          abi: REINEIRA_ESCROW_ABI,
-          functionName: 'fund',
-          args: [escrowId, encryptedInputs[0]],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas,
-          gas: 600_000n,
+          return writeContractAsync({
+            address: REINEIRA_ESCROW_ADDRESS,
+            abi: REINEIRA_ESCROW_ABI,
+            functionName: 'fund',
+            args: [escrowId, encryptedInputs[0]],
+            account: address,
+            chain: arbitrumSepolia,
+            maxFeePerGas,
+            gas: 600_000n,
+          });
         });
 
         setTxHash(hash);
@@ -230,20 +260,22 @@ export function useCUSDCEscrow() {
       try {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        const hash = await withRateLimitRetry(async () => {
+          const feeData = await publicClient.estimateFeesPerGas();
+          const maxFeePerGas = feeData.maxFeePerGas
+            ? (feeData.maxFeePerGas * 130n) / 100n
+            : undefined;
 
-        const hash = await writeContractAsync({
-          address: REINEIRA_ESCROW_ADDRESS,
-          abi: REINEIRA_ESCROW_ABI,
-          functionName: 'redeem',
-          args: [escrowId],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas,
-          gas: 800_000n,
+          return writeContractAsync({
+            address: REINEIRA_ESCROW_ADDRESS,
+            abi: REINEIRA_ESCROW_ABI,
+            functionName: 'redeem',
+            args: [escrowId],
+            account: address,
+            chain: arbitrumSepolia,
+            maxFeePerGas,
+            gas: 800_000n,
+          });
         });
 
         setTxHash(hash);

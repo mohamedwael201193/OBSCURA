@@ -31,6 +31,32 @@ const ARB_SEPOLIA_RPC = "https://sepolia-rollup.arbitrum.io/rpc";
 const GAS_ETH_MINIMUM = parseEther("0.001");
 const GAS_ETH_TOPUP = parseEther("0.002");
 
+/**
+ * Estimate EIP-1559 fees and apply a 1.5× safety buffer.
+ * Clamps maxPriorityFeePerGas ≤ maxFeePerGas (required by EIP-1559).
+ * On Arbitrum Sepolia base fees can be ~0.024 gwei — any fixed fallback
+ * risks either being below the base fee or above the cap, so we always
+ * derive priority from the same estimation call.
+ */
+async function estimateCappedFees(publicClient: { estimateFeesPerGas: () => Promise<{ maxFeePerGas: bigint | null; maxPriorityFeePerGas: bigint | null }> }) {
+  try {
+    const feeData = await publicClient.estimateFeesPerGas();
+    const maxFeePerGas = feeData.maxFeePerGas
+      ? (feeData.maxFeePerGas * 150n) / 100n
+      : 300_000_000n; // 0.3 gwei fallback
+    const rawPriority = feeData.maxPriorityFeePerGas
+      ? (feeData.maxPriorityFeePerGas * 150n) / 100n
+      : undefined;
+    // Clamp: tip must never exceed the fee cap
+    const maxPriorityFeePerGas =
+      rawPriority === undefined || rawPriority > maxFeePerGas ? maxFeePerGas : rawPriority;
+    return { maxFeePerGas, maxPriorityFeePerGas };
+  } catch {
+    // RPC offline / rate-limited — safe Arbitrum Sepolia values
+    return { maxFeePerGas: 300_000_000n, maxPriorityFeePerGas: 300_000_000n };
+  }
+}
+
 /** InEuint64-accepting overload of confidentialTransfer */
 const CUSDC_TRANSFER_ABI = [
   {
@@ -138,11 +164,16 @@ export function useSweepStealth() {
 
         if (ethBalance < GAS_ETH_MINIMUM) {
           // ── Step 3: Fund stealth address with ETH from main wallet ────────
+          // Estimate fees explicitly — letting MetaMask estimate itself can
+          // produce a maxFeePerGas below the current block base fee (error).
           setState({ step: "funding_gas" });
+          const fundFees = await estimateCappedFees(publicClient);
           const fundHash = await sendTransactionAsync({
             to: payment.stealthAddress,
             value: GAS_ETH_TOPUP,
             chain: arbitrumSepolia,
+            maxFeePerGas: fundFees.maxFeePerGas,
+            maxPriorityFeePerGas: fundFees.maxPriorityFeePerGas,
           });
 
           setState({ step: "waiting_fund" });
@@ -166,10 +197,7 @@ export function useSweepStealth() {
 
         // ── Step 6: Call confidentialTransfer from the stealth wallet ───────
         setState({ step: "sweeping" });
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 150n) / 100n
-          : undefined;
+        const sweepFees = await estimateCappedFees(publicClient);
 
         const txHash = await stealthWalletClient.writeContract({
           address: REINEIRA_CUSDC_ADDRESS,
@@ -177,7 +205,8 @@ export function useSweepStealth() {
           functionName: "confidentialTransfer",
           args: [address, inEuint64],
           gas: 1_500_000n,
-          maxFeePerGas,
+          maxFeePerGas: sweepFees.maxFeePerGas,
+          maxPriorityFeePerGas: sweepFees.maxPriorityFeePerGas,
         });
 
         await publicClient.waitForTransactionReceipt({ hash: txHash });

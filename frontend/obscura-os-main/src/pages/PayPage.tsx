@@ -139,8 +139,17 @@ const NotConnected = ({ message }: { message: string }) => (
 );
 
 const WalletCard = () => {
-  const { decrypted, reveal, busy } = useCUSDCBalance();
+  const { decrypted, reveal, busy, trackedCusdc, usdcBalance } = useCUSDCBalance();
   const isRevealed = decrypted !== null && decrypted !== undefined;
+
+  // Best available cUSDC display value
+  const displayCusdc = isRevealed
+    ? (Number(decrypted) / 1_000_000).toFixed(2)
+    : trackedCusdc
+      ? parseFloat(trackedCusdc).toFixed(2)
+      : null;
+  const isApprox = !isRevealed && trackedCusdc !== null && trackedCusdc !== undefined;
+
   return (
     <Card>
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
@@ -154,20 +163,55 @@ const WalletCard = () => {
           {busy ? "Decrypting…" : isRevealed ? "Hide" : "Reveal"}
         </button>
       </div>
-      <div className="px-5 pb-5">
-        <div className="text-[10px] tracking-[0.18em] uppercase text-muted-foreground/55 mb-1">cUSDC Balance</div>
-        <div className="flex items-end justify-between">
-          <EncryptedValue
-            value={decrypted ?? "0"}
-            revealed={isRevealed}
-            suffix="cUSDC"
-            size="xl"
-            length={7}
-          />
-          <div className="w-9 h-9 rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
-            <span className="text-muted-foreground/50 text-sm">$</span>
+      <div className="px-5 pb-4 space-y-3">
+        {/* cUSDC balance */}
+        <div>
+          <div className="text-[10px] tracking-[0.18em] uppercase text-muted-foreground/55 mb-1.5">cUSDC Balance</div>
+          <div className="flex items-center justify-between">
+            {displayCusdc !== null ? (
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  {isApprox && <span className="text-xs text-muted-foreground/60">≈</span>}
+                  <span className="text-[22px] font-mono font-semibold text-emerald-300 leading-none">
+                    {displayCusdc}
+                  </span>
+                  <span className="text-xs text-muted-foreground/70">cUSDC</span>
+                </div>
+                {isApprox && (
+                  <div className="text-[9px] text-muted-foreground/40 mt-0.5 tracking-wide">
+                    locally tracked · click Reveal for exact
+                  </div>
+                )}
+                {isRevealed && (
+                  <div className="text-[9px] text-emerald-400/50 mt-0.5 tracking-wide">
+                    on-chain decrypted ✓
+                  </div>
+                )}
+              </div>
+            ) : (
+              <EncryptedValue
+                value="0"
+                revealed={false}
+                suffix="cUSDC"
+                size="xl"
+                length={7}
+              />
+            )}
+            <div className="w-9 h-9 rounded-full bg-emerald-500/[0.08] border border-emerald-500/20 flex items-center justify-center shrink-0">
+              <Lock className="w-3.5 h-3.5 text-emerald-400/70" />
+            </div>
           </div>
         </div>
+
+        {/* Plain USDC balance */}
+        {usdcBalance !== null && (
+          <div className="flex items-center justify-between pt-2.5 border-t border-white/[0.05] text-[11px]">
+            <span className="text-muted-foreground/55 tracking-wide">Plain USDC</span>
+            <span className="font-mono text-foreground/65">
+              {parseFloat(usdcBalance ?? "0").toFixed(2)} USDC
+            </span>
+          </div>
+        )}
       </div>
     </Card>
   );

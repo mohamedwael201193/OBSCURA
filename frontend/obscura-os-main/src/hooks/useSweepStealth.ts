@@ -211,6 +211,17 @@ export function useSweepStealth() {
 
         await publicClient.waitForTransactionReceipt({ hash: txHash });
 
+        // Update tracked cUSDC balance in localStorage so Dashboard shows
+        // the new balance immediately without requiring a REVEAL click.
+        // Key format matches useCUSDCBalance's cusdc_tracked_ key.
+        try {
+          const trackedKey = `cusdc_tracked_${address.toLowerCase()}`;
+          const prev = BigInt(localStorage.getItem(trackedKey) ?? "0");
+          localStorage.setItem(trackedKey, (prev + amount).toString());
+        } catch {
+          // localStorage unavailable — non-fatal, REVEAL still works
+        }
+
         setState({ step: "done", txHash });
       } catch (e) {
         const msg = (e as Error).message || "Sweep failed";

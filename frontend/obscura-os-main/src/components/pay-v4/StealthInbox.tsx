@@ -122,7 +122,7 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
           >
             <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
             <div className="text-[14px] font-semibold text-emerald-200">Swept successfully!</div>
-            <div className="text-[12px] text-emerald-300/70">cUSDC is now in your main wallet. Go to Dashboard → REVEAL to confirm.</div>
+            <div className="text-[12px] text-emerald-300/70">cUSDC is now in your main wallet. Dashboard balance updated automatically — or click REVEAL to decrypt live on-chain.</div>
             {state.txHash && (
               <a href={`https://sepolia.arbiscan.io/tx/${state.txHash}`} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-[11px] text-emerald-400/80 hover:text-emerald-300"

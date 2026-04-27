@@ -5,17 +5,18 @@
  *   Layer 1 (abs, SVG filter): emerald active blob + white hover blob — merge/morph effect
  *   Layer 2 (rel, z-10):       crisp text links — fully clickable, no filter distortion
  *
- * Blob position = measured via getBoundingClientRect after mount + ResizeObserver.
+ * Glass behaviour:
+ *   scrollY = 0       → transparent, no blur
+ *   scrollY > 24      → frosted glass: backdrop-blur-2xl, bg-[#06090c]/75, emerald accent line
  *
- * Usage:
- *   <GooeyNav rightSlot={<WalletConnect />} />                  ← auto-detects active route
- *   <GooeyNav activeKey="pay" rightSlot={<WalletConnect />} />  ← override active
+ * Blob position = measured via getBoundingClientRect after mount + ResizeObserver.
  */
 
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
 import ObscuraLogo from "@/components/ObscuraLogo";
+import { cn } from "@/lib/utils";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -71,6 +72,15 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
   const [activeRect, setActiveRect] = useState<BlobRect | null>(null);
   const [hoverKey,   setHoverKey]   = useState<string | null>(null);
   const [hoverRect,  setHoverRect]  = useState<BlobRect | null>(null);
+  const [scrolled,   setScrolled]   = useState(false);
+
+  // Track scroll for glass effect
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Measure an item relative to the wrapper div
   const measure = (key: string): BlobRect | null => {
@@ -110,10 +120,17 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
   const handleLeave = () => { setHoverKey(null); setHoverRect(null); };
 
   return (
-    <header className="sticky top-0 z-50 w-full">
+    <header
+      className={cn(
+        "nav-glass sticky top-0 z-50 w-full",
+        scrolled
+          ? "scrolled bg-[#06090c]/75 shadow-[0_8px_40px_rgba(0,0,0,0.55)]"
+          : "bg-[#06090c]/0"
+      )}
+    >
       {/* Offscreen SVG gooey filter */}
       <svg
-        aria-hidden="true"
+        aria-hidden={true}
         focusable="false"
         style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}
       >
@@ -129,9 +146,56 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
         </defs>
       </svg>
 
+      {/* Noise texture overlay — adds depth/grain to glass */}
+      <div
+        aria-hidden={true}
+        className="absolute inset-0 pointer-events-none transition-opacity duration-500"
+        style={{
+          opacity: scrolled ? 0.025 : 0,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "repeat",
+          backgroundSize: "200px 200px",
+        }}
+      />
+
+      {/* Top-edge gradient shimmer — tint from emerald on scroll */}
+      <motion.div
+        aria-hidden={true}
+        className="absolute inset-x-0 top-0 h-px pointer-events-none"
+        animate={{
+          opacity: scrolled ? 1 : 0,
+          background: "linear-gradient(90deg, transparent 0%, rgba(52,211,153,0.12) 15%, rgba(52,211,153,0.45) 50%, rgba(52,211,153,0.12) 85%, transparent 100%)",
+        }}
+        transition={{ duration: 0.6, ease: "easeInOut" }}
+      />
+
+      {/* Bottom border — dim line at top, emerald glow line when scrolled */}
+      <motion.div
+        aria-hidden={true}
+        className="absolute inset-x-0 bottom-0 pointer-events-none"
+        animate={{
+          opacity: scrolled ? 1 : 0.4,
+          height: scrolled ? "1px" : "1px",
+          background: scrolled
+            ? "linear-gradient(90deg, transparent 0%, rgba(52,211,153,0.08) 10%, rgba(52,211,153,0.4) 50%, rgba(52,211,153,0.08) 90%, transparent 100%)"
+            : "rgba(255,255,255,0.04)",
+        }}
+        transition={{ duration: 0.6, ease: "easeInOut" }}
+      />
+
+      {/* Ambient green glow beneath header — visible only on scroll */}
+      <motion.div
+        aria-hidden={true}
+        className="absolute inset-x-0 -bottom-6 h-6 pointer-events-none"
+        animate={{ opacity: scrolled ? 1 : 0 }}
+        transition={{ duration: 0.7 }}
+        style={{
+          background: "radial-gradient(ellipse 60% 100% at 50% 0%, rgba(52,211,153,0.06) 0%, transparent 100%)",
+        }}
+      />
+
       {/* Bar */}
-      <div className="relative flex items-center h-14 px-6 lg:px-8
-                      backdrop-blur-xl bg-[#06090c]/90 border-b border-white/[0.05]">
+      <div className="relative flex items-center h-14 px-6 lg:px-8">
 
         {/* Logo / home link — left */}
         {showLogo && (
@@ -139,7 +203,20 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
             to="/"
             className="flex items-center gap-2.5 shrink-0 group"
           >
-            <ObscuraLogo size={26} className="group-hover:opacity-80 transition-opacity" />
+            <div className="relative flex items-center justify-center">
+              {/* Pulse ring — only active when scrolled */}
+              <motion.span
+                aria-hidden={true}
+                className="absolute rounded-full border border-emerald-400/30"
+                style={{ width: 36, height: 36 }}
+                animate={scrolled
+                  ? { scale: [1, 1.45, 1], opacity: [0.35, 0, 0.35] }
+                  : { scale: 1, opacity: 0 }
+                }
+                transition={{ duration: 2.8, repeat: Infinity, ease: "easeOut", repeatDelay: 0.5 }}
+              />
+              <ObscuraLogo size={26} className="relative z-10 group-hover:opacity-80 transition-opacity" />
+            </div>
             <span className="hidden sm:block font-display text-[13px] tracking-[0.3em] text-foreground/90 group-hover:text-foreground transition-colors">
               OBSCURA
             </span>
@@ -149,12 +226,22 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
         {/* Nav pill wrapper — absolute center of the bar */}
         <div
           ref={wrapRef}
-          className="absolute left-1/2 -translate-x-1/2 flex items-center py-1"
+          className={cn(
+            "absolute left-1/2 -translate-x-1/2 flex items-center py-1",
+            "transition-all duration-500 ease-out",
+            scrolled && [
+              "rounded-full",
+              "bg-white/[0.035]",
+              "border border-white/[0.09]",
+              "shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_4px_24px_rgba(0,0,0,0.35),0_0_0_1px_rgba(52,211,153,0.05)]",
+              "px-1",
+            ],
+          )}
         >
 
           {/* Layer 1: gooey blobs (no pointer events, SVG filter) */}
           <div
-            aria-hidden="true"
+            aria-hidden={true}
             className="absolute inset-0 pointer-events-none overflow-visible"
             style={{ filter: "url(#gooey-nav)" }}
           >
@@ -187,7 +274,7 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
           {NAV_ITEMS.map((item) => {
             const isActive = item.key === activeKey;
             const labelContent = (
-              <span className={[
+              <span className={cn(
                 "flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium leading-none select-none",
                 "transition-colors duration-150",
                 isActive
@@ -195,7 +282,7 @@ export default function GooeyNav({ activeKey: activeKeyProp, onSelect, rightSlot
                   : item.soon
                   ? "text-white/25 cursor-not-allowed"
                   : "text-white/55 hover:text-white/90",
-              ].join(" ")}>
+              )}>
                 {item.label}
                 {item.soon && (
                   <span className="text-[8px] tracking-[0.2em] uppercase font-mono opacity-60">

@@ -75,9 +75,9 @@ function ClaimKeyRow({ m }: { m: ScannedPayment }) {
           <div className="flex items-start gap-1.5 text-[11px] text-amber-500">
             <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
             <span>
-              Import this private key into a fresh wallet (e.g. MetaMask), fund with a tiny
-              amount of ETH for gas, then call <code>ConfidentialEscrow.redeem({m.escrowId.toString()})</code>.
-              Anyone with this key can sweep the escrow.
+              Import this private key into MetaMask as a new account. Fund that account with a tiny ETH for gas, then call{" "}
+              <code>cUSDC.confidentialTransfer(yourMainWallet, amount)</code> from that account to move the funds to your main wallet.
+              Anyone with this key controls those funds.
             </span>
           </div>
           {derivedAddr && (
@@ -135,9 +135,13 @@ export default function StealthInbox() {
       </div>
 
       <p className="text-sm text-muted-foreground/70">
-        Scans the blockchain for payroll cycles sent to your stealth addresses. Everything happens in your browser — nothing is sent to any server.
-        Click “Reveal” to get the private key for a cycle, then import it into a fresh wallet to claim the funds.
+        Only relevant if your employer used <strong>Stealth mode</strong> to pay you. In Direct mode, cUSDC lands in your wallet immediately — just go to Dashboard → REVEAL to see it.
+        In Stealth mode, payments go to derived one-time addresses. Scan here to find them, then use the claim key to sweep funds.
       </p>
+
+      <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-md text-[12px] text-blue-300/80">
+        💡 <strong>Most users:</strong> If your employer used Direct mode (the default), skip this tab — check Dashboard → REVEAL to see your cUSDC balance.
+      </div>
 
       {error && <div className="text-sm text-destructive">{error}</div>}
 

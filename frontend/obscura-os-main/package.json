@@ -13,7 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@cofhe/sdk": "^0.5.0",
+    "@cofhe/sdk": "^0.4.0",
     "@dynamic-labs/ethereum": "^4.72.0",
     "@dynamic-labs/sdk-react-core": "^4.72.0",
     "@dynamic-labs/wagmi-connector": "^4.72.0",

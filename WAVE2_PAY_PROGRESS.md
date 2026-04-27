@@ -393,3 +393,22 @@ FHE.publishDecryptResult(ctHash, sig);
 ```
 
 â€¦but no v4 product flow requires this today.
+
+---
+
+## Session updates — stealth v2, ZK fix, auto-sweep (May 2026)
+
+| # | Task | Location | Status |
+|---|------|----------|--------|
+| 143 | **@cofhe/sdk 0.4.0?0.5.1 upgrade** — fixes ZK proof verification failure (CofheError: safe_deserialize failed: invalid value: integer 8). Testnet verifier at 	estnet-cofhe-vrf.fhenix.zone was updated to new proof format; SDK 0.5.1 aligns. No API changes needed. | package.json | ? Done |
+| 144 | **useSweepStealth hook** — one-click in-browser auto-sweep: derives stealth private key via stealthPrivateKey(), creates viem privateKeyToAccount + createWalletClient({ transport: http(RPC) }) — signs entirely in-browser without MetaMask. Only 1 MetaMask popup (ETH gas funding if stealth has none). 6-step state machine: deriving_key ? checking_gas ? funding_gas ? waiting_fund ? encrypting ? sweeping ? done. | src/hooks/useSweepStealth.ts | ? Done |
+| 145 | **StealthInbox SweepCard** — replaced 4-step "copy key and do it manually" guide with one-click SweepCard. Shows step progress, auto-detects amount from metadata (or falls back to on-chain decrypt), displays success card with Arbiscan link after sweep. | src/components/pay-v4/StealthInbox.tsx | ? Done |
+| 146 | **fhe.ts resetFHEAccount()** — resets lastConnectedAccount to 
+ull so initFHEClient re-inits to the main wallet after an in-browser stealth sweep (which temporarily switches the FHE context to the stealth account). | src/lib/fhe.ts | ? Done |
+| 147 | **Announcement metadata carries amount** — useTickStream now encodes 3 fields via encodeAbiParameters: (streamId, escrowId, amount). Recipient's auto-sweep reads mount directly from the announcement event metadata instead of needing an on-chain decrypt call. | src/hooks/useTickStream.ts | ? Done |
+| 148 | **useStealthScan amount decode** — ScannedPayment.amount: bigint field added. Decodes 3-field metadata (streamId, escrowId, amount) with 2-field (streamId, escrowId) legacy fallback (returns  n for old announcements). | src/hooks/useStealthScan.ts | ? Done |
+| 149 | **PayPage Stealth sidebar tab** — "Stealth Inbox" added as a named tab in the sidebar module list and to the ActionGrid so users can navigate directly to the stealth inbox from the Pay page. | src/pages/PayPage.tsx | ? Done |
+| 150 | **useTickStream: await announce receipt + revert guard** — announce was fire-and-forget; a silent on-chain revert would leave the recipient's inbox empty with no error. Now awaits waitForTransactionReceipt({ hash: announceTx }) and throws a clear error on status === "reverted". | src/hooks/useTickStream.ts | ? Done |
+| 151 | **StealthInbox key mismatch detection** — useKeyMismatch hook reads on-chain meta via getMetaAddress() and compares spendingPubKey + iewingPubKey to localStorage. Shows amber warning banner ("Key mismatch — your local keys differ from on-chain") — most common cause of empty inbox after key rotation. | src/components/pay-v4/StealthInbox.tsx | ? Done |
+| 152 | **StreamList announcement confirmed badge** — lastPayment state includes nnounceTx?: string; success banner adds "Announcement confirmed ?" green checkmark row when nnounceTx is present. | src/components/pay-v4/StreamList.tsx | ? Done |
+| 153 | **Announce tx gas error fix** — passing only maxFeePerGas forced MetaMask to call eth_maxPriorityFeePerGas itself, which fails on Arbitrum Sepolia after a back-to-back tx (rate limit/stale state). Now extracts and passes maxPriorityFeePerGas from estimateFeesPerGas() with 0.1 gwei fallback. Added simulateContract pre-flight to catch on-chain reverts before MetaMask popup (converts "Review alert" into a clear JS error). | src/hooks/useTickStream.ts | ? Done |

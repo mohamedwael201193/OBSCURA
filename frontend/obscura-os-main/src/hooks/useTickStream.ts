@@ -116,11 +116,6 @@ export function useTickStream() {
         //    Small delay to avoid MetaMask RPC rate-limiting (back-to-back txs).
         await new Promise((r) => setTimeout(r, 2_000));
 
-        const feeData2 = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas2 = feeData2.maxFeePerGas
-          ? (feeData2.maxFeePerGas * 150n) / 100n
-          : undefined;
-
         // Encode amount into metadata so recipient can auto-sweep without guessing
         const metadata = encodeAbiParameters(
           [
@@ -130,6 +125,44 @@ export function useTickStream() {
           ],
           [params.streamId, 0n, params.amount]
         );
+
+        // Re-estimate gas fees after the delay — stale values cause MetaMask to
+        // call eth_maxPriorityFeePerGas itself which often fails on testnet.
+        // Pass BOTH maxFeePerGas + maxPriorityFeePerGas so MetaMask never needs
+        // to make its own estimation (eliminates the "gas error" popup).
+        let maxFeePerGas2: bigint | undefined;
+        let maxPriorityFeePerGas2: bigint | undefined;
+        try {
+          const feeData2 = await publicClient.estimateFeesPerGas();
+          maxFeePerGas2 = feeData2.maxFeePerGas
+            ? (feeData2.maxFeePerGas * 150n) / 100n
+            : undefined;
+          maxPriorityFeePerGas2 = feeData2.maxPriorityFeePerGas
+            ? (feeData2.maxPriorityFeePerGas * 150n) / 100n
+            : 100_000_000n; // 0.1 gwei fallback (safe for Arbitrum Sepolia)
+        } catch {
+          // RPC rate-limited or offline — use safe Arbitrum Sepolia fallbacks
+          maxFeePerGas2 = 300_000_000n; // 0.3 gwei
+          maxPriorityFeePerGas2 = 100_000_000n; // 0.1 gwei
+        }
+
+        // Pre-simulate the announce to catch on-chain reverts before MetaMask popup.
+        // If this fails, MetaMask would show "Review alert" — we throw a clear error instead.
+        try {
+          await publicClient.simulateContract({
+            address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+            abi: OBSCURA_STEALTH_REGISTRY_ABI,
+            functionName: "announce",
+            args: [stealth.stealthAddress, stealth.ephemeralPubKey, stealth.viewTag, metadata],
+            account: address,
+          });
+        } catch (simErr) {
+          throw new Error(
+            `Stealth announcement simulation failed: ${(simErr as Error).message?.slice(0, 120)}. ` +
+            `cUSDC transfer succeeded — try again or use Direct mode.`
+          );
+        }
+
         const announceTx = await writeContractAsync({
           address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
           abi: OBSCURA_STEALTH_REGISTRY_ABI,
@@ -138,6 +171,7 @@ export function useTickStream() {
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas: maxFeePerGas2,
+          maxPriorityFeePerGas: maxPriorityFeePerGas2,
           gas: 500_000n,
         });
 

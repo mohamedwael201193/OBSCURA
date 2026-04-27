@@ -155,6 +155,14 @@ export async function decryptBalance(
 }
 
 /**
+ * Reset the account tracking so the FHE client reconnects on next initFHEClient call.
+ * Call this after using a temporary stealth walletClient to restore the main wallet.
+ */
+export function resetFHEAccount(): void {
+  lastConnectedAccount = null;
+}
+
+/**
  * Get or create a self-permit (EIP-712 signature).
  */
 export async function getOrCreatePermit(): Promise<any> {

@@ -82,6 +82,7 @@ const sidebarSections: SidebarSection[] = [
       { key: "streams", label: "Streams", icon: Repeat },
       { key: "crosschain", label: "Cross-Chain", icon: Globe2 },
       { key: "insurance", label: "Insurance", icon: Shield },
+      { key: "stealth", label: "Stealth", icon: Eye },
     ],
   },
   {
@@ -100,6 +101,7 @@ const actionItems: ActionItem[] = [
   { key: "streams", label: "Streams", description: "Payroll & streaming", icon: Repeat },
   { key: "crosschain", label: "Cross-Chain", description: "Bridge assets", icon: Globe2 },
   { key: "insurance", label: "Insurance", description: "Payment coverage", icon: Shield },
+  { key: "stealth", label: "Stealth", description: "Private inbox", icon: Eye },
 ];
 
 const activeModules = [

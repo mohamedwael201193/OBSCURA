@@ -121,12 +121,14 @@ export function useTickStream() {
           ? (feeData2.maxFeePerGas * 150n) / 100n
           : undefined;
 
+        // Encode amount into metadata so recipient can auto-sweep without guessing
         const metadata = encodeAbiParameters(
           [
             { name: "streamId", type: "uint256" },
             { name: "escrowId", type: "uint256" },
+            { name: "amount", type: "uint256" },
           ],
-          [params.streamId, 0n]
+          [params.streamId, 0n, params.amount]
         );
         await writeContractAsync({
           address: OBSCURA_STEALTH_REGISTRY_ADDRESS,

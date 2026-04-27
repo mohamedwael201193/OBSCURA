@@ -88,9 +88,21 @@ export function useTickStream() {
         // 3. Direct cUSDC transfer: employer → stealth address.
         //    Uses the InEuint64-accepting overload (selector 0xa794ee95).
         const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
+        // Arbitrum Sepolia base fees can be extremely low (~0.024 gwei).
+        // Clamp priority fee to never exceed the fee cap (EIP-1559 invariant).
+        let maxFeePerGas = feeData.maxFeePerGas
           ? (feeData.maxFeePerGas * 150n) / 100n
           : undefined;
+        let maxPriorityFeePerGas = feeData.maxPriorityFeePerGas
+          ? (feeData.maxPriorityFeePerGas * 150n) / 100n
+          : undefined;
+        // Clamp: priorityFee must be ≤ feeCap
+        if (maxFeePerGas !== undefined && maxPriorityFeePerGas !== undefined) {
+          if (maxPriorityFeePerGas > maxFeePerGas) maxPriorityFeePerGas = maxFeePerGas;
+        } else if (maxFeePerGas !== undefined && maxPriorityFeePerGas === undefined) {
+          // No priority fee returned — use the fee cap itself (safe, wastes nothing on L2)
+          maxPriorityFeePerGas = maxFeePerGas;
+        }
 
         const txHash = await writeContractAsync({
           address: REINEIRA_CUSDC_ADDRESS,
@@ -100,6 +112,7 @@ export function useTickStream() {
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas,
+          maxPriorityFeePerGas,
           gas: 1_500_000n,
         });
 
@@ -139,11 +152,20 @@ export function useTickStream() {
             : undefined;
           maxPriorityFeePerGas2 = feeData2.maxPriorityFeePerGas
             ? (feeData2.maxPriorityFeePerGas * 150n) / 100n
-            : 100_000_000n; // 0.1 gwei fallback (safe for Arbitrum Sepolia)
+            : undefined;
         } catch {
           // RPC rate-limited or offline — use safe Arbitrum Sepolia fallbacks
           maxFeePerGas2 = 300_000_000n; // 0.3 gwei
-          maxPriorityFeePerGas2 = 100_000_000n; // 0.1 gwei
+          maxPriorityFeePerGas2 = undefined; // let clamp logic handle it
+        }
+        // EIP-1559 invariant: priorityFee must be ≤ feeCap.
+        // Arbitrum Sepolia base fees are extremely low (~0.024 gwei), so any
+        // fixed-value fallback (e.g. 0.1 gwei) will exceed the cap. Instead,
+        // clamp to maxFeePerGas — on L2 the priority fee has no effect on inclusion.
+        if (maxFeePerGas2 !== undefined) {
+          if (maxPriorityFeePerGas2 === undefined || maxPriorityFeePerGas2 > maxFeePerGas2) {
+            maxPriorityFeePerGas2 = maxFeePerGas2;
+          }
         }
 
         // Pre-simulate the announce to catch on-chain reverts before MetaMask popup.

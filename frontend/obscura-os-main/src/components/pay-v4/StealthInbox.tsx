@@ -13,14 +13,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Inbox, Eye, Copy, Check, AlertTriangle, Shield, Zap, ExternalLink,
   RefreshCw, ChevronDown, ChevronUp, Lock, ArrowRight, Loader2, CheckCircle2,
-  EyeOff,
+  EyeOff, KeyRound,
 } from "lucide-react";
-import { useAccount } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import { formatUnits } from "viem";
 import { privateKeyToAddress } from "viem/accounts";
 import { useStealthScan, type ScannedPayment } from "@/hooks/useStealthScan";
 import { useSweepStealth } from "@/hooks/useSweepStealth";
 import { stealthPrivateKey, loadStoredKeys } from "@/lib/stealth";
+import {
+  OBSCURA_STEALTH_REGISTRY_ABI,
+  OBSCURA_STEALTH_REGISTRY_ADDRESS,
+} from "@/config/wave2";
 
 // ─── Sweep Card ────────────────────────────────────────────────────────────────
 
@@ -283,6 +287,42 @@ const BENEFIT_CARDS = [
   },
 ];
 
+// ─── Key mismatch hook ─────────────────────────────────────────────────────────
+
+/**
+ * Checks if the keys in localStorage match what's registered on-chain.
+ * If the user clicked "Rotate & Republish" AFTER the sender sent a payment,
+ * the scan will find nothing because the viewTag is derived from the old keys.
+ */
+function useKeyMismatch(address: `0x${string}` | undefined) {
+  const publicClient = usePublicClient();
+  const [mismatch, setMismatch] = useState<"ok" | "mismatch" | "checking" | null>(null);
+
+  useEffect(() => {
+    if (!address || !publicClient || !OBSCURA_STEALTH_REGISTRY_ADDRESS) return;
+    const local = loadStoredKeys(address);
+    if (!local) { setMismatch(null); return; }
+    setMismatch("checking");
+    publicClient
+      .readContract({
+        address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+        abi: OBSCURA_STEALTH_REGISTRY_ABI,
+        functionName: "getMetaAddress",
+        args: [address],
+      })
+      .then((res) => {
+        const [s, v, ts] = res as readonly [`0x${string}`, `0x${string}`, bigint];
+        if (ts === 0n) { setMismatch(null); return; }
+        const spendMatch = s.toLowerCase() === local.meta.spendingPubKey.toLowerCase();
+        const viewMatch = v.toLowerCase() === local.meta.viewingPubKey.toLowerCase();
+        setMismatch(spendMatch && viewMatch ? "ok" : "mismatch");
+      })
+      .catch(() => setMismatch(null));
+  }, [address, publicClient]);
+
+  return mismatch;
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function StealthInbox() {
@@ -290,6 +330,7 @@ export default function StealthInbox() {
   const { matches, isScanning, error, scan } = useStealthScan();
   const [showBenefits, setShowBenefits] = useState(false);
   const hasKeys = address ? !!loadStoredKeys(address) : false;
+  const keyMismatch = useKeyMismatch(address);
 
   useEffect(() => {
     if (hasKeys && address) scan();
@@ -321,6 +362,22 @@ export default function StealthInbox() {
       <div className="p-3 bg-blue-500/[0.07] border border-blue-500/20 rounded-xl text-[12px] text-blue-300/80 leading-relaxed">
         <strong className="text-blue-200">Most users:</strong> If your employer used <strong>Direct mode</strong> (the default), your cUSDC is already in your wallet — go to Dashboard → <strong>REVEAL</strong>. This tab is only for <strong>Stealth mode</strong> payments.
       </div>
+
+      {/* Key mismatch warning — most common cause of "inbox empty" during testing */}
+      {keyMismatch === "mismatch" && (
+        <div className="p-3 bg-amber-500/[0.08] border border-amber-500/25 rounded-xl text-[12px] text-amber-300/85 flex items-start gap-2.5">
+          <KeyRound className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+          <div>
+            <div className="font-semibold text-amber-200 mb-1">Key mismatch — your local keys differ from on-chain</div>
+            <div className="text-[11px] leading-relaxed text-amber-300/70">
+              Your browser's stealth keys <strong>don't match</strong> what's registered on-chain. This means stealth payments sent using your old keys won't be found by this scan. This usually happens when you clicked <strong>"Rotate & Republish"</strong> after your employer sent a payment.
+            </div>
+            <div className="mt-1.5 text-[11px] text-amber-300/60">
+              <strong className="text-amber-200">Fix:</strong> If the payment was sent to your OLD keys, ask your employer to re-send using the new keys. Or check Arbiscan directly for Announcement events on the stealth registry.
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="border border-white/[0.07] rounded-xl overflow-hidden">
         <button onClick={() => setShowBenefits((v) => !v)}

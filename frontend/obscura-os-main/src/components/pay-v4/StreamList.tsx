@@ -89,7 +89,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   const [tickAmount, setTickAmount] = useState("");
   const [payMode, setPayMode] = useState<"direct" | "stealth">("direct");
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
-  const [lastPayment, setLastPayment] = useState<{ streamId: string; txHash: string; amount: string; stealthAddress?: string } | null>(null);
+  const [lastPayment, setLastPayment] = useState<{ streamId: string; txHash: string; announceTx?: string; amount: string; stealthAddress?: string } | null>(null);
   const [streamAction, setStreamAction] = useState<string | null>(null);
 
   // Track paid cycles in localStorage (on-chain counter won't update since we bypass PayStream)
@@ -188,6 +188,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
         setLastPayment({
           streamId: stream.id.toString(),
           txHash: result.txHash,
+          announceTx: result.announceTx,
           amount: tickAmount,
           stealthAddress: result.stealth?.stealthAddress,
         });
@@ -287,8 +288,17 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
               tx: {lastPayment.txHash.slice(0, 14)}…{lastPayment.txHash.slice(-8)}
             </div>
             {lastPayment.stealthAddress && (
-              <div className="text-[11px] text-amber-400/80 mt-1">
-                ⚠ Stealth address: {lastPayment.stealthAddress.slice(0, 14)}…{lastPayment.stealthAddress.slice(-6)} — recipient must scan Stealth Inbox to claim.
+              <div className="text-[11px] text-emerald-400/80 mt-1 space-y-0.5">
+                <div>Stealth address: {lastPayment.stealthAddress.slice(0, 14)}…{lastPayment.stealthAddress.slice(-6)}</div>
+                {lastPayment.announceTx && (
+                  <div className="flex items-center gap-1">
+                    <Check className="w-2.5 h-2.5 text-emerald-400" />
+                    <span>Announcement confirmed — recipient can now scan Stealth Inbox.</span>
+                  </div>
+                )}
+                {!lastPayment.announceTx && (
+                  <div className="text-amber-400/80">⚠ Announcement may be pending — recipient must wait then rescan.</div>
+                )}
               </div>
             )}
             {!lastPayment.stealthAddress && (

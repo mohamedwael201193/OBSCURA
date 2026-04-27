@@ -130,7 +130,7 @@ export function useTickStream() {
           ],
           [params.streamId, 0n, params.amount]
         );
-        await writeContractAsync({
+        const announceTx = await writeContractAsync({
           address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
           abi: OBSCURA_STEALTH_REGISTRY_ABI,
           functionName: "announce",
@@ -141,7 +141,18 @@ export function useTickStream() {
           gas: 500_000n,
         });
 
-        return { txHash, escrowId: null, stealth };
+        // Wait for announce receipt so we can detect silent on-chain reverts.
+        // If announce fails the recipient's inbox will never find the payment.
+        const announceReceipt = await publicClient.waitForTransactionReceipt({ hash: announceTx });
+        if (announceReceipt.status === "reverted") {
+          throw new Error(
+            `Stealth announcement reverted on-chain (tx ${announceTx.slice(0, 10)}…). ` +
+            `The cUSDC transfer succeeded but the recipient won't be able to find it in their inbox. ` +
+            `Try again or use Direct mode.`
+          );
+        }
+
+        return { txHash, announceTx, escrowId: null, stealth };
       } catch (e) {
         const msg = (e as Error).message ?? "tick failed";
         setError(msg);

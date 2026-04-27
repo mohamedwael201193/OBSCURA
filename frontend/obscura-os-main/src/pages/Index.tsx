@@ -1,4 +1,3 @@
-import ObscuraNav from "@/components/ObscuraNav";
 import HeroSection from "@/components/HeroSection";
 import FeaturesGrid from "@/components/FeaturesGrid";
 import WaveModules from "@/components/WaveModules";
@@ -11,7 +10,6 @@ import ObscuraFooter from "@/components/ObscuraFooter";
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
-      <ObscuraNav />
       <HeroSection />
       <FeaturesGrid />
       <WaveModules />

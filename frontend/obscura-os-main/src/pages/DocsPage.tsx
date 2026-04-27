@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Book, ExternalLink, Shield, Zap, Lock, FileText, Terminal, Layers, GitBranch, AlertTriangle, CheckCircle } from "lucide-react";
-import ObscuraNav from "@/components/ObscuraNav";
 import ObscuraFooter from "@/components/ObscuraFooter";
 
 const sections = [
@@ -241,9 +240,7 @@ const DocsPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <ObscuraNav />
-
-      <div className="pt-24 px-6 pb-16 max-w-[1400px] mx-auto">
+      <div className="pt-6 px-6 pb-16 max-w-[1400px] mx-auto">
         <div className="grid lg:grid-cols-[240px_1fr] gap-8">
           {/* Sidebar */}
           <div className="hidden lg:block">

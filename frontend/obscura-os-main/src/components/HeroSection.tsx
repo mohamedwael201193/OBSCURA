@@ -77,7 +77,7 @@ const HeroSection = () => {
               Operating System
               <br />
               <span className="relative inline-block">
-                <span className="text-primary text-glow">For Onchain Privacy</span>
+                <span className="text-primary">For Onchain Privacy</span>
               </span>
             </motion.h1>
 

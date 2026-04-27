@@ -3,6 +3,29 @@ import type { Config } from "tailwindcss";
 export default {
   darkMode: ["class"],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  // Safelist dynamic classes used by elite/* components (accent={emerald|cyan|violet}).
+  safelist: [
+    // Text colors
+    "text-emerald-400", "text-cyan-400", "text-violet-400",
+    // Backgrounds (10-15-20 alpha)
+    "bg-emerald-500/5", "bg-emerald-500/10", "bg-emerald-500/15", "bg-emerald-500/20",
+    "bg-cyan-500/5", "bg-cyan-500/10", "bg-cyan-500/15", "bg-cyan-500/20",
+    "bg-violet-500/5", "bg-violet-500/10", "bg-violet-500/15", "bg-violet-500/20",
+    // Borders
+    "border-emerald-500/20", "border-emerald-500/30", "border-emerald-500/40",
+    "border-cyan-500/20", "border-cyan-500/30", "border-cyan-500/40",
+    "border-violet-500/20", "border-violet-500/30", "border-violet-500/40",
+    // Hover borders
+    "hover:border-emerald-500/30", "hover:border-cyan-500/30", "hover:border-violet-500/30",
+    // Sidebar dot
+    "bg-emerald-400", "bg-cyan-400", "bg-violet-400",
+    // Gradient via classes used in DashboardShell
+    "via-emerald-500/60", "via-cyan-500/60", "via-violet-500/60",
+    // Glow shadows
+    "shadow-[0_0_20px_rgba(34,197,94,0.25)]",
+    "shadow-[0_0_20px_rgba(6,182,212,0.25)]",
+    "shadow-[0_0_20px_rgba(139,92,246,0.25)]",
+  ],
   prefix: "",
   theme: {
     container: {

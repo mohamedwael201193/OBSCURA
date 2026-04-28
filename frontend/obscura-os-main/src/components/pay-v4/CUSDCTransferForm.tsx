@@ -51,13 +51,13 @@ export default function CUSDCTransferForm() {
       </div>
 
       {/* USDC balance pill */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.025] border border-white/[0.06]">
-        <Wallet className="w-3 h-3 text-muted-foreground/40 shrink-0" />
-        <span className="text-[10px] text-muted-foreground/40 uppercase tracking-wider">USDC Balance</span>
-        <span className="ml-auto font-mono text-[12px] text-foreground/80 font-medium">
+      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#3e73c4]/10 border border-[#3e73c4]/25">
+        <UsdcIcon className="w-4 h-4 shrink-0" />
+        <span className="text-[11px] text-white/60 font-medium tracking-wide">USDC Balance</span>
+        <span className="ml-auto font-mono text-[14px] text-white font-semibold">
           {usdcBalance !== null ? usdcBalance : "—"}
         </span>
-        <span className="text-[9px] text-muted-foreground/30 uppercase tracking-wider">USDC</span>
+        <span className="text-[10px] text-[#3e73c4] font-semibold uppercase tracking-wider">USDC</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">

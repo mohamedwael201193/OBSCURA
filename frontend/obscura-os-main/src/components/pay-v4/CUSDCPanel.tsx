@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { Coins, Eye, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Loader2, Wallet } from "lucide-react";
+import { Coins, Eye, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Loader2 } from "lucide-react";
+import UsdcIcon from "@/components/shared/UsdcIcon";
 import { useState } from "react";
 import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
 import { toast } from "sonner";
@@ -40,13 +41,13 @@ export default function CUSDCPanel() {
 
       {/* ── Balance Grid ── */}
       {/* Plain USDC always-visible badge */}
-      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">
-        <Wallet className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-        <span className="text-[10px] text-muted-foreground/45 uppercase tracking-wider">USDC (plain)</span>
-        <span className="ml-auto font-mono text-[14px] text-foreground font-semibold">
+      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#3e73c4]/10 border border-[#3e73c4]/25">
+        <UsdcIcon className="w-4 h-4 shrink-0" />
+        <span className="text-[11px] text-white/60 font-medium tracking-wide">USDC (plain)</span>
+        <span className="ml-auto font-mono text-[15px] text-white font-bold">
           {usdcBalance !== null ? usdcBalance : "—"}
         </span>
-        <span className="text-[9px] text-muted-foreground/30 uppercase tracking-wider">USDC</span>
+        <span className="text-[10px] text-[#3e73c4] font-semibold uppercase tracking-wider">USDC</span>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 space-y-1.5">

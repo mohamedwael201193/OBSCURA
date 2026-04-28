@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Send, ArrowRight } from "lucide-react";
+import { Send, ArrowRight, Lock, Loader2, ExternalLink } from "lucide-react";
 import { useCUSDCTransfer } from "@/hooks/useCUSDCTransfer";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
@@ -23,7 +23,6 @@ export default function CUSDCTransferForm() {
       toast.error("Enter a valid amount");
       return;
     }
-
     try {
       const parsed = parseUnits(amount, 6);
       await transfer(recipient as `0x${string}`, parsed);
@@ -36,51 +35,59 @@ export default function CUSDCTransferForm() {
   };
 
   return (
-    <div className="glass-panel rounded-md p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <ArrowRight className="w-4 h-4 text-cyan-400" />
-        <h3 className="font-display text-sm tracking-wider text-foreground">
-          Confidential P2P Transfer
-        </h3>
-        <span className="ml-auto text-[11px] text-muted-foreground bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-md border border-cyan-500/20">
-          cUSDC · ENCRYPTED
-        </span>
+    <div className="pay-card pay-card-cyan p-6 space-y-5">
+      {/* ── Header ── */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-700/10 border border-cyan-500/25 flex items-center justify-center shrink-0">
+          <Send className="w-4 h-4 text-cyan-400" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Confidential P2P Transfer</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">FHE Encrypted · cUSDC</p>
+        </div>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-cyan">ENCRYPTED</span>
       </div>
 
-      <p className="text-sm text-muted-foreground/70">
-        Send cUSDC to any address. The transfer amount is fully encrypted —
-        no one (not even block explorers) can see how much was sent.
+      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
+        Send cUSDC to any address. The transfer amount is fully encrypted — no one can see how much was sent, not even block explorers.
       </p>
 
       <div className="space-y-3">
-        <div>
-          <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+        <div className="space-y-2">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
             Recipient Address
           </label>
-          <input
-            type="text"
-            placeholder="0x... recipient"
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            className="w-full px-3 py-2 bg-background border border-border/50 rounded-md text-xs text-foreground placeholder:text-muted-foreground/30 focus:border-cyan-500/40 focus:outline-none"
-          />
+          <div className="relative">
+            <ArrowRight className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/30 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="0x… recipient"
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              className="pay-input pl-9"
+            />
+          </div>
         </div>
-        <div>
-          <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+
+        <div className="space-y-2">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
             Amount (cUSDC)
           </label>
-          <input
-            type="number"
-            placeholder="e.g. 50"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-full px-3 py-2 bg-background border border-border/50 rounded-md text-xs text-foreground placeholder:text-muted-foreground/30 focus:border-cyan-500/40 focus:outline-none"
-          />
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-400/40 pointer-events-none" />
+            <input
+              type="number"
+              placeholder="e.g. 50"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="pay-input pl-9"
+            />
+          </div>
         </div>
       </div>
 
       {status !== "idle" && (
-        <div className="pt-1">
+        <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-4">
           <AsyncStepper status={status} stepIndex={stepIndex} />
         </div>
       )}
@@ -88,27 +95,32 @@ export default function CUSDCTransferForm() {
       <motion.button
         onClick={handleTransfer}
         disabled={isProcessing || isTxPending}
-        whileHover={!isProcessing ? { scale: 1.01 } : {}}
+        whileHover={!isProcessing ? { scale: 1.005 } : {}}
         whileTap={!isProcessing ? { scale: 0.99 } : {}}
-        className="w-full py-3 text-xs tracking-[0.2em] uppercase bg-cyan-600 text-white rounded-md hover:bg-cyan-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="btn-pay btn-pay-cyan w-full py-2.5"
       >
-        <Send className="w-3.5 h-3.5" />
-        {isProcessing ? "Processing..." : "Encrypt & Send cUSDC"}
+        {isProcessing
+          ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</>
+          : <><Send className="w-3.5 h-3.5" /> Encrypt &amp; Send cUSDC</>
+        }
       </motion.button>
 
       {txHash && (
-        <div className="text-xs text-muted-foreground/60 text-center">
-          TX:{" "}
+        <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-500/8 border border-emerald-500/20 rounded-lg">
+          <ExternalLink className="w-3 h-3 text-emerald-400 shrink-0" />
           <a
             href={`https://sepolia.arbiscan.io/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-cyan-400 hover:underline"
+            className="font-mono text-[11px] text-emerald-300 hover:text-emerald-200 transition-colors truncate"
           >
-            {txHash.slice(0, 10)}...{txHash.slice(-8)}
+            {txHash.slice(0, 10)}…{txHash.slice(-8)}
           </a>
+          <span className="ml-auto text-[10px] text-muted-foreground/35 tracking-wider shrink-0">CONFIRMED</span>
         </div>
       )}
     </div>
   );
 }
+
+

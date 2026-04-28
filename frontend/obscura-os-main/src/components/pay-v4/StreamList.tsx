@@ -60,18 +60,13 @@ function CountdownTimer({ nextDue, now, onRefresh }: { nextDue: number; now: num
           ? `${secsLeft}s`
           : "now";
   return (
-    <div className="space-y-2">
-      <button
-        disabled
-        className="w-full py-2 text-sm tracking-[0.2em] uppercase bg-secondary/20 text-muted-foreground border border-border/30 rounded-md flex items-center justify-center gap-2 opacity-60"
-      >
-        <Timer className="w-3 h-3" /> Next cycle due in {display}
-      </button>
+    <div className="space-y-1.5">
+      <div className="w-full py-2 text-[11px] tracking-[0.15em] uppercase text-muted-foreground/40 border border-white/[0.07] rounded-lg flex items-center justify-center gap-1.5">
+        <Timer className="w-3 h-3" /> Next cycle in {display}
+      </div>
       {secsLeft <= 0 && (
-        <button
-          onClick={() => onRefresh()}
-          className="w-full py-1.5 text-xs tracking-[0.15em] uppercase text-primary hover:text-primary/80"
-        >
+        <button onClick={() => onRefresh()}
+          className="w-full py-1.5 text-[10px] tracking-[0.15em] uppercase text-emerald-400/60 hover:text-emerald-400 transition-colors">
           Refresh to check
         </button>
       )}
@@ -209,65 +204,58 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   if (!address) return null;
 
   return (
-    <div className="glass-panel rounded-md p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-sm tracking-wider text-foreground">
-          {mode === "employer" ? "Streams You're Paying" : "Streams Paying You"}
-        </h3>
-        <button
-          onClick={() => refresh()}
-          className="text-xs text-muted-foreground hover:text-primary"
-        >
+    <div className="pay-card p-5 space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+          mode === "employer"
+            ? "bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25"
+            : "bg-gradient-to-br from-cyan-500/20 to-cyan-700/10 border border-cyan-500/25"
+        }`}>
+          {mode === "employer" ? <Play className="w-4 h-4 text-emerald-400" /> : <Clock className="w-4 h-4 text-cyan-400" />}
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">
+            {mode === "employer" ? "Streams You're Paying" : "Streams Paying You"}
+          </h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">cUSDC · FHE Encrypted</p>
+        </div>
+        <button onClick={() => refresh()}
+          className="ml-auto text-[10px] tracking-[0.15em] uppercase text-muted-foreground/40 hover:text-emerald-400 transition-colors shrink-0">
           Refresh
         </button>
       </div>
 
       {mode === "employer" && (
-        <div className="space-y-3">
-          {/* Amount input */}
-          <div>
-            <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
               Amount Per Cycle (cUSDC)
             </label>
-            <input
-              type="number"
-              value={tickAmount}
-              onChange={(e) => setTickAmount(e.target.value)}
-            placeholder="e.g. 2.5"
-            className="w-full px-3 py-2 bg-background border border-border/50 rounded-md text-xs font-mono"
-          />
+            <input type="number" value={tickAmount} onChange={(e) => setTickAmount(e.target.value)}
+              placeholder="e.g. 2.5" className="pay-input font-mono" />
           </div>
 
-          {/* Payment mode toggle */}
-          <div>
-            <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+          <div className="space-y-2">
+            <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
               Payment Mode
             </label>
-            <div className="flex rounded-md border border-border/50 overflow-hidden text-xs">
-              <button
-                onClick={() => setPayMode("direct")}
-                className={`flex-1 py-2 flex items-center justify-center gap-1.5 transition-colors ${
-                  payMode === "direct"
-                    ? "bg-primary/20 text-primary border-r border-border/50"
-                    : "text-muted-foreground hover:text-foreground border-r border-border/50"
-                }`}
-              >
-                <Zap className="w-3 h-3" /> Direct
-                {payMode === "direct" && <span className="text-[10px] opacity-70">(recommended)</span>}
-              </button>
-              <button
-                onClick={() => setPayMode("stealth")}
-                className={`flex-1 py-2 flex items-center justify-center gap-1.5 transition-colors ${
-                  payMode === "stealth"
-                    ? "bg-emerald-500/10 text-emerald-400"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Shield className="w-3 h-3" /> Stealth
-                {payMode === "stealth" && <span className="text-[10px] opacity-70">(advanced)</span>}
-              </button>
+            <div className="flex gap-1.5">
+              {(["direct", "stealth"] as const).map((m) => (
+                <button key={m} onClick={() => setPayMode(m)}
+                  className={`flex-1 py-2 text-[11px] tracking-[0.12em] uppercase font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all border ${
+                    payMode === m
+                      ? m === "direct"
+                        ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/35 shadow-[0_0_8px_rgba(52,211,153,0.15)]"
+                        : "bg-violet-500/15 text-violet-300 border-violet-500/35 shadow-[0_0_8px_rgba(139,92,246,0.15)]"
+                      : "bg-white/[0.03] text-muted-foreground/50 border-white/[0.07] hover:text-muted-foreground hover:border-white/[0.12]"
+                  }`}>
+                  {m === "direct" ? <Zap className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
+                  {m}
+                </button>
+              ))}
             </div>
-            <p className="text-[11px] text-muted-foreground/60 mt-1">
+            <p className="text-[11px] text-muted-foreground/40 leading-relaxed">
               {payMode === "direct"
                 ? "cUSDC lands directly in the recipient's wallet — they see it immediately."
                 : "cUSDC goes to a derived one-time address. Recipient must scan Stealth Inbox to claim."}
@@ -275,211 +263,145 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           </div>
         </div>
       )}
+
       {lastPayment && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-3 bg-green-500/10 border border-green-500/30 rounded-md flex items-start gap-2"
-        >
-          <Check className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-          <div className="min-w-0">
-            <div className="text-sm text-green-400">
-              Payment sent! {lastPayment.amount} cUSDC → Stream #{lastPayment.streamId}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+          className="p-3.5 bg-emerald-500/8 border border-emerald-500/25 rounded-xl flex items-start gap-2.5">
+          <Check className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
+          <div className="min-w-0 space-y-1">
+            <div className="text-[12px] text-emerald-300 font-medium">
+              {lastPayment.amount} cUSDC sent → Stream #{lastPayment.streamId}
             </div>
-            <div className="font-mono text-[11px] text-green-400/60 mt-0.5">
+            <div className="font-mono text-[11px] text-emerald-400/50">
               tx: {lastPayment.txHash.slice(0, 14)}…{lastPayment.txHash.slice(-8)}
             </div>
             {lastPayment.stealthAddress && (
-              <div className="text-[11px] text-emerald-400/80 mt-1 space-y-0.5">
-                <div>Stealth address: {lastPayment.stealthAddress.slice(0, 14)}…{lastPayment.stealthAddress.slice(-6)}</div>
-                {lastPayment.announceTx && (
-                  <div className="flex items-center gap-1">
-                    <Check className="w-2.5 h-2.5 text-emerald-400" />
-                    <span>Announcement confirmed — recipient can now scan Stealth Inbox.</span>
-                  </div>
-                )}
-                {!lastPayment.announceTx && (
-                  <div className="text-amber-400/80">⚠ Announcement may be pending — recipient must wait then rescan.</div>
-                )}
+              <div className="text-[11px] text-violet-300/70 space-y-0.5">
+                <div>Stealth: {lastPayment.stealthAddress.slice(0, 14)}…{lastPayment.stealthAddress.slice(-6)}</div>
+                {lastPayment.announceTx
+                  ? <div className="text-emerald-400/70 flex items-center gap-1"><Check className="w-2.5 h-2.5" /> Announced — recipient can scan Stealth Inbox</div>
+                  : <div className="text-amber-400/70">Announcement pending — recipient must wait then rescan</div>}
               </div>
             )}
             {!lastPayment.stealthAddress && (
-              <div className="text-[11px] text-green-400/70 mt-1">
-                Direct transfer — cUSDC is now in recipient's wallet (encrypted on-chain, visible after REVEAL).
-              </div>
+              <div className="text-[11px] text-emerald-400/50">Direct — encrypted on-chain, visible after REVEAL</div>
             )}
           </div>
-          <button
-            onClick={() => setLastPayment(null)}
-            className="text-[11px] text-green-400/50 hover:text-green-400 ml-auto flex-shrink-0"
-          >✕</button>
+          <button onClick={() => setLastPayment(null)}
+            className="text-[11px] text-muted-foreground/30 hover:text-muted-foreground ml-auto shrink-0">✕</button>
         </motion.div>
       )}
 
-      {isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}
+      {isLoading && (
+        <div className="text-[12px] text-muted-foreground/50 text-center py-4">Loading streams…</div>
+      )}
       {!isLoading && streams.length === 0 && (
-        <div className="text-sm text-muted-foreground/60">No streams yet.</div>
+        <div className="text-[12px] text-muted-foreground/40 text-center py-6">No streams yet.</div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {streams.map((s) => {
           const localPaid = getLocalPaid(s.id);
           const totalPaid = Number(s.cyclesPaid) + localPaid;
           const localLastTick = getLastLocalTick(s.id);
-          // Effective lastTickTime: use whichever is more recent
           const effectiveLastTick = Math.max(Number(s.lastTickTime), localLastTick);
           const nextDue = effectiveLastTick + Number(s.periodSeconds);
           const effectivePending = Math.max(0, Math.floor((now - effectiveLastTick) / Number(s.periodSeconds)));
           return (
-          <div key={s.id.toString()} className="p-3 bg-secondary/20 border border-border/30 rounded-md">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <div className="text-sm text-foreground">Stream #{s.id.toString()}</div>
-                <div className="text-xs text-muted-foreground/70">
-                  every {Number(s.periodSeconds) >= 86400
-                    ? `${Math.round(Number(s.periodSeconds) / 86400)}d`
-                    : Number(s.periodSeconds) >= 3600
-                      ? `${Math.round(Number(s.periodSeconds) / 3600)}h`
-                      : `${Number(s.periodSeconds)}s`} · {totalPaid > 0 ? (
-                    <span className="text-green-400">{totalPaid} paid</span>
-                  ) : (
-                    <span>{totalPaid} paid</span>
-                  )}
+            <div key={s.id.toString()} className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 space-y-3">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <div className="font-display text-sm font-semibold text-foreground">Stream #{s.id.toString()}</div>
+                  <div className="text-[11px] text-muted-foreground/50">
+                    every {Number(s.periodSeconds) >= 86400
+                      ? `${Math.round(Number(s.periodSeconds) / 86400)}d`
+                      : Number(s.periodSeconds) >= 3600
+                        ? `${Math.round(Number(s.periodSeconds) / 3600)}h`
+                        : `${Number(s.periodSeconds)}s`} ·{" "}
+                    <span className={totalPaid > 0 ? "text-emerald-400" : ""}>{totalPaid} paid</span>
+                  </div>
                 </div>
+                {effectivePending > 0 ? (
+                  <span className="pay-badge pay-badge-emerald">{effectivePending} pending</span>
+                ) : (
+                  <span className="pay-badge">{effectivePending} pending</span>
+                )}
               </div>
-              <div className="flex items-center gap-1 text-xs text-primary">
-                <Clock className="w-3 h-3" />
-                {effectivePending} pending
+
+              <div className="text-[11px] text-muted-foreground/40 font-mono truncate flex items-center gap-2">
+                <span className="truncate">→ {s.recipientHint}</span>
+                {mode === "employer" && <RecipientStatus address={s.recipientHint} />}
               </div>
+
+              {mode === "employer" && effectivePending > 0 && (
+                <motion.button whileTap={{ scale: 0.98 }} disabled={isTicking} onClick={() => tickOne(s)}
+                  className="btn-pay btn-pay-emerald w-full py-2">
+                  {payMode === "stealth" ? <Shield className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
+                  {isTicking ? "Sending…" : `Pay Cycle (${payMode})`}
+                </motion.button>
+              )}
+              {mode === "employer" && effectivePending === 0 && !s.paused && (
+                <CountdownTimer nextDue={nextDue} now={now} onRefresh={refresh} />
+              )}
+              {mode === "employer" && !s.paused && (
+                <div className="flex gap-1.5 pt-0.5">
+                  <button disabled={streamAction === s.id.toString()}
+                    onClick={async () => {
+                      if (!publicClient || !OBSCURA_PAY_STREAM_ADDRESS) return;
+                      setStreamAction(s.id.toString());
+                      try {
+                        const feeData = await publicClient.estimateFeesPerGas();
+                        const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
+                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_ADDRESS, abi: OBSCURA_PAY_STREAM_ABI, functionName: "setPaused", args: [s.id, true], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
+                        await publicClient.waitForTransactionReceipt({ hash });
+                        toast.success(`Stream #${s.id.toString()} paused`);
+                        refresh();
+                      } catch (e) { toast.error((e as Error).message || "Pause failed"); } finally { setStreamAction(null); }
+                    }}
+                    className="btn-pay btn-pay-ghost flex-1 py-1.5 text-amber-400 hover:text-amber-300 border-amber-500/25 disabled:opacity-50">
+                    <Pause className="w-3 h-3" /> {streamAction === s.id.toString() ? "Pausing…" : "Pause"}
+                  </button>
+                  <button disabled={streamAction === s.id.toString()}
+                    onClick={async () => {
+                      if (!publicClient || !OBSCURA_PAY_STREAM_ADDRESS) return;
+                      setStreamAction(s.id.toString());
+                      try {
+                        const feeData = await publicClient.estimateFeesPerGas();
+                        const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
+                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_ADDRESS, abi: OBSCURA_PAY_STREAM_ABI, functionName: "cancelStream", args: [s.id], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
+                        await publicClient.waitForTransactionReceipt({ hash });
+                        toast.success(`Stream #${s.id.toString()} cancelled permanently`);
+                        refresh();
+                      } catch (e) { toast.error((e as Error).message || "Cancel failed"); } finally { setStreamAction(null); }
+                    }}
+                    className="btn-pay btn-pay-ghost flex-1 py-1.5 text-red-400 hover:text-red-300 border-red-500/25 disabled:opacity-50">
+                    <Ban className="w-3 h-3" /> Cancel
+                  </button>
+                </div>
+              )}
+              {s.paused && (
+                <div className="flex gap-2 items-center">
+                  <span className="text-[11px] text-amber-400/60 flex-1">Stream paused / cancelled</span>
+                  <button disabled={streamAction === s.id.toString()}
+                    onClick={async () => {
+                      if (!publicClient || !OBSCURA_PAY_STREAM_ADDRESS) return;
+                      setStreamAction(s.id.toString());
+                      try {
+                        const feeData = await publicClient.estimateFeesPerGas();
+                        const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
+                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_ADDRESS, abi: OBSCURA_PAY_STREAM_ABI, functionName: "setPaused", args: [s.id, false], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
+                        await publicClient.waitForTransactionReceipt({ hash });
+                        toast.success(`Stream #${s.id.toString()} resumed`);
+                        refresh();
+                      } catch (e) { toast.error((e as Error).message || "Resume failed"); } finally { setStreamAction(null); }
+                    }}
+                    className="btn-pay btn-pay-ghost py-1.5 px-3 text-emerald-400 hover:text-emerald-300 border-emerald-500/25 disabled:opacity-50">
+                    <PlayCircle className="w-3 h-3" /> {streamAction === s.id.toString() ? "Resuming…" : "Resume"}
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="text-[11px] text-muted-foreground/50 truncate mb-2 flex items-center gap-2">
-              <span className="font-mono truncate">recipient: {s.recipientHint}</span>
-              {mode === "employer" && <RecipientStatus address={s.recipientHint} />}
-            </div>
-            {mode === "employer" && effectivePending > 0 && (
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                disabled={isTicking}
-                onClick={() => tickOne(s)}
-                className="w-full py-2 text-sm tracking-[0.2em] uppercase bg-primary/10 text-primary border border-primary/30 rounded-md hover:bg-primary/20 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {payMode === "stealth" ? <Shield className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
-                {isTicking ? "Sending…" : `Send Next Cycle (${payMode})`}
-              </motion.button>
-            )}
-            {mode === "employer" && effectivePending === 0 && !s.paused && (
-              <CountdownTimer nextDue={nextDue} now={now} onRefresh={refresh} />
-            )}
-            {mode === "employer" && !s.paused && (
-              <div className="mt-1 flex gap-1">
-                <button
-                  disabled={streamAction === s.id.toString()}
-                  onClick={async () => {
-                    if (!publicClient || !OBSCURA_PAY_STREAM_ADDRESS) return;
-                    setStreamAction(s.id.toString());
-                    try {
-                      const feeData = await publicClient.estimateFeesPerGas();
-                      const maxFeePerGas = feeData.maxFeePerGas
-                        ? (feeData.maxFeePerGas * 130n) / 100n
-                        : undefined;
-                      const hash = await writeContractAsync({
-                        address: OBSCURA_PAY_STREAM_ADDRESS,
-                        abi: OBSCURA_PAY_STREAM_ABI,
-                        functionName: "setPaused",
-                        args: [s.id, true],
-                        account: address,
-                        chain: arbitrumSepolia,
-                        maxFeePerGas,
-                        gas: 200_000n,
-                      });
-                      await publicClient.waitForTransactionReceipt({ hash });
-                      toast.success(`Stream #${s.id.toString()} paused`);
-                      refresh();
-                    } catch (e) {
-                      toast.error((e as Error).message || "Pause failed");
-                    } finally {
-                      setStreamAction(null);
-                    }
-                  }}
-                  className="flex-1 py-1.5 text-xs tracking-[0.15em] uppercase text-amber-400/70 hover:text-amber-400 border border-amber-500/20 rounded-md flex items-center justify-center gap-1 disabled:opacity-50"
-                >
-                  <Pause className="w-3 h-3" /> {streamAction === s.id.toString() ? "Pausing…" : "Pause"}
-                </button>
-                <button
-                  disabled={streamAction === s.id.toString()}
-                  onClick={async () => {
-                    if (!publicClient || !OBSCURA_PAY_STREAM_ADDRESS) return;
-                    setStreamAction(s.id.toString());
-                    try {
-                      const feeData = await publicClient.estimateFeesPerGas();
-                      const maxFeePerGas = feeData.maxFeePerGas
-                        ? (feeData.maxFeePerGas * 130n) / 100n
-                        : undefined;
-                      const hash = await writeContractAsync({
-                        address: OBSCURA_PAY_STREAM_ADDRESS,
-                        abi: OBSCURA_PAY_STREAM_ABI,
-                        functionName: "cancelStream",
-                        args: [s.id],
-                        account: address,
-                        chain: arbitrumSepolia,
-                        maxFeePerGas,
-                        gas: 200_000n,
-                      });
-                      await publicClient.waitForTransactionReceipt({ hash });
-                      toast.success(`Stream #${s.id.toString()} cancelled permanently`);
-                      refresh();
-                    } catch (e) {
-                      toast.error((e as Error).message || "Cancel failed");
-                    } finally {
-                      setStreamAction(null);
-                    }
-                  }}
-                  className="flex-1 py-1.5 text-xs tracking-[0.15em] uppercase text-red-400/70 hover:text-red-400 border border-red-500/20 rounded-md flex items-center justify-center gap-1 disabled:opacity-50"
-                >
-                  <Ban className="w-3 h-3" /> Cancel
-                </button>
-              </div>
-            )}
-            {s.paused && (
-              <div className="mt-1 flex gap-1 items-center">
-                <div className="flex-1 text-xs text-amber-400/80 text-center">Stream paused / cancelled</div>
-                <button
-                  disabled={streamAction === s.id.toString()}
-                  onClick={async () => {
-                    if (!publicClient || !OBSCURA_PAY_STREAM_ADDRESS) return;
-                    setStreamAction(s.id.toString());
-                    try {
-                      const feeData = await publicClient.estimateFeesPerGas();
-                      const maxFeePerGas = feeData.maxFeePerGas
-                        ? (feeData.maxFeePerGas * 130n) / 100n
-                        : undefined;
-                      const hash = await writeContractAsync({
-                        address: OBSCURA_PAY_STREAM_ADDRESS,
-                        abi: OBSCURA_PAY_STREAM_ABI,
-                        functionName: "setPaused",
-                        args: [s.id, false],
-                        account: address,
-                        chain: arbitrumSepolia,
-                        maxFeePerGas,
-                        gas: 200_000n,
-                      });
-                      await publicClient.waitForTransactionReceipt({ hash });
-                      toast.success(`Stream #${s.id.toString()} resumed`);
-                      refresh();
-                    } catch (e) {
-                      toast.error((e as Error).message || "Resume failed");
-                    } finally {
-                      setStreamAction(null);
-                    }
-                  }}
-                  className="py-1.5 px-3 text-xs tracking-[0.15em] uppercase text-green-400/70 hover:text-green-400 border border-green-500/20 rounded-md flex items-center justify-center gap-1 disabled:opacity-50"
-                >
-                  <PlayCircle className="w-3 h-3" /> {streamAction === s.id.toString() ? "Resuming…" : "Resume"}
-                </button>
-              </div>
-            )}
-          </div>
-        );
+          );
         })}
       </div>
     </div>

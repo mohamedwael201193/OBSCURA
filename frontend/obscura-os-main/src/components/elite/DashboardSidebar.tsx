@@ -57,7 +57,7 @@ const DashboardSidebar = ({
       {brand && <div className="px-2 pb-6">{brand}</div>}
 
       {/* Sections */}
-      <nav className="flex-1 overflow-y-auto pr-1 space-y-6">
+      <nav className="flex-1 space-y-6">
         {sections.map((section, sIdx) => (
           <div key={sIdx}>
             {section.heading && (

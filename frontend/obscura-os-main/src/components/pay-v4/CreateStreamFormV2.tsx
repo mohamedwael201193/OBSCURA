@@ -119,97 +119,113 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
     <motion.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-panel rounded-md p-6 space-y-4"
+      className="pay-card p-6 space-y-5"
     >
-      <div className="flex items-center gap-2">
-        <Repeat className="w-4 h-4 text-primary" />
-        <h3 className="font-display text-sm tracking-wider text-foreground">Create payroll stream (V2)</h3>
-        <span className="ml-auto text-[11px] text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-          cUSDC · RECURRING · ENC HINT
-        </span>
+      {/* ── Header ── */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <Repeat className="w-4 h-4 text-emerald-400" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Payroll Stream</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted Hint · V2 · Jitter</p>
+        </div>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">V2</span>
       </div>
 
-      <p className="text-sm text-muted-foreground/70">
-        Each cycle sends cUSDC to a fresh stealth address. The recipient hint is encrypted on-chain and
-        cycle commits use a per-cycle salt + optional jitter so the schedule cannot be timed.
+      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
+        Each cycle sends cUSDC to a fresh stealth address. The recipient hint is encrypted on-chain and per-cycle salts + optional jitter prevent timing correlation.
       </p>
 
-      <div className="space-y-3">
-        <div>
-          <Label className="text-[11px] tracking-wide uppercase text-muted-foreground/70">Recipient</Label>
+      <div className="space-y-4">
+        {/* Recipient */}
+        <div className="space-y-2">
+          <Label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Recipient</Label>
           <ContactPicker value={hint} onChange={setHint} placeholder="0x… recipient address or contact" />
           {recipientStatus === "registered" && (
-            <div className="text-[11px] text-emerald-300 mt-1.5 inline-flex items-center gap-1">
+            <div className="flex items-center gap-1.5 text-[11px] text-emerald-300 mt-1">
               <CheckCircle2 className="w-3 h-3" /> Stealth meta-address found
             </div>
           )}
           {recipientStatus === "not-registered" && (
-            <div className="text-[11px] text-amber-300 mt-1.5 inline-flex items-center gap-1">
+            <div className="flex items-center gap-1.5 text-[11px] text-amber-300 mt-1">
               <XCircle className="w-3 h-3" /> Recipient hasn't registered a meta-address yet
             </div>
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-[11px] tracking-wide uppercase text-muted-foreground/70">Period</Label>
-            <div className="relative mt-1.5">
-              <select
-                value={period}
-                onChange={(e) => setPeriod(Number(e.target.value))}
-                className="appearance-none w-full bg-gradient-to-b from-white/[0.04] to-white/[0.02] border border-white/10 hover:border-emerald-500/30 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-md pl-3 pr-8 py-2 text-[12px] font-mono text-foreground transition-colors cursor-pointer"
+        {/* Period pills */}
+        <div className="space-y-2">
+          <Label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Period</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {PERIODS.map((p) => (
+              <button
+                key={p.seconds}
+                type="button"
+                onClick={() => setPeriod(p.seconds)}
+                className={`px-3 py-1.5 text-[11px] font-mono rounded-lg border transition-all ${
+                  period === p.seconds
+                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.18)]"
+                    : "bg-white/[0.025] border-white/[0.08] text-muted-foreground/60 hover:border-white/[0.15] hover:text-foreground/80"
+                }`}
               >
-                {PERIODS.map((p) => (
-                  <option key={p.seconds} value={p.seconds} className="bg-[#0a0d12] text-foreground">{p.label}</option>
-                ))}
-              </select>
-              <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-300/70" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
+                {p.label}
+              </button>
+            ))}
           </div>
-          <div>
-            <Label className="text-[11px] tracking-wide uppercase text-muted-foreground/70">Duration (days)</Label>
+        </div>
+
+        {/* Duration + Jitter */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Duration (days)</Label>
             <Input
               type="number"
               value={durationDays}
               onChange={(e) => setDurationDays(e.target.value)}
-              className="mt-1.5 font-mono"
+              className="mt-0 font-mono bg-white/[0.03] border-white/[0.09] focus:border-emerald-500/40 text-[12px]"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Jitter (seconds)</Label>
+            <Input
+              type="number"
+              min="0"
+              value={jitterSeconds}
+              onChange={(e) => setJitterSeconds(e.target.value)}
+              className="mt-0 font-mono bg-white/[0.03] border-white/[0.09] focus:border-emerald-500/40 text-[12px]"
+              placeholder="0 disables jitter"
             />
           </div>
         </div>
 
-        <div>
-          <Label className="text-[11px] tracking-wide uppercase text-muted-foreground/70">
-            Jitter (seconds, ± random per cycle)
-          </Label>
-          <Input
-            type="number"
-            min="0"
-            value={jitterSeconds}
-            onChange={(e) => setJitterSeconds(e.target.value)}
-            className="mt-1.5 font-mono"
-            placeholder="0 disables jitter"
-          />
-        </div>
-
-        <label className="flex items-start gap-2.5 p-3 rounded-md border border-white/[0.06] bg-white/[0.02] cursor-pointer hover:border-emerald-500/30">
-          <input
-            type="checkbox"
-            checked={autoInsure}
-            onChange={(e) => setAutoInsure(e.target.checked)}
-            className="mt-0.5"
-          />
-          <div className="flex-1">
-            <div className="flex items-center gap-1.5 text-[12.5px] text-foreground">
-              <Shield className="w-3.5 h-3.5 text-emerald-300" />
+        {/* Auto-insure toggle */}
+        <label className="flex items-start gap-3 p-4 rounded-xl border border-white/[0.07] bg-white/[0.02] cursor-pointer hover:border-emerald-500/25 hover:bg-white/[0.03] transition-all">
+          <div className="relative mt-0.5 shrink-0">
+            <input
+              type="checkbox"
+              checked={autoInsure}
+              onChange={(e) => setAutoInsure(e.target.checked)}
+              className="sr-only"
+            />
+            <div className={`w-8 h-4.5 rounded-full transition-all ${autoInsure ? "bg-emerald-500" : "bg-white/[0.1]"}`}
+                 style={{ height: "18px" }}>
+              <div className={`w-3.5 h-3.5 rounded-full bg-white shadow transition-transform mt-0.5 ${autoInsure ? "translate-x-4" : "translate-x-0.5"}`}
+                   style={{ marginLeft: "2px" }} />
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 text-[12px] text-foreground">
+              <Shield className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
               Auto-insure each cycle
             </div>
-            <div className="text-[11px] text-muted-foreground/65 mt-0.5">
+            <div className="text-[11px] text-muted-foreground/55 mt-0.5 leading-relaxed">
               Subscribes the recipient to insurance coverage for every cycle of this stream.
             </div>
             {autoInsure && (
-              <div className="mt-2">
-                <Label className="text-[10px] tracking-wide uppercase text-muted-foreground/65">
-                  Max premium per cycle (USDC)
+              <div className="mt-3 space-y-1.5">
+                <Label className="text-[10px] tracking-[0.12em] uppercase text-muted-foreground/50">
+                  Max premium per cycle (cUSDC)
                 </Label>
                 <Input
                   type="number"
@@ -217,24 +233,26 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
                   min="0"
                   value={maxPremium}
                   onChange={(e) => setMaxPremium(e.target.value)}
-                  className="mt-1 font-mono"
+                  className="font-mono bg-white/[0.03] border-white/[0.09] focus:border-emerald-500/40 text-[12px]"
                 />
               </div>
             )}
           </div>
         </label>
 
-        <Button onClick={() => void submit()} disabled={submitting} className="w-full">
-          {submitting ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> Creating…
-            </>
-          ) : autoInsure ? (
-            "Create insured stream"
-          ) : (
-            "Create stream"
-          )}
-        </Button>
+        <motion.button
+          whileTap={{ scale: 0.99 }}
+          onClick={() => void submit()}
+          disabled={submitting}
+          className="btn-pay btn-pay-emerald w-full py-2.5"
+        >
+          {submitting
+            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Creating…</>
+            : autoInsure
+              ? <><Shield className="w-3.5 h-3.5" /> Create Insured Stream</>
+              : <><Repeat className="w-3.5 h-3.5" /> Create Stream</>
+          }
+        </motion.button>
       </div>
     </motion.div>
   );

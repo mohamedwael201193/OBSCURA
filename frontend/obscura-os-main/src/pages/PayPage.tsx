@@ -10,13 +10,21 @@ import {
   Lock,
   Sparkles,
   Network,
-  BookOpen,
   Wallet as WalletIcon,
   Eye,
   ShieldCheck,
   Umbrella,
   Wrench,
   HelpCircle,
+  Settings as SettingsIcon,
+  BookUser,
+  RotateCw,
+  Trash2,
+  Plus,
+  Pencil,
+  Check,
+  X,
+  Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -53,10 +61,15 @@ import ResolverManager from "@/components/pay-v4/ResolverManager";
 import UnifiedSendForm from "@/components/pay-v4/UnifiedSendForm";
 import BulkPayrollImport from "@/components/pay-v4/BulkPayrollImport";
 import { ReceiptList } from "@/components/pay-v4/PaymentReceipt";
+import AddContactModal from "@/components/pay-v4/AddContactModal";
 
 import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
 import { useStealthInbox } from "@/hooks/useStealthInbox";
-import { usePreferences } from "@/contexts/PreferencesContext";
+import { usePreferences, type GasMode, type SendMode, type UIMode } from "@/contexts/PreferencesContext";
+import { useStealthRotation } from "@/hooks/useStealthRotation";
+import { useReceipts } from "@/hooks/useReceipts";
+import { useAddressBook } from "@/hooks/useAddressBook";
+import { Input } from "@/components/ui/input";
 
 type Tab =
   | "home"
@@ -65,7 +78,9 @@ type Tab =
   | "streams"
   | "escrow"
   | "insurance"
-  | "advanced";
+  | "advanced"
+  | "contacts"
+  | "settings";
 
 const baseSidebarSections: SidebarSection[] = [
   { items: [{ key: "home", label: "Home", icon: LayoutDashboard }] },
@@ -90,13 +105,6 @@ const baseSidebarSections: SidebarSection[] = [
       { key: "contacts", label: "Contacts", icon: WalletIcon },
       { key: "settings", label: "Settings", icon: Shield },
       { key: "advanced", label: "Advanced", icon: Wrench },
-    ],
-  },
-  {
-    heading: "Resources",
-    items: [
-      { key: "docs", label: "Docs", icon: BookOpen },
-      { key: "private", label: "What's Private?", icon: Lock },
     ],
   },
 ];
@@ -158,6 +166,260 @@ const WalletPill = () => {
   );
 };
 
+// ── Settings Panel (rendered inside PayPage as a tab) ──────────────────────
+const PrettySelect = ({ value, onChange, children }: { value: string; onChange: (v: string) => void; children: React.ReactNode }) => (
+  <div className="relative inline-block">
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="pay-select pr-8 min-w-[160px]"
+    >
+      {children}
+    </select>
+    <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-300/70" viewBox="0 0 12 12" fill="none">
+      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  </div>
+);
+
+const SettingsPanel = () => {
+  const prefs = usePreferences();
+  const rotation = useStealthRotation();
+  const inbox = useStealthInbox();
+  const receipts = useReceipts();
+
+  return (
+    <div className="space-y-4 max-w-2xl">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <SettingsIcon className="w-4 h-4 text-emerald-400" />
+        </div>
+        <div>
+          <h2 className="font-display text-[15px] font-semibold text-foreground">Settings</h2>
+          <p className="text-[11px] text-muted-foreground/50">UX preferences and privacy maintenance. None stored on-chain.</p>
+        </div>
+      </div>
+
+      {/* Interface */}
+      <div className="pay-card p-5 space-y-4">
+        <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/45 font-mono">Interface</div>
+        <div className="grid grid-cols-[1fr_auto] gap-y-4 items-center">
+          <label className="text-[12px] text-foreground/80">UI mode</label>
+          <PrettySelect value={prefs.uiMode} onChange={(v) => prefs.setPreference("uiMode", v as UIMode)}>
+            <option value="beginner" className="bg-[#0a0d12]">Beginner</option>
+            <option value="advanced" className="bg-[#0a0d12]">Advanced</option>
+          </PrettySelect>
+
+          <label className="text-[12px] text-foreground/80">Default send mode</label>
+          <PrettySelect value={prefs.defaultSendMode} onChange={(v) => prefs.setPreference("defaultSendMode", v as SendMode)}>
+            <option value="direct" className="bg-[#0a0d12]">Direct</option>
+            <option value="stealth" className="bg-[#0a0d12]">Stealth</option>
+            <option value="cross-chain" className="bg-[#0a0d12]">Cross-chain</option>
+          </PrettySelect>
+
+          <label className="text-[12px] text-foreground/80">Gas mode</label>
+          <PrettySelect value={prefs.gasMode} onChange={(v) => prefs.setPreference("gasMode", v as GasMode)}>
+            <option value="fast" className="bg-[#0a0d12]">Fast</option>
+            <option value="standard" className="bg-[#0a0d12]">Standard</option>
+            <option value="eco" className="bg-[#0a0d12]">Eco</option>
+          </PrettySelect>
+        </div>
+      </div>
+
+      {/* Stealth Privacy */}
+      <div className="pay-card p-5 space-y-4">
+        <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/45 font-mono">Stealth Privacy</div>
+        <div className="grid grid-cols-[1fr_auto] gap-y-3 items-center">
+          <label className="text-[12px] text-foreground/80 pr-4">Auto-rotate meta-address every (days, 0 = off)</label>
+          <input
+            type="number"
+            min={0}
+            max={365}
+            value={prefs.stealthAutoRotateDays}
+            onChange={(e) => prefs.setPreference("stealthAutoRotateDays", Number(e.target.value) || 0)}
+            className="pay-input w-24 text-center"
+          />
+        </div>
+        <div className="text-[11px] text-muted-foreground/55">
+          Current meta index:{" "}
+          <span className="text-foreground/80 font-mono">{rotation.current ? rotation.current.index.toString() : "—"}</span>
+          {" "}· history length: {rotation.historyLength.toString()}
+        </div>
+        <button
+          onClick={() => void rotation.rotate()}
+          disabled={rotation.isPending}
+          className="btn-pay btn-pay-ghost"
+        >
+          <RotateCw className="w-3.5 h-3.5" />
+          {rotation.isPending ? "Rotating…" : "Rotate now"}
+        </button>
+        {rotation.error && <div className="text-[11px] text-red-300">{rotation.error}</div>}
+      </div>
+
+      {/* Inbox Filter */}
+      <div className="pay-card p-5 space-y-3">
+        <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/45 font-mono">Inbox Filter</div>
+        <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
+          The on-chain ignore filter is a per-recipient bloom. Resetting clears it — senders you ignored will reappear.
+        </p>
+        <button onClick={() => void inbox.resetFilter()} className="btn-pay btn-pay-ghost">
+          <RotateCw className="w-3.5 h-3.5" />
+          Reset ignore filter
+        </button>
+      </div>
+
+      {/* Local Data */}
+      <div className="pay-card p-5 space-y-3">
+        <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/45 font-mono">Local Data</div>
+        <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
+          Receipts are stored only in this browser. Export before clearing if you want to keep proofs of payment.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => receipts.exportJSON()} className="btn-pay btn-pay-ghost">
+            Export receipts
+          </button>
+          <button onClick={() => receipts.clear()} className="btn-pay btn-pay-ghost">
+            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+            <span className="text-red-400">Clear receipts ({receipts.receipts.length})</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Onboarding */}
+      <div className="pay-card p-5 space-y-3">
+        <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/45 font-mono">Onboarding</div>
+        <button onClick={() => prefs.setPreference("hasCompletedOnboarding", false)} className="btn-pay btn-pay-ghost">
+          <SettingsIcon className="w-3.5 h-3.5" />
+          Replay onboarding wizard
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── Contacts Panel (rendered inside PayPage as a tab) ───────────────────────
+const ContactsPanel = () => {
+  const { contacts, isLoading, isPending, error, refresh, removeContact, relabel } = useAddressBook();
+  const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftLabel, setDraftLabel] = useState("");
+
+  const startEdit = (id: string, current: string | null) => {
+    setEditingId(id);
+    setDraftLabel(current ?? "");
+  };
+
+  const saveEdit = async (cidStr: string) => {
+    if (!draftLabel.trim()) return;
+    try {
+      await relabel(BigInt(cidStr), draftLabel.trim());
+      setEditingId(null);
+    } catch { /* error surfaced in UI */ }
+  };
+
+  return (
+    <div className="space-y-4 max-w-2xl">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-700/10 border border-cyan-500/25 flex items-center justify-center shrink-0">
+          <BookUser className="w-4 h-4 text-cyan-400" />
+        </div>
+        <div className="flex-1">
+          <h2 className="font-display text-[15px] font-semibold text-foreground">Contacts</h2>
+          <p className="text-[11px] text-muted-foreground/50">Encrypted on-chain address book. Labels are kept locally.</p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <button onClick={() => void refresh()} disabled={isLoading} className="btn-pay btn-pay-ghost">
+            {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCw className="w-3.5 h-3.5" />}
+          </button>
+          <button onClick={() => setOpen(true)} className="btn-pay btn-pay-cyan">
+            <Plus className="w-3.5 h-3.5" />
+            Add
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="pay-card p-4 border-red-500/30 bg-red-500/[0.05] text-[12px] text-red-300">{error}</div>
+      )}
+
+      {contacts.length === 0 && !isLoading ? (
+        <div className="pay-card p-12 text-center space-y-3">
+          <BookUser className="w-8 h-8 mx-auto text-muted-foreground/30" />
+          <div className="font-display text-[13px] text-foreground">No contacts yet</div>
+          <p className="text-[12px] text-muted-foreground/55 max-w-sm mx-auto">
+            Add a contact to send encrypted payments without retyping addresses.
+          </p>
+          <button onClick={() => setOpen(true)} className="btn-pay btn-pay-cyan">
+            <Plus className="w-3.5 h-3.5" />
+            Add your first contact
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {contacts.map((c) => {
+            const idStr = c.contactId.toString();
+            const isEditing = editingId === idStr;
+            return (
+              <motion.div
+                key={idStr}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="pay-card flex items-center gap-3 p-3"
+              >
+                <div className="w-8 h-8 rounded-full bg-cyan-500/[0.1] border border-cyan-500/25 flex items-center justify-center text-[11px] text-cyan-300 font-mono shrink-0">
+                  {idStr}
+                </div>
+                <div className="flex-1 min-w-0">
+                  {isEditing ? (
+                    <Input
+                      value={draftLabel}
+                      onChange={(e) => setDraftLabel(e.target.value)}
+                      autoFocus
+                      className="text-[12px] bg-white/[0.03] border-white/[0.09] focus:border-cyan-500/40"
+                    />
+                  ) : (
+                    <div className="text-[13px] text-foreground truncate">
+                      {c.label ?? <span className="text-muted-foreground/40">Contact #{idStr}</span>}
+                    </div>
+                  )}
+                  <div className="text-[10px] text-muted-foreground/35 font-mono truncate mt-0.5">
+                    {c.labelHash} · {new Date(Number(c.createdAt) * 1000).toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {isEditing ? (
+                    <>
+                      <button onClick={() => void saveEdit(idStr)} disabled={isPending} className="p-1.5 hover:bg-white/[0.06] rounded-md text-emerald-400 transition-colors">
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => setEditingId(null)} disabled={isPending} className="p-1.5 hover:bg-white/[0.06] rounded-md text-muted-foreground/50 transition-colors">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => startEdit(idStr, c.label)} disabled={isPending} className="p-1.5 hover:bg-white/[0.06] rounded-md text-muted-foreground/50 hover:text-foreground transition-colors">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => void removeContact(c.contactId)} disabled={isPending} className="p-1.5 hover:bg-white/[0.06] rounded-md text-muted-foreground/50 hover:text-red-400 transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      <AddContactModal open={open} onClose={() => setOpen(false)} />
+    </div>
+  );
+};
+
 const PayPage = () => {
   const navigate = useNavigate();
   const { isConnected } = useAccount();
@@ -178,10 +440,7 @@ const PayPage = () => {
   }));
 
   const handleSidebarSelect = (key: string) => {
-    if (key === "contacts") return void navigate("/pay/contacts");
-    if (key === "settings") return void navigate("/pay/settings");
     if (key === "docs") return void navigate("/docs");
-    if (key === "private") return void navigate("/docs#whats-private");
     setTab(key as Tab);
   };
 
@@ -341,6 +600,12 @@ const PayPage = () => {
             </Card>
           </div>
         );
+
+      case "settings":
+        return <SettingsPanel />;
+
+      case "contacts":
+        return <ContactsPanel />;
     }
   };
 

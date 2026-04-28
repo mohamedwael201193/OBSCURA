@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Coins, Eye, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Loader2 } from "lucide-react";
+import { Coins, Eye, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Loader2, Wallet } from "lucide-react";
 import { useState } from "react";
 import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
 import { toast } from "sonner";
@@ -39,21 +39,24 @@ export default function CUSDCPanel() {
       </p>
 
       {/* ── Balance Grid ── */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* Plain USDC always-visible badge */}
+      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08]">
+        <Wallet className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+        <span className="text-[10px] text-muted-foreground/45 uppercase tracking-wider">USDC (plain)</span>
+        <span className="ml-auto font-mono text-[14px] text-foreground font-semibold">
+          {usdcBalance !== null ? usdcBalance : "—"}
+        </span>
+        <span className="text-[9px] text-muted-foreground/30 uppercase tracking-wider">USDC</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 space-y-1.5">
-          <div className="text-[9px] tracking-widest uppercase text-muted-foreground/40">USDC</div>
-          <div className="text-[13px] font-mono text-foreground font-medium truncate">
-            {usdcBalance !== null ? usdcBalance : "—"}
-          </div>
-        </div>
-        <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 space-y-1.5">
-          <div className="text-[9px] tracking-widest uppercase text-muted-foreground/40">Handle</div>
+          <div className="text-[9px] tracking-widest uppercase text-muted-foreground/40">Handle (encrypted)</div>
           <div className="text-[13px] font-mono text-cyan-400/80 truncate">
             {handle ? handle.toString().slice(0, 8) + "…" : "—"}
           </div>
         </div>
         <div className="rounded-lg bg-emerald-950/40 border border-emerald-500/18 p-3 space-y-1.5">
-          <div className="text-[9px] tracking-widest uppercase text-emerald-400/50">cUSDC</div>
+          <div className="text-[9px] tracking-widest uppercase text-emerald-400/50">cUSDC (private)</div>
           <div className="text-[13px] font-mono font-medium">
             {displayBalance
               ? <span className="text-emerald-300">{displayBalance}</span>

@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Send, ArrowRight, Lock, Loader2, ExternalLink } from "lucide-react";
+import { Send, ArrowRight, Lock, Loader2, ExternalLink, Wallet } from "lucide-react";
 import { useCUSDCTransfer } from "@/hooks/useCUSDCTransfer";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
 import { parseUnits } from "viem";
+import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 
 export default function CUSDCTransferForm() {
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
   const { transfer, txHash, isTxPending, status, stepIndex } = useCUSDCTransfer();
+  const usdcBalance = useUSDCBalance();
 
   const isValidAddress = (addr: string) => /^0x[a-fA-F0-9]{40}$/.test(addr);
   const isProcessing = status !== "idle" && status !== "ready" && status !== "error";
@@ -46,6 +48,16 @@ export default function CUSDCTransferForm() {
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">FHE Encrypted · cUSDC</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ENCRYPTED</span>
+      </div>
+
+      {/* USDC balance pill */}
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.025] border border-white/[0.06]">
+        <Wallet className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+        <span className="text-[10px] text-muted-foreground/40 uppercase tracking-wider">USDC Balance</span>
+        <span className="ml-auto font-mono text-[12px] text-foreground/80 font-medium">
+          {usdcBalance !== null ? usdcBalance : "—"}
+        </span>
+        <span className="text-[9px] text-muted-foreground/30 uppercase tracking-wider">USDC</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">

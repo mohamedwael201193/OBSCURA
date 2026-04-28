@@ -3,7 +3,7 @@ import { usePublicClient } from "wagmi";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
-} from "@/config/wave2";
+} from "@/config/pay";
 
 export type StealthStatus = "unknown" | "checking" | "registered" | "not-registered";
 

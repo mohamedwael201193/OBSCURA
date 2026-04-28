@@ -1,4 +1,4 @@
-﻿export const OBSCURA_PAY_ADDRESS = import.meta.env.VITE_OBSCURA_PAY_ADDRESS as `0x${string}` | undefined;
+export const OBSCURA_PAY_ADDRESS = import.meta.env.VITE_OBSCURA_PAY_ADDRESS as `0x${string}` | undefined;
 export const OBSCURA_ESCROW_ADDRESS = import.meta.env.VITE_OBSCURA_ESCROW_ADDRESS as `0x${string}` | undefined;
 export const OBSCURA_CONDITION_RESOLVER_ADDRESS = import.meta.env.VITE_OBSCURA_CONDITION_RESOLVER_ADDRESS as `0x${string}` | undefined;
 export const OBSCURA_VOTE_ADDRESS = import.meta.env.VITE_OBSCURA_VOTE_ADDRESS as `0x${string}` | undefined;
@@ -44,7 +44,7 @@ export const OBSCURA_PAY_ABI = [
     name: "EmployeePaid",
     type: "event",
   },
-  // payEmployee(address, InEuint64) â€” open to any wallet
+  // payEmployee(address, InEuint64) — open to any wallet
   {
     name: "payEmployee",
     type: "function",
@@ -66,7 +66,7 @@ export const OBSCURA_PAY_ABI = [
     ],
     outputs: [],
   },
-  // getMyBalance() returns (euint64 â†’ uint256 bigint)
+  // getMyBalance() returns (euint64 → uint256 bigint)
   {
     name: "getMyBalance",
     type: "function",
@@ -74,7 +74,7 @@ export const OBSCURA_PAY_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
   },
-  // grantAuditAccess(address) â€” owner only
+  // grantAuditAccess(address) — owner only
   {
     name: "grantAuditAccess",
     type: "function",
@@ -82,7 +82,7 @@ export const OBSCURA_PAY_ABI = [
     inputs: [{ name: "_auditor", type: "address" }],
     outputs: [],
   },
-  // getAggregateTotal() returns (euint64 â†’ uint256 bigint) â€” auditor/owner only
+  // getAggregateTotal() returns (euint64 → uint256 bigint) — auditor/owner only
   {
     name: "getAggregateTotal",
     type: "function",
@@ -138,7 +138,7 @@ export const OBSCURA_PAY_ABI = [
     inputs: [{ name: "", type: "uint256" }],
     outputs: [{ name: "", type: "address" }],
   },
-  // grantRole(address, uint8) â€” owner only
+  // grantRole(address, uint8) — owner only
   {
     name: "grantRole",
     type: "function",
@@ -149,7 +149,7 @@ export const OBSCURA_PAY_ABI = [
     ],
     outputs: [],
   },
-  // revokeRole(address) — owner only
+  // revokeRole(address) � owner only
   {
     name: "revokeRole",
     type: "function",
@@ -157,7 +157,7 @@ export const OBSCURA_PAY_ABI = [
     inputs: [{ name: "_user", type: "address" }],
     outputs: [],
   },
-  // ─── Payment History (v3) ─────────────────────────────────────────
+  // --- Payment History (v3) -----------------------------------------
   // getPaymentCount() returns (uint256)
   {
     name: "getPaymentCount",
@@ -202,7 +202,7 @@ export const OBSCURA_PAY_ABI = [
 export const OBSCURA_TOKEN_ADDRESS = import.meta.env.VITE_OBSCURA_TOKEN_ADDRESS as `0x${string}` | undefined;
 
 export const OBSCURA_TOKEN_ABI = [
-  // mint(address, InEuint64) â€” owner only
+  // mint(address, InEuint64) — owner only
   {
     name: "mint",
     type: "function",
@@ -217,7 +217,7 @@ export const OBSCURA_TOKEN_ABI = [
     ],
     outputs: [],
   },
-  // claimDailyTokens() â€” public, 100 $OBS per 24h
+  // claimDailyTokens() — public, 100 $OBS per 24h
   {
     name: "claimDailyTokens",
     type: "function",
@@ -281,7 +281,7 @@ export const OBSCURA_TOKEN_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "address" }],
   },
-  // balanceOf() returns (euint64 â†’ uint256 bigint) â€” caller reads their own encrypted balance handle
+  // balanceOf() returns (euint64 → uint256 bigint) — caller reads their own encrypted balance handle
   {
     name: "balanceOf",
     type: "function",
@@ -329,8 +329,8 @@ export const OBSCURA_TOKEN_ABI = [
     name: "ConfidentialTransfer",
     type: "event",
   },
-  // ─── Operator Model (v3) ──────────────────────────────────────────
-  // confidentialTransfer(address, InEuint64) — direct P2P transfer
+  // --- Operator Model (v3) ------------------------------------------
+  // confidentialTransfer(address, InEuint64) � direct P2P transfer
   {
     name: "confidentialTransfer",
     type: "function",
@@ -341,7 +341,7 @@ export const OBSCURA_TOKEN_ABI = [
     ],
     outputs: [],
   },
-  // setOperator(address, uint256) — approve operator with expiry
+  // setOperator(address, uint256) � approve operator with expiry
   {
     name: "setOperator",
     type: "function",
@@ -399,9 +399,9 @@ export const OBSCURA_TOKEN_ABI = [
   },
 ] as const;
 
-// ═══════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------
 // ObscuraEscrow ABI
-// ═══════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------
 
 const InEaddressComponents = [
   { name: "ctHash", type: "uint256" },
@@ -459,7 +459,7 @@ export const OBSCURA_ESCROW_ABI = [
     inputs: [{ name: "_escrowId", type: "uint256" }],
     outputs: [{ name: "", type: "bool" }],
   },
-  // getEscrowAmount(uint256) returns (euint64 → uint256)
+  // getEscrowAmount(uint256) returns (euint64 ? uint256)
   {
     name: "getEscrowAmount",
     type: "function",
@@ -467,7 +467,7 @@ export const OBSCURA_ESCROW_ABI = [
     inputs: [{ name: "_escrowId", type: "uint256" }],
     outputs: [{ name: "", type: "uint256" }],
   },
-  // getEscrowPaidAmount(uint256) returns (euint64 → uint256)
+  // getEscrowPaidAmount(uint256) returns (euint64 ? uint256)
   {
     name: "getEscrowPaidAmount",
     type: "function",
@@ -475,7 +475,7 @@ export const OBSCURA_ESCROW_ABI = [
     inputs: [{ name: "_escrowId", type: "uint256" }],
     outputs: [{ name: "", type: "uint256" }],
   },
-  // getEscrowRedeemed(uint256) returns (ebool → uint256)
+  // getEscrowRedeemed(uint256) returns (ebool ? uint256)
   {
     name: "getEscrowRedeemed",
     type: "function",
@@ -507,7 +507,7 @@ export const OBSCURA_ESCROW_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
   },
-  // getRedeemAmount(uint256) returns (euint64 → uint256)
+  // getRedeemAmount(uint256) returns (euint64 ? uint256)
   {
     name: "getRedeemAmount",
     type: "function",
@@ -573,12 +573,12 @@ export const OBSCURA_ESCROW_ABI = [
   },
 ] as const;
 
-// ═══════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------
 // ObscuraConditionResolver ABI
-// ═══════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------
 
 export const OBSCURA_CONDITION_RESOLVER_ABI = [
-  // approve(uint256) — approver releases escrow
+  // approve(uint256) � approver releases escrow
   {
     name: "approve",
     type: "function",
@@ -617,9 +617,9 @@ export const OBSCURA_CONDITION_RESOLVER_ABI = [
   },
 ] as const;
 
-// ═══════════════════════════════════════════════════════════════════════
-// ObscuraVote ABI — Wave 2 (v2: multi-option, categories, quorum, cancel/extend, verify-my-vote)
-// ═══════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------
+// ObscuraVote ABI � Wave 2 (v2: multi-option, categories, quorum, cancel/extend, verify-my-vote)
+// -----------------------------------------------------------------------
 
 export const OBSCURA_VOTE_ABI = [
   // constructor(address)
@@ -776,7 +776,7 @@ export const OBSCURA_VOTE_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
   },
-  // getMyVote(uint256) returns (uint256) — verify my vote
+  // getMyVote(uint256) returns (uint256) � verify my vote
   {
     name: "getMyVote",
     type: "function",

@@ -157,16 +157,19 @@ export default function CUSDCPanel() {
             Authorize PayStream as Operator
           </label>
           <div className="flex gap-2">
-            <select
-              value={maxApprove}
-              onChange={(e) => setMaxApprove(e.target.value)}
-              className="flex-1 px-3 py-2 bg-background border border-border/50 rounded-md text-xs font-mono"
-            >
-              <option value="7">7 days</option>
-              <option value="30">30 days</option>
-              <option value="90">90 days</option>
-              <option value="365">1 year</option>
-            </select>
+            <div className="relative flex-1">
+              <select
+                value={maxApprove}
+                onChange={(e) => setMaxApprove(e.target.value)}
+                className="appearance-none w-full pl-3 pr-8 py-2 bg-gradient-to-b from-white/[0.04] to-white/[0.02] border border-white/10 hover:border-emerald-500/30 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 rounded-md text-xs font-mono text-foreground transition-colors cursor-pointer"
+              >
+                <option value="7" className="bg-[#0a0d12]">7 days</option>
+                <option value="30" className="bg-[#0a0d12]">30 days</option>
+                <option value="90" className="bg-[#0a0d12]">90 days</option>
+                <option value="365" className="bg-[#0a0d12]">1 year</option>
+              </select>
+              <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-300/70" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={async () => {

@@ -4,31 +4,30 @@ import { FileText, Copy, Trash2, ExternalLink, CheckCircle, AlertTriangle } from
 import type { SavedEscrow } from "@/hooks/useCUSDCEscrow";
 import { formatUnits } from "viem";
 import { useAccount } from "wagmi";
+import { getJSON, setJSON, migrateGlobalKey } from "@/lib/scopedStorage";
 
 const STORAGE_KEY = 'obscura_cusdc_escrows';
 
-function loadEscrows(): SavedEscrow[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  } catch {
-    return [];
-  }
+function loadEscrows(addr: `0x${string}` | undefined): SavedEscrow[] {
+  return getJSON<SavedEscrow[]>(STORAGE_KEY, addr, []);
 }
 
 export default function MyEscrows() {
   const { address } = useAccount();
-  const [escrows, setEscrows] = useState<SavedEscrow[]>(loadEscrows);
+  const [escrows, setEscrows] = useState<SavedEscrow[]>(() => loadEscrows(undefined));
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => setEscrows(loadEscrows()), 3000);
-    const onStorage = () => setEscrows(loadEscrows());
+    if (address) migrateGlobalKey(STORAGE_KEY, address);
+    setEscrows(loadEscrows(address));
+    const interval = setInterval(() => setEscrows(loadEscrows(address)), 3000);
+    const onStorage = () => setEscrows(loadEscrows(address));
     window.addEventListener('storage', onStorage);
     return () => {
       clearInterval(interval);
       window.removeEventListener('storage', onStorage);
     };
-  }, []);
+  }, [address]);
 
   // Format amount — stored values are always raw bigint (micro-USDC, 6 decimals)
   const formatAmount = (raw: string) => {
@@ -48,7 +47,7 @@ export default function MyEscrows() {
 
   const handleDelete = (txHash: string) => {
     const updated = escrows.filter((e) => e.txHash !== txHash);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setJSON(STORAGE_KEY, address, updated);
     setEscrows(updated);
   };
 

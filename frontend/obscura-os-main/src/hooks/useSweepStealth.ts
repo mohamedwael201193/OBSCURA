@@ -20,9 +20,11 @@ import { useAccount, usePublicClient, useWalletClient, useSendTransaction } from
 import { createWalletClient, http, parseEther, formatUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { arbitrumSepolia } from "viem/chains";
-import { REINEIRA_CUSDC_ADDRESS, REINEIRA_CUSDC_ABI } from "@/config/wave2";
-import { stealthPrivateKey, loadStoredKeys } from "@/lib/stealth";
+import { REINEIRA_CUSDC_ADDRESS, REINEIRA_CUSDC_ABI } from "@/config/pay";
+import { stealthPrivateKey, loadStoredKeys, unlockStoredKeys } from "@/lib/stealth";
 import { initFHEClient, encryptAmount, resetFHEAccount } from "@/lib/fhe";
+import { estimateCappedFees } from "@/lib/gas";
+import { addTrackedUnits } from "@/lib/trackedBalance";
 import type { ScannedPayment } from "./useStealthScan";
 
 const ARB_SEPOLIA_RPC = "https://sepolia-rollup.arbitrum.io/rpc";
@@ -30,32 +32,6 @@ const ARB_SEPOLIA_RPC = "https://sepolia-rollup.arbitrum.io/rpc";
 // Minimum ETH for gas (Arb Sepolia fees are tiny — 0.002 ETH is plenty)
 const GAS_ETH_MINIMUM = parseEther("0.001");
 const GAS_ETH_TOPUP = parseEther("0.002");
-
-/**
- * Estimate EIP-1559 fees and apply a 1.5× safety buffer.
- * Clamps maxPriorityFeePerGas ≤ maxFeePerGas (required by EIP-1559).
- * On Arbitrum Sepolia base fees can be ~0.024 gwei — any fixed fallback
- * risks either being below the base fee or above the cap, so we always
- * derive priority from the same estimation call.
- */
-async function estimateCappedFees(publicClient: { estimateFeesPerGas: () => Promise<{ maxFeePerGas: bigint | null; maxPriorityFeePerGas: bigint | null }> }) {
-  try {
-    const feeData = await publicClient.estimateFeesPerGas();
-    const maxFeePerGas = feeData.maxFeePerGas
-      ? (feeData.maxFeePerGas * 150n) / 100n
-      : 300_000_000n; // 0.3 gwei fallback
-    const rawPriority = feeData.maxPriorityFeePerGas
-      ? (feeData.maxPriorityFeePerGas * 150n) / 100n
-      : undefined;
-    // Clamp: tip must never exceed the fee cap
-    const maxPriorityFeePerGas =
-      rawPriority === undefined || rawPriority > maxFeePerGas ? maxFeePerGas : rawPriority;
-    return { maxFeePerGas, maxPriorityFeePerGas };
-  } catch {
-    // RPC offline / rate-limited — safe Arbitrum Sepolia values
-    return { maxFeePerGas: 300_000_000n, maxPriorityFeePerGas: 300_000_000n };
-  }
-}
 
 /** InEuint64-accepting overload of confidentialTransfer */
 const CUSDC_TRANSFER_ABI = [
@@ -135,7 +111,17 @@ export function useSweepStealth() {
       try {
         // ── Step 1: Derive the stealth private key ──────────────────────────
         setState({ step: "deriving_key" });
-        const keys = loadStoredKeys(address);
+        // Phase 0.5.2: keystore may be encrypted at rest. Try plaintext (legacy)
+        // first; otherwise unlock via wallet signature.
+        let keys = loadStoredKeys(address);
+        if (!keys) {
+          try {
+            keys = await unlockStoredKeys(address, walletClient);
+          } catch {
+            setState({ step: "error", error: "Stealth keystore unlock cancelled" });
+            return;
+          }
+        }
         if (!keys) {
           setState({ step: "error", error: "No stealth keys found. Register a meta-address first." });
           return;
@@ -211,16 +197,10 @@ export function useSweepStealth() {
 
         await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-        // Update tracked cUSDC balance in localStorage so Dashboard shows
-        // the new balance immediately without requiring a REVEAL click.
-        // Key format matches useCUSDCBalance's cusdc_tracked_ key.
-        try {
-          const trackedKey = `cusdc_tracked_${address.toLowerCase()}`;
-          const prev = BigInt(localStorage.getItem(trackedKey) ?? "0");
-          localStorage.setItem(trackedKey, (prev + amount).toString());
-        } catch {
-          // localStorage unavailable — non-fatal, REVEAL still works
-        }
+        // Update tracked cUSDC balance so Dashboard shows the new balance
+        // immediately without requiring a REVEAL click. Centralized in
+        // lib/trackedBalance.ts so all writers agree on key + casing.
+        addTrackedUnits(address, amount);
 
         setState({ step: "done", txHash });
       } catch (e) {

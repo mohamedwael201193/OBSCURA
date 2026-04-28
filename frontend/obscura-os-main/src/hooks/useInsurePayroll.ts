@@ -14,10 +14,12 @@ import {
   REINEIRA_CUSDC_ABI,
   REINEIRA_CUSDC_ADDRESS,
   OBSCURA_PAYROLL_UNDERWRITER_ADDRESS,
-} from "@/config/wave2";
+} from "@/config/pay";
 import { initFHEClient, encryptAddressAndAmount } from "@/lib/fhe";
+import { estimateCappedFees } from "@/lib/gas";
+import { getJSON, setJSON, migrateGlobalKey } from "@/lib/scopedStorage";
 
-// ── localStorage policies ────────────────────────────────────────────────
+// ── wallet-scoped policies ───────────────────────────────────────────────
 const POLICIES_KEY = "obscura_insurance_policies";
 
 export interface SavedPolicy {
@@ -30,18 +32,14 @@ export interface SavedPolicy {
   createdAt: number;
 }
 
-function loadPolicies(): SavedPolicy[] {
-  try {
-    return JSON.parse(localStorage.getItem(POLICIES_KEY) || "[]");
-  } catch {
-    return [];
-  }
+function loadPolicies(addr: `0x${string}` | undefined): SavedPolicy[] {
+  return getJSON<SavedPolicy[]>(POLICIES_KEY, addr, []);
 }
 
-function savePolicy(p: SavedPolicy) {
-  const all = loadPolicies();
+function savePolicy(addr: `0x${string}` | undefined, p: SavedPolicy) {
+  const all = loadPolicies(addr);
   all.push(p);
-  localStorage.setItem(POLICIES_KEY, JSON.stringify(all));
+  setJSON(POLICIES_KEY, addr, all);
 }
 
 export type PurchaseStep =
@@ -63,13 +61,14 @@ export function useInsurePayroll() {
   const [isPending, setIsPending] = useState(false);
   const [step, setStep] = useState<PurchaseStep>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [policies, setPolicies] = useState<SavedPolicy[]>(loadPolicies);
+  const [policies, setPolicies] = useState<SavedPolicy[]>(() => loadPolicies(undefined));
   const [lastCoverageId, setLastCoverageId] = useState<string | null>(null);
 
-  // Sync policies from localStorage on mount
+  // Sync policies from localStorage on address change (with one-time migration)
   useEffect(() => {
-    setPolicies(loadPolicies());
-  }, []);
+    if (address) migrateGlobalKey(POLICIES_KEY, address);
+    setPolicies(loadPolicies(address));
+  }, [address]);
 
   const purchase = useCallback(
     async (params: {
@@ -132,10 +131,7 @@ export function useInsurePayroll() {
         } catch { /* default to needing approval */ }
 
         if (needsOperator) {
-          const feeData1 = await publicClient.estimateFeesPerGas();
-          const maxFee1 = feeData1.maxFeePerGas
-            ? (feeData1.maxFeePerGas * 130n) / 100n
-            : undefined;
+          const fees1 = await estimateCappedFees(publicClient);
           const untilTs = BigInt(
             Math.floor(Date.now() / 1000) + 30 * 86400
           );
@@ -147,7 +143,8 @@ export function useInsurePayroll() {
             args: [REINEIRA_COVERAGE_MANAGER_ADDRESS, untilTs],
             account: address,
             chain: arbitrumSepolia,
-            maxFeePerGas: maxFee1,
+            maxFeePerGas: fees1.maxFeePerGas,
+            maxPriorityFeePerGas: fees1.maxPriorityFeePerGas,
             gas: 100_000n,
           });
           await publicClient.waitForTransactionReceipt({ hash: authTx });
@@ -158,10 +155,7 @@ export function useInsurePayroll() {
 
         // 3. Purchase coverage
         setStep("purchasing");
-        const feeData2 = await publicClient.estimateFeesPerGas();
-        const maxFee2 = feeData2.maxFeePerGas
-          ? (feeData2.maxFeePerGas * 130n) / 100n
-          : undefined;
+        const fees2 = await estimateCappedFees(publicClient);
 
         const coverageExpiry = BigInt(
           Math.floor(Date.now() / 1000) +
@@ -184,7 +178,8 @@ export function useInsurePayroll() {
           ],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas: maxFee2,
+          maxFeePerGas: fees2.maxFeePerGas,
+          maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
           gas: 3_000_000n,
         });
         const receipt = await publicClient.waitForTransactionReceipt({
@@ -229,8 +224,8 @@ export function useInsurePayroll() {
           txHash: hash,
           createdAt: Date.now(),
         };
-        savePolicy(policy);
-        setPolicies(loadPolicies());
+        savePolicy(address, policy);
+        setPolicies(loadPolicies(address));
         setLastCoverageId(coverageId);
         setStep("done");
         return { hash, coverageId };
@@ -257,10 +252,7 @@ export function useInsurePayroll() {
           [{ name: "missedCycle", type: "uint256" }],
           [missedCycle]
         );
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        const fees = await estimateCappedFees(publicClient);
         const hash = await writeContractAsync({
           address: REINEIRA_COVERAGE_MANAGER_ADDRESS,
           abi: REINEIRA_COVERAGE_MANAGER_ABI,
@@ -268,7 +260,8 @@ export function useInsurePayroll() {
           args: [coverageId, disputeProof],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
           gas: 1_500_000n,
         });
         await publicClient.waitForTransactionReceipt({ hash });

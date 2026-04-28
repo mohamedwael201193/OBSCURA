@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Globe2, ArrowRightLeft, CheckCircle2, Loader2, ExternalLink, RotateCcw, Copy } from "lucide-react";
+import { Globe2, ArrowRightLeft, CheckCircle2, Loader2, ExternalLink, RotateCcw, Copy, AlertTriangle } from "lucide-react";
 import { useCrossChainFund, type BridgeStep } from "@/hooks/useCrossChainFund";
 import { toast } from "sonner";
 
@@ -189,6 +189,17 @@ export default function CrossChainFundForm() {
         The whole process (burn → attestation → claim) happens automatically — just confirm the wallet prompts.
         Takes a few minutes for Circle to attest. Once done, wrap USDC → cUSDC on the Pay tab.
       </p>
+
+      {/* Phase 0.5.5: privacy disclosure for CCTP */}
+      <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 flex gap-2 items-start">
+        <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+        <div className="text-[12px] leading-relaxed text-amber-100/90">
+          <strong className="text-amber-300">USDC bridges expose the amount on both chains.</strong>{" "}
+          To minimise public linkage between your Ethereum and Arbitrum addresses, USDC mints to a fresh
+          stealth address derived from your registered meta-address (only you can sweep it). If you have not
+          registered a stealth meta-address, the funds will land in your main wallet and be publicly correlated.
+        </div>
+      </div>
 
       {step === "idle" && (
         <div className="space-y-3">

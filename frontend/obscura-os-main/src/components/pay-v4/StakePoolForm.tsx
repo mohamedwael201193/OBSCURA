@@ -9,7 +9,7 @@ import {
   REINEIRA_CUSDC_ADDRESS,
   REINEIRA_INSURANCE_POOL_ADDRESS,
   REINEIRA_INSURANCE_POOL_ABI,
-} from "@/config/wave2";
+} from "@/config/pay";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
 
 export default function StakePoolForm() {

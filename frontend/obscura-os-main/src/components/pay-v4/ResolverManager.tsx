@@ -6,7 +6,7 @@ import { arbitrumSepolia } from "viem/chains";
 import {
   OBSCURA_PAYROLL_RESOLVER_ABI,
   OBSCURA_PAYROLL_RESOLVER_ADDRESS,
-} from "@/config/wave2";
+} from "@/config/pay";
 import { toast } from "sonner";
 
 interface CycleInfo {

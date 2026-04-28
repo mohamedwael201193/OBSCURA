@@ -4,6 +4,7 @@ import { OBSCURA_PAY_ABI, OBSCURA_PAY_ADDRESS } from '@/config/contracts';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount } from '@/lib/fhe';
+import { estimateCappedFees } from '@/lib/gas';
 import { arbitrumSepolia } from 'viem/chains';
 
 export function useEncryptedPayroll() {
@@ -34,11 +35,8 @@ export function useEncryptedPayroll() {
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        // Fetch fresh fee data and apply a 30% buffer to avoid "max fee < base fee" reverts
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        // Fetch capped EIP-1559 fees (shared helper avoids tip > cap reverts).
+        const fees = await estimateCappedFees(publicClient);
 
         // Send encrypted salary to contract
         const hash = await writeContractAsync({
@@ -48,7 +46,8 @@ export function useEncryptedPayroll() {
           args: [employeeAddress, encryptedInputs[0]],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
           gas: 500_000n,
         });
 
@@ -86,11 +85,8 @@ export function useEncryptedPayroll() {
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        // Fetch fresh fee data and apply a 30% buffer
-        const batchFeeData = await publicClient.estimateFeesPerGas();
-        const batchMaxFeePerGas = batchFeeData.maxFeePerGas
-          ? (batchFeeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        // Fetch capped EIP-1559 fees.
+        const batchFees = await estimateCappedFees(publicClient);
 
         const addresses = employees.map((e) => e.address);
         const hash = await writeContractAsync({
@@ -100,7 +96,8 @@ export function useEncryptedPayroll() {
           args: [addresses, encryptedSalaries],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas: batchMaxFeePerGas,
+          maxFeePerGas: batchFees.maxFeePerGas,
+          maxPriorityFeePerGas: batchFees.maxPriorityFeePerGas,
           gas: 3_000_000n,
         });
 

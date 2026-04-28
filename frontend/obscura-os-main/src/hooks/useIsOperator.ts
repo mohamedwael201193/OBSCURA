@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
-import { REINEIRA_CUSDC_ADDRESS, REINEIRA_CUSDC_ABI } from "@/config/wave2";
+import { REINEIRA_CUSDC_ADDRESS, REINEIRA_CUSDC_ABI } from "@/config/pay";
 
 /**
  * useIsOperator — checks whether a spender is already an authorized operator

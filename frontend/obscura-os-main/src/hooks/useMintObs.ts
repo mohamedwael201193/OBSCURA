@@ -4,6 +4,7 @@ import { OBSCURA_TOKEN_ABI, OBSCURA_TOKEN_ADDRESS } from '@/config/contracts';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount } from '@/lib/fhe';
+import { estimateCappedFees } from '@/lib/gas';
 import { arbitrumSepolia } from 'viem/chains';
 
 export function useMintObs() {
@@ -31,11 +32,8 @@ export function useMintObs() {
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        // Fetch fresh fee data and apply a 30% buffer to avoid "max fee < base fee" reverts
-        const feeData = await publicClient.estimateFeesPerGas();
-        const maxFeePerGas = feeData.maxFeePerGas
-          ? (feeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        // Fetch capped EIP-1559 fees (shared helper).
+        const fees = await estimateCappedFees(publicClient);
 
         const hash = await writeContractAsync({
           address: OBSCURA_TOKEN_ADDRESS,
@@ -44,7 +42,8 @@ export function useMintObs() {
           args: [recipient, encryptedInputs[0]],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
           gas: 500_000n,
         });
 

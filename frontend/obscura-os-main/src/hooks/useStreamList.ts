@@ -3,7 +3,7 @@ import { usePublicClient, useReadContract } from "wagmi";
 import {
   OBSCURA_PAY_STREAM_ABI,
   OBSCURA_PAY_STREAM_ADDRESS,
-} from "@/config/wave2";
+} from "@/config/pay";
 
 export interface StreamSummary {
   id: bigint;

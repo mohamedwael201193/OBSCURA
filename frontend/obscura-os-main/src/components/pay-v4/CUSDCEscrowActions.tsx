@@ -7,20 +7,12 @@ import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
 import { parseUnits, formatUnits } from "viem";
 import { useAccount } from "wagmi";
+import { addTrackedUnits } from "@/lib/trackedBalance";
+import { getJSON } from "@/lib/scopedStorage";
 
 const STORAGE_KEY = 'obscura_cusdc_escrows';
-function loadSavedEscrows(): SavedEscrow[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
-}
-
-/** After a successful redeem, add the redeemed amount to the tracked cUSDC balance */
-function addToTrackedBalance(address: string, rawAmount: string) {
-  try {
-    const key = `cusdc_tracked_${address}`;
-    const current = parseFloat(localStorage.getItem(key) || '0');
-    const redeemed = Number(formatUnits(BigInt(rawAmount), 6));
-    localStorage.setItem(key, (current + redeemed).toFixed(6));
-  } catch { /* ignore */ }
+function loadSavedEscrows(addr: `0x${string}` | undefined): SavedEscrow[] {
+  return getJSON<SavedEscrow[]>(STORAGE_KEY, addr, []);
 }
 
 export default function CUSDCEscrowActions() {
@@ -36,7 +28,7 @@ export default function CUSDCEscrowActions() {
   // Cross-reference entered escrow ID with saved escrows to check recipient match
   const savedEscrow = useMemo(() => {
     if (!escrowId) return null;
-    return loadSavedEscrows().find(e => e.escrowId === escrowId) ?? null;
+    return loadSavedEscrows(address).find(e => e.escrowId === escrowId) ?? null;
   }, [escrowId]);
 
   const isRecipientMatch = savedEscrow && address
@@ -86,7 +78,7 @@ export default function CUSDCEscrowActions() {
       await redeem(BigInt(escrowId));
       // exists() is unreliable (returns true even after successful redeem), so just show success
       if (savedEscrow && address) {
-        addToTrackedBalance(address, savedEscrow.amount);
+        addTrackedUnits(address, BigInt(savedEscrow.amount));
         const displayAmt = formatUnits(BigInt(savedEscrow.amount), 6);
         toast.success(
           `Escrow #${escrowId} redeemed — ${displayAmt} cUSDC received! ` +

@@ -21,7 +21,9 @@ import {
   USDC_SEPOLIA,
   ARBITRUM_SEPOLIA_DOMAIN,
   ERC20_APPROVE_ABI,
-} from "@/config/wave2";
+} from "@/config/pay";
+import { deriveStealthPayment, loadStoredMetaPublic, type MetaAddress } from "@/lib/stealth";
+import { getString, setString, removeKey, migrateGlobalKey } from "@/lib/scopedStorage";
 
 const USDC_DECIMALS = 6;
 
@@ -72,19 +74,26 @@ interface PersistedBridge {
   amountUSDC: string;
   startedAt: number;      // epoch ms
   attestation?: string;   // set when Circle returns it
+  /** Phase 0.5.1: stealth recipient on Arb Sepolia (mintRecipient).
+   *  When present, USDC mints to this fresh address instead of the user's main wallet,
+   *  preventing CCTP from publicly linking the Sepolia source address to the Arb Sepolia destination.
+   *  The user owns the privkey via their meta-keys; sweep it to main with a follow-up tx. */
+  stealthRecipient?: `0x${string}`;
+  stealthEphemeralPubKey?: `0x${string}`;
+  stealthViewTag?: `0x${string}`;
 }
 
-function saveBridgeState(state: PersistedBridge) {
-  localStorage.setItem(BRIDGE_STATE_KEY, JSON.stringify(state));
+function saveBridgeState(addr: `0x${string}` | undefined, state: PersistedBridge) {
+  setString(BRIDGE_STATE_KEY, addr, JSON.stringify(state));
 }
-function loadBridgeState(): PersistedBridge | null {
+function loadBridgeState(addr: `0x${string}` | undefined): PersistedBridge | null {
   try {
-    const raw = localStorage.getItem(BRIDGE_STATE_KEY);
+    const raw = getString(BRIDGE_STATE_KEY, addr);
     if (!raw) return null;
     const s = JSON.parse(raw) as PersistedBridge;
     // Expire after 60 minutes
     if (Date.now() - s.startedAt > 60 * 60 * 1000) {
-      localStorage.removeItem(BRIDGE_STATE_KEY);
+      removeKey(BRIDGE_STATE_KEY, addr);
       return null;
     }
     return s;
@@ -92,8 +101,8 @@ function loadBridgeState(): PersistedBridge | null {
     return null;
   }
 }
-function clearBridgeState() {
-  localStorage.removeItem(BRIDGE_STATE_KEY);
+function clearBridgeState(addr: `0x${string}` | undefined) {
+  removeKey(BRIDGE_STATE_KEY, addr);
 }
 
 /** Fetch Sepolia tx receipt using a dedicated Sepolia publicClient (viem) */
@@ -188,8 +197,10 @@ export function useCrossChainFund() {
    * "Claim" button the user clicks.
    */
   useEffect(() => {
-    const persisted = loadBridgeState();
-    if (!persisted || !address) return;
+    if (!address) return;
+    migrateGlobalKey(BRIDGE_STATE_KEY, address);
+    const persisted = loadBridgeState(address);
+    if (!persisted) return;
 
     // If attestation already found (saved in localStorage), go straight to ready-to-claim
     if (persisted.attestation) {
@@ -223,7 +234,7 @@ export function useCrossChainFund() {
         );
 
         // Save attestation to localStorage so it persists across tabs
-        saveBridgeState({ ...persisted, attestation });
+        saveBridgeState(address, { ...persisted, attestation });
 
         if (mountedRef.current) {
           setStep("ready-to-claim");
@@ -244,7 +255,7 @@ export function useCrossChainFund() {
 
   /** Claim USDC on Arb Sepolia — called by user clicking "Claim" button */
   const claim = useCallback(async () => {
-    const persisted = loadBridgeState();
+    const persisted = loadBridgeState(address);
     if (!persisted?.attestation || !walletClient || !address) {
       throw new Error("No attestation available or wallet not connected");
     }
@@ -268,7 +279,7 @@ export function useCrossChainFund() {
         ...gasParams,
       });
 
-      clearBridgeState();
+      clearBridgeState(address);
       setStep("done");
     } catch (e) {
       setError((e as Error).message);
@@ -315,7 +326,27 @@ export function useCrossChainFund() {
 
         // 3. Burn USDC via CCTP
         setStep("burn-pending");
-        const mintRecipient = pad(address, { size: 32 });
+
+        // Phase 0.5.1 — derive a fresh stealth address as the CCTP mintRecipient
+        // so that observers cannot link the Sepolia source EOA to the Arb Sepolia
+        // destination. User owns the privkey via their meta-keys; sweep later.
+        // Falls back to main wallet if user has not generated/registered stealth meta yet.
+        const ownMeta = loadStoredMetaPublic(address);
+        let mintRecipient: `0x${string}`;
+        let stealthRecipient: `0x${string}` | undefined;
+        let stealthEphemeralPubKey: `0x${string}` | undefined;
+        let stealthViewTag: `0x${string}` | undefined;
+        if (ownMeta) {
+          const sp = deriveStealthPayment(ownMeta);
+          mintRecipient = pad(sp.stealthAddress, { size: 32 });
+          stealthRecipient = sp.stealthAddress;
+          stealthEphemeralPubKey = sp.ephemeralPubKey;
+          stealthViewTag = sp.viewTag;
+        } else {
+          // No meta-address registered — leak warning is shown by the UI banner.
+          mintRecipient = pad(address, { size: 32 });
+        }
+
         const burnHash = await writeContractAsync({
           address: CCTP_TOKEN_MESSENGER_SEPOLIA,
           abi: CCTP_TOKEN_MESSENGER_ABI,
@@ -344,12 +375,15 @@ export function useCrossChainFund() {
         const messageHash = keccak256(messageBytes);
 
         // 5. Persist bridge state so it survives tab switches
-        saveBridgeState({
+        saveBridgeState(address, {
           messageBytes: messageBytes as string,
           messageHash,
           burnTxHash: burnHash,
           amountUSDC: params.amountUSDC,
           startedAt: Date.now(),
+          stealthRecipient,
+          stealthEphemeralPubKey,
+          stealthViewTag,
         });
 
         // 6. Switch back to Arb Sepolia
@@ -369,8 +403,8 @@ export function useCrossChainFund() {
         );
 
         // 8. Save attestation + auto-claim
-        const updated = loadBridgeState();
-        if (updated) saveBridgeState({ ...updated, attestation });
+        const updated = loadBridgeState(address);
+        if (updated) saveBridgeState(address, { ...updated, attestation });
 
         setStep("claiming");
         const gasParams = await getFreshGasParams();
@@ -385,7 +419,7 @@ export function useCrossChainFund() {
           ...gasParams,
         });
 
-        clearBridgeState();
+        clearBridgeState(address);
         setStep("done");
         return burnHash;
       } catch (e) {
@@ -404,9 +438,9 @@ export function useCrossChainFund() {
     setError(null);
     setAttestationProgress(0);
     setSavedAmount("");
-    clearBridgeState();
+    clearBridgeState(address);
     if (abortRef.current) abortRef.current.abort();
-  }, []);
+  }, [address]);
 
   /** Recover a previous bridge from a Sepolia burn tx hash */
   const recover = useCallback(async (txHash: string) => {
@@ -440,7 +474,7 @@ export function useCrossChainFund() {
 
       if (data.status === "complete" && data.attestation) {
         // Attestation ready — save and show claim button
-        saveBridgeState({
+        saveBridgeState(address, {
           messageBytes: messageBytes as string,
           messageHash,
           burnTxHash: txHash,
@@ -452,7 +486,7 @@ export function useCrossChainFund() {
         setStep("ready-to-claim");
       } else {
         // Not ready yet — save and start polling
-        saveBridgeState({
+        saveBridgeState(address, {
           messageBytes: messageBytes as string,
           messageHash,
           burnTxHash: txHash,
@@ -467,8 +501,8 @@ export function useCrossChainFund() {
           (tries) => { if (mountedRef.current) setAttestationProgress(tries); },
           ac.signal
         );
-        const updated = loadBridgeState();
-        if (updated) saveBridgeState({ ...updated, attestation });
+        const updated = loadBridgeState(address);
+        if (updated) saveBridgeState(address, { ...updated, attestation });
         setStep("ready-to-claim");
       }
     } catch (e) {

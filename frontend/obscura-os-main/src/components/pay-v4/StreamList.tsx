@@ -13,8 +13,9 @@ import {
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
   OBSCURA_PAY_STREAM_ABI,
   OBSCURA_PAY_STREAM_ADDRESS,
-} from "@/config/wave2";
+} from "@/config/pay";
 import type { MetaAddress } from "@/lib/stealth";
+import { getString, setString } from "@/lib/scopedStorage";
 
 function RecipientStatus({ address: addr }: { address: `0x${string}` }) {
   const publicClient = usePublicClient();
@@ -96,31 +97,32 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   const getLocalPaid = useCallback((streamId: bigint): number => {
     try {
       const key = `obscura_paid_${streamId.toString()}`;
-      return parseInt(localStorage.getItem(key) ?? "0", 10);
+      const v = getString(key, address);
+      return parseInt(v ?? "0", 10);
     } catch { return 0; }
-  }, []);
+  }, [address]);
 
   const incrementLocalPaid = useCallback((streamId: bigint) => {
     try {
       const key = `obscura_paid_${streamId.toString()}`;
-      const cur = parseInt(localStorage.getItem(key) ?? "0", 10);
-      localStorage.setItem(key, String(cur + 1));
+      const cur = parseInt(getString(key, address) ?? "0", 10);
+      setString(key, address, String(cur + 1));
     } catch { /* noop */ }
-  }, []);
+  }, [address]);
 
   const getLastLocalTick = useCallback((streamId: bigint): number => {
     try {
       const key = `obscura_lastTick_${streamId.toString()}`;
-      return parseInt(localStorage.getItem(key) ?? "0", 10);
+      return parseInt(getString(key, address) ?? "0", 10);
     } catch { return 0; }
-  }, []);
+  }, [address]);
 
   const setLastLocalTick = useCallback((streamId: bigint) => {
     try {
       const key = `obscura_lastTick_${streamId.toString()}`;
-      localStorage.setItem(key, String(Math.floor(Date.now() / 1000)));
+      setString(key, address, String(Math.floor(Date.now() / 1000)));
     } catch { /* noop */ }
-  }, []);
+  }, [address]);
 
   // Auto-refresh "next due" countdown every 5s
   useState(() => {

@@ -5,38 +5,17 @@ import {
   REINEIRA_CUSDC_ABI,
   REINEIRA_ESCROW_ADDRESS,
   REINEIRA_ESCROW_ABI,
-} from '@/config/wave2';
+} from '@/config/pay';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount, encryptAddressAndAmount } from '@/lib/fhe';
 import { arbitrumSepolia } from 'viem/chains';
 import { parseUnits } from 'viem';
+import { withRateLimitRetry } from '@/lib/rateLimit';
+import { estimateCappedFees } from '@/lib/gas';
+import { getJSON, setJSON, migrateGlobalKey } from '@/lib/scopedStorage';
 
 const STORAGE_KEY = 'obscura_cusdc_escrows';
-
-/** Retry helper for RPC rate-limit errors — exponential backoff */
-async function withRateLimitRetry<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3,
-  baseDelayMs = 5000
-): Promise<T> {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (e) {
-      const msg = ((e as Error).message || "").toLowerCase();
-      const isRateLimit = msg.includes("rate limit") || msg.includes("rate-limit") || msg.includes("429");
-      if (isRateLimit && attempt < maxRetries) {
-        const delay = baseDelayMs * (attempt + 1);
-        console.warn(`[Escrow RPC rate-limit] retry ${attempt + 1}/${maxRetries} after ${delay}ms`);
-        await new Promise((r) => setTimeout(r, delay));
-        continue;
-      }
-      throw e;
-    }
-  }
-  throw new Error("Max retries exceeded");
-}
 
 export interface SavedEscrow {
   escrowId: string;
@@ -47,18 +26,14 @@ export interface SavedEscrow {
   createdAt: number;
 }
 
-function loadEscrows(): SavedEscrow[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  } catch {
-    return [];
-  }
+function loadEscrows(addr: `0x${string}` | undefined): SavedEscrow[] {
+  return getJSON<SavedEscrow[]>(STORAGE_KEY, addr, []);
 }
 
-function saveEscrow(escrow: SavedEscrow) {
-  const existing = loadEscrows();
+function saveEscrow(addr: `0x${string}` | undefined, escrow: SavedEscrow) {
+  const existing = loadEscrows(addr);
   existing.unshift(escrow);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+  setJSON(STORAGE_KEY, addr, existing);
 }
 
 export function useCUSDCEscrow() {
@@ -67,7 +42,7 @@ export function useCUSDCEscrow() {
   const { address } = useAccount();
   const fheStatus = useFHEStatus();
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [escrows, setEscrows] = useState<SavedEscrow[]>(loadEscrows);
+  const [escrows, setEscrows] = useState<SavedEscrow[]>(() => loadEscrows(undefined));
   const [lastEscrowId, setLastEscrowId] = useState<string | null>(null);
 
   const { writeContractAsync, isPending: isTxPending } = useWriteContract();
@@ -88,10 +63,7 @@ export function useCUSDCEscrow() {
 
     // Approve for 90 days
     const expiry = BigInt(Math.floor(Date.now() / 1000) + 90 * 86400);
-    const feeData = await publicClient.estimateFeesPerGas();
-    const maxFeePerGas = feeData.maxFeePerGas
-      ? (feeData.maxFeePerGas * 130n) / 100n
-      : undefined;
+    const fees = await estimateCappedFees(publicClient);
 
     const hash = await writeContractAsync({
       address: REINEIRA_CUSDC_ADDRESS,
@@ -100,7 +72,8 @@ export function useCUSDCEscrow() {
       args: [REINEIRA_ESCROW_ADDRESS, expiry],
       account: address,
       chain: arbitrumSepolia,
-      maxFeePerGas,
+      maxFeePerGas: fees.maxFeePerGas,
+      maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
       gas: 150_000n,
     });
     await publicClient.waitForTransactionReceipt({ hash });
@@ -108,16 +81,18 @@ export function useCUSDCEscrow() {
     await new Promise((r) => setTimeout(r, 6000));
   }, [publicClient, address, writeContractAsync]);
 
-  // Refresh escrows from localStorage periodically
+  // Refresh escrows from localStorage periodically (and on address change with one-time migration)
   useEffect(() => {
-    const interval = setInterval(() => setEscrows(loadEscrows()), 3000);
-    const onStorage = () => setEscrows(loadEscrows());
+    if (address) migrateGlobalKey(STORAGE_KEY, address);
+    setEscrows(loadEscrows(address));
+    const interval = setInterval(() => setEscrows(loadEscrows(address)), 3000);
+    const onStorage = () => setEscrows(loadEscrows(address));
     window.addEventListener('storage', onStorage);
     return () => {
       clearInterval(interval);
       window.removeEventListener('storage', onStorage);
     };
-  }, []);
+  }, [address]);
 
   const create = useCallback(
     async (
@@ -144,11 +119,8 @@ export function useCUSDCEscrow() {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
         await ensureOperator();
 
-        // Create escrow — fetch gas with retry, then call wallet exactly once
-        const createFeeData = await withRateLimitRetry(() => publicClient.estimateFeesPerGas());
-        const createMaxFee = createFeeData.maxFeePerGas
-          ? (createFeeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        // Create escrow — fetch capped fees, call wallet once.
+        const createFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
 
         const hash = await writeContractAsync({
           address: REINEIRA_ESCROW_ADDRESS,
@@ -162,7 +134,8 @@ export function useCUSDCEscrow() {
           ],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas: createMaxFee,
+          maxFeePerGas: createFees.maxFeePerGas,
+          maxPriorityFeePerGas: createFees.maxPriorityFeePerGas,
           gas: 1_200_000n,
         });
 
@@ -188,8 +161,8 @@ export function useCUSDCEscrow() {
           txHash: hash,
           createdAt: Date.now(),
         };
-        saveEscrow(saved);
-        setEscrows(loadEscrows());
+        saveEscrow(address, saved);
+        setEscrows(loadEscrows(address));
 
         // Auto-fund the escrow immediately after creation
         // create() only registers the escrow — fund() actually locks the cUSDC
@@ -200,11 +173,8 @@ export function useCUSDCEscrow() {
           console.log('[FHE Escrow Auto-Fund Encrypt]', step)
         );
 
-        // Auto-fund — fetch gas with retry, then call wallet exactly once
-        const fundFeeData = await withRateLimitRetry(() => publicClient.estimateFeesPerGas());
-        const fundMaxFee = fundFeeData.maxFeePerGas
-          ? (fundFeeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        // Auto-fund — fetch capped fees from shared helper, call wallet once.
+        const fundFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
 
         const fundHash = await writeContractAsync({
           address: REINEIRA_ESCROW_ADDRESS,
@@ -213,7 +183,8 @@ export function useCUSDCEscrow() {
           args: [BigInt(escrowId), fundEncrypted[0]],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas: fundMaxFee,
+          maxFeePerGas: fundFees.maxFeePerGas,
+          maxPriorityFeePerGas: fundFees.maxPriorityFeePerGas,
           gas: 600_000n,
         });
         await publicClient.waitForTransactionReceipt({ hash: fundHash });
@@ -247,11 +218,8 @@ export function useCUSDCEscrow() {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
         await ensureOperator();
 
-        // Fund escrow — fetch gas with retry, then call wallet exactly once
-        const fundFeeData = await withRateLimitRetry(() => publicClient.estimateFeesPerGas());
-        const fundMaxFee = fundFeeData.maxFeePerGas
-          ? (fundFeeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        // Fund escrow — fetch capped fees, call wallet once.
+        const fundFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
 
         const hash = await writeContractAsync({
           address: REINEIRA_ESCROW_ADDRESS,
@@ -260,7 +228,8 @@ export function useCUSDCEscrow() {
           args: [escrowId, encryptedInputs[0]],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas: fundMaxFee,
+          maxFeePerGas: fundFees.maxFeePerGas,
+          maxPriorityFeePerGas: fundFees.maxPriorityFeePerGas,
           gas: 600_000n,
         });
 
@@ -284,11 +253,8 @@ export function useCUSDCEscrow() {
       try {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        // Redeem — fetch gas with retry, then call wallet exactly once
-        const redeemFeeData = await withRateLimitRetry(() => publicClient.estimateFeesPerGas());
-        const redeemMaxFee = redeemFeeData.maxFeePerGas
-          ? (redeemFeeData.maxFeePerGas * 130n) / 100n
-          : undefined;
+        // Redeem — fetch capped fees, call wallet once.
+        const redeemFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
 
         const hash = await writeContractAsync({
           address: REINEIRA_ESCROW_ADDRESS,
@@ -297,7 +263,8 @@ export function useCUSDCEscrow() {
           args: [escrowId],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas: redeemMaxFee,
+          maxFeePerGas: redeemFees.maxFeePerGas,
+          maxPriorityFeePerGas: redeemFees.maxPriorityFeePerGas,
           gas: 800_000n,
         });
 

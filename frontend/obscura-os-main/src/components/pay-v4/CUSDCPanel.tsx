@@ -36,7 +36,7 @@ export default function CUSDCPanel() {
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
-        cUSDC is an encrypted version of USDC — your balance is hidden on-chain. You need cUSDC to create payroll streams and buy insurance.
+        cUSDC is USDC encrypted on-chain with FHE — your balance is hidden from everyone, including block explorers. Encrypt USDC to get cUSDC; decrypt to get plain USDC back.
       </p>
 
       {/* ── Balance Grid ── */}
@@ -104,7 +104,7 @@ export default function CUSDCPanel() {
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
             <ArrowDownToLine className="w-3 h-3 text-emerald-400/60" />
-            Wrap USDC → cUSDC
+            Encrypt USDC → cUSDC
           </label>
           <div className="flex gap-2">
             <input
@@ -119,16 +119,16 @@ export default function CUSDCPanel() {
               onClick={async () => {
                 try {
                   toast.info("Step 1: Approving USDC spend…");
-                  const toastId = toast.loading("Wrapping… (rate-limit cooldown)");
+                  const toastId = toast.loading("Encrypting… (rate-limit cooldown)");
                   await wrap(wrapAmount);
                   toast.dismiss(toastId);
-                  toast.success("Wrapped! cUSDC balance updated.");
+                  toast.success("Encrypted! cUSDC balance updated.");
                   setWrapAmount("");
                 } catch (e) { toast.error((e as Error).message); }
               }}
               className="btn-pay btn-pay-emerald shrink-0"
             >
-              <ArrowDownToLine className="w-3.5 h-3.5" /> Wrap
+              <ArrowDownToLine className="w-3.5 h-3.5" /> Encrypt
             </motion.button>
           </div>
           <p className="text-[11px] text-muted-foreground/40">
@@ -144,7 +144,7 @@ export default function CUSDCPanel() {
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
             <ArrowUpFromLine className="w-3 h-3 text-amber-400/60" />
-            Unwrap cUSDC → USDC
+            Decrypt cUSDC → USDC
           </label>
           <div className="flex gap-2">
             <input
@@ -158,20 +158,20 @@ export default function CUSDCPanel() {
               whileTap={{ scale: 0.97 }}
               onClick={async () => {
                 try {
-                  const toastId = toast.loading("Unwrapping cUSDC → USDC…");
+                  const toastId = toast.loading("Decrypting cUSDC → USDC…");
                   await unwrap(unwrapAmount);
                   toast.dismiss(toastId);
-                  toast.success("Unwrapped! USDC balance updated.");
+                  toast.success("Decrypted! USDC balance updated.");
                   setUnwrapAmount("");
                 } catch (e) { toast.error((e as Error).message); }
               }}
               className="btn-pay btn-pay-emerald shrink-0"
             >
-              <ArrowUpFromLine className="w-3.5 h-3.5" /> Unwrap
+              <ArrowUpFromLine className="w-3.5 h-3.5" /> Decrypt
             </motion.button>
           </div>
           <p className="text-[11px] text-muted-foreground/40">
-            Decrypts on-chain and sends plain USDC to your wallet.
+            Decrypts on-chain — converts cUSDC back to plain USDC in your wallet.
           </p>
         </div>
 

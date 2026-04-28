@@ -62,40 +62,35 @@ export default function CreateStreamForm({ onCreated }: { onCreated?: () => void
   };
 
   return (
-    <div className="glass-panel rounded-md p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Repeat className="w-4 h-4 text-primary" />
-        <h3 className="font-display text-sm tracking-wider text-foreground">Create Payroll Stream</h3>
-        <span className="ml-auto text-[11px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
-          cUSDC · RECURRING
-        </span>
+    <div className="pay-card p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <Repeat className="w-4 h-4 text-emerald-400" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Payroll Stream</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">cUSDC · Recurring</p>
+        </div>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">PAYROLL</span>
       </div>
 
-      <p className="text-sm text-muted-foreground/70">
+      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
         Set up automatic encrypted salary payments. Each cycle sends cUSDC to a fresh stealth address
         that only the recipient can claim. The recipient needs to register their stealth meta-address first (Stealth tab).
       </p>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div>
-          <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
             Recipient Wallet Address
           </label>
           <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="0x..."
-              value={hint}
-              onChange={(e) => setHint(e.target.value)}
-              className="flex-1 px-3 py-2 bg-background border border-border/50 rounded-md text-xs text-foreground focus:border-primary/40 focus:outline-none"
-            />
+            <input type="text" placeholder="0x..." value={hint} onChange={(e) => setHint(e.target.value)}
+              className="pay-input flex-1" />
             {address && (
-              <button
-                type="button"
-                onClick={() => setHint(address)}
-                title="Use your own address (self-test)"
-                className="px-3 py-2 text-xs text-primary border border-primary/30 rounded-md hover:bg-primary/10 flex items-center gap-1 whitespace-nowrap"
-              >
+              <button type="button" onClick={() => setHint(address)} title="Use your own address (self-test)"
+                className="btn-pay btn-pay-ghost px-3 whitespace-nowrap">
                 <User className="w-3 h-3" /> Me
               </button>
             )}
@@ -105,29 +100,26 @@ export default function CreateStreamForm({ onCreated }: { onCreated?: () => void
           {hint && /^0x[a-fA-F0-9]{40}$/.test(hint) && (
             <div className="mt-2">
               {recipientStatus === "checking" && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-[12px] text-muted-foreground/50">
                   <Loader2 className="w-3 h-3 animate-spin" /> Checking stealth registration…
                 </div>
               )}
               {recipientStatus === "registered" && (
-                <div className="flex items-center gap-2 text-xs text-green-400">
+                <div className="flex items-center gap-2 text-[12px] text-emerald-400">
                   <CheckCircle2 className="w-3 h-3" /> Stealth address registered — ready to receive streams
                 </div>
               )}
               {recipientStatus === "not-registered" && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-red-400">
+                  <div className="flex items-center gap-2 text-[12px] text-red-400">
                     <XCircle className="w-3 h-3" /> Not registered — this address cannot receive stealth payments yet
                   </div>
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-md space-y-2">
-                    <p className="text-xs text-amber-400">
+                  <div className="rounded-xl bg-white/[0.025] border border-white/[0.07] p-3 space-y-2">
+                    <p className="text-[12px] text-muted-foreground/55">
                       The recipient needs to register their stealth address first. Send them this invite:
                     </p>
-                    <button
-                      type="button"
-                      onClick={copyInviteLink}
-                      className="w-full py-2 text-xs text-amber-400 border border-amber-500/30 rounded-md hover:bg-amber-500/10 flex items-center justify-center gap-2"
-                    >
+                    <button type="button" onClick={copyInviteLink}
+                      className="btn-pay btn-pay-ghost w-full py-2">
                       <Copy className="w-3 h-3" /> Copy Invite Message
                     </button>
                   </div>
@@ -138,20 +130,17 @@ export default function CreateStreamForm({ onCreated }: { onCreated?: () => void
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
             Pay Frequency
           </label>
           <div className="flex gap-2">
             {PERIODS.map((p) => (
-              <button
-                key={p.seconds}
-                onClick={() => setPeriod(p.seconds)}
-                className={`flex-1 py-2 text-sm tracking-[0.15em] uppercase rounded-md border transition-all ${
+              <button key={p.seconds} onClick={() => setPeriod(p.seconds)}
+                className={`flex-1 py-2 text-[11px] tracking-[0.15em] uppercase rounded-xl border transition-all ${
                   period === p.seconds
-                    ? "border-primary/40 text-primary bg-primary/5"
-                    : "border-border/50 text-muted-foreground hover:text-foreground"
-                }`}
-              >
+                    ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/5"
+                    : "border-white/[0.07] text-muted-foreground/50 hover:text-foreground hover:border-white/[0.12]"
+                }`}>
                 {p.label}
               </button>
             ))}
@@ -159,26 +148,18 @@ export default function CreateStreamForm({ onCreated }: { onCreated?: () => void
         </div>
 
         <div>
-          <label className="text-xs text-muted-foreground tracking-[0.15em] uppercase block mb-1.5">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
             Duration (days)
           </label>
-          <input
-            type="number"
-            value={durationDays}
-            onChange={(e) => setDurationDays(e.target.value)}
-            className="w-full px-3 py-2 bg-background border border-border/50 rounded-md text-xs text-foreground focus:border-primary/40 focus:outline-none"
-          />
+          <input type="number" value={durationDays} onChange={(e) => setDurationDays(e.target.value)}
+            className="pay-input w-full" />
         </div>
       </div>
 
-      {error && <div className="text-sm text-destructive">{error}</div>}
+      {error && <div className="text-[12px] text-red-400">{error}</div>}
 
-      <motion.button
-        onClick={submit}
-        disabled={isPending}
-        whileTap={{ scale: 0.99 }}
-        className="w-full py-3 text-xs tracking-[0.2em] uppercase bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-      >
+      <motion.button onClick={submit} disabled={isPending} whileTap={{ scale: 0.99 }}
+        className="btn-pay btn-pay-emerald w-full py-3">
         <Calendar className="w-3.5 h-3.5" />
         {isPending ? "Creating..." : "Create Stream"}
       </motion.button>

@@ -43,12 +43,12 @@ export default function DisputeForm() {
 
       {/* Quick-fill from saved policies */}
       {policies.length > 0 && !coverageId && (
-        <div className="rounded-lg bg-cyan-500/[0.05] border border-cyan-500/20 p-3 space-y-2">
-          <span className="text-[10px] text-cyan-400/70 tracking-[0.15em] uppercase">Your saved policies — click to fill</span>
+        <div className="rounded-lg bg-amber-500/[0.05] border border-amber-500/20 p-3 space-y-2">
+          <span className="text-[10px] text-amber-400/70 tracking-[0.15em] uppercase">Your saved policies — click to fill</span>
           <div className="flex flex-wrap gap-1.5">
             {policies.map((p, i) => (
               <button key={i} onClick={() => setCoverageId(p.coverageId)}
-                className="text-[11px] text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors font-mono">
+                className="text-[11px] text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 hover:bg-amber-500/20 transition-colors font-mono">
                 ID {p.coverageId} · Stream {p.streamId} · {p.coverageAmount} cUSDC
               </button>
             ))}

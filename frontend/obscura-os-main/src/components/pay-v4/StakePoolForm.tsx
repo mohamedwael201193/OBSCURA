@@ -96,14 +96,14 @@ export default function StakePoolForm() {
     <div className="pay-card p-6 space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-700/10 border border-amber-500/25 flex items-center justify-center shrink-0">
-          <Landmark className="w-4 h-4 text-amber-400" />
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <Landmark className="w-4 h-4 text-emerald-400" />
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Stake to Insurance Pool</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Earn Yield · cUSDC</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-amber">LP YIELD</span>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">LP YIELD</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
@@ -128,7 +128,7 @@ export default function StakePoolForm() {
             whileTap={{ scale: 0.98 }}
             onClick={handleStake}
             disabled={busy || !amount}
-            className="btn-pay btn-pay-amber px-5"
+            className="btn-pay btn-pay-emerald px-5"
           >
             {busy ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Staking…</> : "Stake"}
           </motion.button>

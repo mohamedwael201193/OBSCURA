@@ -210,7 +210,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
           mode === "employer"
             ? "bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25"
-            : "bg-gradient-to-br from-cyan-500/20 to-cyan-700/10 border border-cyan-500/25"
+            : "bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25"
         }`}>
           {mode === "employer" ? <Play className="w-4 h-4 text-emerald-400" /> : <Clock className="w-4 h-4 text-cyan-400" />}
         </div>

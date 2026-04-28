@@ -34,13 +34,13 @@ const STEP_ORDER: BridgeStep[] = [
 function BurnTxBanner({ hash }: { hash: string }) {
   const short = `${hash.slice(0, 10)}…${hash.slice(-8)}`;
   return (
-    <div className="flex items-center gap-2 px-3 py-2.5 bg-cyan-500/8 border border-cyan-500/20 rounded-lg">
+    <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-500/[0.08] border border-emerald-500/20 rounded-lg">
       <ExternalLink className="w-3 h-3 text-cyan-400 shrink-0" />
       <a
         href={`https://sepolia.etherscan.io/tx/${hash}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="font-mono text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors truncate"
+        className="font-mono text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors truncate"
       >
         {short}
       </a>
@@ -75,7 +75,7 @@ function StepProgress({ current, attestationProgress }: { current: BridgeStep; a
               )}
             </div>
             <span className={`text-[11px] leading-tight ${
-              isDone ? "text-emerald-400/60" : isActive ? "text-violet-300" : "text-muted-foreground/30"
+              isDone ? "text-emerald-400/60" : isActive ? "text-emerald-300" : "text-muted-foreground/30"
             }`}>
               {STEP_LABELS[s]}
               {s === "waiting-attestation" && isActive && attestationProgress > 0 && (
@@ -156,7 +156,7 @@ export default function CrossChainFundForm() {
               href={`https://sepolia.etherscan.io/tx/${burnTxHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors"
+              className="inline-flex items-center gap-1.5 text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors"
             >
               <ExternalLink className="w-3 h-3" />
               View burn tx on Etherscan
@@ -176,17 +176,17 @@ export default function CrossChainFundForm() {
   }
 
   return (
-    <div className="pay-card pay-card-violet p-6 space-y-5">
+    <div className="pay-card p-6 space-y-5">
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500/20 to-cyan-600/10 border border-violet-500/25 flex items-center justify-center shrink-0">
-          <Globe2 className="w-4 h-4 text-violet-400" />
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <Globe2 className="w-4 h-4 text-emerald-400" />
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Bridge USDC From Ethereum</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">CCTP · Cross-chain</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-violet">CCTP V1</span>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">CCTP V1</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
@@ -241,7 +241,7 @@ export default function CrossChainFundForm() {
                   onClick={submitRecover}
                   disabled={isPending}
                   whileTap={{ scale: 0.99 }}
-                  className="btn-pay btn-pay-amber w-full py-2.5"
+                  className="btn-pay btn-pay-ghost w-full py-2.5"
                 >
                   {isPending
                     ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking…</>
@@ -301,7 +301,7 @@ export default function CrossChainFundForm() {
           onClick={submit}
           disabled={isPending}
           whileTap={{ scale: 0.99 }}
-          className="btn-pay btn-pay-violet w-full py-2.5"
+          className="btn-pay btn-pay-emerald w-full py-2.5"
         >
           <ArrowRightLeft className="w-3.5 h-3.5" />
           Bridge USDC
@@ -311,7 +311,7 @@ export default function CrossChainFundForm() {
       {step !== "idle" && step !== "ready-to-claim" && step !== "done" && (
         <motion.button
           disabled
-          className="btn-pay btn-pay-violet w-full py-2.5 opacity-50"
+          className="btn-pay btn-pay-emerald w-full py-2.5 opacity-50"
         >
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
           Processing…

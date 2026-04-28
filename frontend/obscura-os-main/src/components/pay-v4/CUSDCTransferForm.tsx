@@ -35,17 +35,17 @@ export default function CUSDCTransferForm() {
   };
 
   return (
-    <div className="pay-card pay-card-cyan p-6 space-y-5">
+    <div className="pay-card p-6 space-y-5">
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-700/10 border border-cyan-500/25 flex items-center justify-center shrink-0">
-          <Send className="w-4 h-4 text-cyan-400" />
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <Send className="w-4 h-4 text-emerald-400" />
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Confidential P2P Transfer</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">FHE Encrypted · cUSDC</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-cyan">ENCRYPTED</span>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ENCRYPTED</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
@@ -74,7 +74,7 @@ export default function CUSDCTransferForm() {
             Amount (cUSDC)
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-400/40 pointer-events-none" />
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-400/40 pointer-events-none" />
             <input
               type="number"
               placeholder="e.g. 50"
@@ -97,7 +97,7 @@ export default function CUSDCTransferForm() {
         disabled={isProcessing || isTxPending}
         whileHover={!isProcessing ? { scale: 1.005 } : {}}
         whileTap={!isProcessing ? { scale: 0.99 } : {}}
-        className="btn-pay btn-pay-cyan w-full py-2.5"
+        className="btn-pay btn-pay-emerald w-full py-2.5"
       >
         {isProcessing
           ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</>

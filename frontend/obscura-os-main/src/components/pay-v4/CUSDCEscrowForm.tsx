@@ -94,14 +94,14 @@ export default function CUSDCEscrowForm() {
     <div className="pay-card p-6 space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-700/10 border border-cyan-500/25 flex items-center justify-center shrink-0">
-          <Lock className="w-4 h-4 text-cyan-400" />
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <Lock className="w-4 h-4 text-emerald-400" />
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Encrypted Escrow</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">cUSDC · FHE Locked</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-cyan">cUSDC</span>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">cUSDC</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
@@ -148,8 +148,8 @@ export default function CUSDCEscrowForm() {
         <div className="rounded-lg bg-white/[0.025] border border-white/[0.07] p-4">
           {isProcessing && (
             <div className="flex items-center gap-2.5 mb-3">
-              <Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin shrink-0" />
-              <span className="text-[12px] text-cyan-300">Creating &amp; funding escrow…</span>
+              <Loader2 className="w-3.5 h-3.5 text-emerald-400 animate-spin shrink-0" />
+              <span className="text-[12px] text-emerald-300">Creating &amp; funding escrow…</span>
             </div>
           )}
           <AsyncStepper status={status} stepIndex={stepIndex} />
@@ -158,7 +158,7 @@ export default function CUSDCEscrowForm() {
 
       {!isDone && (
         <motion.button onClick={handleCreate} disabled={isProcessing || isTxPending} whileTap={{ scale: 0.99 }}
-          className="btn-pay btn-pay-cyan w-full py-2.5">
+          className="btn-pay btn-pay-emerald w-full py-2.5">
           <Plus className="w-3.5 h-3.5" />
           {isProcessing ? "Creating & Funding…" : "+ Create & Fund Escrow"}
         </motion.button>

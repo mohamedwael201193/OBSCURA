@@ -148,7 +148,7 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
             </div>
           )}
           {recipientStatus === "not-registered" && (
-            <div className="flex items-center gap-1.5 text-[11px] text-amber-300 mt-1">
+            <div className="flex items-center gap-1.5 text-[11px] text-red-400 mt-1">
               <XCircle className="w-3 h-3" /> Recipient hasn't registered a meta-address yet
             </div>
           )}

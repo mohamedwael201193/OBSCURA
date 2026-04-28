@@ -77,7 +77,7 @@ export default function BuyCoverageForm() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[12px] text-muted-foreground/70">Coverage ID:</span>
-            <code className="font-mono text-[11px] text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-md border border-cyan-500/20">
+            <code className="font-mono text-[11px] text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
               {lastCoverageId}
             </code>
             <button
@@ -87,7 +87,7 @@ export default function BuyCoverageForm() {
               <Copy className="w-3 h-3" />
             </button>
           </div>
-          <p className="text-[11px] text-amber-300/70">
+          <p className="text-[11px] text-muted-foreground/50">
             Save this ID — you need it to file a dispute if a payment is missed.
           </p>
           <button

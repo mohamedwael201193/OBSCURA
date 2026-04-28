@@ -161,7 +161,7 @@ export default function CUSDCPanel() {
                   setUnwrapAmount("");
                 } catch (e) { toast.error((e as Error).message); }
               }}
-              className="btn-pay btn-pay-amber shrink-0"
+              className="btn-pay btn-pay-emerald shrink-0"
             >
               <ArrowUpFromLine className="w-3.5 h-3.5" /> Unwrap
             </motion.button>

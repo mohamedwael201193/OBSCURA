@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { decodeEventLog, decodeAbiParameters } from "viem";
 import {
@@ -153,10 +153,6 @@ export function useStealthScan() {
       setIsScanning(false);
     }
   }, [publicClient, address, walletClient]);
-
-  useEffect(() => {
-    void scan();
-  }, [scan]);
 
   return { matches, isScanning, error, scan };
 }

@@ -11,7 +11,7 @@
  *  Returns a stable surface so the Receive zone / nav badge / Claim-All
  *  button can all consume it without re-implementing scan logic.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useAccount,
   usePublicClient,
@@ -57,6 +57,12 @@ export function useStealthInbox() {
   const [isClaimingAll, setIsClaimingAll] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
 
+  // Stable ref so the polling effect never needs `scan` in its dep array.
+  // Without this, the scan object (new ref every render) caused an infinite
+  // re-render loop that fired hundreds of getLogs calls per second (429 wall).
+  const scanFnRef = useRef(scan.scan);
+  scanFnRef.current = scan.scan;
+
   // Load seen-state on address change.
   useEffect(() => {
     if (!address) {
@@ -68,11 +74,14 @@ export function useStealthInbox() {
 
   // Periodic re-scan. Pauses while the tab is hidden so background tabs
   // don't burn through the RPC's per-IP rate limit.
+  // Uses scanFnRef so `scan` object is NOT in the dep array — having the
+  // unstable scan object in deps caused a tight re-render loop firing
+  // hundreds of getLogs/getBlockNumber calls per second (429 wall).
   useEffect(() => {
     if (!address) return;
     const tick = () => {
       if (typeof document !== "undefined" && document.hidden) return;
-      void scan.scan();
+      void scanFnRef.current();
     };
     tick();
     const id = window.setInterval(tick, POLL_MS);
@@ -84,7 +93,7 @@ export function useStealthInbox() {
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [address, scan]);
+  }, [address]); // intentionally omits `scan` — use scanFnRef instead
 
   // Refresh ignore-filter state when the scan list changes.
   useEffect(() => {

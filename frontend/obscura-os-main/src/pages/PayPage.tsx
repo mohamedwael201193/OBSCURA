@@ -191,6 +191,12 @@ const PayPage = () => {
         return (
           <div className="space-y-5">
             <SectionDiagram flow="send" />
+            {isConnected && (
+              <Card>
+                <CardHeader title="cUSDC Wallet" eyebrow="Wrap USDC → cUSDC" />
+                <div className="p-5"><CUSDCPanel /></div>
+              </Card>
+            )}
             <HowItWorks
               title="How Obscura Pay works"
               steps={homeSteps}
@@ -209,6 +215,10 @@ const PayPage = () => {
         if (!isConnected) return <NotConnected message="Connect your wallet to send encrypted cUSDC payments." />;
         return (
           <div className="space-y-4">
+            <Card>
+              <CardHeader title="cUSDC Wallet" eyebrow="Need cUSDC to send? Wrap here" />
+              <div className="p-5"><CUSDCPanel /></div>
+            </Card>
             <UnifiedSendForm />
             <Card>
               <CardHeader title="Bridge USDC into Arbitrum" eyebrow="Cross-chain" />

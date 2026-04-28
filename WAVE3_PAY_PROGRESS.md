@@ -53,6 +53,8 @@
 | 41 | `tsc --noEmit` clean | repo-wide | ✅ Done |
 | 42 | `vite build` chunks ≤ 650 KB gzip (largest gzipped chunk 248 KB) | `dist/assets/` | ✅ Done |
 | 43 | Manual testing guide | `WAVE3_PAY_TESTING.md` | ✅ Done |
+| 44 | **429 infinite-loop fix** — `useStealthScan` no longer auto-runs on mount; `useStealthInbox` uses `scanFnRef` so `scan` object is excluded from polling effect deps, breaking the scan→setState→re-render→rescan cycle | `src/hooks/useStealthScan.ts`, `src/hooks/useStealthInbox.ts` | ✅ Done |
+| 45 | **cUSDC Wallet card on Home + Send tabs** — `CUSDCPanel` (wrap / unwrap / approve) now visible on every page-load, not just the Streams tab | `src/pages/PayPage.tsx` | ✅ Done |
 
 ---
 
@@ -137,6 +139,12 @@ All seven addresses are wired into both `frontend/.env` and `src/config/payV2.ts
 9. **`listContactIds` revert** swallowed in `useAddressBook` — fresh wallets see an empty list, not a red error.
 
 10. **Testing guide** `WAVE3_PAY_TESTING.md` covering all 16 sections (pre-flight → contract addresses).
+
+11. **429 infinite-loop eliminated.** Root cause: `useStealthScan` called `setMatches()` after each scan → `useStealthInbox` re-rendered → `useEffect([address, scan])` re-ran (`scan` = new object every render) → immediate re-scan → infinite loop at network speed. Fix:
+    - `useStealthScan.ts` — removed the internal `useEffect(() => void scan(), [scan])`. Hook no longer auto-triggers; `useStealthInbox` owns scheduling.
+    - `useStealthInbox.ts` — polling effect uses `scanFnRef` (`useRef`) so dep array is `[address]` only. Ignore-filter effect already used `scan.matches` and was unaffected.
+
+12. **cUSDC Wallet card on Home + Send tabs.** `CUSDCPanel` (wrap / unwrap / approve operator) now shows on the **Home** tab (when wallet connected) and at the top of the **Send** tab. Users no longer have to navigate to Streams to wrap their first USDC.
 
 ---
 

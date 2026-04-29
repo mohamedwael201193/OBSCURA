@@ -15,8 +15,9 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
+import { arbitrumSepolia } from "viem/chains";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
-import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
+import { getTrackedUnits } from "@/lib/trackedBalance";
 import { ReceiptList } from "@/components/pay-v4/PaymentReceipt";
 import UsdcIcon from "@/components/shared/UsdcIcon";
 import {
@@ -41,16 +42,16 @@ interface Props {
 
 export default function PayHomeDashboard({ onNavigate }: Props) {
   const { address } = useAccount();
-  const { data: ethBal, isLoading: ethLoading } = useBalance({ address });
+  const { data: ethBal, isLoading: ethLoading } = useBalance({
+    address,
+    chainId: arbitrumSepolia.id,
+  });
   const usdcBalance = useUSDCBalance();
-  const { decrypted, trackedCusdc } = useCUSDCBalance();
 
-  const cusdcNum =
-    decrypted !== null
-      ? Number(decrypted) / 1_000_000
-      : trackedCusdc
-        ? parseFloat(trackedCusdc)
-        : 0;
+  // Read cUSDC tracked balance directly from localStorage — avoids needing
+  // an FHE decryption call just to detect "has the user wrapped any USDC?"
+  const cusdcUnits = address ? getTrackedUnits(address) : 0n;
+  const cusdcNum = Number(cusdcUnits) / 1_000_000;
 
   const { data: stealthOnChain, isLoading: stealthLoading } = useReadContract({
     address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
@@ -77,7 +78,7 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
           : ethNum > 0.0001
             ? `${ethNum.toFixed(4)} ETH on Arbitrum Sepolia`
             : "You need a small amount of ETH to pay transaction fees",
-      done: ethNum > 0.0001,
+      done: !ethLoading && ethNum > 0.0001,
       loading: ethLoading,
       action: null as null | (() => void),
       actionLabel: null as null | string,

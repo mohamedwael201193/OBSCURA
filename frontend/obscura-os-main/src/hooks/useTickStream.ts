@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
 import { arbitrumSepolia } from "viem/chains";
-import { encodeAbiParameters } from "viem";
+import { encodeAbiParameters, encodeFunctionData } from "viem";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
@@ -140,17 +140,40 @@ export function useTickStream() {
         // withRateLimitRetry handles transient 429s on the fee-estimation call.
         const fees2 = await withRateLimitRetry(() => estimateCappedFees(publicClient!));
 
-        const announceTx = await writeContractAsync({
-          address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+        // Sign-once / retry-broadcast pattern:
+        //   writeContractAsync triggers a MetaMask popup AND immediately calls
+        //   eth_sendRawTransaction. If the RPC returns 429 at send time MetaMask
+        //   marks the tx Failed and there is no automatic retry without another
+        //   popup. Instead we:
+        //     1. Encode the calldata manually
+        //     2. Call walletClient.signTransaction (one popup, returns signed bytes)
+        //     3. Retry publicClient.sendRawTransaction inside withRateLimitRetry
+        //        until the RPC accepts it — no extra MetaMask prompts.
+        const announceData = encodeFunctionData({
           abi: OBSCURA_STEALTH_REGISTRY_ABI,
           functionName: "announce",
           args: [stealth.stealthAddress, stealth.ephemeralPubKey, stealth.viewTag, metadata],
-          account: address,
+        });
+        const nonce = await publicClient.getTransactionCount({
+          address: address!,
+          blockTag: "pending",
+        });
+        const signedAnnounce = await walletClient.signTransaction({
+          to: OBSCURA_STEALTH_REGISTRY_ADDRESS as `0x${string}`,
+          data: announceData,
+          account: address!,
           chain: arbitrumSepolia,
           maxFeePerGas: fees2.maxFeePerGas,
           maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
           gas: 500_000n,
+          nonce,
+          type: "eip1559",
         });
+        // Broadcast with retry — no new MetaMask popup on each attempt
+        const announceTx = await withRateLimitRetry(
+          () => publicClient.sendRawTransaction({ serializedTransaction: signedAnnounce }),
+          { retries: 5, baseDelayMs: 3_000 }
+        );
 
         // Wait for announce receipt so we can detect silent on-chain reverts.
         // If announce fails the recipient's inbox will never find the payment.

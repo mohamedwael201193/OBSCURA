@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Send, ArrowRight, Lock, Loader2, ExternalLink, Wallet } from "lucide-react";
+import { Send, ArrowRight, Lock, Loader2, ExternalLink } from "lucide-react";
+import UsdcIcon from "@/components/shared/UsdcIcon";
 import { useCUSDCTransfer } from "@/hooks/useCUSDCTransfer";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";

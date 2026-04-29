@@ -11,6 +11,7 @@ import {
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
 import { deriveStealthPayment, type MetaAddress } from "@/lib/stealth";
 import { estimateCappedFees } from "@/lib/gas";
+import { withRateLimitRetry } from "@/lib/rateLimit";
 
 /**
  * useTickStream — releases ONE cycle on a stream:
@@ -90,7 +91,7 @@ export function useTickStream() {
         //    Uses the InEuint64-accepting overload (selector 0xa794ee95).
         //    Capped EIP-1559 fees from shared lib/gas.ts (anti-regression
         //    for Wave 2 #51-#52, #153-#156).
-        const fees1 = await estimateCappedFees(publicClient);
+        const fees1 = await withRateLimitRetry(() => estimateCappedFees(publicClient!));
 
         const txHash = await writeContractAsync({
           address: REINEIRA_CUSDC_ADDRESS,
@@ -114,8 +115,15 @@ export function useTickStream() {
         }
 
         // 5. Announce so the recipient can find it.
-        //    Small delay to avoid MetaMask RPC rate-limiting (back-to-back txs).
-        await new Promise((r) => setTimeout(r, 2_000));
+        //    5 s delay: two back-to-back txs on Arbitrum Sepolia RPCs often
+        //    get rate-limited at the eth_call / eth_sendRawTransaction level.
+        //    Increasing to 5 s gives the RPC pool time to recover.
+        //    We skip the pre-simulation step: `announce` only checks
+        //    ephemeralPubKey.length == 33, which is always true from
+        //    deriveStealthPayment(). A simulate round-trip at this point
+        //    hits the already-congested RPC and viem wraps the 429 response
+        //    as a fake "contract reverted" error.
+        await new Promise((r) => setTimeout(r, 5_000));
 
         // Encode amount into metadata so recipient can auto-sweep without guessing
         const metadata = encodeAbiParameters(
@@ -129,24 +137,8 @@ export function useTickStream() {
 
         // Re-estimate gas after the delay — stale fees from the first tx
         // commonly cause MetaMask to make its own (often-failing) estimation.
-        const fees2 = await estimateCappedFees(publicClient);
-
-        // Pre-simulate the announce to catch on-chain reverts before MetaMask popup.
-        // If this fails, MetaMask would show "Review alert" — we throw a clear error instead.
-        try {
-          await publicClient.simulateContract({
-            address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
-            abi: OBSCURA_STEALTH_REGISTRY_ABI,
-            functionName: "announce",
-            args: [stealth.stealthAddress, stealth.ephemeralPubKey, stealth.viewTag, metadata],
-            account: address,
-          });
-        } catch (simErr) {
-          throw new Error(
-            `Stealth announcement simulation failed: ${(simErr as Error).message?.slice(0, 120)}. ` +
-            `cUSDC transfer succeeded — try again or use Direct mode.`
-          );
-        }
+        // withRateLimitRetry handles transient 429s on the fee-estimation call.
+        const fees2 = await withRateLimitRetry(() => estimateCappedFees(publicClient!));
 
         const announceTx = await writeContractAsync({
           address: OBSCURA_STEALTH_REGISTRY_ADDRESS,

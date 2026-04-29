@@ -55,6 +55,15 @@
 | 43 | Manual testing guide | `WAVE3_PAY_TESTING.md` | ✅ Done |
 | 44 | **429 infinite-loop fix** — `useStealthScan` no longer auto-runs on mount; `useStealthInbox` uses `scanFnRef` so `scan` object is excluded from polling effect deps, breaking the scan→setState→re-render→rescan cycle | `src/hooks/useStealthScan.ts`, `src/hooks/useStealthInbox.ts` | ✅ Done |
 | 45 | **cUSDC Wallet card on Home + Send tabs** — `CUSDCPanel` (wrap / unwrap / approve) now visible on every page-load, not just the Streams tab | `src/pages/PayPage.tsx` | ✅ Done |
+| 46 | **USDC SVG icon + balance pill contrast** — reusable `UsdcIcon` component; balance pill text contrast improved across all 4 Pay forms | `src/components/shared/UsdcIcon.tsx`, multiple forms | ✅ Done |
+| 47 | **Send tab cUSDC info bar** — sticky bar at top of Send tab shows cUSDC balance + "Get cUSDC" anchor-link to encrypt panel; mode picker reordered (Direct first), Wrap/Unwrap renamed Encrypt/Decrypt | `src/components/pay-v4/UnifiedSendForm.tsx` | ✅ Done |
+| 48 | **Stealth inbox claim persistence** — `useStealthInbox` adds `claimedMap` (persisted to `obscura.inbox.claimed.v1` in localStorage); `InboxItem.claimed` flag; `unclaimedCount`; `claimOne()` sweeps + marks; `StealthInboxV2` shows per-item Sweep button + "Swept ✓" badge | `src/hooks/useStealthInbox.ts`, `src/components/pay-v4/StealthInboxV2.tsx` | ✅ Done |
+| 49 | **Stealth send accepts raw 0x addresses** — `useRecipientResolver` now queries `ObscuraStealthRegistry.getMetaAddress` for raw `0x…` inputs; if `publishedAt > 0` the stealth meta is populated; error message updated to explain unregistered addresses | `src/hooks/useRecipientResolver.ts`, `src/components/pay-v4/UnifiedSendForm.tsx` | ✅ Done |
+| 50 | **Pay Home onboarding checklist** — new `PayHomeDashboard` component shown when wallet connected; 4-step setup guide (ETH for gas / Get USDC / Encrypt cUSDC / Register stealth), live on-chain state checks, progress bar, quick-action grid, how-it-works | `src/components/pay-v4/PayHomeDashboard.tsx`, `src/pages/PayPage.tsx` | ✅ Done |
+| 51 | **Home checklist ETH detection fix** — replaced `useBalance` with `publicClient.getBalance()` in `useEffect`; eliminates wagmi query-layer race condition on Arb Sepolia | `src/components/pay-v4/PayHomeDashboard.tsx` | ✅ Done |
+| 52 | **Home checklist cUSDC detection fix** — replaced per-instance `useCUSDCBalance()` (React state only) with `getTrackedUnits(address)` direct localStorage read; `useCUSDCBalance.reveal()` now also calls `setTrackedUnits(address, plain)` so FHE-decrypted value is persisted | `src/components/pay-v4/PayHomeDashboard.tsx`, `src/hooks/useCUSDCBalance.ts` | ✅ Done |
+| 53 | **Streams page redesign** — `StreamsDashboard` replaces old 5-card layout; removes `CUSDCPanel` from Streams (belongs in Send); adds cUSDC balance banner with "Encrypt more →" link; bulk import collapsible; Sending/Receiving tab switcher with animated transition | `src/components/pay-v4/StreamsDashboard.tsx`, `src/pages/PayPage.tsx` | ✅ Done |
+| 54 | **Stealth pay announce rate-limit fix** — `useTickStream` removed the `simulateContract` pre-check before `announce()`; viem was wrapping the RPC 429 rate-limit response as a fake "contract reverted" error; delay between txs increased 2 s → 5 s; fee-estimation calls wrapped in `withRateLimitRetry` | `src/hooks/useTickStream.ts` | ✅ Done |
 
 ---
 
@@ -146,6 +155,20 @@ All seven addresses are wired into both `frontend/.env` and `src/config/payV2.ts
 
 12. **cUSDC Wallet card on Home + Send tabs.** `CUSDCPanel` (wrap / unwrap / approve operator) now shows on the **Home** tab (when wallet connected) and at the top of the **Send** tab. Users no longer have to navigate to Streams to wrap their first USDC.
 
+13. **USDC SVG icon + balance pill contrast.** New reusable `UsdcIcon` component (blue circle SVG). Balance pill text contrast improved across CUSDCPanel, CUSDCTransferForm, CrossChainFundForm, and CUSDCEscrowForm. Fixed missing `UsdcIcon` import in `CUSDCTransferForm`.
+
+14. **Stealth inbox per-item claim persistence.** `useStealthInbox` adds a `claimedMap` stored in `obscura.inbox.claimed.v1` (localStorage). `InboxItem` has a `claimed: boolean`. `unclaimedCount` counts only unclaimed items. `claimOne(item)` sweeps one item + marks it claimed. `StealthInboxV2` shows a "Sweep" button per unclaimed item and a "Swept ✓" badge on claimed ones. Inbox items stay swept across page reloads.
+
+15. **Stealth send accepts raw 0x addresses.** `useRecipientResolver` previously returned `meta: null` for raw hex addresses. Now it calls `ObscuraStealthRegistry.getMetaAddress` first; if `publishedAt > 0` the full stealth meta is populated and stealth send works. Error message updated to explain registration requirement.
+
+16. **Pay Home onboarding checklist.** New `PayHomeDashboard` (shown when wallet connected on Home tab). Four setup steps with live on-chain state: (1) ETH for gas via `publicClient.getBalance`, (2) USDC via `useUSDCBalance`, (3) cUSDC via `getTrackedUnits` (localStorage), (4) stealth registration via `ObscuraStealthRegistry.getMetaAddress`. Progress bar + quick-action grid.
+
+17. **Home checklist balance detection fixes.** ETH: switched from `useBalance` to `publicClient.getBalance()` in a `useEffect` — eliminates the wagmi query-layer race condition that returned `undefined` on Arb Sepolia. cUSDC: `useCUSDCBalance` now calls `setTrackedUnits(address, plain)` after FHE decryption so the value persists to localStorage; home checklist reads `getTrackedUnits()` directly (no per-instance state drift).
+
+18. **Streams page redesign (`StreamsDashboard`).** Removed `CUSDCPanel` from Streams (belongs in Send). New layout: cUSDC balance banner (localStorage) with "Encrypt more →" link, `CreateStreamFormV2` directly, collapsible Bulk import row (AnimatePresence), Sending / Receiving tab switcher with animated transitions. `PayPage.tsx` streams case now renders `<StreamsDashboard>`.
+
+19. **Stealth pay `announce` rate-limit fix.** Root cause: after the `confidentialTransfer` tx, `useTickStream` was calling `publicClient.simulateContract` on `announce`. The RPC (already stressed from the first tx) returned HTTP 429; viem wrapped this as a `ContractFunctionRevertedError` with reason "Request is being rate limited." The `announce` function has only one require (`ephemeralPubKey.length == 33`) which is always satisfied by `deriveStealthPayment`. Fix: removed the `simulateContract` call entirely; inter-tx delay increased 2 s → 5 s; both `estimateCappedFees` calls wrapped in `withRateLimitRetry`.
+
 ---
 
 ## Privacy Upgrades vs Wave 2
@@ -166,8 +189,9 @@ All seven addresses are wired into both `frontend/.env` and `src/config/payV2.ts
 - **Gas clamp** via `estimateCappedFees(publicClient)`.
 - **No fire-and-forget** — every write `waitForTransactionReceipt`.
 - **Wallet-scoped local state** via `getJSON / setJSON` from `src/lib/scopedStorage.ts`.
-- **Rate-limit retry** wrapper `withRateLimitRetry` on read paths.
+- **Rate-limit retry** wrapper `withRateLimitRetry` on read paths **and fee-estimation calls in `useTickStream`**.
 - **RPC failover** in `wagmi.ts` (new) — defends every read/write.
+- **No simulateContract before announce** — `ObscuraStealthRegistry.announce` is emit-only; pre-simulation adds an RPC round-trip that is the primary source of false "reverted" errors on rate-limited nodes.
 
 ---
 
@@ -190,23 +214,30 @@ src/
 │   └── wagmi.ts                   ← multi-RPC fallback transport
 ├── hooks/
 │   ├── useAddressBook.ts          ← graceful empty
-│   ├── useStealthInbox.ts         ← 120 s poll + visibilitychange-aware
+│   ├── useCUSDCBalance.ts         ← reveal() now persists to localStorage via setTrackedUnits
+│   ├── useStealthInbox.ts         ← 120 s poll + visibilitychange-aware + claimedMap persistence
 │   ├── useStealthRotation.ts
 │   ├── useSocialResolver.ts
 │   ├── useInsuranceSubscription.ts
 │   ├── usePayStreamV2.ts
 │   ├── usePayrollResolverV2.ts
 │   ├── useReceipts.ts
-│   └── useRecipientResolver.ts
-├── components/pay-v4/
-│   ├── OnboardingWizard.tsx
-│   ├── AddContactModal.tsx
-│   ├── ContactPicker.tsx
-│   ├── UnifiedSendForm.tsx        ← live per-step progress UI
-│   ├── BulkPayrollImport.tsx
-│   ├── PaymentReceipt.tsx         ← exports ReceiptList + ReceiptRow
-│   ├── StealthInboxV2.tsx
-│   └── CreateStreamFormV2.tsx     ← pretty period dropdown
+│   ├── useRecipientResolver.ts    ← 0x address → registry lookup for stealth meta
+│   ├── useTickStream.ts           ← no simulateContract; 5 s delay; withRateLimitRetry on fees
+│   └── useUSDCBalance.ts
+├── components/
+│   ├── shared/UsdcIcon.tsx        ← reusable USDC SVG icon
+│   └── pay-v4/
+│       ├── OnboardingWizard.tsx
+│       ├── AddContactModal.tsx
+│       ├── ContactPicker.tsx
+│       ├── UnifiedSendForm.tsx        ← live per-step progress UI; 0x stealth send fixed
+│       ├── BulkPayrollImport.tsx
+│       ├── PaymentReceipt.tsx         ← exports ReceiptList + ReceiptRow
+│       ├── StealthInboxV2.tsx         ← per-item Sweep + Swept ✓ badge + claimedMap
+│       ├── CreateStreamFormV2.tsx     ← pretty period dropdown
+│       ├── PayHomeDashboard.tsx       ← 4-step setup checklist + quick actions
+│       └── StreamsDashboard.tsx       ← redesigned Streams tab (no CUSDCPanel)
 └── pages/
     ├── PayPage.tsx                ← 7-tab IA, wallet pill in header, no right sidebar
     ├── ContactsPage.tsx

@@ -169,6 +169,10 @@ All seven addresses are wired into both `frontend/.env` and `src/config/payV2.ts
 
 19. **Stealth pay `announce` rate-limit fix.** Root cause: after the `confidentialTransfer` tx, `useTickStream` was calling `publicClient.simulateContract` on `announce`. The RPC (already stressed from the first tx) returned HTTP 429; viem wrapped this as a `ContractFunctionRevertedError` with reason "Request is being rate limited." The `announce` function has only one require (`ephemeralPubKey.length == 33`) which is always satisfied by `deriveStealthPayment`. Fix: removed the `simulateContract` call entirely; inter-tx delay increased 2 s → 5 s; both `estimateCappedFees` calls wrapped in `withRateLimitRetry`.
 
+20. **V2 contract mismatch — streams showing wrong IDs.** `useStreamList` was reading from the **V1** contract (`ObscuraPayStream`) while `CreateStreamFormV2` was writing to **V2** (`ObscuraPayStreamV2`). These are separate contracts with independent `_streams` arrays, so every new stream on V2 appeared as `#0`. Fix: `useStreamList` now imports from `payV2` and calls `streamsByEmployer` + `getStream` + `pendingCycles` on `OBSCURA_PAY_STREAM_V2_ADDRESS`. Added `streamsByEmployer` and `pendingCycles` to the V2 ABI. Recipient mode removed (V2 hides recipient on-chain; discovery is via Stealth Inbox). `CreateStreamFormV2` now writes `localStorage.setItem("v2_stream_recipient_<id>", hint)` immediately after creation. `StreamList` pause/cancel/resume now targets V2.
+
+21. **Unknown recipient inline fix.** Streams created before the V2 migration or before the localStorage hint-save landed show `0x000...` for `recipientHint`. Fix: `StreamList` detects zero-address hint and renders an inline "Set recipient" input instead of the `RecipientStatus` badge and "Pay Cycle" button. On save, the address is written to `localStorage("v2_stream_recipient_<id>")` and cached in component state; Pay Cycle re-enables. `RecipientStatus` also skips the registry call for the zero address (no more spurious "no stealth" badge).
+
 ---
 
 ## Privacy Upgrades vs Wave 2
@@ -222,6 +226,7 @@ src/
 │   ├── usePayStreamV2.ts
 │   ├── usePayrollResolverV2.ts
 │   ├── useReceipts.ts
+│   ├── useStreamList.ts           ← now reads V2 contract; employer-only; fallback from localStorage
 │   ├── useRecipientResolver.ts    ← 0x address → registry lookup for stealth meta
 │   ├── useTickStream.ts           ← no simulateContract; 5 s delay; withRateLimitRetry on fees
 │   └── useUSDCBalance.ts
@@ -237,7 +242,8 @@ src/
 │       ├── StealthInboxV2.tsx         ← per-item Sweep + Swept ✓ badge + claimedMap
 │       ├── CreateStreamFormV2.tsx     ← pretty period dropdown
 │       ├── PayHomeDashboard.tsx       ← 4-step setup checklist + quick actions
-│       └── StreamsDashboard.tsx       ← redesigned Streams tab (no CUSDCPanel)
+│       ├── StreamsDashboard.tsx       ← redesigned Streams tab (no CUSDCPanel)
+│       └── CreateStreamFormV2.tsx     ← saves recipient hint to localStorage on create
 └── pages/
     ├── PayPage.tsx                ← 7-tab IA, wallet pill in header, no right sidebar
     ├── ContactsPage.tsx

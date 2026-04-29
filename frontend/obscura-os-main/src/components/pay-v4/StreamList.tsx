@@ -1,12 +1,12 @@
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
-import { parseUnits } from "viem";
+import { isAddress, parseUnits } from "viem";
 import { motion } from "framer-motion";
 import { useStreamList, type StreamSummary } from "@/hooks/useStreamList";
 import { useTickStream } from "@/hooks/useTickStream";
 import { useCUSDCTransfer } from "@/hooks/useCUSDCTransfer";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { Play, Clock, Ban, Timer, CheckCircle2, XCircle, Check, Pause, PlayCircle, Shield, Zap } from "lucide-react";
+import { Play, Clock, Ban, Timer, CheckCircle2, XCircle, Check, Pause, PlayCircle, Shield, Zap, PencilLine } from "lucide-react";
 import { arbitrumSepolia } from "viem/chains";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
@@ -19,12 +19,14 @@ import {
 import type { MetaAddress } from "@/lib/stealth";
 import { getString, setString } from "@/lib/scopedStorage";
 
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+
 function RecipientStatus({ address: addr }: { address: `0x${string}` }) {
   const publicClient = usePublicClient();
   const [registered, setRegistered] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!publicClient || !OBSCURA_STEALTH_REGISTRY_ADDRESS) return;
+    if (addr === ZERO_ADDR || !isAddress(addr) || !publicClient || !OBSCURA_STEALTH_REGISTRY_ADDRESS) return;
     let cancelled = false;
     publicClient
       .readContract({
@@ -42,6 +44,7 @@ function RecipientStatus({ address: addr }: { address: `0x${string}` }) {
     return () => { cancelled = true; };
   }, [addr, publicClient]);
 
+  if (addr === ZERO_ADDR) return null;
   if (registered === null) return null;
   return registered ? (
     <span className="inline-flex items-center gap-1 text-[11px] text-green-400"><CheckCircle2 className="w-2.5 h-2.5" /> stealth ready</span>
@@ -89,6 +92,9 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [lastPayment, setLastPayment] = useState<{ streamId: string; txHash: string; announceTx?: string; amount: string; stealthAddress?: string } | null>(null);
   const [streamAction, setStreamAction] = useState<string | null>(null);
+  // Per-stream recipient override (for streams created before localStorage fix)
+  const [overrideInputs, setOverrideInputs] = useState<Record<string, string>>({});
+  const [savedOverrides, setSavedOverrides] = useState<Record<string, string>>({});
 
   // Track paid cycles in localStorage (on-chain counter won't update since we bypass PayStream)
   const getLocalPaid = useCallback((streamId: bigint): number => {
@@ -309,11 +315,16 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           const effectiveLastTick = Math.max(Number(s.lastTickTime), localLastTick);
           const nextDue = effectiveLastTick + Number(s.periodSeconds);
           const effectivePending = Math.max(0, Math.floor((now - effectiveLastTick) / Number(s.periodSeconds)));
+          const key = s.id.toString();
+          // Effective recipient: localStorage (stored on create) → saved override → raw hint
+          const storedHint = (savedOverrides[key] ?? s.recipientHint) as `0x${string}`;
+          const recipientUnknown = storedHint === ZERO_ADDR || !isAddress(storedHint);
+          const effectiveStream = { ...s, recipientHint: recipientUnknown ? (ZERO_ADDR as `0x${string}`) : storedHint };
           return (
-            <div key={s.id.toString()} className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 space-y-3">
+            <div key={key} className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 space-y-3">
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
-                  <div className="font-display text-sm font-semibold text-foreground">Stream #{s.id.toString()}</div>
+                  <div className="font-display text-sm font-semibold text-foreground">Stream #{key}</div>
                   <div className="text-[11px] text-muted-foreground/50">
                     every {Number(s.periodSeconds) >= 86400
                       ? `${Math.round(Number(s.periodSeconds) / 86400)}d`
@@ -330,13 +341,43 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                 )}
               </div>
 
-              <div className="text-[11px] text-muted-foreground/40 font-mono truncate flex items-center gap-2">
-                <span className="truncate">→ {s.recipientHint}</span>
-                {mode === "employer" && <RecipientStatus address={s.recipientHint} />}
-              </div>
+              {/* Recipient row — show set-recipient form if hint is unknown */}
+              {recipientUnknown ? (
+                <div className="space-y-1.5">
+                  <div className="text-[11px] text-amber-400/70 flex items-center gap-1.5">
+                    <PencilLine className="w-3 h-3" /> Recipient not saved — enter address to enable payments
+                  </div>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      placeholder="0x recipient address"
+                      value={overrideInputs[key] ?? ""}
+                      onChange={(e) => setOverrideInputs((p) => ({ ...p, [key]: e.target.value }))}
+                      className="pay-input font-mono text-[11px] flex-1 py-1.5"
+                    />
+                    <button
+                      onClick={() => {
+                        const val = (overrideInputs[key] ?? "").trim();
+                        if (!isAddress(val)) { toast.error("Invalid address"); return; }
+                        localStorage.setItem(`v2_stream_recipient_${key}`, val);
+                        setSavedOverrides((p) => ({ ...p, [key]: val }));
+                        toast.success("Recipient saved");
+                      }}
+                      className="btn-pay btn-pay-emerald px-3 py-1.5 text-[11px] shrink-0"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[11px] text-muted-foreground/40 font-mono truncate flex items-center gap-2">
+                  <span className="truncate">→ {storedHint}</span>
+                  {mode === "employer" && <RecipientStatus address={storedHint} />}
+                </div>
+              )}
 
-              {mode === "employer" && effectivePending > 0 && (
-                <motion.button whileTap={{ scale: 0.98 }} disabled={isTicking} onClick={() => tickOne(s)}
+              {mode === "employer" && effectivePending > 0 && !recipientUnknown && (
+                <motion.button whileTap={{ scale: 0.98 }} disabled={isTicking} onClick={() => tickOne(effectiveStream)}
                   className="btn-pay btn-pay-emerald w-full py-2">
                   {payMode === "stealth" ? <Shield className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
                   {isTicking ? "Sending…" : `Pay Cycle (${payMode})`}

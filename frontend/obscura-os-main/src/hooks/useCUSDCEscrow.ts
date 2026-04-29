@@ -139,12 +139,19 @@ export function useCUSDCEscrow() {
           gas: 1_200_000n,
         });
 
-        // Parse escrow ID from tx receipt logs
+        // Parse escrow ID from tx receipt logs.
+        // IMPORTANT: FHE transactions emit many CoFHE internal events
+        // BEFORE the EscrowCreated event. We must filter to logs emitted
+        // by the Reineira escrow contract so we don't accidentally pick
+        // up a CoFHE topic[1] as the escrow ID.
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         let escrowId = '?';
         for (const log of receipt.logs) {
-          // EscrowCreated(uint256 escrowId, ...) — topic[1] is the escrowId
-          if (log.topics.length >= 2 && log.topics[1]) {
+          if (
+            log.address.toLowerCase() === REINEIRA_ESCROW_ADDRESS.toLowerCase() &&
+            log.topics.length >= 2 &&
+            log.topics[1]
+          ) {
             escrowId = BigInt(log.topics[1]).toString();
             break;
           }
@@ -168,6 +175,12 @@ export function useCUSDCEscrow() {
         // create() only registers the escrow — fund() actually locks the cUSDC
         console.log(`[Escrow] Auto-funding escrow #${escrowId} with ${amount} raw units...`);
 
+        // Wait for RPC rate-limit window to clear before the second tx
+        await new Promise((r) => setTimeout(r, 10_000));
+
+        // Re-ensure operator in case the approval window shifted during create
+        await ensureOperator();
+
         // Re-encrypt the amount for the fund call (separate input needed)
         const fundEncrypted = await encryptAmount(amount, (step) =>
           console.log('[FHE Escrow Auto-Fund Encrypt]', step)
@@ -187,7 +200,10 @@ export function useCUSDCEscrow() {
           maxPriorityFeePerGas: fundFees.maxPriorityFeePerGas,
           gas: 600_000n,
         });
-        await publicClient.waitForTransactionReceipt({ hash: fundHash });
+        const fundReceipt = await publicClient.waitForTransactionReceipt({ hash: fundHash });
+        if (fundReceipt.status === 'reverted') {
+          throw new Error(`Auto-fund tx reverted on-chain (hash: ${fundHash}). Check that escrow #${escrowId} exists and operator is approved.`);
+        }
         console.log(`[Escrow] Auto-fund tx confirmed: ${fundHash}`);
 
         fheStatus.setStep(FHEStepStatus.READY);

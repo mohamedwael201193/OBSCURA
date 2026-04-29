@@ -73,6 +73,9 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
         jitterSeconds: jitter,
       });
 
+      // Persist recipient so StreamList can display it (V2 stores encrypted hint on-chain)
+      localStorage.setItem(`v2_stream_recipient_${streamId.toString()}`, hint);
+
       receipts.add({
         kind: "stream-create",
         txHash: hash,

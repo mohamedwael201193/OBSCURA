@@ -11,9 +11,11 @@ import { arbitrumSepolia } from "viem/chains";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
-  OBSCURA_PAY_STREAM_ABI,
-  OBSCURA_PAY_STREAM_ADDRESS,
 } from "@/config/pay";
+import {
+  OBSCURA_PAY_STREAM_V2_ABI,
+  OBSCURA_PAY_STREAM_V2_ADDRESS,
+} from "@/config/payV2";
 import type { MetaAddress } from "@/lib/stealth";
 import { getString, setString } from "@/lib/scopedStorage";
 
@@ -347,12 +349,12 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                 <div className="flex gap-1.5 pt-0.5">
                   <button disabled={streamAction === s.id.toString()}
                     onClick={async () => {
-                      if (!publicClient || !OBSCURA_PAY_STREAM_ADDRESS) return;
+                      if (!publicClient || !OBSCURA_PAY_STREAM_V2_ADDRESS) return;
                       setStreamAction(s.id.toString());
                       try {
                         const feeData = await publicClient.estimateFeesPerGas();
                         const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
-                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_ADDRESS, abi: OBSCURA_PAY_STREAM_ABI, functionName: "setPaused", args: [s.id, true], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
+                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_V2_ADDRESS, abi: OBSCURA_PAY_STREAM_V2_ABI, functionName: "setPaused", args: [s.id, true], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
                         await publicClient.waitForTransactionReceipt({ hash });
                         toast.success(`Stream #${s.id.toString()} paused`);
                         refresh();
@@ -363,12 +365,12 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                   </button>
                   <button disabled={streamAction === s.id.toString()}
                     onClick={async () => {
-                      if (!publicClient || !OBSCURA_PAY_STREAM_ADDRESS) return;
+                      if (!publicClient || !OBSCURA_PAY_STREAM_V2_ADDRESS) return;
                       setStreamAction(s.id.toString());
                       try {
                         const feeData = await publicClient.estimateFeesPerGas();
                         const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
-                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_ADDRESS, abi: OBSCURA_PAY_STREAM_ABI, functionName: "cancelStream", args: [s.id], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
+                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_V2_ADDRESS, abi: OBSCURA_PAY_STREAM_V2_ABI, functionName: "cancelStream", args: [s.id], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
                         await publicClient.waitForTransactionReceipt({ hash });
                         toast.success(`Stream #${s.id.toString()} cancelled permanently`);
                         refresh();
@@ -384,12 +386,12 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                   <span className="text-[11px] text-amber-400/60 flex-1">Stream paused / cancelled</span>
                   <button disabled={streamAction === s.id.toString()}
                     onClick={async () => {
-                      if (!publicClient || !OBSCURA_PAY_STREAM_ADDRESS) return;
+                      if (!publicClient || !OBSCURA_PAY_STREAM_V2_ADDRESS) return;
                       setStreamAction(s.id.toString());
                       try {
                         const feeData = await publicClient.estimateFeesPerGas();
                         const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
-                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_ADDRESS, abi: OBSCURA_PAY_STREAM_ABI, functionName: "setPaused", args: [s.id, false], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
+                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_V2_ADDRESS, abi: OBSCURA_PAY_STREAM_V2_ABI, functionName: "setPaused", args: [s.id, false], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
                         await publicClient.waitForTransactionReceipt({ hash });
                         toast.success(`Stream #${s.id.toString()} resumed`);
                         refresh();

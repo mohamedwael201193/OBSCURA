@@ -130,6 +130,20 @@ export const OBSCURA_PAY_STREAM_V2_ABI = [
     outputs: [{ name: "", type: "uint256" }],
   },
   {
+    type: "function",
+    name: "streamsByEmployer",
+    stateMutability: "view",
+    inputs: [{ name: "employer", type: "address" }],
+    outputs: [{ name: "", type: "uint256[]" }],
+  },
+  {
+    type: "function",
+    name: "pendingCycles",
+    stateMutability: "view",
+    inputs: [{ name: "streamId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint64" }],
+  },
+  {
     type: "event",
     name: "StreamCreated",
     anonymous: false,

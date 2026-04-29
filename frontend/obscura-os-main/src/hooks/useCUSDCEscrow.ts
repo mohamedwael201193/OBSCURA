@@ -171,41 +171,23 @@ export function useCUSDCEscrow() {
         saveEscrow(address, saved);
         setEscrows(loadEscrows(address));
 
-        // Auto-fund the escrow immediately after creation
-        // create() only registers the escrow — fund() actually locks the cUSDC
+        // Auto-fund the escrow immediately after creation.
+        // create() only registers the escrow — fund() actually locks the cUSDC.
+        // Reineira FHERC20 uses the OPERATOR model (setOperator / isOperator).
+        // cUSDC.approve() ALWAYS REVERTS in FHERC20 — do NOT call it.
+        // confidentialTransferFrom inside fund() checks isOperator(caller, escrow).
         console.log(`[Escrow] Auto-funding escrow #${escrowId} with ${amount} raw units...`);
 
-        // Wait for RPC rate-limit window to clear before the second tx
+        // Wait for RPC rate-limit window to clear before the second tx.
         await new Promise((r) => setTimeout(r, 10_000));
 
-        // Re-encrypt the amount for the fund call (separate input needed)
+        // Re-ensure operator (setOperator was called before create, but re-confirm).
+        await ensureOperator();
+
+        // Re-encrypt the amount for the fund call (separate InEuint64 input needed).
         const fundEncrypted = await encryptAmount(amount, (step) =>
           console.log('[FHE Escrow Auto-Fund Encrypt]', step)
         );
-
-        // ConfidentialEscrow.fund() pulls cUSDC via confidentialTransferFrom, which
-        // checks encrypted allowance (NOT setOperator). Must call cUSDC.approve(escrow,
-        // euint64Handle) with the same ciphertext handle BEFORE calling fund().
-        // See Reineira quickstart: approve(escrow, encryptedAmount) → fund(id, payment)
-        const ctHash = fundEncrypted[0].ctHash as bigint;
-        const approveBytes32 = `0x${ctHash.toString(16).padStart(64, '0')}` as `0x${string}`;
-        const approveFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-        const approveHash = await writeContractAsync({
-          address: REINEIRA_CUSDC_ADDRESS!,
-          abi: REINEIRA_CUSDC_ABI,
-          functionName: 'approve',
-          args: [REINEIRA_ESCROW_ADDRESS!, approveBytes32],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas: approveFees.maxFeePerGas,
-          maxPriorityFeePerGas: approveFees.maxPriorityFeePerGas,
-          gas: 300_000n,
-        });
-        await publicClient.waitForTransactionReceipt({ hash: approveHash });
-        console.log(`[Escrow] cUSDC approve confirmed: ${approveHash}`);
-
-        // Small delay between approve and fund for RPC window
-        await new Promise((r) => setTimeout(r, 5_000));
 
         // Auto-fund — fetch capped fees from shared helper, call wallet once.
         const fundFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
@@ -251,29 +233,10 @@ export function useCUSDCEscrow() {
           console.log('[FHE Fund Encrypt]', step);
         });
 
-        // ConfidentialEscrow.fund() requires cUSDC.approve(escrow, euint64Handle)
-        // BEFORE calling fund — the contract uses confidentialTransferFrom which
-        // checks encrypted allowance, not setOperator.
+        // Ensure escrow is an authorized cUSDC operator (setOperator / isOperator model).
+        // Reineira FHERC20 cUSDC.approve() always reverts — operator model only.
         fheStatus.setStep(FHEStepStatus.COMPUTING);
-        const ctHashFund = encryptedInputs[0].ctHash as bigint;
-        const approveFundBytes32 = `0x${ctHashFund.toString(16).padStart(64, '0')}` as `0x${string}`;
-        const approveFeesF = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-        const approveHashF = await writeContractAsync({
-          address: REINEIRA_CUSDC_ADDRESS!,
-          abi: REINEIRA_CUSDC_ABI,
-          functionName: 'approve',
-          args: [REINEIRA_ESCROW_ADDRESS!, approveFundBytes32],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas: approveFeesF.maxFeePerGas,
-          maxPriorityFeePerGas: approveFeesF.maxPriorityFeePerGas,
-          gas: 300_000n,
-        });
-        await publicClient.waitForTransactionReceipt({ hash: approveHashF });
-        console.log(`[Escrow] cUSDC approve confirmed: ${approveHashF}`);
-
-        // Small delay before fund tx
-        await new Promise((r) => setTimeout(r, 5_000));
+        await ensureOperator();
 
         // Fund escrow — fetch capped fees, call wallet once.
         const fundFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
@@ -298,7 +261,7 @@ export function useCUSDCEscrow() {
         throw error;
       }
     },
-    [publicClient, walletClient, writeContractAsync, address, fheStatus]
+    [publicClient, walletClient, writeContractAsync, address, fheStatus, ensureOperator]
   );
 
   const redeem = useCallback(

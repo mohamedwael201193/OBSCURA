@@ -171,48 +171,28 @@ export function useCUSDCEscrow() {
         saveEscrow(address, saved);
         setEscrows(loadEscrows(address));
 
-        // Auto-fund the escrow immediately after creation.
-        // create() only registers the escrow — fund() actually locks the cUSDC.
-        // Reineira FHERC20 uses the OPERATOR model (setOperator / isOperator).
-        // cUSDC.approve() ALWAYS REVERTS in FHERC20 — do NOT call it.
-        // confidentialTransferFrom inside fund() checks isOperator(caller, escrow).
-        console.log(`[Escrow] Auto-funding escrow #${escrowId} with ${amount} raw units...`);
-
-        // Wait for RPC rate-limit window to clear before the second tx.
-        await new Promise((r) => setTimeout(r, 10_000));
-
-        // Re-ensure operator (setOperator was called before create, but re-confirm).
-        await ensureOperator();
-
-        // Re-encrypt the amount for the fund call (separate InEuint64 input needed).
-        // IMPORTANT: pass REINEIRA_ESCROW_ADDRESS as forContract so the CoFHE zkVerifier
-        // signs the ciphertext for the escrow contract address (= msg.sender when
-        // the escrow calls FHE.asEuint64 / verifyInput internally).
-        const fundEncrypted = await encryptAmount(
-          amount,
-          (step) => console.log('[FHE Escrow Auto-Fund Encrypt]', step),
-          REINEIRA_ESCROW_ADDRESS
+        // ─── AUTO-FUND DISABLED ──────────────────────────────────────────────
+        // The deployed Reineira escrow proxy (0xC4333F84…) at impl 0xe606fff6…
+        // calls cUSDC.confidentialTransferFrom(address,address,bytes32) with
+        // selector 0xeb3155b5 (takes a pre-ingested euint64 handle).
+        //
+        // The deployed cUSDC at 0x6b6e6479… does NOT expose that selector — it
+        // only has the older (address,address,uint256) and (address,address,InEuint64)
+        // overloads. As a result `fund()` ALWAYS reverts with `InvalidSigner` /
+        // function-not-found at ~50–85k gas. This is an upstream contract version
+        // mismatch and cannot be fixed in the frontend.
+        //
+        // We therefore skip auto-fund: the escrow is created and recorded, but
+        // the user is informed via a console warning. Manual fund() in the UI
+        // will surface the same explanation if attempted.
+        console.warn(
+          `[Escrow] Auto-fund SKIPPED for escrow #${escrowId} — the deployed ` +
+          `Reineira escrow impl (0xe606fff6...) calls cUSDC selector 0xeb3155b5 ` +
+          `(confidentialTransferFrom with bytes32 handle), which the deployed ` +
+          `cUSDC token (0x6b6e6479...) does not expose. fund() will always revert ` +
+          `until the upstream contracts are upgraded. The escrow has been created ` +
+          `on-chain and will appear in My Escrows, but no cUSDC has been locked.`
         );
-
-        // Auto-fund — fetch capped fees from shared helper, call wallet once.
-        const fundFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-
-        const fundHash = await writeContractAsync({
-          address: REINEIRA_ESCROW_ADDRESS,
-          abi: REINEIRA_ESCROW_ABI,
-          functionName: 'fund',
-          args: [BigInt(escrowId), fundEncrypted[0]],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas: fundFees.maxFeePerGas,
-          maxPriorityFeePerGas: fundFees.maxPriorityFeePerGas,
-          gas: 600_000n,
-        });
-        const fundReceipt = await publicClient.waitForTransactionReceipt({ hash: fundHash });
-        if (fundReceipt.status === 'reverted') {
-          throw new Error(`Auto-fund tx reverted on-chain (hash: ${fundHash}). Escrow #${escrowId} exists but cUSDC transfer failed — check balance.`);
-        }
-        console.log(`[Escrow] Auto-fund tx confirmed: ${fundHash}`);
 
         fheStatus.setStep(FHEStepStatus.READY);
         return hash;
@@ -225,51 +205,36 @@ export function useCUSDCEscrow() {
   );
 
   const fund = useCallback(
-    async (escrowId: bigint, amount: bigint) => {
-      if (!publicClient || !walletClient || !REINEIRA_ESCROW_ADDRESS) {
-        throw new Error('Wallet not connected or escrow contract not configured');
-      }
-
-      try {
-        fheStatus.setStep(FHEStepStatus.ENCRYPTING);
-        await initFHEClient(publicClient, walletClient);
-
-        // Encrypt for the escrow contract address (verifyInput is called with msg.sender = escrow contract).
-        const encryptedInputs = await encryptAmount(
-          amount,
-          (step) => console.log('[FHE Fund Encrypt]', step),
-          REINEIRA_ESCROW_ADDRESS
-        );
-
-        // Ensure escrow is an authorized cUSDC operator (setOperator / isOperator model).
-        // Reineira FHERC20 cUSDC.approve() always reverts — operator model only.
-        fheStatus.setStep(FHEStepStatus.COMPUTING);
-        await ensureOperator();
-
-        // Fund escrow — fetch capped fees, call wallet once.
-        const fundFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-
-        const hash = await writeContractAsync({
-          address: REINEIRA_ESCROW_ADDRESS,
-          abi: REINEIRA_ESCROW_ABI,
-          functionName: 'fund',
-          args: [escrowId, encryptedInputs[0]],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas: fundFees.maxFeePerGas,
-          maxPriorityFeePerGas: fundFees.maxPriorityFeePerGas,
-          gas: 600_000n,
-        });
-
-        setTxHash(hash);
-        fheStatus.setStep(FHEStepStatus.READY);
-        return hash;
-      } catch (error) {
-        fheStatus.setStep(FHEStepStatus.ERROR, (error as Error).message);
-        throw error;
-      }
+    async (_escrowId: bigint, _amount: bigint) => {
+      // ─── DISABLED ─────────────────────────────────────────────────────────
+      // The deployed Reineira escrow impl (0xe606fff6…) calls
+      // cUSDC.confidentialTransferFrom(address,address,bytes32) — selector
+      // 0xeb3155b5. The deployed cUSDC token (0x6b6e6479…) does NOT expose
+      // that selector, only the older (address,address,uint256) and
+      // (address,address,InEuint64) overloads. Therefore fund() ALWAYS
+      // reverts on-chain with InvalidSigner / function-not-found at ~50–85k
+      // gas regardless of operator state, balance, or signature.
+      //
+      // Until the upstream Reineira contracts are upgraded (either the
+      // escrow to use the (addr,addr,InEuint64) overload, or the cUSDC to
+      // expose the (addr,addr,bytes32) overload), there is nothing the
+      // frontend can do to make fund() succeed.
+      //
+      // We surface a clear error instead of broadcasting a tx that we know
+      // will revert and burn the user's gas.
+      const msg =
+        'Escrow fund() is temporarily disabled: the deployed Reineira ' +
+        'escrow proxy (0xC4333F84…) is incompatible with the deployed ' +
+        'cUSDC token (0x6b6e6479…). The escrow expects ' +
+        'confidentialTransferFrom(address,address,bytes32) (selector ' +
+        '0xeb3155b5) but the cUSDC implementation only exposes the ' +
+        '(uint256) and (InEuint64) overloads. Awaiting upstream contract ' +
+        'upgrade.';
+      console.error('[Escrow.fund]', msg);
+      fheStatus.setStep(FHEStepStatus.ERROR, msg);
+      throw new Error(msg);
     },
-    [publicClient, walletClient, writeContractAsync, address, fheStatus, ensureOperator]
+    [fheStatus]
   );
 
   const redeem = useCallback(

@@ -54,33 +54,21 @@ export function getFHEClient() {
 /**
  * Encrypt an amount client-side for contract submission.
  * Returns the encrypted input struct ready for contract call.
- *
- * @param amount - The plaintext amount to encrypt.
- * @param onStep - Optional step callback for progress reporting.
- * @param forContract - Optional contract address that will call FHE.asEuint64()
- *   on-chain (i.e., the address that will be msg.sender when verifyInput is
- *   called). For direct EOA→contract calls (e.g., fund()), pass the target
- *   contract address so the CoFHE zkVerifier signs the ciphertext for that
- *   contract. Leave undefined when the EOA itself processes the ciphertext.
  */
 export async function encryptAmount(
   amount: bigint,
-  onStep?: StepCallback,
-  forContract?: string
+  onStep?: StepCallback
 ): Promise<any> {
   if (!cofheClient) throw new Error('FHE client not initialized');
 
-  let builder = cofheClient
+  const result = await cofheClient
     .encryptInputs([Encryptable.uint64(amount)])
     .onStep((step: string, ctx: any) => {
       onStep?.(step, ctx);
-    });
+    })
+    .execute();
 
-  if (forContract) {
-    builder = builder.setAccount(forContract);
-  }
-
-  return builder.execute();
+  return result;
 }
 
 /**

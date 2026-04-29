@@ -62,6 +62,7 @@ import UnifiedSendForm from "@/components/pay-v4/UnifiedSendForm";
 import BulkPayrollImport from "@/components/pay-v4/BulkPayrollImport";
 import { ReceiptList } from "@/components/pay-v4/PaymentReceipt";
 import AddContactModal from "@/components/pay-v4/AddContactModal";
+import PayHomeDashboard from "@/components/pay-v4/PayHomeDashboard";
 
 import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
@@ -485,24 +486,23 @@ const PayPage = () => {
       case "home":
         return (
           <div className="space-y-5">
-            <SectionDiagram flow="send" />
-            {isConnected && (
-              <Card>
-                <CardHeader title="cUSDC Wallet" eyebrow="Wrap USDC → cUSDC" />
-                <div className="p-5"><CUSDCPanel /></div>
-              </Card>
+            {isConnected ? (
+              <PayHomeDashboard onNavigate={(t) => setTab(t)} />
+            ) : (
+              <>
+                <SectionDiagram flow="send" />
+                <HowItWorks
+                  title="How Obscura Pay works"
+                  steps={homeSteps}
+                  footnote={
+                    <>
+                      All encryption uses <span className="text-foreground/80">Phenix CoFHE</span>.
+                      Your data stays encrypted, even while the smart contract processes it.
+                    </>
+                  }
+                />
+              </>
             )}
-            <HowItWorks
-              title="How Obscura Pay works"
-              steps={homeSteps}
-              footnote={
-                <>
-                  All encryption uses <span className="text-foreground/80">Phenix CoFHE</span>.
-                  Your data stays encrypted, even while the smart contract processes it.
-                </>
-              }
-            />
-            <ReceiptList limit={5} />
           </div>
         );
 

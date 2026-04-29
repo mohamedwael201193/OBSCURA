@@ -134,7 +134,11 @@ export default function UnifiedSendForm() {
       return;
     }
     if (mode === "stealth" && !r.meta) {
-      setError("Stealth mode requires a recipient with a published meta-address.");
+      setError(
+        r.kind === "address"
+          ? "This address has not registered a stealth meta-address yet. Ask them to go to Receive → Register stealth meta-address first, or use Direct Send instead."
+          : "Stealth mode requires a recipient with a published meta-address."
+      );
       return;
     }
     setStep(3);
@@ -378,18 +382,18 @@ export default function UnifiedSendForm() {
         <div className="space-y-4">
           <div>
             <div className="text-[10px] tracking-[0.18em] uppercase text-muted-foreground/50 font-mono mb-1">
-              Step 2 / 4 · {mode === "stealth" ? "Recipient handle" : "Recipient address"}
+              Step 2 / 4 · Recipient
             </div>
             <p className="text-[12px] text-muted-foreground/60">
               {mode === "stealth"
-                ? "Enter a handle (@alice) or contact — the recipient must have a published meta-address."
-                : "Enter a 0x address, ENS name, or pick a saved contact."}
+                ? "Enter a 0x address, @handle, or ENS name — the recipient must have registered their stealth meta-address."
+                : "Enter a 0x address, ENS name, or @handle."}
             </p>
           </div>
           <ContactPicker
             value={recipientInput}
             onChange={setRecipientInput}
-            placeholder={mode === "stealth" ? "@alice or contact label" : "0x… or alice.eth"}
+            placeholder={mode === "stealth" ? "0x… or @alice or alice.eth" : "0x… or alice.eth"}
           />
           {error && (
             <div className="flex items-start gap-2 text-[12px] text-red-300 bg-red-500/[0.06] border border-red-500/20 p-2.5 rounded-md">

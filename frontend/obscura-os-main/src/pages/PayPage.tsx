@@ -60,6 +60,7 @@ import MyPolicies from "@/components/pay-v4/MyPolicies";
 import ResolverManager from "@/components/pay-v4/ResolverManager";
 import UnifiedSendForm from "@/components/pay-v4/UnifiedSendForm";
 import BulkPayrollImport from "@/components/pay-v4/BulkPayrollImport";
+import StreamsDashboard from "@/components/pay-v4/StreamsDashboard";
 import { ReceiptList } from "@/components/pay-v4/PaymentReceipt";
 import AddContactModal from "@/components/pay-v4/AddContactModal";
 import PayHomeDashboard from "@/components/pay-v4/PayHomeDashboard";
@@ -554,29 +555,11 @@ const PayPage = () => {
       case "streams":
         if (!isConnected) return <NotConnected message="Connect your wallet to create payroll streams." />;
         return (
-          <div className="space-y-4">
-            <Card>
-              <CardHeader title="Wallet" eyebrow="Streams" />
-              <div className="p-5"><CUSDCPanel /></div>
-            </Card>
-            <Card>
-              <CardHeader title="Create a stream" />
-              <div className="p-5"><CreateStreamFormV2 onCreated={refreshStreams} /></div>
-            </Card>
-            <Card>
-              <CardHeader title="Bulk payroll import" eyebrow="CSV" />
-              <div className="p-5"><BulkPayrollImport /></div>
-            </Card>
-            <Card>
-              <CardHeader title="Send each cycle" />
-              <div className="p-5"><StreamList key={`emp-${streamRefreshKey}`} mode="employer" /></div>
-            </Card>
-            <Card>
-              <CardHeader title="Streams paying you" eyebrow="Inbox" />
-              <div className="p-5"><StreamList key={`rec-${streamRefreshKey}`} mode="recipient" /></div>
-            </Card>
-            <SectionDiagram flow="stream" />
-          </div>
+          <StreamsDashboard
+            onNavigate={(t) => setTab(t)}
+            refreshKey={streamRefreshKey}
+            onRefresh={refreshStreams}
+          />
         );
 
       case "escrow":

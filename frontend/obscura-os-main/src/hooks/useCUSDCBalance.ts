@@ -18,10 +18,10 @@ import {
 import { initFHEClient, encryptAmount, decryptBalance, getOrCreatePermit } from "@/lib/fhe";
 import { withRateLimitRetry } from "@/lib/rateLimit";
 import { estimateCappedFees } from "@/lib/gas";
-import { addTrackedUnits, getTrackedFormatted } from "@/lib/trackedBalance";
+import { addTrackedUnits, setTrackedUnits, getTrackedFormatted } from "@/lib/trackedBalance";
 import { parseUSDC, USDC_DECIMALS } from "@/lib/usdc";
 
-/** Fetch gas fees with retry — safe because no wallet popup is involved. */
+/** Fetch gas fees with retry ï¿½ safe because no wallet popup is involved. */
 async function estimateFeesWithRetry(publicClient: ReturnType<typeof usePublicClient>) {
   return withRateLimitRetry(() => publicClient!.estimateFeesPerGas());
 }
@@ -96,6 +96,12 @@ export function useCUSDCBalance() {
 
       const plain = await decryptBalance(freshHandle as bigint);
       setDecrypted(plain);
+      // Persist on-chain value to localStorage so other components
+      // (e.g. PayHomeDashboard) can read it without triggering FHE.
+      if (plain > 0n) {
+        setTrackedUnits(address, plain);
+        setTrackedCusdc(getTrackedFormatted(address));
+      }
     } catch (e) {
       const msg = (e as Error).message || "Decrypt failed";
       console.error("[cUSDC reveal]", e);
@@ -110,11 +116,11 @@ export function useCUSDCBalance() {
         } else {
           setError(
             `The Reineira cUSDC contract doesn't grant decrypt access (HTTP 403). ` +
-            `Your encrypted handle exists — the balance is on-chain but can't be revealed from the browser. ` +
+            `Your encrypted handle exists ï¿½ the balance is on-chain but can't be revealed from the browser. ` +
             `Wrap USDC below to track your balance.`
           );
         }
-        return; // Don't re-throw — we handled it
+        return; // Don't re-throw ï¿½ we handled it
       }
 
       setError(msg);
@@ -178,7 +184,7 @@ export function useCUSDCBalance() {
       }
       const amount = parseUnits(amountUSDC, USDC_DECIMALS);
 
-      // Step 1: Check allowance — approve cUSDC contract to pull plain USDC if needed
+      // Step 1: Check allowance ï¿½ approve cUSDC contract to pull plain USDC if needed
       const currentAllowance = await publicClient.readContract({
         address: USDC_ARB_SEPOLIA,
         abi: [{
@@ -213,7 +219,7 @@ export function useCUSDCBalance() {
       }
 
       // Step 2: Fetch gas (with retry) then wrap USDC ? cUSDC exactly ONCE
-      // Do NOT wrap writeContractAsync in retry — each retry would open a new MetaMask popup
+      // Do NOT wrap writeContractAsync in retry ï¿½ each retry would open a new MetaMask popup
       const feeData2 = await estimateFeesWithRetry(publicClient);
       const wrapMaxFee = feeData2.maxFeePerGas
         ? (feeData2.maxFeePerGas * 130n) / 100n
@@ -259,7 +265,7 @@ export function useCUSDCBalance() {
       }
       const amount = parseUnits(amountCUSDC, USDC_DECIMALS);
 
-      // Fetch gas (with retry) then unwrap ONCE — never retry the wallet write
+      // Fetch gas (with retry) then unwrap ONCE ï¿½ never retry the wallet write
       const feeData = await estimateFeesWithRetry(publicClient);
       const maxFee = feeData.maxFeePerGas
         ? (feeData.maxFeePerGas * 130n) / 100n

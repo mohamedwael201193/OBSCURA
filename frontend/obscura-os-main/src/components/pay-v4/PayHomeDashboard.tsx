@@ -2,7 +2,8 @@
  * PayHomeDashboard — the first thing a user sees on Pay.
  * Shows a smart setup checklist, quick actions, and recent receipts.
  */
-import { useAccount, useBalance, useReadContract } from "wagmi";
+import { useAccount, useReadContract, usePublicClient } from "wagmi";
+import { useState, useEffect } from "react";
 import {
   CheckCircle2,
   Circle,
@@ -15,7 +16,6 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
-import { arbitrumSepolia } from "viem/chains";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 import { getTrackedUnits } from "@/lib/trackedBalance";
 import { ReceiptList } from "@/components/pay-v4/PaymentReceipt";
@@ -42,10 +42,20 @@ interface Props {
 
 export default function PayHomeDashboard({ onNavigate }: Props) {
   const { address } = useAccount();
-  const { data: ethBal, isLoading: ethLoading } = useBalance({
-    address,
-    chainId: arbitrumSepolia.id,
-  });
+  const publicClient = usePublicClient();
+
+  // ETH balance via publicClient.getBalance — avoids wagmi useBalance RPC quirks
+  const [ethNum, setEthNum] = useState<number>(0);
+  const [ethChecked, setEthChecked] = useState(false);
+  useEffect(() => {
+    if (!address || !publicClient) return;
+    setEthChecked(false);
+    publicClient.getBalance({ address }).then((bal) => {
+      setEthNum(Number(bal) / 1e18);
+      setEthChecked(true);
+    }).catch(() => setEthChecked(true));
+  }, [address, publicClient]);
+
   const usdcBalance = useUSDCBalance();
 
   // Read cUSDC tracked balance directly from localStorage — avoids needing
@@ -65,7 +75,6 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
     ? (stealthOnChain as readonly [`0x${string}`, `0x${string}`, bigint])[2] > 0n
     : false;
 
-  const ethNum = ethBal ? parseFloat(ethBal.formatted) : 0;
   const usdcNum = usdcBalance ? parseFloat(usdcBalance) : 0;
 
   const steps = [
@@ -73,13 +82,13 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
       num: 1,
       title: "Get ETH for gas",
       detail:
-        ethLoading
+        !ethChecked
           ? "Checking balance…"
           : ethNum > 0.0001
             ? `${ethNum.toFixed(4)} ETH on Arbitrum Sepolia`
             : "You need a small amount of ETH to pay transaction fees",
-      done: !ethLoading && ethNum > 0.0001,
-      loading: ethLoading,
+      done: ethChecked && ethNum > 0.0001,
+      loading: !ethChecked,
       action: null as null | (() => void),
       actionLabel: null as null | string,
       externalLink: "https://www.alchemy.com/faucets/arbitrum-sepolia",

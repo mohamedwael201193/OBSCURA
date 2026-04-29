@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
 import { arbitrumSepolia } from "viem/chains";
-import { encodeAbiParameters, encodeFunctionData } from "viem";
+import { encodeAbiParameters } from "viem";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
@@ -12,6 +12,7 @@ import { initFHEClient, encryptAmount } from "@/lib/fhe";
 import { deriveStealthPayment, type MetaAddress } from "@/lib/stealth";
 import { estimateCappedFees } from "@/lib/gas";
 import { withRateLimitRetry } from "@/lib/rateLimit";
+import { toast } from "sonner";
 
 /**
  * useTickStream — releases ONE cycle on a stream:
@@ -115,15 +116,29 @@ export function useTickStream() {
         }
 
         // 5. Announce so the recipient can find it.
-        //    5 s delay: two back-to-back txs on Arbitrum Sepolia RPCs often
-        //    get rate-limited at the eth_call / eth_sendRawTransaction level.
-        //    Increasing to 5 s gives the RPC pool time to recover.
-        //    We skip the pre-simulation step: `announce` only checks
-        //    ephemeralPubKey.length == 33, which is always true from
-        //    deriveStealthPayment(). A simulate round-trip at this point
-        //    hits the already-congested RPC and viem wraps the 429 response
-        //    as a fake "contract reverted" error.
-        await new Promise((r) => setTimeout(r, 5_000));
+        //    12 s delay with toast countdown: Arbitrum Sepolia RPCs rate-limit
+        //    at ~25 req/5 s. After a confidentialTransfer (heavy FHE tx) the
+        //    node is already at the limit. 12 s is enough for the sliding
+        //    window to fully clear before we submit the second MetaMask popup.
+        //    NB: walletClient.signTransaction is not available on MetaMask
+        //    (eth_signTransaction is not supported) so we must use
+        //    writeContractAsync, which means one MetaMask popup per attempt.
+        //    The delay avoids the 429 in the first place instead of retrying.
+        const ANNOUNCE_DELAY = 12_000;
+        const toastId = "announce-countdown";
+        let remaining = ANNOUNCE_DELAY / 1000;
+        const countdown = setInterval(() => {
+          remaining--;
+          if (remaining > 0) {
+            toast.loading(`Transfer confirmed ✓ — preparing announce in ${remaining}s…`, { id: toastId });
+          } else {
+            clearInterval(countdown);
+          }
+        }, 1_000);
+        toast.loading(`Transfer confirmed ✓ — preparing announce in ${remaining}s…`, { id: toastId });
+        await new Promise((r) => setTimeout(r, ANNOUNCE_DELAY));
+        clearInterval(countdown);
+        toast.dismiss(toastId);
 
         // Encode amount into metadata so recipient can auto-sweep without guessing
         const metadata = encodeAbiParameters(
@@ -135,45 +150,20 @@ export function useTickStream() {
           [params.streamId, 0n, params.amount]
         );
 
-        // Re-estimate gas after the delay — stale fees from the first tx
-        // commonly cause MetaMask to make its own (often-failing) estimation.
-        // withRateLimitRetry handles transient 429s on the fee-estimation call.
+        // Re-estimate gas after the delay.
         const fees2 = await withRateLimitRetry(() => estimateCappedFees(publicClient!));
 
-        // Sign-once / retry-broadcast pattern:
-        //   writeContractAsync triggers a MetaMask popup AND immediately calls
-        //   eth_sendRawTransaction. If the RPC returns 429 at send time MetaMask
-        //   marks the tx Failed and there is no automatic retry without another
-        //   popup. Instead we:
-        //     1. Encode the calldata manually
-        //     2. Call walletClient.signTransaction (one popup, returns signed bytes)
-        //     3. Retry publicClient.sendRawTransaction inside withRateLimitRetry
-        //        until the RPC accepts it — no extra MetaMask prompts.
-        const announceData = encodeFunctionData({
+        const announceTx = await writeContractAsync({
+          address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
           abi: OBSCURA_STEALTH_REGISTRY_ABI,
           functionName: "announce",
           args: [stealth.stealthAddress, stealth.ephemeralPubKey, stealth.viewTag, metadata],
-        });
-        const nonce = await publicClient.getTransactionCount({
-          address: address!,
-          blockTag: "pending",
-        });
-        const signedAnnounce = await walletClient.signTransaction({
-          to: OBSCURA_STEALTH_REGISTRY_ADDRESS as `0x${string}`,
-          data: announceData,
-          account: address!,
+          account: address,
           chain: arbitrumSepolia,
           maxFeePerGas: fees2.maxFeePerGas,
           maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
           gas: 500_000n,
-          nonce,
-          type: "eip1559",
         });
-        // Broadcast with retry — no new MetaMask popup on each attempt
-        const announceTx = await withRateLimitRetry(
-          () => publicClient.sendRawTransaction({ serializedTransaction: signedAnnounce }),
-          { retries: 5, baseDelayMs: 3_000 }
-        );
 
         // Wait for announce receipt so we can detect silent on-chain reverts.
         // If announce fails the recipient's inbox will never find the payment.

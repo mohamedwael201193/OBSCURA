@@ -185,8 +185,13 @@ export function useCUSDCEscrow() {
         await ensureOperator();
 
         // Re-encrypt the amount for the fund call (separate InEuint64 input needed).
-        const fundEncrypted = await encryptAmount(amount, (step) =>
-          console.log('[FHE Escrow Auto-Fund Encrypt]', step)
+        // IMPORTANT: pass REINEIRA_ESCROW_ADDRESS as forContract so the CoFHE zkVerifier
+        // signs the ciphertext for the escrow contract address (= msg.sender when
+        // the escrow calls FHE.asEuint64 / verifyInput internally).
+        const fundEncrypted = await encryptAmount(
+          amount,
+          (step) => console.log('[FHE Escrow Auto-Fund Encrypt]', step),
+          REINEIRA_ESCROW_ADDRESS
         );
 
         // Auto-fund — fetch capped fees from shared helper, call wallet once.
@@ -229,9 +234,12 @@ export function useCUSDCEscrow() {
         fheStatus.setStep(FHEStepStatus.ENCRYPTING);
         await initFHEClient(publicClient, walletClient);
 
-        const encryptedInputs = await encryptAmount(amount, (step) => {
-          console.log('[FHE Fund Encrypt]', step);
-        });
+        // Encrypt for the escrow contract address (verifyInput is called with msg.sender = escrow contract).
+        const encryptedInputs = await encryptAmount(
+          amount,
+          (step) => console.log('[FHE Fund Encrypt]', step),
+          REINEIRA_ESCROW_ADDRESS
+        );
 
         // Ensure escrow is an authorized cUSDC operator (setOperator / isOperator model).
         // Reineira FHERC20 cUSDC.approve() always reverts — operator model only.

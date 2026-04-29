@@ -282,6 +282,19 @@ export const OBSCURA_PAY_STREAM_ABI = [
 
 // ─── Reineira ConfidentialUSDC (cUSDC) ABI — minimal ─────────────────────
 export const REINEIRA_CUSDC_ABI = [
+  // approve(address,bytes32) → selector 0x5cd2f4d3
+  // euint64 is compiled to bytes32 in cofhe-contracts. The callee stores the
+  // ciphertext handle as the spender's allowance. Required before escrow.fund().
+  {
+    type: "function",
+    name: "approve",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "bytes32" }, // euint64 handle as bytes32
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
   {
     type: "function",
     name: "setOperator",

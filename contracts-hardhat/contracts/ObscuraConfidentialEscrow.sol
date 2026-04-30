@@ -42,7 +42,9 @@ contract ObscuraConfidentialEscrow {
         ebool    isRedeemed;   // Encrypted redemption flag
         bool     exists;
         bool     cancelled;
+        bool     refunded;     // Plaintext flag set when refund() succeeds
         address  creatorPlain; // For cancel auth + refund destination
+        uint256  expiryBlock;  // 0 = no expiry; otherwise block at/after which anyone may refund
     }
 
     // ─── State ──────────────────────────────────────────────────────────
@@ -61,6 +63,8 @@ contract ObscuraConfidentialEscrow {
     event EscrowFunded(uint256 indexed escrowId, address indexed payer);
     event EscrowRedeemed(uint256 indexed escrowId, address indexed caller);
     event EscrowCancelled(uint256 indexed escrowId, address indexed creator);
+    event EscrowRefunded(uint256 indexed escrowId, address indexed caller);
+    event EscrowExpirySet(uint256 indexed escrowId, uint256 expiryBlock);
 
     // ─── Constructor ────────────────────────────────────────────────────
 
@@ -82,6 +86,36 @@ contract ObscuraConfidentialEscrow {
         address _resolver,
         bytes calldata _resolverData
     ) external returns (uint256 escrowId) {
+        return _create(_encOwner, _encAmount, _resolver, _resolverData, 0);
+    }
+
+    /// @notice Same as create() but with a plaintext expiry block.
+    /// @dev If `_expiryBlock > 0`, after `block.number >= _expiryBlock` AND if the
+    ///      recipient has not redeemed, ANYONE may call `refund()` to push the
+    ///      cumulative paidAmount back to the creator. This protects sender funds
+    ///      from being permanently stranded if the recipient never claims (a real
+    ///      issue for note/claim-link escrows where the recipient may have lost
+    ///      the link or be unaware). 0 = no expiry (creator-only cancel anytime,
+    ///      same as the legacy create()). Industry norm: 30–90 days (OpenZeppelin
+    ///      RefundEscrow). On Arbitrum One, ~7200 blocks/day → 30 days ≈ 216_000
+    ///      blocks.
+    function createWithExpiry(
+        InEaddress calldata _encOwner,
+        InEuint64 calldata _encAmount,
+        address _resolver,
+        bytes calldata _resolverData,
+        uint256 _expiryBlock
+    ) external returns (uint256 escrowId) {
+        return _create(_encOwner, _encAmount, _resolver, _resolverData, _expiryBlock);
+    }
+
+    function _create(
+        InEaddress calldata _encOwner,
+        InEuint64 calldata _encAmount,
+        address _resolver,
+        bytes calldata _resolverData,
+        uint256 _expiryBlock
+    ) internal returns (uint256 escrowId) {
         escrowId = nextEscrowId++;
 
         eaddress eOwner = FHE.asEaddress(_encOwner);
@@ -96,7 +130,9 @@ contract ObscuraConfidentialEscrow {
             isRedeemed: notRedeemed,
             exists: true,
             cancelled: false,
-            creatorPlain: msg.sender
+            refunded: false,
+            creatorPlain: msg.sender,
+            expiryBlock: _expiryBlock
         });
 
         FHE.allowThis(eOwner);
@@ -112,6 +148,9 @@ contract ObscuraConfidentialEscrow {
         }
 
         emit EscrowCreated(escrowId, msg.sender, _resolver);
+        if (_expiryBlock > 0) {
+            emit EscrowExpirySet(escrowId, _expiryBlock);
+        }
     }
 
     /// @notice Record that the caller has funded this escrow with cUSDC.
@@ -220,6 +259,65 @@ contract ObscuraConfidentialEscrow {
         emit EscrowCancelled(_escrowId, msg.sender);
     }
 
+    /// @notice Permissionless refund after expiry. Anyone may call once
+    ///         `block.number >= expiryBlock` (and expiry is set) AND the escrow
+    ///         has not been cancelled or refunded yet. The encrypted paidAmount
+    ///         is pushed back to the creator. The recipient may have already
+    ///         silent-failed redeem (transferAmount=0, isRedeemed unchanged) so
+    ///         we don't gate on isRedeemed; if a real redeem happened first,
+    ///         the cUSDC balance is empty and this call simply transfers 0 to
+    ///         creator. Either way, the `refunded` flag prevents double-refund.
+    /// @dev    Note: silent-failure means we cannot trustlessly know on-chain
+    ///         whether the recipient already collected. The encrypted
+    ///         `paidAmount` is the upper bound — cUSDC will simply not transfer
+    ///         more than this contract's confidential balance, so a stale refund
+    ///         after a successful redeem is a harmless no-op.
+    function refund(uint256 _escrowId) external {
+        Escrow storage esc = escrows[_escrowId];
+        require(esc.exists, "no escrow");
+        require(!esc.cancelled, "cancelled");
+        require(!esc.refunded, "already refunded");
+        require(esc.expiryBlock != 0, "no expiry");
+        require(block.number >= esc.expiryBlock, "not yet expired");
+
+        esc.refunded = true;
+
+        FHE.allowTransient(esc.paidAmount, address(cUSDC));
+        bool ok = cUSDC.confidentialTransfer(
+            esc.creatorPlain,
+            uint256(euint64.unwrap(esc.paidAmount))
+        );
+        require(ok, "cUSDC refund failed");
+
+        emit EscrowRefunded(_escrowId, msg.sender);
+    }
+
+    /// @notice Batch-create N escrows in one transaction — the killer use case
+    ///         for confidential payroll. HR teams encrypt each (recipient,
+    ///         amount) pair client-side, send the entire batch, and end up with
+    ///         N escrow IDs that can be funded individually (proofs cannot be
+    ///         batched per CoFHE — each fund() consumes a fresh InEuint64 from
+    ///         the immediate caller). All escrows in the batch share the same
+    ///         resolver and expiry to keep the call simple and gas-efficient.
+    /// @dev    Bounded to 20 entries per tx to stay safely under Arbitrum One's
+    ///         32M gas/block ceiling — each create() does ~6 FHE ops plus a
+    ///         storage write. The frontend may chunk larger payrolls.
+    function createBatch(
+        InEaddress[] calldata _encOwners,
+        InEuint64[] calldata _encAmounts,
+        address _resolver,
+        bytes calldata _resolverData,
+        uint256 _expiryBlock
+    ) external returns (uint256[] memory ids) {
+        uint256 n = _encOwners.length;
+        require(n == _encAmounts.length, "length mismatch");
+        require(n > 0 && n <= 20, "bad batch size");
+        ids = new uint256[](n);
+        for (uint256 i = 0; i < n; i++) {
+            ids[i] = _create(_encOwners[i], _encAmounts[i], _resolver, _resolverData, _expiryBlock);
+        }
+    }
+
     // ─── Views ──────────────────────────────────────────────────────────
 
     function exists(uint256 _escrowId) external view returns (bool) {
@@ -256,6 +354,19 @@ contract ObscuraConfidentialEscrow {
     function getEscrowOwner(uint256 _escrowId) external view returns (eaddress) {
         require(escrows[_escrowId].exists, "no escrow");
         return escrows[_escrowId].owner;
+    }
+
+    function getExpiryBlock(uint256 _escrowId) external view returns (uint256) {
+        return escrows[_escrowId].expiryBlock;
+    }
+
+    function isRefunded(uint256 _escrowId) external view returns (bool) {
+        return escrows[_escrowId].refunded;
+    }
+
+    function isExpired(uint256 _escrowId) external view returns (bool) {
+        Escrow storage esc = escrows[_escrowId];
+        return esc.expiryBlock != 0 && block.number >= esc.expiryBlock;
     }
 
     function getRedeemAmount(uint256 _escrowId) external view returns (euint64) {

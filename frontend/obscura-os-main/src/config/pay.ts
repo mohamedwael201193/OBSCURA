@@ -381,15 +381,29 @@ export const REINEIRA_CUSDC_ABI = [
 export const OBSCURA_CONFIDENTIAL_ESCROW_ABI = [
   {
     type: "function",
-    name: "create",
+    name: "createWithExpiry",
     stateMutability: "nonpayable",
     inputs: [
       { name: "_encOwner", type: "tuple", components: [...InEaddressComponents] },
       { name: "_encAmount", type: "tuple", components: [...InEuint64Components] },
       { name: "_resolver", type: "address" },
       { name: "_resolverData", type: "bytes" },
+      { name: "_expiryBlock", type: "uint256" },
     ],
     outputs: [{ name: "escrowId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "createBatch",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_encOwners", type: "tuple[]", components: [...InEaddressComponents] },
+      { name: "_encAmounts", type: "tuple[]", components: [...InEuint64Components] },
+      { name: "_resolver", type: "address" },
+      { name: "_resolverData", type: "bytes" },
+      { name: "_expiryBlock", type: "uint256" },
+    ],
+    outputs: [{ name: "ids", type: "uint256[]" }],
   },
   {
     type: "function",
@@ -417,6 +431,13 @@ export const OBSCURA_CONFIDENTIAL_ESCROW_ABI = [
   },
   {
     type: "function",
+    name: "refund",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_escrowId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
     name: "exists",
     stateMutability: "view",
     inputs: [{ name: "_escrowId", type: "uint256" }],
@@ -428,6 +449,27 @@ export const OBSCURA_CONFIDENTIAL_ESCROW_ABI = [
     stateMutability: "view",
     inputs: [{ name: "_escrowId", type: "uint256" }],
     outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "isRefunded",
+    stateMutability: "view",
+    inputs: [{ name: "_escrowId", type: "uint256" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "isExpired",
+    stateMutability: "view",
+    inputs: [{ name: "_escrowId", type: "uint256" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "getExpiryBlock",
+    stateMutability: "view",
+    inputs: [{ name: "_escrowId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
   },
   {
     type: "function",
@@ -484,6 +526,24 @@ export const OBSCURA_CONFIDENTIAL_ESCROW_ABI = [
     inputs: [
       { name: "escrowId", type: "uint256", indexed: true },
       { name: "creator", type: "address", indexed: true },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "EscrowRefunded",
+    inputs: [
+      { name: "escrowId", type: "uint256", indexed: true },
+      { name: "caller", type: "address", indexed: true },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "EscrowExpirySet",
+    inputs: [
+      { name: "escrowId", type: "uint256", indexed: true },
+      { name: "expiryBlock", type: "uint256", indexed: false },
     ],
     anonymous: false,
   },

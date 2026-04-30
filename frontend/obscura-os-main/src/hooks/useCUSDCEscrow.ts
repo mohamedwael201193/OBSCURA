@@ -144,7 +144,8 @@ export function useCUSDCEscrow() {
       ownerAddress: `0x${string}`,
       amount: bigint,
       resolver: `0x${string}`,
-      resolverData: `0x${string}` = '0x'
+      resolverData: `0x${string}` = '0x',
+      expiryBlock: bigint = 0n
     ) => {
       if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS || !REINEIRA_CUSDC_ADDRESS) {
         throw new Error('Wallet not connected or escrow contract not configured');
@@ -168,13 +169,21 @@ export function useCUSDCEscrow() {
         const hash = await withRateLimitRetry(() => writeContractAsync({
           address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
           abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
-          functionName: 'create',
-          args: [
-            encryptedInputs[0], // encrypted owner address
-            encryptedInputs[1], // encrypted target amount
-            resolver,
-            resolverData,
-          ],
+          functionName: expiryBlock > 0n ? 'createWithExpiry' : 'create',
+          args: expiryBlock > 0n
+            ? [
+                encryptedInputs[0],
+                encryptedInputs[1],
+                resolver,
+                resolverData,
+                expiryBlock,
+              ]
+            : [
+                encryptedInputs[0],
+                encryptedInputs[1],
+                resolver,
+                resolverData,
+              ],
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas: createFees.maxFeePerGas,
@@ -489,12 +498,165 @@ export function useCUSDCEscrow() {
     []
   );
 
+  /** Permissionless refund — callable by anyone after expiryBlock. */
+  const refund = useCallback(
+    async (escrowId: bigint) => {
+      if (!publicClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS) {
+        throw new Error('Wallet not connected or escrow contract not configured');
+      }
+      try {
+        fheStatus.setStep(FHEStepStatus.COMPUTING);
+        const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+        const hash = await writeContractAsync({
+          address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
+          abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
+          functionName: 'refund',
+          args: [escrowId],
+          account: address,
+          chain: arbitrumSepolia,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+          gas: 1_500_000n,
+        });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== 'success') {
+          throw new Error(`Refund reverted on-chain (tx: ${hash}). The escrow may not yet be expired or has already been refunded/cancelled.`);
+        }
+        setTxHash(hash);
+        fheStatus.setStep(FHEStepStatus.READY);
+        return hash;
+      } catch (error) {
+        fheStatus.setStep(FHEStepStatus.ERROR, (error as Error).message);
+        throw error;
+      }
+    },
+    [publicClient, writeContractAsync, address, fheStatus]
+  );
+
+  /** Read on-chain expiry block (0 = no expiry). */
+  const getExpiryBlock = useCallback(
+    async (escrowId: bigint): Promise<bigint> => {
+      if (!publicClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS) return 0n;
+      try {
+        const r = await publicClient.readContract({
+          address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
+          abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
+          functionName: 'getExpiryBlock',
+          args: [escrowId],
+        });
+        return r as bigint;
+      } catch { return 0n; }
+    },
+    [publicClient]
+  );
+
+  /**
+   * createBatch — confidential payroll. Encrypts N (recipient, amount)
+   * pairs client-side then submits a single transaction creating N escrows
+   * sharing one resolver + expiry. Funding is still per-escrow (CoFHE
+   * proofs cannot be batched), so this returns the escrow IDs and the
+   * caller is responsible for funding each via fund().
+   *
+   * Cap: 20 entries per tx (contract enforces).
+   */
+  const createBatch = useCallback(
+    async (
+      rows: Array<{ recipient: `0x${string}`; amount: bigint }>,
+      resolver: `0x${string}` = '0x0000000000000000000000000000000000000000',
+      resolverData: `0x${string}` = '0x',
+      expiryBlock: bigint = 0n
+    ): Promise<{ ids: string[]; hash: `0x${string}` }> => {
+      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS) {
+        throw new Error('Wallet not connected or escrow contract not configured');
+      }
+      if (rows.length === 0 || rows.length > 20) {
+        throw new Error('Batch size must be 1..20');
+      }
+      try {
+        fheStatus.setStep(FHEStepStatus.ENCRYPTING);
+        await initFHEClient(publicClient, walletClient);
+
+        // Encrypt all rows. Each call produces [encOwner, encAmount].
+        const encOwners: unknown[] = [];
+        const encAmounts: unknown[] = [];
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i];
+          const enc = await encryptAddressAndAmount(r.recipient, r.amount, (s) =>
+            console.log(`[Batch encrypt #${i + 1}/${rows.length}]`, s)
+          );
+          encOwners.push(enc[0]);
+          encAmounts.push(enc[1]);
+          // Brief pacing between proofs.
+          if (i < rows.length - 1) await new Promise((r) => setTimeout(r, 1500));
+        }
+
+        fheStatus.setStep(FHEStepStatus.COMPUTING);
+        const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+        // Gas budget: ~600k per createBatch entry as a safe upper bound
+        // (each does ~6 FHE ops + storage write). Floor of 1.2M for n=1.
+        const gasBudget = BigInt(Math.max(1_200_000, rows.length * 600_000));
+
+        const hash = await withRateLimitRetry(() => writeContractAsync({
+          address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
+          abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
+          functionName: 'createBatch',
+          args: [encOwners, encAmounts, resolver, resolverData, expiryBlock],
+          account: address,
+          chain: arbitrumSepolia,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+          gas: gasBudget,
+        }));
+
+        const receipt = await withRateLimitRetry(() =>
+          publicClient.waitForTransactionReceipt({ hash })
+        );
+        // Parse EscrowCreated logs to extract ids in order.
+        const ids: string[] = [];
+        for (const log of receipt.logs) {
+          if (
+            log.address.toLowerCase() === OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS.toLowerCase() &&
+            log.topics.length >= 2 &&
+            log.topics[1]
+          ) {
+            ids.push(BigInt(log.topics[1]).toString());
+          }
+        }
+
+        // Persist each row in localStorage so My Escrows shows them.
+        for (let i = 0; i < ids.length && i < rows.length; i++) {
+          saveEscrow(address, {
+            escrowId: ids[i],
+            amount: rows[i].amount.toString(),
+            recipient: rows[i].recipient,
+            resolver,
+            txHash: hash,
+            createdAt: Date.now(),
+            contract: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
+          });
+        }
+        setEscrows(loadEscrows(address));
+
+        setTxHash(hash);
+        fheStatus.setStep(FHEStepStatus.READY);
+        return { ids, hash };
+      } catch (err) {
+        fheStatus.setStep(FHEStepStatus.ERROR, (err as Error).message);
+        throw err;
+      }
+    },
+    [publicClient, walletClient, writeContractAsync, address, fheStatus]
+  );
+
   return {
     create,
+    createBatch,
     fund,
     redeem,
     cancel,
+    refund,
     checkExists,
+    getExpiryBlock,
     isLegacyRecord,
     txHash,
     isTxPending,

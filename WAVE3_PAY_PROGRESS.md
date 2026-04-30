@@ -478,3 +478,60 @@ src/
 ---
 
 **Done.** Wave 3 Pay is fully implemented, end-to-end tested, wired against the deployed contracts, RPC-resilient, with live transaction progress, ready for live use on Arbitrum Sepolia.
+
+---
+
+## Wave-4 Update -- Confidential Payroll + Bug Fix (Apr 2026)
+
+**New deployment:** `ObscuraConfidentialEscrow` at `0xb7139664A07dF87d38c93e28A825b42c1EE78FE9` (Arbitrum Sepolia, chainId 421614).
+
+### Hotfix #4 -- WRONG WALLET false positive
+
+**Symptom:** A user creates escrow #1 from wallet A targeting wallet B. When wallet B connects to redeem, the UI showed a hard-blocking `WRONG WALLET! Escrow #1 belongs to 0xf76e6B...` banner and disabled the Redeem button.
+
+**Root cause (two bugs combined):**
+1. `CUSDCEscrowActions.tsx` looked up `savedEscrows` filtered only by `escrowId` -- stale records from previous escrow contract deployments (different addresses, same numeric ids 1, 2, 3...) matched and were treated as authoritative.
+2. The `ObscuraConfidentialEscrow.redeem()` function uses **silent-failure**: `FHE.select(valid, paidAmount, 0)` and only mutates `isRedeemed` when `valid == true`. Redeeming from the wrong wallet is a 0-cUSDC no-op -- NOT a fund-loss event. The UI's hard block + alarmist copy was incorrect.
+
+**Fix (5 frontend changes in `CUSDCEscrowActions.tsx`):**
+- `savedEscrows` lookup now filters by `e.contract.toLowerCase() === OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS.toLowerCase()` and depends on `[escrowId, address]`.
+- `handleRedeem` no longer hard-returns on recipient mismatch -- only logs an info toast.
+- Replaced red `ShieldAlert` "WRONG WALLET" with amber `AlertTriangle` "Local record mismatch -- privately transfers 0 cUSDC if wallet doesn't match".
+- Replaced amber "permanently consumes" with neutral blue `Info` "No local record -- contract will privately verify".
+- Removed `isRecipientMatch === false` from the Redeem button's disabled prop.
+
+### Wave-4 contract additions (`ObscuraConfidentialEscrow.sol`)
+
+- New struct fields: `expiryBlock`, `refunded`.
+- New events: `EscrowRefunded`, `EscrowExpirySet`.
+- `createWithExpiry(_encOwner, _encAmount, resolver, resolverData, expiryBlock)` -- non-zero expiry sets the auto-refund window.
+- `createBatch(_encOwners[], _encAmounts[], resolver, resolverData, expiryBlock)` -- cap 20, single tx, encrypted recipients/amounts (THE confidential-payroll primitive).
+- `refund(escrowId)` -- anyone can call once block >= expiryBlock; sets `refunded = true` and pushes `paidAmount` back to the creator's plaintext claim balance.
+- View helpers: `getExpiryBlock`, `isRefunded`, `isExpired`.
+
+### Wave-4 frontend additions
+
+- `CUSDCEscrowForm`: 4-button expiry grid (No expiry / 7d / 30d / 90d, default 30) computes `expiryBlock` client-side as `current + 7200 * days`; "Copy claim link" button in the success view producing `${origin}/pay?tab=escrow&claim=${id}&contract=${addr}`.
+- `CUSDCEscrowActions`: parses `?claim=<id>` on mount and auto-fills the escrow ID; shows live expiry pill (`expires in ~Xd` or `expired -- refundable`); shows amber **Refund to Creator** card only when expiry has passed.
+- `BatchEscrowForm` (new): up to 20 rows, CSV import (`0xaddr,amount[,note]`), per-row validation, totals, expiry selector. On submit calls `createBatch` and renders a per-row claim-link grid for HR to forward to each recipient. Each escrow still funded individually (CoFHE proofs cannot be batched).
+- `PayPage`: `useState` initializer reads URL -- `?claim=...` auto-routes to escrow tab. New "Confidential batch payroll" Card mounted in the escrow tab.
+
+### Hook additions (`useCUSDCEscrow`)
+
+- `create(owner, amount, resolver, resolverData='0x', expiryBlock=0n)` -- uses `createWithExpiry` selector when `expiryBlock > 0`.
+- `createBatch(rows, resolver, resolverData, expiryBlock)` -- encrypts each row sequentially with 1.5s pacing (Fhenix coprocessor budget), gas budget `max(1_200_000, n * 600_000)`, parses `EscrowCreated` logs to extract IDs, persists each row via `saveEscrow`.
+- `refund(escrowId)` -- 1.5M gas, no FHE proof required.
+- `getExpiryBlock(escrowId)`.
+
+### Build status
+
+- `npx hardhat compile`: clean.
+- `npm run build` (frontend): 0 errors, 6764 modules transformed in ~52s.
+
+### Strategic positioning (research-backed, Apr 2026)
+
+- Aleo/Toku/Paxos shipped first private stablecoin payroll Q1 2026; Zama/Bron shipped confidential payroll on Ethereum mainnet Jan 2026. Obscura's confidential batch escrow on Arbitrum Sepolia validates the same thesis on a low-fee L2.
+- 2025 stablecoin volume ~$33T but <1% of business payroll on-chain -- privacy is THE adoption blocker.
+- Coinbase Commerce + Stripe Payment Links validate the claim-link UX pattern Obscura now ships.
+- Strict confidentiality (amounts/parties hidden) -- NOT anonymity (identity hidden) -- keeps Obscura in the regulatory-safe Circle Confidential ERC-20 lane.
+

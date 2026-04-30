@@ -45,6 +45,7 @@ import CUSDCTransferForm from "@/components/pay-v4/CUSDCTransferForm";
 import CUSDCEscrowForm from "@/components/pay-v4/CUSDCEscrowForm";
 import CUSDCEscrowActions from "@/components/pay-v4/CUSDCEscrowActions";
 import MyEscrows from "@/components/pay-v4/MyEscrows";
+import BatchEscrowForm from "@/components/pay-v4/BatchEscrowForm";
 import CreateStreamForm from "@/components/pay-v4/CreateStreamForm";
 import CreateStreamFormV2 from "@/components/pay-v4/CreateStreamFormV2";
 import StreamList from "@/components/pay-v4/StreamList";
@@ -463,7 +464,17 @@ const PayPage = () => {
   const { isConnected } = useAccount();
   const prefs = usePreferences();
   const inbox = useStealthInbox();
-  const [tab, setTab] = useState<Tab>("home");
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof window === "undefined") return "home";
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const t = params.get("tab");
+      // Auto-route claim links to escrow tab even when ?tab is omitted.
+      if (params.get("claim")) return "escrow";
+      if (t) return t as Tab;
+    } catch { /* ignore */ }
+    return "home";
+  });
   const [streamRefreshKey, setStreamRefreshKey] = useState(0);
   const refreshStreams = () => setStreamRefreshKey((k) => k + 1);
 
@@ -571,11 +582,15 @@ const PayPage = () => {
               <div className="p-5"><CUSDCEscrowForm /></div>
             </Card>
             <Card>
+              <CardHeader title="Confidential batch payroll" eyebrow="Up to 20 in one tx" />
+              <div className="p-5"><BatchEscrowForm /></div>
+            </Card>
+            <Card>
               <CardHeader title="Your escrows" />
               <div className="p-5"><MyEscrows /></div>
             </Card>
             <Card>
-              <CardHeader title="Fund / Redeem / Inspect" />
+              <CardHeader title="Fund / Redeem / Refund / Inspect" />
               <div className="p-5"><CUSDCEscrowActions /></div>
             </Card>
             <Card>

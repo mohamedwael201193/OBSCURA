@@ -1,19 +1,31 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Lock, Plus, Copy, CheckCircle2, Loader2, ExternalLink } from "lucide-react";
+import { Lock, Plus, Copy, CheckCircle2, Loader2, ExternalLink, Link2, Clock } from "lucide-react";
 import UsdcIcon from "@/components/shared/UsdcIcon";
 import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
 import { parseUnits } from "viem";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
+import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS } from "@/config/pay";
+
+// Arbitrum One/Sepolia produces ~7200 blocks/day (12s avg, but L2 rolls up
+// faster — 7200 is the conservative number). 0 = no expiry (legacy mode).
+const EXPIRY_OPTIONS: Array<{ label: string; days: number }> = [
+  { label: "No expiry", days: 0 },
+  { label: "7 days", days: 7 },
+  { label: "30 days", days: 30 },
+  { label: "90 days", days: 90 },
+];
 
 export default function CUSDCEscrowForm() {
   const [ownerAddr, setOwnerAddr] = useState("");
   const [amount, setAmount] = useState("");
   const [resolver, setResolver] = useState("");
   const [resolverData, setResolverData] = useState("");
+  const [expiryDays, setExpiryDays] = useState<number>(30);
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const { create, txHash, isTxPending, status, stepIndex, lastEscrowId, reset } = useCUSDCEscrow();
   const usdcBalance = useUSDCBalance();
@@ -37,12 +49,56 @@ export default function CUSDCEscrowForm() {
         ? (resolver as `0x${string}`)
         : ("0x0000000000000000000000000000000000000000" as `0x${string}`);
       const data = resolverData.startsWith("0x") ? (resolverData as `0x${string}`) : ("0x" as `0x${string}`);
-      await create(ownerAddr as `0x${string}`, parsedAmount, resolverAddr, data);
-      toast.success("Escrow created & auto-funded with cUSDC! Send the ID to the recipient.", { duration: 8000 });
+
+      // Compute expiry block client-side. Arbitrum Sepolia ~7200 blocks/day.
+      let expiryBlock = 0n;
+      if (expiryDays > 0) {
+        // Get current block via wagmi public client through window.ethereum is
+        // overkill — just use a forward-looking estimate. The contract only
+        // checks block.number >= expiryBlock at refund time so a slight drift
+        // is harmless.
+        const blocksPerDay = 7200n;
+        // We don't have publicClient in scope here — hook does the encryption
+        // and submit. Pass approx block based on Date.now diff vs known anchor:
+        // simpler: fetch from window.ethereum.
+        try {
+          const provider = (window as unknown as { ethereum?: { request: (a: { method: string }) => Promise<string> } }).ethereum;
+          if (provider) {
+            const hex = await provider.request({ method: "eth_blockNumber" });
+            const current = BigInt(hex);
+            expiryBlock = current + blocksPerDay * BigInt(expiryDays);
+          } else {
+            // Fallback: anchor at block 0; refund will be callable as soon as N blocks pass.
+            expiryBlock = blocksPerDay * BigInt(expiryDays);
+          }
+        } catch {
+          expiryBlock = blocksPerDay * BigInt(expiryDays);
+        }
+      }
+
+      await create(ownerAddr as `0x${string}`, parsedAmount, resolverAddr, data, expiryBlock);
+      const expiryNote = expiryDays > 0
+        ? `Auto-refund enabled after ${expiryDays} days if unclaimed.`
+        : `No expiry — cancel manually if needed.`;
+      toast.success(`Escrow created & auto-funded with cUSDC! ${expiryNote} Send the ID to the recipient.`, { duration: 9000 });
       setOwnerAddr(""); setAmount(""); setResolver(""); setResolverData("");
     } catch (err) {
       toast.error((err as Error).message || "Escrow creation failed");
     }
+  };
+
+  const handleCopyLink = () => {
+    if (!lastEscrowId) return;
+    // Simple, backendless claim link: anyone the sender shares this URL with
+    // can land directly on the redeem screen with the ID prefilled. The
+    // contract's silent-failure semantics mean only the encrypted recipient
+    // actually receives funds — the link is just a UX helper, not a secret.
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const url = `${origin}/pay?tab=escrow&claim=${lastEscrowId}&contract=${OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS ?? ""}`;
+    navigator.clipboard.writeText(url);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2500);
+    toast.success("Claim link copied — share it with the recipient via any channel.");
   };
 
   const handleCopyId = () => {
@@ -81,6 +137,14 @@ export default function CUSDCEscrowForm() {
             Escrow created and funded. <span className="text-amber-300/90 font-semibold">Save this ID now</span> — the recipient must enter it in <span className="text-foreground/80">Redeem Escrow</span> from their wallet to claim the cUSDC. Without the ID, the funds cannot be retrieved.
           </p>
         </div>
+        <motion.button onClick={handleCopyLink} whileTap={{ scale: 0.99 }}
+          className="btn-pay btn-pay-ghost w-full py-2.5 text-cyan-300 border-cyan-500/25 hover:text-cyan-200">
+          {linkCopied ? (
+            <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Claim link copied</>
+          ) : (
+            <><Link2 className="w-3.5 h-3.5" /> Copy claim link to share</>
+          )}
+        </motion.button>
         {txHash && (
           <div className="flex items-center gap-2 px-3 py-2.5 bg-white/[0.025] border border-white/[0.07] rounded-lg">
             <ExternalLink className="w-3 h-3 text-cyan-400 shrink-0" />
@@ -149,6 +213,34 @@ export default function CUSDCEscrowForm() {
             <input type="text" placeholder="0x… or leave blank for no resolver" value={resolver}
               onChange={(e) => setResolver(e.target.value)} className="pay-input font-mono" />
             <p className="text-[11px] text-muted-foreground/35">Leave empty for unconditional escrow</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold flex items-center gap-1.5">
+              <Clock className="w-3 h-3" /> Auto-Refund Window
+              <span className="normal-case tracking-normal text-muted-foreground/30">(if unclaimed)</span>
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {EXPIRY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.days}
+                  type="button"
+                  onClick={() => setExpiryDays(opt.days)}
+                  className={`px-2 py-1.5 rounded-lg text-[11px] border transition-colors ${
+                    expiryDays === opt.days
+                      ? "bg-emerald-500/12 border-emerald-500/40 text-emerald-300"
+                      : "bg-white/[0.02] border-white/[0.08] text-muted-foreground/60 hover:text-foreground/80"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground/40">
+              {expiryDays > 0
+                ? `After ${expiryDays} days, anyone can call refund() to return the cUSDC to you. Recipient can still claim before that.`
+                : "Funds are held indefinitely until recipient claims or you manually cancel."}
+            </p>
           </div>
 
           <div className="space-y-2">

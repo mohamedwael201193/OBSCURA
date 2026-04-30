@@ -1,14 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { DollarSign, Unlock, AlertTriangle, ShieldAlert } from "lucide-react";
+import { DollarSign, Unlock, AlertTriangle, Info, RefreshCcw } from "lucide-react";
 import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
 import type { SavedEscrow } from "@/hooks/useCUSDCEscrow";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
 import { parseUnits, formatUnits } from "viem";
-import { useAccount } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import { addTrackedUnits } from "@/lib/trackedBalance";
 import { getJSON } from "@/lib/scopedStorage";
+import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS } from "@/config/pay";
 
 const STORAGE_KEY = 'obscura_cusdc_escrows';
 function loadSavedEscrows(addr: `0x${string}` | undefined): SavedEscrow[] {
@@ -17,31 +18,78 @@ function loadSavedEscrows(addr: `0x${string}` | undefined): SavedEscrow[] {
 
 export default function CUSDCEscrowActions() {
   const { address } = useAccount();
+  const publicClient = usePublicClient();
   const [escrowId, setEscrowId] = useState("");
   const [fundAmount, setFundAmount] = useState("");
   const [escrowExists, setEscrowExists] = useState<boolean | null>(null);
+  const [expiryInfo, setExpiryInfo] = useState<{ block: bigint; current: bigint } | null>(null);
 
-  const { fund, redeem, checkExists, txHash, isTxPending, status, stepIndex } = useCUSDCEscrow();
+  const { fund, redeem, refund, checkExists, getExpiryBlock, txHash, isTxPending, status, stepIndex } = useCUSDCEscrow();
 
   const isProcessing = status !== "idle" && status !== "ready" && status !== "error";
 
-  // Cross-reference entered escrow ID with saved escrows to check recipient match
+  // Auto-fill from claim link: ?tab=escrow&claim=<id>&contract=<addr>
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const claim = params.get("claim");
+      if (claim && /^\d+$/.test(claim)) {
+        setEscrowId(claim);
+        toast.message(`Claim link detected — escrow #${claim} pre-filled. Click Redeem to claim.`, { duration: 6000 });
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Cross-reference entered escrow ID with saved escrows for the CURRENT contract
+  // (filtering by contract address prevents stale records from older deployments
+  // matching the same numeric escrowId on the new deployment).
   const savedEscrow = useMemo(() => {
     if (!escrowId) return null;
-    return loadSavedEscrows(address).find(e => e.escrowId === escrowId) ?? null;
-  }, [escrowId]);
+    const target = OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS?.toLowerCase();
+    return loadSavedEscrows(address).find(
+      (e) =>
+        e.escrowId === escrowId &&
+        (!target || e.contract?.toLowerCase() === target)
+    ) ?? null;
+  }, [escrowId, address]);
 
   const isRecipientMatch = savedEscrow && address
     ? savedEscrow.recipient.toLowerCase() === address.toLowerCase()
-    : null; // null = unknown (escrow not in localStorage)
+    : null; // null = unknown (escrow not in localStorage for this contract)
 
   const handleCheckExists = async () => {
     if (!escrowId) return;
     try {
       const exists = await checkExists(BigInt(escrowId));
       setEscrowExists(exists);
+      if (exists) {
+        try {
+          const block = await getExpiryBlock(BigInt(escrowId));
+          const current = publicClient ? await publicClient.getBlockNumber() : 0n;
+          setExpiryInfo({ block, current });
+        } catch {
+          setExpiryInfo(null);
+        }
+      } else {
+        setExpiryInfo(null);
+      }
     } catch {
       setEscrowExists(null);
+      setExpiryInfo(null);
+    }
+  };
+
+  const handleRefund = async () => {
+    if (!escrowId) {
+      toast.error("Enter escrow ID");
+      return;
+    }
+    try {
+      await refund(BigInt(escrowId));
+      toast.success(`Escrow #${escrowId} refunded — cUSDC returned to creator.`, { duration: 8000 });
+    } catch (err) {
+      toast.error((err as Error).message || "Refund failed");
     }
   };
 
@@ -64,15 +112,17 @@ export default function CUSDCEscrowActions() {
       toast.error("Enter escrow ID");
       return;
     }
-    // Warn if connected wallet doesn't match saved recipient
+    // NOTE: We deliberately do NOT block on a localStorage mismatch.
+    // The on-chain redeem() uses silent-failure (FHE.select(valid, paidAmount, 0)
+    // and isRedeemed is only mutated on valid=true). A wrong-wallet redeem costs
+    // gas but transfers 0 cUSDC and consumes no escrow state — the contract IS the
+    // security boundary, not localStorage (which is empty for fresh recipients).
     if (isRecipientMatch === false) {
-      toast.error(
-        `Your wallet (${address?.slice(0, 6)}...) is NOT the recipient for escrow #${escrowId}. ` +
-        `Switch to ${savedEscrow?.recipient.slice(0, 8)}... to redeem. ` +
-        `Redeeming from the wrong wallet will silently lose the funds!`,
-        { duration: 10000 }
+      toast.message(
+        `Local record says this escrow's recipient is ${savedEscrow?.recipient.slice(0, 8)}…. ` +
+        `Proceeding anyway — if you are not the recipient, the contract will privately transfer 0 cUSDC.`,
+        { duration: 8000 }
       );
-      return; // Block the redeem
     }
     try {
       await redeem(BigInt(escrowId));
@@ -137,6 +187,13 @@ export default function CUSDCEscrowActions() {
           <div className="flex items-center gap-2 text-[12px] px-3 py-2.5 bg-white/[0.025] rounded-lg border border-white/[0.07]">
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${escrowExists ? "bg-emerald-400" : "bg-red-400"}`} />
             <span className="text-muted-foreground/60">{escrowExists ? "Active escrow found" : "Not found"}</span>
+            {escrowExists && expiryInfo && expiryInfo.block > 0n && (
+              <span className="ml-auto text-[11px] font-mono text-muted-foreground/55">
+                {expiryInfo.current >= expiryInfo.block
+                  ? <span className="text-amber-300">expired — refundable</span>
+                  : <span>expires in ~{Math.max(1, Number((expiryInfo.block - expiryInfo.current) / 7200n))}d</span>}
+              </span>
+            )}
           </div>
         )}
 
@@ -165,12 +222,11 @@ export default function CUSDCEscrowActions() {
           <div className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Redeem Escrow</div>
 
           {escrowId && isRecipientMatch === false && (
-            <div className="flex items-start gap-2 p-3 bg-red-500/8 border border-red-500/25 rounded-lg">
-              <ShieldAlert className="w-3.5 h-3.5 text-red-400 mt-0.5 shrink-0" />
-              <p className="text-[11px] text-red-300/90 leading-relaxed">
-                <strong>WRONG WALLET!</strong> Escrow #{escrowId} belongs to <span className="font-mono text-emerald-300">{savedEscrow?.recipient.slice(0, 8)}…</span>.
-                You are connected as <span className="font-mono text-amber-300">{address?.slice(0, 6)}…{address?.slice(-4)}</span>.
-                <span className="block mt-1">Switch MetaMask to the recipient account before redeeming.</span>
+            <div className="flex items-start gap-2 p-3 bg-amber-500/8 border border-amber-500/25 rounded-lg">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+              <p className="text-[11px] text-amber-300/85 leading-relaxed">
+                <strong>Local record mismatch.</strong> Our local record for escrow #{escrowId} lists recipient <span className="font-mono text-emerald-300">{savedEscrow?.recipient.slice(0, 8)}…</span>, but you are connected as <span className="font-mono text-amber-300">{address?.slice(0, 6)}…{address?.slice(-4)}</span>.
+                <span className="block mt-1 text-muted-foreground/55">Proceed only if you are the rightful recipient. A wrong-wallet redeem privately transfers <b>0 cUSDC</b> (no fund loss, no info leak — only gas).</span>
               </p>
             </div>
           )}
@@ -181,17 +237,17 @@ export default function CUSDCEscrowActions() {
             </div>
           )}
           {(!escrowId || isRecipientMatch === null) && (
-            <div className="flex items-start gap-2 p-2.5 bg-amber-500/[0.05] border border-amber-500/20 rounded-lg">
-              <AlertTriangle className="w-3 h-3 text-amber-400 mt-0.5 shrink-0" />
-              <p className="text-[11px] text-amber-300/80 leading-relaxed">
-                <strong>You must be connected as the recipient wallet to redeem.</strong>{" "}
-                Redeeming from the wrong wallet permanently consumes the escrow.
+            <div className="flex items-start gap-2 p-2.5 bg-blue-500/[0.06] border border-blue-500/25 rounded-lg">
+              <Info className="w-3 h-3 text-blue-400 mt-0.5 shrink-0" />
+              <p className="text-[11px] text-blue-300/85 leading-relaxed">
+                <strong>No local record for this ID on this device.</strong>{" "}
+                If you are the recipient, click Redeem — the contract will privately verify your access. Wrong-wallet attempts harmlessly transfer 0 cUSDC.
                 {address && <span className="block mt-1 text-muted-foreground/45 font-mono">Connected: {address.slice(0, 6)}...{address.slice(-4)}</span>}
               </p>
             </div>
           )}
           <motion.button onClick={handleRedeem}
-            disabled={isProcessing || isTxPending || !escrowId || isRecipientMatch === false}
+            disabled={isProcessing || isTxPending || !escrowId}
             whileTap={{ scale: 0.98 }}
             className="btn-pay btn-pay-ghost text-emerald-400 hover:text-emerald-300 border-emerald-500/25 px-4 py-2 disabled:opacity-50">
             <Unlock className="w-3.5 h-3.5" /> Redeem
@@ -200,6 +256,22 @@ export default function CUSDCEscrowActions() {
             Arbiscan shows <b>0.0001 pUSDC</b> — privacy placeholder. Click REVEAL on Dashboard for true balance.
           </p>
         </div>
+
+        {/* Refund section — visible only when expiry has passed */}
+        {expiryInfo && expiryInfo.block > 0n && expiryInfo.current >= expiryInfo.block && (
+          <div className="rounded-xl bg-amber-500/[0.04] border border-amber-500/20 p-4 space-y-3">
+            <div className="text-[10px] tracking-[0.15em] uppercase text-amber-300/80 font-semibold">Refund (Expired)</div>
+            <p className="text-[11px] text-muted-foreground/55 leading-relaxed">
+              This escrow's auto-refund window has passed. Anyone can return the cUSDC to the original creator.
+            </p>
+            <motion.button onClick={handleRefund}
+              disabled={isProcessing || isTxPending || !escrowId}
+              whileTap={{ scale: 0.98 }}
+              className="btn-pay btn-pay-ghost text-amber-300 hover:text-amber-200 border-amber-500/30 px-4 py-2 disabled:opacity-50">
+              <RefreshCcw className="w-3.5 h-3.5" /> Refund to Creator
+            </motion.button>
+          </div>
+        )}
       </div>
 
       {status !== "idle" && (

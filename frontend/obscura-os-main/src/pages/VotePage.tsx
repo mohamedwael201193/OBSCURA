@@ -44,7 +44,6 @@ import CreateProposalForm from "@/components/vote/CreateProposalForm";
 import VotingHistory from "@/components/vote/VotingHistory";
 import AdminControls from "@/components/vote/AdminControls";
 import ClaimDailyObsForm from "@/components/pay/ClaimDailyObsForm";
-import VoteOnboardingWizard from "@/components/vote/VoteOnboardingWizard";
 import { VoteSetupGuide } from "@/components/vote/VoteSetupGuide";
 import { DelegationPanel } from "@/components/vote/DelegationPanel";
 import { TreasuryPanel } from "@/components/vote/TreasuryPanel";
@@ -124,7 +123,6 @@ const VotePage = () => {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [votingSubTab, setVotingSubTab] = useState<VotingSubTab>("create");
   const [jumpProposalId, setJumpProposalId] = useState("");
-  const [showGuide, setShowGuide] = useState(false);
 
   const handleSidebarSelect = (key: string) => {
     if (key === "dashboard") return setTab("dashboard");
@@ -315,11 +313,6 @@ const VotePage = () => {
   return (
     <div className="min-h-screen flex bg-[#06090c] text-foreground antialiased">
       <AmbientBackground />
-
-      <VoteOnboardingWizard
-        forceOpen={showGuide}
-        onClose={() => setShowGuide(false)}
-      />
 
       <DashboardSidebar
         sections={sidebarSections}

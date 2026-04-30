@@ -18,7 +18,6 @@ import PMFPage from "./pages/PMFPage.tsx";
 import ContactsPage from "./pages/ContactsPage.tsx";
 import SettingsPage from "./pages/SettingsPage.tsx";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
-import OnboardingWizard from "@/components/pay-v4/OnboardingWizard";
 
 const queryClient = new QueryClient();
 
@@ -56,8 +55,6 @@ const AnimatedRoutes = () => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Wave 3 globals — only meaningful when wallet is connected, but kept mounted so they survive route changes. */}
-      {isDashboard && <OnboardingWizard />}
     </div>
   );
 };

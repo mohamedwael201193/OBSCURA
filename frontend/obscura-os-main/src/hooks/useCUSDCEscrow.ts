@@ -252,13 +252,22 @@ export function useCUSDCEscrow() {
           });
           const fundReceipt = await publicClient.waitForTransactionReceipt({ hash: fundHash });
           if (fundReceipt.status !== 'success') {
-            console.warn('[Escrow] auto-fund tx reverted:', fundHash);
-          } else {
-            console.log('[Escrow] auto-funded', escrowId, fundHash);
+            throw new Error(`Auto-fund tx reverted on-chain (hash: ${fundHash})`);
           }
+          console.log('[Escrow] auto-funded', escrowId, fundHash);
         } catch (fundErr) {
-          // Don't fail the whole flow — escrow is created; user can fund manually.
-          console.warn('[Escrow] auto-fund failed (escrow still created):', fundErr);
+          // Surface auto-fund failures: escrow is created but UNFUNDED.
+          // The user MUST know — otherwise they think the escrow is ready
+          // but redemption will silently fail (contract has 0 cUSDC).
+          const msg = fundErr instanceof Error ? fundErr.message : String(fundErr);
+          console.error('[Escrow] auto-fund failed:', fundErr);
+          fheStatus.setStep(
+            FHEStepStatus.ERROR,
+            `Escrow #${escrowId} created but funding FAILED: ${msg}. Use the Fund button in My Escrows to retry, or Cancel to discard.`
+          );
+          throw new Error(
+            `Escrow #${escrowId} created but funding failed. ${msg}`
+          );
         }
 
         fheStatus.setStep(FHEStepStatus.READY);

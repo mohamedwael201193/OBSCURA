@@ -1,21 +1,41 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useWriteContract, usePublicClient, useWalletClient, useAccount, useReadContract } from 'wagmi';
+import { useWriteContract, usePublicClient, useWalletClient, useAccount } from 'wagmi';
 import {
   REINEIRA_CUSDC_ADDRESS,
   REINEIRA_CUSDC_ABI,
   REINEIRA_ESCROW_ADDRESS,
-  REINEIRA_ESCROW_ABI,
+  OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
+  OBSCURA_CONFIDENTIAL_ESCROW_ABI,
 } from '@/config/pay';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount, encryptAddressAndAmount } from '@/lib/fhe';
 import { arbitrumSepolia } from 'viem/chains';
-import { parseUnits } from 'viem';
 import { withRateLimitRetry } from '@/lib/rateLimit';
 import { estimateCappedFees } from '@/lib/gas';
 import { getJSON, setJSON, migrateGlobalKey } from '@/lib/scopedStorage';
 
 const STORAGE_KEY = 'obscura_cusdc_escrows';
+
+/**
+ * useCUSDCEscrow — fully working confidential cUSDC escrow.
+ *
+ * History:
+ *   The deployed Reineira ConfidentialEscrow proxy (0xC4333F84…) calls
+ *   cUSDC.confidentialTransferFrom(address,address,bytes32) (selector
+ *   0xeb3155b5). The deployed cUSDC token (0x6b6e6479…) does NOT expose
+ *   that selector — only the (address,address,uint256) and InEuint64
+ *   overloads exist. fund() therefore always reverted (~50–85k gas).
+ *
+ *   Fix: deploy our own ObscuraConfidentialEscrow that calls cUSDC via
+ *   the present uint256-handle overloads (0xca49d7cd inbound, 0xfe3f670d
+ *   outbound). End-to-end working.
+ *
+ *   Address (Arbitrum Sepolia): 0x6E17459f6537E4ccBAC9CDB3f122F5f4d715d8b5
+ *
+ * The legacy REINEIRA_ESCROW_ADDRESS export is kept so My Escrows can
+ * label pre-cutoff escrows as legacy.
+ */
 
 export interface SavedEscrow {
   escrowId: string;
@@ -24,6 +44,10 @@ export interface SavedEscrow {
   resolver: string;
   txHash: string;
   createdAt: number;
+  /** address of the escrow contract this record was created against. */
+  contract?: `0x${string}`;
+  /** true for escrows created against the broken Reineira proxy. */
+  legacy?: boolean;
 }
 
 function loadEscrows(addr: `0x${string}` | undefined): SavedEscrow[] {
@@ -47,21 +71,25 @@ export function useCUSDCEscrow() {
 
   const { writeContractAsync, isPending: isTxPending } = useWriteContract();
 
-  // Ensure the Escrow contract is authorized as cUSDC operator
+  // Authorize the new ObscuraConfidentialEscrow contract as cUSDC operator.
   const ensureOperator = useCallback(async () => {
-    if (!publicClient || !address || !REINEIRA_CUSDC_ADDRESS || !REINEIRA_ESCROW_ADDRESS) return;
+    if (
+      !publicClient ||
+      !address ||
+      !REINEIRA_CUSDC_ADDRESS ||
+      !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS
+    ) return;
 
     try {
       const isOp = await publicClient.readContract({
         address: REINEIRA_CUSDC_ADDRESS,
         abi: REINEIRA_CUSDC_ABI,
         functionName: 'isOperator',
-        args: [address, REINEIRA_ESCROW_ADDRESS],
+        args: [address, OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS],
       });
-      if (isOp as boolean) return; // already approved
+      if (isOp as boolean) return;
     } catch { /* proceed with approval */ }
 
-    // Approve for 90 days
     const expiry = BigInt(Math.floor(Date.now() / 1000) + 90 * 86400);
     const fees = await estimateCappedFees(publicClient);
 
@@ -69,7 +97,7 @@ export function useCUSDCEscrow() {
       address: REINEIRA_CUSDC_ADDRESS,
       abi: REINEIRA_CUSDC_ABI,
       functionName: 'setOperator',
-      args: [REINEIRA_ESCROW_ADDRESS, expiry],
+      args: [OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, expiry],
       account: address,
       chain: arbitrumSepolia,
       maxFeePerGas: fees.maxFeePerGas,
@@ -77,11 +105,10 @@ export function useCUSDCEscrow() {
       gas: 150_000n,
     });
     await publicClient.waitForTransactionReceipt({ hash });
-    // Wait for RPC cooldown after operator tx
     await new Promise((r) => setTimeout(r, 6000));
   }, [publicClient, address, writeContractAsync]);
 
-  // Refresh escrows from localStorage periodically (and on address change with one-time migration)
+  // Refresh escrows from localStorage periodically + on address change.
   useEffect(() => {
     if (address) migrateGlobalKey(STORAGE_KEY, address);
     setEscrows(loadEscrows(address));
@@ -94,6 +121,13 @@ export function useCUSDCEscrow() {
     };
   }, [address]);
 
+  /**
+   * Create + auto-fund an escrow against ObscuraConfidentialEscrow.
+   * Three transactions (1 skipped if already authorized):
+   *   1. setOperator (cUSDC → escrow contract)
+   *   2. create(InEaddress owner, InEuint64 amount, resolver, data)
+   *   3. fund(escrowId, InEuint64 amount)
+   */
   const create = useCallback(
     async (
       ownerAddress: `0x${string}`,
@@ -101,7 +135,7 @@ export function useCUSDCEscrow() {
       resolver: `0x${string}`,
       resolverData: `0x${string}` = '0x'
     ) => {
-      if (!publicClient || !walletClient || !REINEIRA_ESCROW_ADDRESS) {
+      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS) {
         throw new Error('Wallet not connected or escrow contract not configured');
       }
 
@@ -112,23 +146,22 @@ export function useCUSDCEscrow() {
         const encryptedInputs = await encryptAddressAndAmount(
           ownerAddress,
           amount,
-          (step) => console.log('[FHE cUSDC Escrow Encrypt]', step)
+          (step) => console.log('[FHE Escrow Encrypt]', step)
         );
 
-        // Authorize escrow contract as cUSDC operator (required to lock funds)
+        // Authorize new escrow contract as cUSDC operator (required for fund).
         fheStatus.setStep(FHEStepStatus.COMPUTING);
         await ensureOperator();
 
-        // Create escrow — fetch capped fees, call wallet once.
+        // ── 1. create ──
         const createFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-
         const hash = await writeContractAsync({
-          address: REINEIRA_ESCROW_ADDRESS,
-          abi: REINEIRA_ESCROW_ABI,
+          address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
+          abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
           functionName: 'create',
           args: [
             encryptedInputs[0], // encrypted owner address
-            encryptedInputs[1], // encrypted amount
+            encryptedInputs[1], // encrypted target amount
             resolver,
             resolverData,
           ],
@@ -139,16 +172,13 @@ export function useCUSDCEscrow() {
           gas: 1_200_000n,
         });
 
-        // Parse escrow ID from tx receipt logs.
-        // IMPORTANT: FHE transactions emit many CoFHE internal events
-        // BEFORE the EscrowCreated event. We must filter to logs emitted
-        // by the Reineira escrow contract so we don't accidentally pick
-        // up a CoFHE topic[1] as the escrow ID.
+        // Parse escrow id from EscrowCreated(uint256 indexed escrowId, …)
+        // emitted by THIS contract (filter to avoid CoFHE internal events).
         const receipt = await publicClient.waitForTransactionReceipt({ hash });
         let escrowId = '?';
         for (const log of receipt.logs) {
           if (
-            log.address.toLowerCase() === REINEIRA_ESCROW_ADDRESS.toLowerCase() &&
+            log.address.toLowerCase() === OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS.toLowerCase() &&
             log.topics.length >= 2 &&
             log.topics[1]
           ) {
@@ -167,32 +197,41 @@ export function useCUSDCEscrow() {
           resolver,
           txHash: hash,
           createdAt: Date.now(),
+          contract: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
         };
         saveEscrow(address, saved);
         setEscrows(loadEscrows(address));
 
-        // ─── AUTO-FUND DISABLED ──────────────────────────────────────────────
-        // The deployed Reineira escrow proxy (0xC4333F84…) at impl 0xe606fff6…
-        // calls cUSDC.confidentialTransferFrom(address,address,bytes32) with
-        // selector 0xeb3155b5 (takes a pre-ingested euint64 handle).
-        //
-        // The deployed cUSDC at 0x6b6e6479… does NOT expose that selector — it
-        // only has the older (address,address,uint256) and (address,address,InEuint64)
-        // overloads. As a result `fund()` ALWAYS reverts with `InvalidSigner` /
-        // function-not-found at ~50–85k gas. This is an upstream contract version
-        // mismatch and cannot be fixed in the frontend.
-        //
-        // We therefore skip auto-fund: the escrow is created and recorded, but
-        // the user is informed via a console warning. Manual fund() in the UI
-        // will surface the same explanation if attempted.
-        console.warn(
-          `[Escrow] Auto-fund SKIPPED for escrow #${escrowId} — the deployed ` +
-          `Reineira escrow impl (0xe606fff6...) calls cUSDC selector 0xeb3155b5 ` +
-          `(confidentialTransferFrom with bytes32 handle), which the deployed ` +
-          `cUSDC token (0x6b6e6479...) does not expose. fund() will always revert ` +
-          `until the upstream contracts are upgraded. The escrow has been created ` +
-          `on-chain and will appear in My Escrows, but no cUSDC has been locked.`
-        );
+        // ── 2. auto-fund ──
+        // Re-encrypt the amount (a fresh InEuint64 — each encryption is
+        // single-use because the CoFHE verifier records consumption).
+        try {
+          await new Promise((r) => setTimeout(r, 4000));
+          const fundEnc = await encryptAmount(amount, (step) =>
+            console.log('[FHE Escrow Fund Encrypt]', step)
+          );
+          const fundFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+          const fundHash = await writeContractAsync({
+            address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
+            abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
+            functionName: 'fund',
+            args: [BigInt(escrowId), fundEnc[0]],
+            account: address,
+            chain: arbitrumSepolia,
+            maxFeePerGas: fundFees.maxFeePerGas,
+            maxPriorityFeePerGas: fundFees.maxPriorityFeePerGas,
+            gas: 1_500_000n,
+          });
+          const fundReceipt = await publicClient.waitForTransactionReceipt({ hash: fundHash });
+          if (fundReceipt.status !== 'success') {
+            console.warn('[Escrow] auto-fund tx reverted:', fundHash);
+          } else {
+            console.log('[Escrow] auto-funded', escrowId, fundHash);
+          }
+        } catch (fundErr) {
+          // Don't fail the whole flow — escrow is created; user can fund manually.
+          console.warn('[Escrow] auto-fund failed (escrow still created):', fundErr);
+        }
 
         fheStatus.setStep(FHEStepStatus.READY);
         return hash;
@@ -204,63 +243,69 @@ export function useCUSDCEscrow() {
     [publicClient, walletClient, writeContractAsync, address, fheStatus, ensureOperator]
   );
 
+  /** Manual fund() — encrypt amount client-side and pull cUSDC from caller. */
   const fund = useCallback(
-    async (_escrowId: bigint, _amount: bigint) => {
-      // ─── DISABLED ─────────────────────────────────────────────────────────
-      // The deployed Reineira escrow impl (0xe606fff6…) calls
-      // cUSDC.confidentialTransferFrom(address,address,bytes32) — selector
-      // 0xeb3155b5. The deployed cUSDC token (0x6b6e6479…) does NOT expose
-      // that selector, only the older (address,address,uint256) and
-      // (address,address,InEuint64) overloads. Therefore fund() ALWAYS
-      // reverts on-chain with InvalidSigner / function-not-found at ~50–85k
-      // gas regardless of operator state, balance, or signature.
-      //
-      // Until the upstream Reineira contracts are upgraded (either the
-      // escrow to use the (addr,addr,InEuint64) overload, or the cUSDC to
-      // expose the (addr,addr,bytes32) overload), there is nothing the
-      // frontend can do to make fund() succeed.
-      //
-      // We surface a clear error instead of broadcasting a tx that we know
-      // will revert and burn the user's gas.
-      const msg =
-        'Escrow fund() is temporarily disabled: the deployed Reineira ' +
-        'escrow proxy (0xC4333F84…) is incompatible with the deployed ' +
-        'cUSDC token (0x6b6e6479…). The escrow expects ' +
-        'confidentialTransferFrom(address,address,bytes32) (selector ' +
-        '0xeb3155b5) but the cUSDC implementation only exposes the ' +
-        '(uint256) and (InEuint64) overloads. Awaiting upstream contract ' +
-        'upgrade.';
-      console.error('[Escrow.fund]', msg);
-      fheStatus.setStep(FHEStepStatus.ERROR, msg);
-      throw new Error(msg);
+    async (escrowId: bigint, amount: bigint) => {
+      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS) {
+        throw new Error('Wallet not connected or escrow contract not configured');
+      }
+      try {
+        fheStatus.setStep(FHEStepStatus.ENCRYPTING);
+        await initFHEClient(publicClient, walletClient);
+        const enc = await encryptAmount(amount, (step) =>
+          console.log('[FHE Fund Encrypt]', step)
+        );
+
+        fheStatus.setStep(FHEStepStatus.COMPUTING);
+        await ensureOperator();
+
+        const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+        const hash = await writeContractAsync({
+          address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
+          abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
+          functionName: 'fund',
+          args: [escrowId, enc[0]],
+          account: address,
+          chain: arbitrumSepolia,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+          gas: 1_500_000n,
+        });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== 'success') {
+          throw new Error(`fund() tx reverted on-chain (hash: ${hash})`);
+        }
+        setTxHash(hash);
+        fheStatus.setStep(FHEStepStatus.READY);
+        return hash;
+      } catch (error) {
+        fheStatus.setStep(FHEStepStatus.ERROR, (error as Error).message);
+        throw error;
+      }
     },
-    [fheStatus]
+    [publicClient, walletClient, writeContractAsync, address, fheStatus, ensureOperator]
   );
 
   const redeem = useCallback(
     async (escrowId: bigint) => {
-      if (!publicClient || !REINEIRA_ESCROW_ADDRESS) {
+      if (!publicClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS) {
         throw new Error('Wallet not connected or escrow contract not configured');
       }
-
       try {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
-
-        // Redeem — fetch capped fees, call wallet once.
-        const redeemFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-
+        const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
         const hash = await writeContractAsync({
-          address: REINEIRA_ESCROW_ADDRESS,
-          abi: REINEIRA_ESCROW_ABI,
+          address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
+          abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
           functionName: 'redeem',
           args: [escrowId],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas: redeemFees.maxFeePerGas,
-          maxPriorityFeePerGas: redeemFees.maxPriorityFeePerGas,
-          gas: 800_000n,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+          gas: 1_200_000n,
         });
-
+        await publicClient.waitForTransactionReceipt({ hash });
         setTxHash(hash);
         fheStatus.setStep(FHEStepStatus.READY);
         return hash;
@@ -272,14 +317,45 @@ export function useCUSDCEscrow() {
     [publicClient, writeContractAsync, address, fheStatus]
   );
 
-  // Check if an escrow exists on-chain
+  const cancel = useCallback(
+    async (escrowId: bigint) => {
+      if (!publicClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS) {
+        throw new Error('Wallet not connected or escrow contract not configured');
+      }
+      try {
+        fheStatus.setStep(FHEStepStatus.COMPUTING);
+        const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+        const hash = await writeContractAsync({
+          address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
+          abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
+          functionName: 'cancel',
+          args: [escrowId],
+          account: address,
+          chain: arbitrumSepolia,
+          maxFeePerGas: fees.maxFeePerGas,
+          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+          gas: 600_000n,
+        });
+        await publicClient.waitForTransactionReceipt({ hash });
+        setTxHash(hash);
+        fheStatus.setStep(FHEStepStatus.READY);
+        return hash;
+      } catch (error) {
+        fheStatus.setStep(FHEStepStatus.ERROR, (error as Error).message);
+        throw error;
+      }
+    },
+    [publicClient, writeContractAsync, address, fheStatus]
+  );
+
+  /** Check whether an escrow exists on the new contract. */
   const checkExists = useCallback(
     async (escrowId: bigint): Promise<boolean> => {
-      if (!publicClient || !REINEIRA_ESCROW_ADDRESS) return false;
+      if (!publicClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS) return false;
       try {
         const result = await publicClient.readContract({
-          address: REINEIRA_ESCROW_ADDRESS,
-          abi: REINEIRA_ESCROW_ABI,
+          address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
+          abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
           functionName: 'exists',
           args: [escrowId],
         });
@@ -291,11 +367,27 @@ export function useCUSDCEscrow() {
     [publicClient]
   );
 
+  /** True if a saved escrow record points at the deprecated Reineira proxy. */
+  const isLegacyRecord = useCallback(
+    (e: SavedEscrow): boolean => {
+      if (e.legacy === true) return true;
+      if (!e.contract) {
+        // Pre-fix records have no `contract` field — assume legacy if the
+        // env still has the Reineira address configured.
+        return Boolean(REINEIRA_ESCROW_ADDRESS);
+      }
+      return e.contract.toLowerCase() === (REINEIRA_ESCROW_ADDRESS ?? '').toLowerCase();
+    },
+    []
+  );
+
   return {
     create,
     fund,
     redeem,
+    cancel,
     checkExists,
+    isLegacyRecord,
     txHash,
     isTxPending,
     escrows,

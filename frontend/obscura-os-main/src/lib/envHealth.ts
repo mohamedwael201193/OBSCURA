@@ -32,6 +32,8 @@ const REQUIRED_KEYS = [
   "VITE_OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS",
   "VITE_OBSCURA_SOCIAL_RESOLVER_ADDRESS",
   "VITE_OBSCURA_STEALTH_ROTATION_ADDRESS",
+  // Obscura's own confidential cUSDC escrow (replaces broken Reineira proxy)
+  "VITE_OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS",
 ] as const;
 
 export interface EnvHealthReport {

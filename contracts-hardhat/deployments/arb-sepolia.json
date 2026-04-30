@@ -34,5 +34,6 @@
   "ObscuraStealthRotation": "0x47D4a7c2B2b7EDACCBf5B9d9e9C281671B2b5289",
   "SocialResolverEnsVerifier": "0xD208aC8327e6479967693Af2F2216e1612D0171A",
   "InsuranceSubscriptionConsumer": "0x766e9508BD41BCE0e788F16Da86B3615386Ff6f6",
-  "wave3PayDeployedAt": "2026-04-28T01:42:11.960Z"
+  "wave3PayDeployedAt": "2026-04-28T01:42:11.960Z",
+  "ObscuraConfidentialEscrow": "0x6E17459f6537E4ccBAC9CDB3f122F5f4d715d8b5"
 }

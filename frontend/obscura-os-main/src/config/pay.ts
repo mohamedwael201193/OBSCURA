@@ -25,8 +25,17 @@ export const OBSCURA_PAYROLL_UNDERWRITER_ADDRESS = import.meta.env
 // ReineiraOS deployed contracts (Arbitrum Sepolia 421614)
 export const REINEIRA_CUSDC_ADDRESS = import.meta.env
   .VITE_REINEIRA_CUSDC_ADDRESS as `0x${string}` | undefined;
+/** @deprecated The deployed Reineira escrow proxy at this address is
+ *  incompatible with the deployed cUSDC token (calls a non-existent
+ *  selector 0xeb3155b5). Use OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS instead.
+ *  Kept for legacy escrow lookups in My Escrows. */
 export const REINEIRA_ESCROW_ADDRESS = import.meta.env
   .VITE_REINEIRA_ESCROW_ADDRESS as `0x${string}` | undefined;
+/** Obscura's own confidential cUSDC escrow — replaces the broken Reineira
+ *  proxy. Calls cUSDC via the present uint256-handle overloads (0xca49d7cd
+ *  inbound, 0xfe3f670d outbound). End-to-end working on Arbitrum Sepolia. */
+export const OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS = import.meta.env
+  .VITE_OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS as `0x${string}` | undefined;
 export const REINEIRA_COVERAGE_MANAGER_ADDRESS = import.meta.env
   .VITE_REINEIRA_COVERAGE_MANAGER_ADDRESS as `0x${string}` | undefined;
 export const REINEIRA_POOL_FACTORY_ADDRESS = import.meta.env
@@ -365,7 +374,124 @@ export const REINEIRA_CUSDC_ABI = [
   },
 ] as const;
 
-// ─── Reineira ConfidentialEscrow ABI — minimal ──────────────────────────
+// ─── ObscuraConfidentialEscrow ABI ──────────────────────────────────────
+// Our own escrow contract (replaces broken Reineira proxy). Uses the
+// uint256-handle cUSDC overloads (0xca49d7cd inbound, 0xfe3f670d outbound)
+// which are confirmed present on the deployed cUSDC bytecode.
+export const OBSCURA_CONFIDENTIAL_ESCROW_ABI = [
+  {
+    type: "function",
+    name: "create",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_encOwner", type: "tuple", components: [...InEaddressComponents] },
+      { name: "_encAmount", type: "tuple", components: [...InEuint64Components] },
+      { name: "_resolver", type: "address" },
+      { name: "_resolverData", type: "bytes" },
+    ],
+    outputs: [{ name: "escrowId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "fund",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_escrowId", type: "uint256" },
+      { name: "_encPayment", type: "tuple", components: [...InEuint64Components] },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "redeem",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_escrowId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "cancel",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_escrowId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "exists",
+    stateMutability: "view",
+    inputs: [{ name: "_escrowId", type: "uint256" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "isCancelled",
+    stateMutability: "view",
+    inputs: [{ name: "_escrowId", type: "uint256" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "getCreator",
+    stateMutability: "view",
+    inputs: [{ name: "_escrowId", type: "uint256" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "getResolver",
+    stateMutability: "view",
+    inputs: [{ name: "_escrowId", type: "uint256" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "getRedeemAmount",
+    stateMutability: "view",
+    inputs: [{ name: "_escrowId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "event",
+    name: "EscrowCreated",
+    inputs: [
+      { name: "escrowId", type: "uint256", indexed: true },
+      { name: "creator", type: "address", indexed: true },
+      { name: "resolver", type: "address", indexed: true },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "EscrowFunded",
+    inputs: [
+      { name: "escrowId", type: "uint256", indexed: true },
+      { name: "payer", type: "address", indexed: true },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "EscrowRedeemed",
+    inputs: [
+      { name: "escrowId", type: "uint256", indexed: true },
+      { name: "caller", type: "address", indexed: true },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "EscrowCancelled",
+    inputs: [
+      { name: "escrowId", type: "uint256", indexed: true },
+      { name: "creator", type: "address", indexed: true },
+    ],
+    anonymous: false,
+  },
+] as const;
+
+// ─── Reineira ConfidentialEscrow ABI — minimal (LEGACY / DEPRECATED) ────
+/** @deprecated See OBSCURA_CONFIDENTIAL_ESCROW_ABI. Retained for read-only
+ *  legacy lookups of escrows created against the broken Reineira proxy. */
 export const REINEIRA_ESCROW_ABI = [
   {
     type: "function",

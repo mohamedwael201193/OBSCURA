@@ -227,17 +227,24 @@ contract ObscuraConfidentialEscrow {
 
         // Move cUSDC out using the uint256-handle outbound overload
         // (selector 0xfe3f670d). Unauthorized → 0 transferred (silent fail).
-        // We deliberately wrap the external call in try/catch so that ANY
-        // failure mode of cUSDC.confidentialTransfer (returns false, reverts,
-        // out-of-gas inside the sub-call, FHE permission edge case, balance
-        // insufficient because fund step never settled, etc.) is fully
-        // swallowed at the EVM level. Silent-failure means the tx ALWAYS
-        // succeeds; the recipient's wallet balance is the only source of
-        // truth. If the cUSDC call did not actually move funds, isRedeemed
-        // was likewise not flipped (FHE.select kept the prior value), so the
-        // recipient can simply try again later once the coprocessor settles.
+        // We deliberately wrap the external call in try/catch with a CAPPED
+        // gas stipend so that ANY failure mode of cUSDC.confidentialTransfer
+        // (returns false, reverts, OOG inside the sub-call, FHE permission
+        // edge case, balance insufficient because fund step never settled,
+        // etc.) is fully swallowed at the EVM level. Gas cap is critical:
+        // without it, the sub-call gets 63/64 of remaining gas (~2.85M of
+        // a 3M tx), and if the sub-call burns all of it, the parent has
+        // ~45k left — not enough to run the catch block + emit the event,
+        // causing the WHOLE tx to revert with empty data even though we
+        // wrapped the call. With a 1.5M cap, we always reserve >500k for
+        // the catch + event emission.
+        // Silent-failure means the tx ALWAYS succeeds; the recipient's
+        // wallet balance is the only source of truth. If the cUSDC call
+        // did not actually move funds, isRedeemed was likewise not flipped
+        // (FHE.select kept the prior value), so the recipient can simply
+        // try again later once the coprocessor settles.
         FHE.allowTransient(transferAmount, address(cUSDC));
-        try cUSDC.confidentialTransfer(
+        try cUSDC.confidentialTransfer{gas: 1_500_000}(
             msg.sender,
             uint256(euint64.unwrap(transferAmount))
         ) returns (bool) {

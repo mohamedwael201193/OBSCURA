@@ -82,6 +82,9 @@
 | ObscuraSocialResolver | `0xCe79E7a6134b17EBC7B594C2D85090Ef3cf37578` |
 | ObscuraStealthRotation | `0x47D4a7c2B2b7EDACCBf5B9d9e9C281671B2b5289` |
 | **ObscuraConfidentialEscrow** (cUSDC escrow — replaces broken Reineira proxy) | `0x6E17459f6537E4ccBAC9CDB3f122F5f4d715d8b5` |
+| **ObscuraVote V5** (weighted quorum, delegation) | `0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730` |
+| **ObscuraTreasury** (FHE-encrypted DAO spend vault) | `0x89252ee3f920978EEfDB650760fe56BA1Ede8c08` |
+| **ObscuraRewards** (voter incentive pool, 0.001 ETH/vote) | `0x435ea117404553A6868fbe728A7A284FCEd15BC2` |
 
 All seven addresses are wired into both `frontend/.env` and `src/config/payV2.ts`. Every ABI in `payV2.ts` was generated from the deployed bytecode (verified function selectors); all hooks call the contracts using those exact selectors.
 
@@ -192,6 +195,95 @@ All seven addresses are wired into both `frontend/.env` and `src/config/payV2.ts
 5. **Encrypted address book.** Contact metadata is `InEaddress`; only label hash + `createdAt` public.
 6. **Inbox bloom filter.** Recipients can ignore senders without revealing them.
 7. **Insurance subscription.** Premiums bounded by a ciphertext cap.
+
+---
+
+## Wave 2 DAO Governance (PR #3 — merged)
+
+> **Branch**: `pr/AhmedAmer72/3` by AhmedAmer72. Merged into `main`.
+
+### New Contracts (Arbitrum Sepolia 421614)
+
+| Contract | Address | Change |
+|---|---|---|
+| ObscuraVote V5 | `0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730` | Replaces `0x5d91B5…` |
+| ObscuraTreasury | `0x89252ee3f920978EEfDB650760fe56BA1Ede8c08` | New |
+| ObscuraRewards | `0x435ea117404553A6868fbe728A7A284FCEd15BC2` | New |
+| ObscuraToken (redeployed) | `0xf4A1219b0aaB83f772B240Ed508e3A37d7F55ED2` | Replaces `0xD15770A2…` |
+
+### ObscuraVote V5 — Weighted Quorum + Delegation
+- `castVote`: `p.totalVoters += weight` (was `++`) — quorum now counts vote weight, not headcount.
+- Delegation: `delegate(address _to)`, `undelegate()`, `delegateTo` mapping, `delegationWeight` mapping, `voterWeightUsed` per-proposal mapping.
+- Delegation chains blocked: if `_to` has already delegated, call reverts.
+- Internal `_subtractTally` / `_addTally` helpers for weighted revote correction.
+- `finalizeVote` restricted to proposal creator only.
+- `getVoteWeight(address)` view function.
+- Events: `DelegateSet(delegator, delegatee)`, `DelegateRemoved(delegator, formerDelegatee)`.
+
+### ObscuraTreasury — FHE-Encrypted Spend Vault
+- `attachSpend(proposalId, recipient, amountGwei, InEuint64 _encAmountGwei)`: stores both plaintext gwei (for execution) and FHE ciphertext (for on-chain attestation). Creator + recipient granted `FHE.allow()`.
+- `recordFinalization(proposalId)`: anyone can call once proposal is finalized; starts configurable timelock.
+- `executeSpend(proposalId)`: reads `amountGwei` from storage — no user input required. Calls `FHE.allowPublic(encAmount)` post-execution for permanent on-chain transparency.
+- `timelockDuration` configurable: 48h default, minimum 60s.
+- `getSpendRequest` returns `(recipient, executed, exists, timelockEnds, amountGwei)`.
+- FHE encrypted running total `encTotalAllocated` visible only to owner/admin.
+
+### ObscuraRewards — Voter Incentive Pool
+- `accrueReward(proposalId)`: 0.001 ETH (1,000,000 gwei) per finalized proposal; FHE-encrypted per-voter balance + plain internal accounting.
+- `requestWithdrawal()`: step 1 — sets `withdrawalRequested[msg.sender] = true`.
+- `withdraw()`: step 2 — sends pending ETH via plain `_totalAccruedGwei` accounting (FHE.sub removed to avoid Fhenix testnet rate limit).
+- `pendingRewardWei(voter)`: visible only to voter / owner / admin.
+- `fundRewards()` + `receive()`: fund the ETH pool.
+
+### New Frontend Components
+
+| Component | Description |
+|---|---|
+| `DelegationPanel` | Tally-style profile card, gradient avatar, stats (vote weight / delegators / voting mode), set/remove delegate, privacy disclosure, collapsible how-it-works, delegators list (event-sourced) |
+| `TreasuryPanel` | Badge state machine (Vote Pending → Start Timelock → Timelock Xm → Ready → Executed), AsyncStepper on attach, single-click execute, smart timelock formatter |
+| `RewardsPanel` | Accrue / Request Withdrawal / Withdraw ETH flow, pending reward display |
+| `VoteSetupGuide` | 4-step onboarding (Get ETH → Claim OBS → Cast Vote → Set Delegate) |
+
+### Updated Frontend Components
+- **ProposalList**: Quorum progress bars (amber below quorum, green when met).
+- **VoteDashboard**: FHE privacy banner + Vote Power stat card.
+- **VotePage**: New tabs — dashboard / proposals / delegate / treasury / rewards. Sidebar renamed "Delegations".
+- **AdminControls**: Pay-card styling, `useChainTime`, Arbiscan link on extend tx, `feedbackSuccess`/`feedbackTxHash`.
+- **CastVoteForm**: `initialProposalId` prop, `useChainTime`, delegation banner (hasDelegated → can't vote), vote weight badge, urgency timer (< 1h amber, < 30min red), FHE success banner, disabled if own proposal.
+- **CreateProposalForm**: OBS token check (`hasClaimed`), char counters (TITLE_MAX=120, DESC_MAX=500), `onSuccess` prop, chain time for custom deadline.
+- **ClaimDailyObsForm**: new `compact` prop variant for VotePage banner.
+
+### New Hooks
+- `useChainTime`: reads on-chain block timestamp for accurate deadline math.
+- `useDelegation`: `useDelegateTo`, `useVoteWeight`, `useDelegationWrite`, `useDelegators` (event-sourced list of addresses that delegated to you).
+- `useTreasury`: read `getSpendRequest`, write `attachSpend`, `recordFinalization`, `executeSpend`, `deposit`.
+- `useRewards`: read `rewardAccrued`, `withdrawalRequested`, `pendingRewardWei`, `rewardPoolBalance`, write `accrueReward`, `requestWithdrawal`, `withdraw`.
+
+### New Hardhat Scripts / Tasks
+- `scripts/deploy-vote-only.ts`, `deploy-treasury-only.ts`, `deploy-rewards-only.ts`.
+- `tasks/deploy.ts` `deploy-gov` task: deploys Treasury + Rewards in sequence, auto-updates `arb-sepolia.json` + `.env`.
+- `tasks/deploy.ts` `deploy-election` task: deploys ObscuraElection (future Wave 4).
+- `hardhat.config.ts`: `viaIR: true` added.
+
+### Bug Fixes in PR #3
+- Weighted quorum counted headcount, not vote weight.
+- Treasury + Rewards both pointed to old ObscuraVote after redeploy — redeployed both.
+- `FHE.sub(enc,enc)` + `FHE.allow` in withdrawal path hit Fhenix testnet rate limit — removed both, plain accounting drives ETH transfers.
+- Execute spend required user to guess encrypted amount — fixed by reading `amountGwei` from contract storage.
+- Timelock badge showed "1h" for 5-min timelock — fixed with tiered formatter.
+- `deposit()` / `executeSpend()` reverted with gas error — added `maxFeePerGas: 200_000_000n, maxPriorityFeePerGas: 1_000_000n` to all write calls.
+- Election module removed entirely: `ObscuraElection.sol` + 5 frontend files deleted.
+
+### .env additions (after merge)
+```
+VITE_OBSCURA_VOTE_ADDRESS=0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730   # updated to V5
+VITE_OBSCURA_TREASURY_ADDRESS=0x89252ee3f920978EEfDB650760fe56BA1Ede8c08
+VITE_OBSCURA_REWARDS_ADDRESS=0x435ea117404553A6868fbe728A7A284FCEd15BC2
+```
+
+### Build Status
+- `tsc --noEmit`: ✅ clean (no errors, no unused imports)
+- `vite build`: ✅ clean (only chunk-size warnings, no errors)
 
 ---
 

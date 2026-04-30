@@ -227,31 +227,35 @@ contract ObscuraConfidentialEscrow {
 
         // Move cUSDC out using the uint256-handle outbound overload
         // (selector 0xfe3f670d). Unauthorized → 0 transferred (silent fail).
-        // We deliberately wrap the external call in try/catch with a CAPPED
-        // gas stipend so that ANY failure mode of cUSDC.confidentialTransfer
-        // (returns false, reverts, OOG inside the sub-call, FHE permission
-        // edge case, balance insufficient because fund step never settled,
-        // etc.) is fully swallowed at the EVM level. Gas cap is critical:
-        // without it, the sub-call gets 63/64 of remaining gas (~2.85M of
-        // a 3M tx), and if the sub-call burns all of it, the parent has
-        // ~45k left — not enough to run the catch block + emit the event,
-        // causing the WHOLE tx to revert with empty data even though we
-        // wrapped the call. With a 1.5M cap, we always reserve >500k for
-        // the catch + event emission.
-        // Silent-failure means the tx ALWAYS succeeds; the recipient's
-        // wallet balance is the only source of truth. If the cUSDC call
-        // did not actually move funds, isRedeemed was likewise not flipped
-        // (FHE.select kept the prior value), so the recipient can simply
-        // try again later once the coprocessor settles.
+        // We use a LOW-LEVEL call (not Solidity try/catch) because:
+        // 1. cUSDC reverts with a custom error (selector 0xd5fdb3f0) when
+        //    the encrypted amount handle decrypts to 0 — the wrong-wallet /
+        //    not-yet-funded path. Solidity's `try ... returns (bool)` does
+        //    not always cleanly catch custom-error reverts in combination
+        //    with FHE precompile state, observed empirically (v6 0x10Bc...
+        //    still reverted with empty data).
+        // 2. A `(bool ok, ) = addr.call{gas: cap}(data)` pattern returns
+        //    `ok=false` on ANY sub-call failure (revert with any data,
+        //    OOG inside the sub-call, invalid opcode) and NEVER propagates
+        //    the revert to the parent. This is the canonical Solidity
+        //    pattern for "fire and forget — I do not care if it failed".
+        // 3. The 1.5M gas cap reserves >500k for the parent to finish
+        //    (catch path, event emission, return).
+        //
+        // Silent-failure means the tx ALWAYS succeeds at the EVM level;
+        // the recipient's wallet balance (after REVEAL) is the only
+        // source of truth. If the cUSDC call did not actually move funds,
+        // isRedeemed was likewise not flipped (FHE.select kept the prior
+        // value), so the recipient can simply try again later once the
+        // coprocessor settles.
         FHE.allowTransient(transferAmount, address(cUSDC));
-        try cUSDC.confidentialTransfer{gas: 1_500_000}(
+        bytes memory payload = abi.encodeWithSelector(
+            0xfe3f670d,
             msg.sender,
             uint256(euint64.unwrap(transferAmount))
-        ) returns (bool) {
-            // ok or false — both are fine, redeem still succeeds.
-        } catch {
-            // cUSDC reverted — also fine. Recipient retries later.
-        }
+        );
+        (bool ok, ) = address(cUSDC).call{gas: 1_500_000}(payload);
+        ok; // intentionally ignored — silent failure is the contract.
 
         emit EscrowRedeemed(_escrowId, msg.sender);
     }

@@ -1,16 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, AlertCircle, CheckCircle, ExternalLink, Trash2, X, Timer } from "lucide-react";
-import { useAccount, useWriteContract, usePublicClient } from "wagmi";
-import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
+import { Plus, AlertCircle, CheckCircle, ExternalLink, Trash2, X, Timer, AlertTriangle } from "lucide-react";
+import { useAccount, useWriteContract, usePublicClient, useReadContract } from "wagmi";
+import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS, OBSCURA_TOKEN_ABI, OBSCURA_TOKEN_ADDRESS } from "@/config/contracts";
 import { CATEGORY_LABELS } from "@/hooks/useProposals";
 import { arbitrumSepolia } from "viem/chains";
+import { useChainTime } from "@/hooks/useChainTime";
 
 const TEMPLATES = [
   { label: "Yes / No", options: ["Yes", "No"] },
   { label: "Approve / Reject / Abstain", options: ["Approve", "Reject", "Abstain"] },
   { label: "Custom", options: [] },
 ];
+
+const TITLE_MAX = 120;
+const DESC_MAX = 500;
 
 const DURATION_PRESETS = [
   { label: "10 min", seconds: 600 },
@@ -21,10 +25,24 @@ const DURATION_PRESETS = [
   { label: "Custom", seconds: 0 },
 ];
 
-export default function CreateProposalForm() {
+interface CreateProposalFormProps {
+  onSuccess?: () => void;
+}
+
+export default function CreateProposalForm({ onSuccess }: CreateProposalFormProps) {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
+
+  // Check if user has claimed OBS (required to create proposals)
+  const { data: lastClaimRaw } = useReadContract({
+    address: OBSCURA_TOKEN_ADDRESS,
+    abi: OBSCURA_TOKEN_ABI,
+    functionName: "lastClaim",
+    args: address ? [address] : undefined,
+    query: { enabled: !!OBSCURA_TOKEN_ADDRESS && !!address },
+  });
+  const hasClaimed = Number(lastClaimRaw ?? 0) > 0;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -37,6 +55,22 @@ export default function CreateProposalForm() {
   const [category, setCategory] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+
+  // Use chain time so the custom deadline picker defaults to the correct blockchain time
+  const chainNow = useChainTime();
+
+  // When the user switches to Custom duration, pre-fill with chain time + 24h
+  useEffect(() => {
+    if (selectedDuration === DURATION_PRESETS.length - 1) {
+      const chainTimeMs = Number(chainNow) * 1000 + 24 * 3600 * 1000;
+      const d = new Date(chainTimeMs);
+      const pad = (n: number) => n.toString().padStart(2, "0");
+      setCustomDeadline(
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDuration]);
 
   function applyTemplate(idx: number) {
     setSelectedTemplate(idx);
@@ -63,9 +97,14 @@ export default function CreateProposalForm() {
     if (preset.seconds > 0) {
       return BigInt(Math.floor(Date.now() / 1000) + preset.seconds);
     }
-    // Custom
+    // Custom datetime-local: parse as LOCAL time explicitly to avoid UTC
+    // ambiguity in new Date("YYYY-MM-DDTHH:mm") across browsers/platforms.
     if (!customDeadline) return 0n;
-    return BigInt(Math.floor(new Date(customDeadline).getTime() / 1000));
+    const [datePart, timePart = "00:00"] = customDeadline.split("T");
+    const [year, month, day] = datePart.split("-").map(Number);
+    const [hour, minute] = timePart.split(":").map(Number);
+    const localDate = new Date(year, month - 1, day, hour, minute);
+    return BigInt(Math.floor(localDate.getTime() / 1000));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -74,6 +113,8 @@ export default function CreateProposalForm() {
     setTxHash(null);
 
     if (!title.trim()) { setError("Title is required"); return; }
+    if (title.length > TITLE_MAX) { setError(`Title too long (max ${TITLE_MAX} characters)`); return; }
+    if (description.length > DESC_MAX) { setError(`Description too long (max ${DESC_MAX} characters)`); return; }
     if (options.length < 2) { setError("At least 2 options required"); return; }
     if (options.some(o => !o.trim())) { setError("All options must have text"); return; }
 
@@ -112,29 +153,48 @@ export default function CreateProposalForm() {
       setOptions(["Yes", "No"]);
       setSelectedTemplate(0);
       setQuorum("0");
+      // Navigate to proposals list after a short delay so the user can see the success state
+      setTimeout(() => onSuccess?.(), 2000);
     } catch (err: any) {
       setError(err.shortMessage ?? err.message ?? "Failed to create proposal");
     }
   }
 
   return (
-    <div className="glass-panel rounded-md p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Plus className="w-4 h-4 text-primary" />
-        <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
-          Create Proposal
-        </span>
+    <div className="pay-card p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <Plus className="w-4 h-4 text-emerald-400" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Proposal</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Multi-option encrypted governance</p>
+        </div>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">FHE</span>
       </div>
 
-      <div className="text-xs text-muted-foreground/50 px-1 border-l border-primary/20 pl-3">
-        Create a multi-option proposal. Use a template or define custom choices (2-10).
+      <div className="text-[12px] text-muted-foreground/55 leading-relaxed border-l-2 border-emerald-500/20 pl-3">
+        Create a multi-option proposal. Use a template or define custom choices (2–10).
         Set a quorum (0 = no minimum). After the deadline, anyone can finalize to reveal tallies.
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Template selector */}
+        {/* OBS token requirement warning */}
+        {isConnected && !hasClaimed && (
+          <div className="flex items-start gap-2 p-3 bg-yellow-400/5 border border-yellow-400/20 rounded-md">
+            <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+            <div>
+              <div className="text-sm text-yellow-400 font-semibold">$OBS Tokens Required</div>
+              <div className="text-xs text-yellow-400/70 mt-0.5">
+                You need to claim $OBS tokens at least once before creating a proposal.
+                Go to the <strong className="text-yellow-400">Dashboard</strong> and claim your free 100 $OBS, then come back.
+              </div>
+            </div>
+          </div>
+        )}
         <div>
-          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
             Template
           </label>
           <div className="flex gap-2 flex-wrap">
@@ -143,10 +203,10 @@ export default function CreateProposalForm() {
                 key={t.label}
                 type="button"
                 onClick={() => applyTemplate(i)}
-                className={`px-3 py-1.5 text-xs rounded-md border transition-all ${
+                className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
                   selectedTemplate === i
-                    ? "border-primary/40 text-primary bg-primary/10"
-                    : "border-border/50 text-muted-foreground hover:border-primary/20"
+                    ? "border-emerald-400/50 text-emerald-400 bg-emerald-400/10"
+                    : "border-white/[0.09] text-muted-foreground hover:border-emerald-500/30 hover:text-foreground"
                 }`}
               >
                 {t.label}
@@ -157,7 +217,7 @@ export default function CreateProposalForm() {
 
         {/* Title */}
         <div>
-          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
             Proposal Title
           </label>
           <input
@@ -165,13 +225,21 @@ export default function CreateProposalForm() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Increase treasury allocation by 10%"
-            className="w-full bg-secondary/50 border border-border/50 rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40"
+            className="pay-input"
+            maxLength={TITLE_MAX}
           />
+          <div className="flex justify-end mt-1">
+            <span className={`text-[10px] tabular-nums ${
+              title.length > TITLE_MAX * 0.9 ? "text-amber-400" : "text-muted-foreground/30"
+            }`}>
+              {title.length} / {TITLE_MAX}
+            </span>
+          </div>
         </div>
 
         {/* Description */}
         <div>
-          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
             Description (optional)
           </label>
           <textarea
@@ -179,13 +247,21 @@ export default function CreateProposalForm() {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Provide context for voters..."
             rows={2}
-            className="w-full bg-secondary/50 border border-border/50 rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40 resize-none"
+            className="pay-input resize-none"
+            maxLength={DESC_MAX}
           />
+          <div className="flex justify-end mt-1">
+            <span className={`text-[10px] tabular-nums ${
+              description.length > DESC_MAX * 0.9 ? "text-amber-400" : "text-muted-foreground/30"
+            }`}>
+              {description.length} / {DESC_MAX}
+            </span>
+          </div>
         </div>
 
         {/* Options */}
         <div>
-          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
             Options ({options.length}/10)
           </label>
           <div className="space-y-1.5">
@@ -201,7 +277,7 @@ export default function CreateProposalForm() {
                     setOptions(updated);
                     setSelectedTemplate(2); // switch to Custom
                   }}
-                  className="flex-1 bg-secondary/50 border border-border/50 rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary/40"
+                  className="pay-input py-1.5"
                 />
                 {options.length > 2 && (
                   <button type="button" onClick={() => removeOption(i)} className="text-muted-foreground hover:text-red-400 transition-colors">
@@ -219,9 +295,9 @@ export default function CreateProposalForm() {
                 onChange={(e) => setNewOption(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addOption(); } }}
                 placeholder="Add option..."
-                className="flex-1 bg-secondary/30 border border-border/30 rounded-md px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/20 focus:outline-none focus:border-primary/40"
+                className="pay-input py-1.5"
               />
-              <button type="button" onClick={addOption} className="text-primary text-xs hover:underline">
+              <button type="button" onClick={addOption} className="text-emerald-400 text-xs hover:underline">
                 + Add
               </button>
             </div>
@@ -230,13 +306,13 @@ export default function CreateProposalForm() {
 
         {/* Category */}
         <div>
-          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
             Category
           </label>
           <select
             value={category}
             onChange={(e) => setCategory(Number(e.target.value))}
-            className="w-full bg-secondary/50 border border-border/50 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40"
+            className="pay-select"
           >
             {CATEGORY_LABELS.map((label, i) => (
               <option key={label} value={i}>{label}</option>
@@ -246,7 +322,7 @@ export default function CreateProposalForm() {
 
         {/* Duration presets */}
         <div>
-          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
             <Timer className="w-3 h-3 inline mr-1" /> Voting Duration
           </label>
           <div className="flex gap-2 flex-wrap">
@@ -255,10 +331,10 @@ export default function CreateProposalForm() {
                 key={d.label}
                 type="button"
                 onClick={() => setSelectedDuration(i)}
-                className={`px-3 py-1.5 text-xs rounded-md border transition-all ${
+                className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
                   selectedDuration === i
-                    ? "border-primary/40 text-primary bg-primary/10"
-                    : "border-border/50 text-muted-foreground hover:border-primary/20"
+                    ? "border-emerald-400/50 text-emerald-400 bg-emerald-400/10"
+                    : "border-white/[0.09] text-muted-foreground hover:border-emerald-500/30 hover:text-foreground"
                 }`}
               >
                 {d.label}
@@ -270,14 +346,14 @@ export default function CreateProposalForm() {
               type="datetime-local"
               value={customDeadline}
               onChange={(e) => setCustomDeadline(e.target.value)}
-              className="w-full bg-secondary/50 border border-border/50 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40 mt-2"
+              className="pay-input mt-2"
             />
           )}
         </div>
 
         {/* Quorum */}
         <div>
-          <label className="text-xs text-muted-foreground tracking-wider uppercase block mb-1.5">
+          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
             Quorum (min votes, 0 = none)
           </label>
           <input
@@ -285,7 +361,7 @@ export default function CreateProposalForm() {
             min="0"
             value={quorum}
             onChange={(e) => setQuorum(e.target.value)}
-            className="w-full bg-secondary/50 border border-border/50 rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40"
+            className="pay-input"
           />
         </div>
 
@@ -297,27 +373,35 @@ export default function CreateProposalForm() {
         )}
 
         {txHash && (
-          <div className="flex items-center gap-2 text-green-400 text-sm font-mono">
-            <CheckCircle className="w-3.5 h-3.5" />
-            <span>TX submitted!</span>
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-400/5 border border-emerald-400/20 text-emerald-400 text-xs">
+            <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+            <span>Proposal created!</span>
             <a
               href={`https://sepolia.arbiscan.io/tx/${txHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline inline-flex items-center gap-1"
+              className="ml-auto underline inline-flex items-center gap-1 hover:text-emerald-300"
             >
-              View on Arbiscan <ExternalLink className="w-3 h-3" />
+              Arbiscan <ExternalLink className="w-3 h-3" />
             </a>
           </div>
         )}
 
-        <button
+        <motion.button
           type="submit"
-          disabled={!isConnected || isPending || !OBSCURA_VOTE_ADDRESS}
-          className="w-full py-3 rounded-md border border-primary/40 text-primary text-sm tracking-[0.2em] uppercase hover:bg-primary/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          disabled={!isConnected || !hasClaimed || isPending || !OBSCURA_VOTE_ADDRESS}
+          whileHover={{ scale: 1.005 }}
+          whileTap={{ scale: 0.99 }}
+          className="btn-pay btn-pay-emerald w-full py-2.5"
         >
-          {isPending ? "Sign in Wallet..." : "Create Proposal"}
-        </button>
+          {!isConnected
+            ? "Connect Wallet"
+            : !hasClaimed
+            ? "Claim $OBS First"
+            : isPending
+            ? "Sign in Wallet..."
+            : "Create Proposal"}
+        </motion.button>
       </form>
     </div>
   );

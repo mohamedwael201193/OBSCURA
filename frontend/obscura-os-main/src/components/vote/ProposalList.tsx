@@ -1,24 +1,45 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileText, Clock, CheckCircle, Lock, RefreshCw, Search, XCircle, Users, Timer } from "lucide-react";
+import { FileText, Clock, CheckCircle, CheckCircle2, Lock, RefreshCw, Search, XCircle, Users, Timer, ArrowRight } from "lucide-react";
 import { useWatchContractEvent } from "wagmi";
 import { useProposalCount, useProposal, CATEGORY_LABELS } from "@/hooks/useProposals";
 import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
+import { useChainTime } from "@/hooks/useChainTime";
 
 type ProposalStatus = "active" | "ended" | "finalized" | "cancelled";
 type StatusFilter = "all" | ProposalStatus;
 
-function getStatus(deadline: bigint, isFinalized: boolean, isCancelled: boolean): ProposalStatus {
+function getStatus(deadline: bigint, isFinalized: boolean, isCancelled: boolean, now: bigint): ProposalStatus {
   if (isCancelled) return "cancelled";
   if (isFinalized) return "finalized";
-  const now = BigInt(Math.floor(Date.now() / 1000));
   return now < deadline ? "active" : "ended";
 }
 
+function ProposalRowSkeleton() {
+  return (
+    <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-4 space-y-2 animate-pulse">
+      <div className="flex items-start gap-3">
+        <div className="w-8 h-4 bg-white/[0.05] rounded mt-0.5" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-white/[0.07] rounded w-3/4" />
+          <div className="h-3 bg-white/[0.04] rounded w-1/2" />
+          <div className="flex gap-2">
+            <div className="h-5 bg-white/[0.04] rounded w-16" />
+            <div className="h-5 bg-white/[0.04] rounded w-16" />
+            <div className="h-5 bg-white/[0.04] rounded w-12" />
+          </div>
+        </div>
+        <div className="h-5 bg-white/[0.05] rounded w-16 shrink-0" />
+      </div>
+      <div className="pl-11 h-3 bg-white/[0.03] rounded w-40" />
+    </div>
+  );
+}
+
 const statusConfig: Record<ProposalStatus, { label: string; color: string; icon: typeof Clock }> = {
-  active: { label: "Active", color: "text-green-400 bg-green-400/10 border-green-400/20", icon: Clock },
-  ended: { label: "Ended", color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20", icon: Lock },
-  finalized: { label: "Finalized", color: "text-primary bg-primary/10 border-primary/20", icon: CheckCircle },
+  active: { label: "Active", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", icon: Clock },
+  ended: { label: "Ended", color: "text-amber-400 bg-amber-400/10 border-amber-400/20", icon: Lock },
+  finalized: { label: "Finalized", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", icon: CheckCircle },
   cancelled: { label: "Cancelled", color: "text-red-400 bg-red-400/10 border-red-400/20", icon: XCircle },
 };
 
@@ -43,15 +64,15 @@ function Countdown({ deadline }: { deadline: bigint }) {
     return () => clearInterval(interval);
   }, [deadline]);
 
-  return <span className="text-primary font-semibold">{remaining}</span>;
+  return <span className="text-emerald-400 font-semibold">{remaining}</span>;
 }
 
-function ProposalRow({ proposalId, searchQuery, statusFilter }: { proposalId: bigint; searchQuery: string; statusFilter: StatusFilter }) {
+function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { proposalId: bigint; searchQuery: string; statusFilter: StatusFilter; onVote?: (id: number) => void; now: bigint }) {
   const { proposal, isLoading } = useProposal(proposalId);
 
   if (isLoading || !proposal || !proposal.exists) return null;
 
-  const status = getStatus(proposal.deadline, proposal.isFinalized, proposal.isCancelled);
+  const status = getStatus(proposal.deadline, proposal.isFinalized, proposal.isCancelled, now);
 
   // Filter by status
   if (statusFilter !== "all" && status !== statusFilter) return null;
@@ -67,7 +88,7 @@ function ProposalRow({ proposalId, searchQuery, statusFilter }: { proposalId: bi
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-4 bg-secondary/30 rounded-md border border-border/30 space-y-2"
+      className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-4 space-y-2 hover:border-white/[0.12] transition-colors"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
@@ -75,7 +96,7 @@ function ProposalRow({ proposalId, searchQuery, statusFilter }: { proposalId: bi
             #{proposal.id.toString()}
           </span>
           <div className="min-w-0">
-            <div className="text-sm text-foreground">{proposal.title}</div>
+            <div className="text-sm text-foreground font-medium">{proposal.title}</div>
             {proposal.description && (
               <div className="text-xs text-muted-foreground/60 mt-0.5 truncate">{proposal.description}</div>
             )}
@@ -91,9 +112,29 @@ function ProposalRow({ proposalId, searchQuery, statusFilter }: { proposalId: bi
                 {proposal.quorum > 0n && ` / ${proposal.quorum.toString()}`}
               </span>
             </div>
+            {proposal.quorum > 0n && (
+              <div className="mt-2 space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground/50">
+                  <span>{proposal.totalVoters.toString()} / {proposal.quorum.toString()} voters</span>
+                  {proposal.totalVoters >= proposal.quorum
+                    ? <span className="text-emerald-400 flex items-center gap-0.5"><CheckCircle2 className="w-2.5 h-2.5" /> Quorum met</span>
+                    : <span className="text-amber-400/70">Quorum needed</span>
+                  }
+                </div>
+                <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(Number((proposal.totalVoters * 100n) / proposal.quorum), 100)}%`,
+                      background: proposal.totalVoters >= proposal.quorum ? '#10b981' : '#f59e0b',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        <span className={`text-xs tracking-[0.2em] uppercase px-2 py-0.5 rounded-md border shrink-0 ${cfg.color}`}>
+        <span className={`pay-badge border shrink-0 ${cfg.color}`}>
           <cfg.icon className="w-3 h-3 inline mr-1" />
           {cfg.label}
         </span>
@@ -107,15 +148,27 @@ function ProposalRow({ proposalId, searchQuery, statusFilter }: { proposalId: bi
           </span>
         )}
       </div>
+      {/* Vote shortcut for active proposals */}
+      {status === "active" && onVote && (
+        <div className="pl-11">
+          <button
+            onClick={() => onVote(Number(proposalId))}
+            className="flex items-center gap-1 text-[11px] text-emerald-400 hover:underline"
+          >
+            Vote on this <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 }
 
-export default function ProposalList() {
+export default function ProposalList({ onVote }: { onVote?: (id: number) => void }) {
   const { data: count, isLoading, refetch } = useProposalCount();
   const proposalCount = Number(count ?? 0);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const now = useChainTime();
 
   // Instantly refetch when a new proposal is created on-chain
   useWatchContractEvent({
@@ -134,18 +187,20 @@ export default function ProposalList() {
   ];
 
   return (
-    <div className="glass-panel rounded-md p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-primary" />
-          <span className="text-sm tracking-[0.2em] uppercase text-primary font-mono">
-            All Proposals
-          </span>
+    <div className="pay-card p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <FileText className="w-4 h-4 text-emerald-400" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Browse Proposals</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">All governance polls</p>
         </div>
         <button
           onClick={() => refetch()}
           title="Refresh proposals"
-          className="p-1 text-muted-foreground hover:text-primary transition-colors"
+          className="ml-auto p-1.5 text-muted-foreground hover:text-emerald-400 transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
@@ -160,7 +215,7 @@ export default function ProposalList() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search proposals..."
-            className="w-full bg-secondary/50 border border-border/50 rounded-md pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/40"
+            className="pay-input pl-9"
           />
         </div>
         <div className="flex gap-1.5 flex-wrap">
@@ -170,8 +225,8 @@ export default function ProposalList() {
               onClick={() => setStatusFilter(f.key)}
               className={`px-2.5 py-1 text-[11px] rounded-md border transition-all ${
                 statusFilter === f.key
-                  ? "border-primary/40 text-primary bg-primary/10"
-                  : "border-border/50 text-muted-foreground hover:border-primary/20"
+                  ? "border-emerald-400/50 text-emerald-400 bg-emerald-400/10"
+                  : "border-white/[0.09] text-muted-foreground hover:border-emerald-500/30"
               }`}
             >
               {f.label}
@@ -181,16 +236,29 @@ export default function ProposalList() {
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-muted-foreground text-center py-4">Loading...</div>
+        <div className="space-y-2">
+          {[...Array(3)].map((_, i) => <ProposalRowSkeleton key={i} />)}
+        </div>
       ) : proposalCount === 0 ? (
-        <div className="text-sm text-muted-foreground text-center py-8">
-          No proposals created yet. Go to the Create tab to make one.
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <FileText className="w-8 h-8 text-muted-foreground/20" />
+          <div className="text-sm text-muted-foreground/60">No proposals yet.</div>
+          <div className="text-[11px] text-muted-foreground/40">Switch to the Create tab to launch the first governance poll.</div>
         </div>
       ) : (
         <div className="space-y-2">
           {Array.from({ length: proposalCount }, (_, i) => (
-            <ProposalRow key={i} proposalId={BigInt(i)} searchQuery={searchQuery} statusFilter={statusFilter} />
+            <ProposalRow key={i} proposalId={BigInt(i)} searchQuery={searchQuery} statusFilter={statusFilter} onVote={onVote} now={now} />
           ))}
+          {/* Empty filter result */}
+          {statusFilter !== "all" && Array.from({ length: proposalCount }).every((_, i) => {
+            // We can't easily check filter matches without fetching — just show a hint if filter is active
+            return false;
+          }) && (
+            <div className="text-sm text-muted-foreground/50 text-center py-4">
+              No {statusFilter} proposals.
+            </div>
+          )}
         </div>
       )}
     </div>

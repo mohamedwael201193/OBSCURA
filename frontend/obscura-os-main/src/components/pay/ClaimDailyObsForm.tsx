@@ -14,7 +14,7 @@ function formatCountdown(seconds: number): string {
   return `${h}h ${m.toString().padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`;
 }
 
-export default function ClaimDailyObsForm() {
+export default function ClaimDailyObsForm({ compact = false }: { compact?: boolean }) {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
@@ -95,6 +95,35 @@ export default function ClaimDailyObsForm() {
   };
 
   const isProcessing = isClaiming || isPending;
+
+  /* ── Compact variant: single button for the banner in VotePage ── */
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {isConnected && countdown !== null && countdown > 0 && (
+          <span className="text-[10px] font-mono text-muted-foreground/60 hidden sm:block">
+            <Clock className="w-3 h-3 inline mr-1 text-amber-400/70" />
+            {formatCountdown(countdown)}
+          </span>
+        )}
+        <motion.button
+          onClick={handleClaim}
+          disabled={!isConnected || isProcessing || (countdown !== null && countdown > 0)}
+          whileHover={!isProcessing && canClaim ? { scale: 1.02 } : {}}
+          whileTap={!isProcessing && canClaim ? { scale: 0.98 } : {}}
+          className="btn-pay btn-pay-emerald px-4 py-2 whitespace-nowrap"
+        >
+          {!isConnected
+            ? "Connect to Claim"
+            : isProcessing
+            ? "Claiming..."
+            : countdown !== null && countdown > 0
+            ? "Claimed ✓"
+            : "Claim 100 $OBS"}
+        </motion.button>
+      </div>
+    );
+  }
 
   return (
     <div className="glass-panel rounded-sm p-6 space-y-4">

@@ -15,6 +15,7 @@ export enum Role {
 export enum FHEStepStatus {
   IDLE = "idle",
   ENCRYPTING = "encrypting",
+  SENDING = "sending",
   COMPUTING = "computing",
   READY = "ready",
   ERROR = "error",

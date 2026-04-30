@@ -6,6 +6,28 @@
 
 ---
 
+## 🔧 Hotfix (Apr 30, 2026) — Confidential Escrow auto-fund
+
+**Symptoms:**
+- `Escrow #N created but funding failed. Auto-fund tx reverted on-chain.`
+- 8× `simulateContract` retries all failed with `execution reverted`.
+- After removing the simulation gate the on-chain `fund()` still reverted with empty revert data (viem's cached decoder mis-labelled it as `"not operator"`).
+
+**Root cause (real one):**
+The deployed escrow `0x6E17459f6537E4ccBAC9CDB3f122F5f4d715d8b5` called cUSDC's `confidentialTransferFrom(address,address,uint256)` (selector `0xca49d7cd`). **That selector does not exist on the deployed cUSDC bytecode.** The local interface comment in `IConfidentialUSDCv2.sol` was wrong — only the `InEuint64` overload (selector `0x7edb0e7d`) is present. Calls to a non-existent selector silently revert with empty data.
+
+**Fix:**
+1. **`IConfidentialUSDCv2.sol`** — replaced the `(address,address,uint256)` declaration with `(address,address,InEuint64 calldata)` so the compiler emits selector `0x7edb0e7d` instead of `0xca49d7cd`.
+2. **`ObscuraConfidentialEscrow.sol`** — `fund()` now forwards the user-supplied `InEuint64` directly to cUSDC. The same encrypted input is also bound locally as a `euint64` handle for `paidAmount` accumulation (the proof has just been verified by the cUSDC sub-call in the same tx).
+3. **Redeployed** to **`0x21003b8D658aa749Ce8774DD586Ac9C8B3D535F4`** (Arbitrum Sepolia). Verified the new bytecode contains `7edb0e7d` and no longer contains `ca49d7cd`.
+4. **`useCUSDCEscrow.ts`** — removed the broken `simulateContract` retry loop in both `create()` auto-fund and standalone `fund()`. Added `await ensureOperator()` to the `create()` auto-fund branch (was missing).
+5. **`.env`** + **`deployments/arb-sepolia.json`** updated to the new address.
+
+**Why simulation cannot retry around CoFHE:**
+`InEuint64` arguments require CoFHE proof verification. CoFHE only verifies during real EVM transactions — `eth_call` / `simulateContract` always reverts on `FHE.asEuint64()`. Retrying a static call is architecturally impossible to satisfy.
+
+---
+
 ## Scope Overview
 
 | #  | Task | Location | Status |

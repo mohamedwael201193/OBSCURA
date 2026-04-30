@@ -116,32 +116,31 @@ contract ObscuraConfidentialEscrow {
 
     /// @notice Fund an escrow by pulling encrypted cUSDC from the caller.
     /// @dev Caller MUST have called `cUSDC.setOperator(address(this), until)`
-    ///      with `until > block.timestamp`. We process the InEuint64 to a
-    ///      euint64 handle, grant cUSDC transient access, then call cUSDC's
-    ///      uint256-handle overload (selector 0xca49d7cd) which is confirmed
-    ///      present on the deployed token bytecode.
+    ///      with `until > block.timestamp`. We forward the raw InEuint64 to
+    ///      cUSDC's InEuint64 overload (selector 0x7edb0e7d) — the deployed
+    ///      cUSDC does NOT expose the uint256-handle overload, so we cannot
+    ///      convert client-side. We additionally store the same proof as a
+    ///      euint64 handle locally for paidAmount accumulation.
     function fund(uint256 _escrowId, InEuint64 calldata _encPayment) external {
         Escrow storage esc = escrows[_escrowId];
         require(esc.exists, "no escrow");
         require(!esc.cancelled, "cancelled");
         require(cUSDC.isOperator(msg.sender, address(this)), "not operator");
 
-        // Convert the user-provided encrypted input to a stored handle.
-        euint64 paymentH = FHE.asEuint64(_encPayment);
-
-        // Grant cUSDC transient ACL on the handle so it can decrypt-process.
-        FHE.allowTransient(paymentH, address(cUSDC));
-
-        // Move cUSDC into this contract using the uint256-handle overload
-        // (selector 0xca49d7cd).
+        // Forward the user's InEuint64 directly to cUSDC. cUSDC verifies
+        // the proof internally, decrypts, and moves the encrypted balance.
         bool ok = cUSDC.confidentialTransferFrom(
             msg.sender,
             address(this),
-            uint256(euint64.unwrap(paymentH))
+            _encPayment
         );
         require(ok, "cUSDC pull failed");
 
-        // Accumulate paidAmount homomorphically.
+        // Also bind the same encrypted input as a local handle so we can
+        // accumulate paidAmount homomorphically. CoFHE allows the same
+        // InEuint64 to be cast to a euint64 handle in the same tx as the
+        // cUSDC consumed it (proof was just verified above).
+        euint64 paymentH = FHE.asEuint64(_encPayment);
         esc.paidAmount = FHE.add(esc.paidAmount, paymentH);
         FHE.allowThis(esc.paidAmount);
         FHE.allow(esc.paidAmount, esc.creatorPlain);

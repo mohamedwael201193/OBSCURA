@@ -28,10 +28,10 @@ const STORAGE_KEY = 'obscura_cusdc_escrows';
  *   overloads exist. fund() therefore always reverted (~50–85k gas).
  *
  *   Fix: deploy our own ObscuraConfidentialEscrow that calls cUSDC via
- *   the present uint256-handle overloads (0xca49d7cd inbound, 0xfe3f670d
- *   outbound). End-to-end working.
+ *   the present InEuint64 overload (0x7edb0e7d inbound) and uint256
+ *   handle outbound (0xfe3f670d). End-to-end working.
  *
- *   Address (Arbitrum Sepolia): 0x6E17459f6537E4ccBAC9CDB3f122F5f4d715d8b5
+ *   Address (Arbitrum Sepolia): 0x21003b8D658aa749Ce8774DD586Ac9C8B3D535F4
  *
  * The legacy REINEIRA_ESCROW_ADDRESS export is kept so My Escrows can
  * label pre-cutoff escrows as legacy.
@@ -205,38 +205,19 @@ export function useCUSDCEscrow() {
         // ── 2. auto-fund ──
         // Re-encrypt the amount (a fresh InEuint64 — each encryption is
         // single-use because the CoFHE verifier records consumption).
+        // NOTE: simulateContract (eth_call) ALWAYS reverts for InEuint64
+        // args because CoFHE only processes FHE proofs in real txs, not
+        // static calls. Skip simulation and send directly.
         try {
+          // The escrow contract calls cUSDC.transferFromEncrypted(funder, …)
+          // which requires the escrow be set as an FHE operator on cUSDC
+          // for this caller. Without this the fund() tx reverts with
+          // "not operator".
+          await ensureOperator();
           await new Promise((r) => setTimeout(r, 8000));
           const fundEnc = await encryptAmount(amount, (step) =>
             console.log('[FHE Escrow Fund Encrypt]', step)
           );
-
-          // Wait for the CoFHE verifier to commit the freshly-encrypted
-          // InEuint64 — call simulateContract until it stops reverting.
-          // FHE.asEuint64() reverts if the proof isn't yet verified.
-          let lastSimErr: unknown = null;
-          let simulated = false;
-          for (let i = 0; i < 8; i++) {
-            try {
-              await publicClient.simulateContract({
-                address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
-                abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
-                functionName: 'fund',
-                args: [BigInt(escrowId), fundEnc[0]],
-                account: address,
-              });
-              simulated = true;
-              break;
-            } catch (simErr) {
-              lastSimErr = simErr;
-              console.log(`[Escrow] fund simulation attempt ${i + 1} failed, retrying…`);
-              await new Promise((r) => setTimeout(r, 5000));
-            }
-          }
-          if (!simulated) {
-            console.warn('[Escrow] auto-fund simulation never succeeded:', lastSimErr);
-            throw lastSimErr;
-          }
 
           const fundFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
           const fundHash = await writeContractAsync({
@@ -296,33 +277,9 @@ export function useCUSDCEscrow() {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
         await ensureOperator();
 
-        // Wait for CoFHE verifier to commit the fresh InEuint64 proof,
-        // otherwise FHE.asEuint64() inside fund() reverts.
-        await new Promise((r) => setTimeout(r, 4000));
-        let lastSimErr: unknown = null;
-        let simulated = false;
-        for (let i = 0; i < 8; i++) {
-          try {
-            await publicClient.simulateContract({
-              address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
-              abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
-              functionName: 'fund',
-              args: [escrowId, enc[0]],
-              account: address,
-            });
-            simulated = true;
-            break;
-          } catch (simErr) {
-            lastSimErr = simErr;
-            console.log(`[Escrow] fund simulation attempt ${i + 1} failed, retrying…`);
-            await new Promise((r) => setTimeout(r, 5000));
-          }
-        }
-        if (!simulated) {
-          const msg = lastSimErr instanceof Error ? lastSimErr.message : String(lastSimErr);
-          throw new Error(`fund() simulation reverted after retries: ${msg}`);
-        }
-
+        // NOTE: simulateContract (eth_call) ALWAYS reverts for InEuint64
+        // args — CoFHE only processes FHE proofs in real txs, not eth_call.
+        // Skip simulation and send directly.
         const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
         const hash = await writeContractAsync({
           address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,

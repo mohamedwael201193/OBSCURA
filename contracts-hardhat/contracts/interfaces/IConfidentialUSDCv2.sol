@@ -27,12 +27,14 @@ interface IConfidentialUSDCv2 {
     function confidentialBalanceOf(address account) external view returns (uint256);
 
     // ── Inbound (we use this in escrow.fund) ────────────────────────────
-    /// @dev Selector 0xca49d7cd — handle overload. `amount` is a euint64 handle
-    ///      cast to uint256.
+    /// @dev Selector 0x7edb0e7d — InEuint64 overload. The deployed cUSDC
+    ///      DOES NOT expose the (address,address,uint256) handle overload
+    ///      (selector 0xca49d7cd) — only this InEuint64 overload exists.
+    ///      The escrow forwards the raw user-supplied InEuint64 directly.
     function confidentialTransferFrom(
         address from,
         address to,
-        uint256 amount
+        InEuint64 calldata amount
     ) external returns (bool);
 
     // ── Outbound (we use this in escrow.redeem / cancel) ────────────────

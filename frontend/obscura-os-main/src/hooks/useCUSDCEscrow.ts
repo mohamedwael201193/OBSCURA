@@ -361,8 +361,31 @@ export function useCUSDCEscrow() {
       }
       try {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
+
+        // Simulate first to surface a real revert reason. Redeem takes
+        // no encrypted inputs — only a uint256 escrowId — so eth_call is
+        // safe here (unlike fund/create which take InEuint64).
+        try {
+          await publicClient.simulateContract({
+            address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
+            abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
+            functionName: 'redeem',
+            args: [escrowId],
+            account: address,
+          });
+        } catch (simErr) {
+          const msg = (simErr as Error).message || String(simErr);
+          // CoFHE FHE.select / asEaddress eth_call sometimes reverts even when
+          // the real tx will succeed (TaskManager isn't fully reachable from
+          // eth_call). Only abort on Solidity require strings we recognize.
+          if (/no escrow|cancelled|condition/i.test(msg)) {
+            throw new Error(`Redeem cannot proceed: ${msg.split('\n')[0]}`);
+          }
+          console.warn('[Redeem] simulate failed (non-blocking, likely CoFHE eth_call quirk):', msg.slice(0, 200));
+        }
+
         const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-        const hash = await writeContractAsync({
+        const hash = await withRateLimitRetry(() => writeContractAsync({
           address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
           abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
           functionName: 'redeem',
@@ -371,9 +394,20 @@ export function useCUSDCEscrow() {
           chain: arbitrumSepolia,
           maxFeePerGas: fees.maxFeePerGas,
           maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
-          gas: 1_200_000n,
-        });
-        await publicClient.waitForTransactionReceipt({ hash });
+          // Redeem performs many FHE ops (asEaddress, eq, gte, not, and×2,
+          // asEuint64, select×2, asEbool, allowThis×2, allow, allowTransient)
+          // plus a cUSDC.confidentialTransfer sub-call. 1.2M was insufficient
+          // → 3M gives ample headroom on Arbitrum (gas is cheap).
+          gas: 3_000_000n,
+        }));
+        const receipt = await withRateLimitRetry(() => publicClient.waitForTransactionReceipt({ hash }));
+        if (receipt.status !== 'success') {
+          throw new Error(
+            `Redeem reverted on-chain (tx: ${hash}). ` +
+            `Common causes: (1) you are not the encrypted recipient of this escrow, ` +
+            `(2) the escrow has not been fully funded yet, (3) it was already redeemed.`
+          );
+        }
         setTxHash(hash);
         fheStatus.setStep(FHEStepStatus.READY);
         return hash;
@@ -402,9 +436,15 @@ export function useCUSDCEscrow() {
           chain: arbitrumSepolia,
           maxFeePerGas: fees.maxFeePerGas,
           maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
-          gas: 600_000n,
+          // Cancel does only one cUSDC.confidentialTransfer + one
+          // FHE.allowTransient. 1.5M gives headroom over the previous
+          // 600k which sometimes ran tight on CoFHE compute.
+          gas: 1_500_000n,
         });
-        await publicClient.waitForTransactionReceipt({ hash });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== 'success') {
+          throw new Error(`Cancel reverted on-chain (tx: ${hash})`);
+        }
         setTxHash(hash);
         fheStatus.setStep(FHEStepStatus.READY);
         return hash;

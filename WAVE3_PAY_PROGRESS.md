@@ -8,6 +8,43 @@
 
 ---
 
+## 🔧 Hotfix #3 (Apr 30, 2026) — Redeem out-of-gas + clearer Escrow ID UX
+
+**Symptom:**
+After successful 3-tx create+fund (Hotfix #2), redeeming escrow #0 from the
+recipient wallet failed on-chain with no decoded reason. cUSDC was already
+debited from the funder during step 2 of create, so the funds were stuck in
+the escrow's confidential balance.
+
+**Root cause:**
+The `redeem()` function performs ~12 FHE operations in a single tx
+(`asEaddress`, `eq`, `gte`, `not`, `and`×2, `asEuint64`, `select`×2, `asEbool`,
+`allowThis`×2, `allow`, `allowTransient`) plus an outbound
+`cUSDC.confidentialTransfer` sub-call. Each CoFHE op consumes 50–200k gas. The
+frontend gas limit was **1,200,000** which was insufficient → out-of-gas
+revert with empty data (Arbitrum doesn't surface OOG as a custom error).
+
+**Fix:**
+1. **`useCUSDCEscrow.redeem()`** — bumped gas limit from `1_200_000n` to
+   `3_000_000n`. Added a pre-flight `simulateContract` that surfaces real
+   revert reasons (`no escrow`, `cancelled`, `condition`) before sending the
+   tx, while ignoring CoFHE-specific eth_call quirks. Improved on-chain
+   revert error message to enumerate likely causes (wrong recipient wallet /
+   not funded yet / already redeemed).
+2. **`useCUSDCEscrow.cancel()`** — bumped gas limit from `600_000n` to
+   `1_500_000n` for the same headroom reason; added receipt-status check.
+3. **`CUSDCEscrowForm.tsx`** — made the post-create success card more
+   explicit: larger Escrow ID typography (`text-2xl`), prominent "Copy ID"
+   pill button (replacing the small icon-only copy button), and an amber
+   warning that the ID must be saved before navigating away because without
+   it the recipient cannot claim the cUSDC.
+
+No contract changes (the on-chain code was correct, only the gas budget was
+wrong). The escrow at `0xF893F3c1603E0E9B01be878a0E7e369fF704CCF1` remains
+the canonical address.
+
+---
+
 ## 🔧 Hotfix #2 (Apr 30, 2026) — Confidential Escrow funding (root cause + final fix)
 
 **Symptom (after Hotfix #1):**

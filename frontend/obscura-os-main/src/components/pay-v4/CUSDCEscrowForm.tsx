@@ -68,13 +68,17 @@ export default function CUSDCEscrowForm() {
         <div className="rounded-lg bg-emerald-500/8 border border-emerald-500/20 p-4 space-y-2">
           <div className="text-[11px] text-muted-foreground/55 uppercase tracking-wider">Escrow ID</div>
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xl font-bold text-emerald-300">#{lastEscrowId}</span>
-            <button onClick={handleCopyId} className="p-1.5 hover:bg-white/[0.06] rounded-md transition-colors text-muted-foreground/40 hover:text-muted-foreground">
-              {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            <span className="font-mono text-2xl font-bold text-emerald-300">#{lastEscrowId}</span>
+            <button onClick={handleCopyId} className="px-2.5 py-1.5 hover:bg-white/[0.06] rounded-md transition-colors text-muted-foreground/60 hover:text-emerald-300 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider border border-white/[0.08]">
+              {copied ? (
+                <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Copied</>
+              ) : (
+                <><Copy className="w-3.5 h-3.5" /> Copy ID</>
+              )}
             </button>
           </div>
           <p className="text-[11px] text-muted-foreground/55 leading-relaxed">
-            Escrow created and funded automatically. Share this ID with the recipient so they can redeem.
+            Escrow created and funded. <span className="text-amber-300/90 font-semibold">Save this ID now</span> — the recipient must enter it in <span className="text-foreground/80">Redeem Escrow</span> from their wallet to claim the cUSDC. Without the ID, the funds cannot be retrieved.
           </p>
         </div>
         {txHash && (

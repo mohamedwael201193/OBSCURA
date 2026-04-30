@@ -31,7 +31,7 @@ const STORAGE_KEY = 'obscura_cusdc_escrows';
  *   the present InEuint64 overload (0x7edb0e7d inbound) and uint256
  *   handle outbound (0xfe3f670d). End-to-end working.
  *
- *   Address (Arbitrum Sepolia): 0x21003b8D658aa749Ce8774DD586Ac9C8B3D535F4
+ *   Address (Arbitrum Sepolia): 0xF893F3c1603E0E9B01be878a0E7e369fF704CCF1
  *
  * The legacy REINEIRA_ESCROW_ADDRESS export is kept so My Escrows can
  * label pre-cutoff escrows as legacy.
@@ -122,11 +122,22 @@ export function useCUSDCEscrow() {
   }, [address]);
 
   /**
-   * Create + auto-fund an escrow against ObscuraConfidentialEscrow.
-   * Three transactions (1 skipped if already authorized):
-   *   1. setOperator (cUSDC → escrow contract)
-   *   2. create(InEaddress owner, InEuint64 amount, resolver, data)
-   *   3. fund(escrowId, InEuint64 amount)
+   * Create + fund an escrow against ObscuraConfidentialEscrow.
+   *
+   * IMPORTANT — three-tx funding model:
+   *   CoFHE rejects InEuint64 proofs forwarded through an intermediary
+   *   contract (`InvalidSigner(address,address)` selector 0x7ba5ffb5). So
+   *   the escrow CANNOT proxy `cUSDC.confidentialTransferFrom`. Instead
+   *   we run three sequential transactions, each consuming a fresh
+   *   single-use InEuint64:
+   *     1. escrow.create(encOwner, encAmountForEscrow, resolver, data)
+   *        → returns escrowId
+   *     2. cUSDC.confidentialTransfer(escrowAddr, encAmountForCUSDC)
+   *        → user transfers cUSDC directly to the escrow contract's
+   *          confidential balance (immediate caller = user → CoFHE accepts)
+   *     3. escrow.fund(escrowId, encAmountForRecord)
+   *        → escrow consumes the proof itself (immediate caller = escrow
+   *          → CoFHE accepts) and increments paidAmount homomorphically
    */
   const create = useCallback(
     async (
@@ -135,7 +146,7 @@ export function useCUSDCEscrow() {
       resolver: `0x${string}`,
       resolverData: `0x${string}` = '0x'
     ) => {
-      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS) {
+      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS || !REINEIRA_CUSDC_ADDRESS) {
         throw new Error('Wallet not connected or escrow contract not configured');
       }
 
@@ -143,17 +154,16 @@ export function useCUSDCEscrow() {
         fheStatus.setStep(FHEStepStatus.ENCRYPTING);
         await initFHEClient(publicClient, walletClient);
 
+        // Encryption #1: (ownerAddress, amount) for escrow.create()
         const encryptedInputs = await encryptAddressAndAmount(
           ownerAddress,
           amount,
-          (step) => console.log('[FHE Escrow Encrypt]', step)
+          (step) => console.log('[FHE Escrow Encrypt #1 create]', step)
         );
 
-        // Authorize new escrow contract as cUSDC operator (required for fund).
         fheStatus.setStep(FHEStepStatus.COMPUTING);
-        await ensureOperator();
 
-        // ── 1. create ──
+        // ── 1. escrow.create ──
         const createFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
         const hash = await withRateLimitRetry(() => writeContractAsync({
           address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
@@ -172,8 +182,6 @@ export function useCUSDCEscrow() {
           gas: 1_200_000n,
         }));
 
-        // Parse escrow id from EscrowCreated(uint256 indexed escrowId, …)
-        // emitted by THIS contract (filter to avoid CoFHE internal events).
         const receipt = await withRateLimitRetry(() => publicClient.waitForTransactionReceipt({ hash }));
         let escrowId = '?';
         for (const log of receipt.logs) {
@@ -202,23 +210,41 @@ export function useCUSDCEscrow() {
         saveEscrow(address, saved);
         setEscrows(loadEscrows(address));
 
-        // ── 2. auto-fund ──
-        // Re-encrypt the amount (a fresh InEuint64 — each encryption is
-        // single-use because the CoFHE verifier records consumption).
-        // NOTE: simulateContract (eth_call) ALWAYS reverts for InEuint64
-        // args because CoFHE only processes FHE proofs in real txs, not
-        // static calls. Skip simulation and send directly.
+        // ── 2. cUSDC.confidentialTransfer(escrow, amount) ──
+        // Direct user → escrow transfer. CoFHE proof's immediate caller
+        // is the user, which matches the proof's recovered signer.
         try {
-          // The escrow contract calls cUSDC.transferFromEncrypted(funder, …)
-          // which requires the escrow be set as an FHE operator on cUSDC
-          // for this caller. Without this the fund() tx reverts with
-          // "not operator".
-          await ensureOperator();
+          // Wait for the create tx's CoFHE state to settle before the
+          // next encryption (the proof commit window).
+          await new Promise((r) => setTimeout(r, 8000));
+          const transferEnc = await encryptAmount(amount, (step) =>
+            console.log('[FHE Escrow Encrypt #2 cUSDC transfer]', step)
+          );
+          const transferFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+          const transferHash = await withRateLimitRetry(() => writeContractAsync({
+            address: REINEIRA_CUSDC_ADDRESS,
+            abi: REINEIRA_CUSDC_ABI,
+            functionName: 'confidentialTransfer',
+            args: [OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, transferEnc[0]],
+            account: address,
+            chain: arbitrumSepolia,
+            maxFeePerGas: transferFees.maxFeePerGas,
+            maxPriorityFeePerGas: transferFees.maxPriorityFeePerGas,
+            gas: 600_000n,
+          }));
+          const transferReceipt = await withRateLimitRetry(() =>
+            publicClient.waitForTransactionReceipt({ hash: transferHash })
+          );
+          if (transferReceipt.status !== 'success') {
+            throw new Error(`cUSDC transfer to escrow reverted (hash: ${transferHash})`);
+          }
+          console.log('[Escrow] cUSDC transferred to escrow', escrowId, transferHash);
+
+          // ── 3. escrow.fund(escrowId, amount) ── (record only)
           await new Promise((r) => setTimeout(r, 8000));
           const fundEnc = await encryptAmount(amount, (step) =>
-            console.log('[FHE Escrow Fund Encrypt]', step)
+            console.log('[FHE Escrow Encrypt #3 fund record]', step)
           );
-
           const fundFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
           const fundHash = await withRateLimitRetry(() => writeContractAsync({
             address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
@@ -229,26 +255,23 @@ export function useCUSDCEscrow() {
             chain: arbitrumSepolia,
             maxFeePerGas: fundFees.maxFeePerGas,
             maxPriorityFeePerGas: fundFees.maxPriorityFeePerGas,
-            gas: 1_500_000n,
+            gas: 800_000n,
           }));
-          const fundReceipt = await withRateLimitRetry(() => publicClient.waitForTransactionReceipt({ hash: fundHash }));
+          const fundReceipt = await withRateLimitRetry(() =>
+            publicClient.waitForTransactionReceipt({ hash: fundHash })
+          );
           if (fundReceipt.status !== 'success') {
-            throw new Error(`Auto-fund tx reverted on-chain (hash: ${fundHash})`);
+            throw new Error(`escrow.fund record tx reverted (hash: ${fundHash})`);
           }
-          console.log('[Escrow] auto-funded', escrowId, fundHash);
+          console.log('[Escrow] paidAmount recorded', escrowId, fundHash);
         } catch (fundErr) {
-          // Surface auto-fund failures: escrow is created but UNFUNDED.
-          // The user MUST know — otherwise they think the escrow is ready
-          // but redemption will silently fail (contract has 0 cUSDC).
           const msg = fundErr instanceof Error ? fundErr.message : String(fundErr);
-          console.error('[Escrow] auto-fund failed:', fundErr);
+          console.error('[Escrow] funding failed:', fundErr);
           fheStatus.setStep(
             FHEStepStatus.ERROR,
             `Escrow #${escrowId} created but funding FAILED: ${msg}. Use the Fund button in My Escrows to retry, or Cancel to discard.`
           );
-          throw new Error(
-            `Escrow #${escrowId} created but funding failed. ${msg}`
-          );
+          throw new Error(`Escrow #${escrowId} created but funding failed. ${msg}`);
         }
 
         fheStatus.setStep(FHEStepStatus.READY);
@@ -258,43 +281,67 @@ export function useCUSDCEscrow() {
         throw error;
       }
     },
-    [publicClient, walletClient, writeContractAsync, address, fheStatus, ensureOperator]
+    [publicClient, walletClient, writeContractAsync, address, fheStatus]
   );
 
-  /** Manual fund() — encrypt amount client-side and pull cUSDC from caller. */
+  /**
+   * Manual fund() — two transactions:
+   *   1. cUSDC.confidentialTransfer(escrow, amount)
+   *   2. escrow.fund(escrowId, amount) (record only)
+   */
   const fund = useCallback(
     async (escrowId: bigint, amount: bigint) => {
-      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS) {
+      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS || !REINEIRA_CUSDC_ADDRESS) {
         throw new Error('Wallet not connected or escrow contract not configured');
       }
       try {
         fheStatus.setStep(FHEStepStatus.ENCRYPTING);
         await initFHEClient(publicClient, walletClient);
-        const enc = await encryptAmount(amount, (step) =>
-          console.log('[FHE Fund Encrypt]', step)
+
+        // ── 1. cUSDC transfer ──
+        const transferEnc = await encryptAmount(amount, (step) =>
+          console.log('[FHE Fund Encrypt #1 cUSDC]', step)
         );
-
         fheStatus.setStep(FHEStepStatus.COMPUTING);
-        await ensureOperator();
+        const tFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+        const transferHash = await withRateLimitRetry(() => writeContractAsync({
+          address: REINEIRA_CUSDC_ADDRESS,
+          abi: REINEIRA_CUSDC_ABI,
+          functionName: 'confidentialTransfer',
+          args: [OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, transferEnc[0]],
+          account: address,
+          chain: arbitrumSepolia,
+          maxFeePerGas: tFees.maxFeePerGas,
+          maxPriorityFeePerGas: tFees.maxPriorityFeePerGas,
+          gas: 600_000n,
+        }));
+        const transferReceipt = await withRateLimitRetry(() =>
+          publicClient.waitForTransactionReceipt({ hash: transferHash })
+        );
+        if (transferReceipt.status !== 'success') {
+          throw new Error(`cUSDC transfer to escrow reverted (hash: ${transferHash})`);
+        }
 
-        // NOTE: simulateContract (eth_call) ALWAYS reverts for InEuint64
-        // args — CoFHE only processes FHE proofs in real txs, not eth_call.
-        // Skip simulation and send directly.
-        const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+        // ── 2. escrow.fund record ──
+        await new Promise((r) => setTimeout(r, 8000));
+        const recEnc = await encryptAmount(amount, (step) =>
+          console.log('[FHE Fund Encrypt #2 record]', step)
+        );
+        const fFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
         const hash = await withRateLimitRetry(() => writeContractAsync({
           address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
           abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
           functionName: 'fund',
-          args: [escrowId, enc[0]],
+          args: [escrowId, recEnc[0]],
           account: address,
           chain: arbitrumSepolia,
-          maxFeePerGas: fees.maxFeePerGas,
-          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
-          gas: 1_500_000n,
+          maxFeePerGas: fFees.maxFeePerGas,
+          maxPriorityFeePerGas: fFees.maxPriorityFeePerGas,
+          gas: 800_000n,
         }));
         const receipt = await withRateLimitRetry(() => publicClient.waitForTransactionReceipt({ hash }));
         if (receipt.status !== 'success') {
-          throw new Error(`fund() tx reverted on-chain (hash: ${hash})`);
+          throw new Error(`escrow.fund record reverted (hash: ${hash})`);
         }
         setTxHash(hash);
         fheStatus.setStep(FHEStepStatus.READY);
@@ -304,7 +351,7 @@ export function useCUSDCEscrow() {
         throw error;
       }
     },
-    [publicClient, walletClient, writeContractAsync, address, fheStatus, ensureOperator]
+    [publicClient, walletClient, writeContractAsync, address, fheStatus]
   );
 
   const redeem = useCallback(

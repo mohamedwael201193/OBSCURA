@@ -6,6 +6,71 @@
 
 ---
 
+---
+
+## 🔧 Hotfix #2 (Apr 30, 2026) — Confidential Escrow funding (root cause + final fix)
+
+**Symptom (after Hotfix #1):**
+The on-chain `fund()` tx against `0x21003b8D…` reverted with custom error
+`0x7ba5ffb5(0xf1b93b2b…1862, 0x013a19c3…fe71)` — selector decoded via OpenChain
+signature DB to **`InvalidSigner(address,address)`**. Neither address belongs to
+the user, escrow, or cUSDC; both are CoFHE-internal recovered signers.
+
+**Real root cause:**
+CoFHE's `InEuint64` proofs cannot be **proxied through an intermediary contract**.
+When the user encrypts an amount and submits it directly to a contract they call
+(e.g., `escrow.create` or `cUSDC.confidentialTransfer`), the proof's recovered
+signer matches the immediate caller of `FHE.asEuint64` and verification passes.
+But when the escrow **forwards the same proof** to `cUSDC.confidentialTransferFrom`,
+the immediate caller of CoFHE's input verifier becomes the escrow contract, so
+the recovered signer no longer matches the expected one → `InvalidSigner` revert
+deep inside the cUSDC sub-call.
+
+This is a **fundamental CoFHE architectural constraint**, not a bug we can patch
+inside the escrow contract. The proof is bound to the caller of the verifier.
+
+**Final fix (3-tx model):**
+
+1. **`ObscuraConfidentialEscrow.sol`** — `fund()` is now a **record-only**
+   function. It no longer calls `cUSDC.confidentialTransferFrom` and no longer
+   requires the operator approval. It only consumes a fresh `InEuint64`
+   (immediate caller = escrow → CoFHE accepts) and accumulates `paidAmount`
+   homomorphically. Function signature unchanged for ABI compatibility.
+
+2. **`useCUSDCEscrow.create()`** — now drives a 3-tx flow per escrow creation:
+   1. **`escrow.create(encOwner, encAmount, resolver, data)`** — escrow consumes
+      the (owner, amount) proof itself. Returns `escrowId`.
+   2. **`cUSDC.confidentialTransfer(escrowAddress, encAmount)`** — user
+      transfers cUSDC directly into the escrow contract's confidential balance.
+      Immediate caller is the user → CoFHE accepts.
+   3. **`escrow.fund(escrowId, encAmount)`** — escrow consumes a third proof
+      itself and increments `paidAmount`. The actual cUSDC already lives in
+      the escrow's confidential balance from step 2.
+
+   Each step uses a **fresh single-use `InEuint64`** (CoFHE marks proofs
+   consumed) with an 8-second pacing delay between encryptions for proof commit.
+
+3. **`useCUSDCEscrow.fund()`** — manual fund is now the 2-tx subset (steps 2
+   and 3 above) for retrying a failed fund or topping up an existing escrow.
+
+4. **Redeployed** escrow to **`0xF893F3c1603E0E9B01be878a0E7e369fF704CCF1`**
+   (Arbitrum Sepolia). Old (still-broken) address `0x21003b8D…` retired.
+
+5. **`.env`** + **`deployments/arb-sepolia.json`** updated to the new address.
+
+**Trust model:** The `paidAmount` recorded in step 3 is caller-asserted. If the
+user under-reports, redeem fails the encrypted `isPaid >= amount` check; if the
+user over-reports, redeem succeeds but `cUSDC.confidentialTransfer` from the
+escrow reverts with insufficient balance. Either way, only the caller is hurt.
+
+**Validation method for unknown CoFHE selectors going forward:** OpenChain's
+public signature DB (`https://api.openchain.xyz/signature-database/v1/lookup`)
+correctly resolved `0x7ba5ffb5` when neither 4byte.directory, the
+`@fhenixprotocol/cofhe-contracts` source, nor brute-force keccak256 of ~40
+candidate signatures matched.
+
+---
+
 ## 🔧 Hotfix (Apr 30, 2026) — Confidential Escrow auto-fund
 
 **Symptoms:**

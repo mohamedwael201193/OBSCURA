@@ -114,32 +114,32 @@ contract ObscuraConfidentialEscrow {
         emit EscrowCreated(escrowId, msg.sender, _resolver);
     }
 
-    /// @notice Fund an escrow by pulling encrypted cUSDC from the caller.
-    /// @dev Caller MUST have called `cUSDC.setOperator(address(this), until)`
-    ///      with `until > block.timestamp`. We forward the raw InEuint64 to
-    ///      cUSDC's InEuint64 overload (selector 0x7edb0e7d) — the deployed
-    ///      cUSDC does NOT expose the uint256-handle overload, so we cannot
-    ///      convert client-side. We additionally store the same proof as a
-    ///      euint64 handle locally for paidAmount accumulation.
+    /// @notice Record that the caller has funded this escrow with cUSDC.
+    /// @dev    The actual confidential cUSDC transfer MUST be performed
+    ///         in a separate, prior transaction by the caller:
+    ///             cUSDC.confidentialTransfer(address(escrow), encAmount)
+    ///         This contract cannot proxy `cUSDC.confidentialTransferFrom`
+    ///         because CoFHE rejects InEuint64 proofs that are forwarded
+    ///         through an intermediary contract (custom error
+    ///         `InvalidSigner(address,address)` selector 0x7ba5ffb5 — the
+    ///         proof's recovered signer must match the immediate caller of
+    ///         the consuming function). Instead, the user transfers cUSDC
+    ///         directly to this contract's confidential balance, then
+    ///         calls `fund()` here with a *separate* InEuint64 of the
+    ///         same plaintext amount. The escrow consumes that proof
+    ///         itself (immediate caller = escrow → CoFHE accepts) and
+    ///         accumulates `paidAmount` homomorphically.
+    ///
+    /// @dev    Trust model: the caller asserts the funded amount. Under-
+    ///         reporting causes redeem to fail the `isPaid >= amount`
+    ///         check; over-reporting causes redeem's cUSDC.confidential-
+    ///         Transfer to revert (insufficient balance). Either way,
+    ///         only the caller is hurt.
     function fund(uint256 _escrowId, InEuint64 calldata _encPayment) external {
         Escrow storage esc = escrows[_escrowId];
         require(esc.exists, "no escrow");
         require(!esc.cancelled, "cancelled");
-        require(cUSDC.isOperator(msg.sender, address(this)), "not operator");
 
-        // Forward the user's InEuint64 directly to cUSDC. cUSDC verifies
-        // the proof internally, decrypts, and moves the encrypted balance.
-        bool ok = cUSDC.confidentialTransferFrom(
-            msg.sender,
-            address(this),
-            _encPayment
-        );
-        require(ok, "cUSDC pull failed");
-
-        // Also bind the same encrypted input as a local handle so we can
-        // accumulate paidAmount homomorphically. CoFHE allows the same
-        // InEuint64 to be cast to a euint64 handle in the same tx as the
-        // cUSDC consumed it (proof was just verified above).
         euint64 paymentH = FHE.asEuint64(_encPayment);
         esc.paidAmount = FHE.add(esc.paidAmount, paymentH);
         FHE.allowThis(esc.paidAmount);

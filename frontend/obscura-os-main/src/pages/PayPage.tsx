@@ -46,6 +46,7 @@ import CUSDCEscrowForm from "@/components/pay-v4/CUSDCEscrowForm";
 import CUSDCEscrowActions from "@/components/pay-v4/CUSDCEscrowActions";
 import MyEscrows from "@/components/pay-v4/MyEscrows";
 import BatchEscrowForm from "@/components/pay-v4/BatchEscrowForm";
+import ClaimEscrowCard from "@/components/pay-v4/ClaimEscrowCard";
 import CreateStreamForm from "@/components/pay-v4/CreateStreamForm";
 import CreateStreamFormV2 from "@/components/pay-v4/CreateStreamFormV2";
 import StreamList from "@/components/pay-v4/StreamList";
@@ -573,10 +574,25 @@ const PayPage = () => {
           />
         );
 
-      case "escrow":
+      case "escrow": {
         if (!isConnected) return <NotConnected message="Connect your wallet to manage encrypted escrows." />;
+        // Read ?claim and ?contract on every render so the hero card stays
+        // visible after the user redeems and we don't have to remount.
+        let claimId: string | null = null;
+        let contractParam: string | null = null;
+        if (typeof window !== "undefined") {
+          try {
+            const params = new URLSearchParams(window.location.search);
+            const c = params.get("claim");
+            if (c && /^\d+$/.test(c)) claimId = c;
+            contractParam = params.get("contract");
+          } catch { /* ignore */ }
+        }
         return (
           <div className="space-y-4">
+            {claimId && (
+              <ClaimEscrowCard claimId={claimId} contractParam={contractParam} />
+            )}
             <Card>
               <CardHeader title="Create an escrow" eyebrow="Escrow" />
               <div className="p-5"><CUSDCEscrowForm /></div>
@@ -599,6 +615,7 @@ const PayPage = () => {
             </Card>
           </div>
         );
+      }
 
       case "insurance":
         if (!isConnected) return <NotConnected message="Connect your wallet to buy or manage insurance." />;

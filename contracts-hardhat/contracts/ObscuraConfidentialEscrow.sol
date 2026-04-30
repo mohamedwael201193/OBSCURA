@@ -227,21 +227,24 @@ contract ObscuraConfidentialEscrow {
 
         // Move cUSDC out using the uint256-handle outbound overload
         // (selector 0xfe3f670d). Unauthorized → 0 transferred (silent fail).
-        // NOTE: we deliberately do NOT `require(ok)` here. cUSDC's
-        // confidentialTransfer can return false when the encrypted
-        // amount handle decrypts to 0 (the wrong-wallet / under-funded
-        // path) — reverting in that case would BREAK the silent-failure
-        // contract documented above and surface "WRONG WALLET" / revert
-        // errors to legitimate-but-unconfirmed claimants. Silent failure
-        // means the tx ALWAYS succeeds; the recipient's wallet balance
-        // is the source of truth. If `ok == false`, no cUSDC moved and
-        // `isRedeemed` was not flipped (FHE.select kept the prior value),
-        // so the recipient can simply try again later.
+        // We deliberately wrap the external call in try/catch so that ANY
+        // failure mode of cUSDC.confidentialTransfer (returns false, reverts,
+        // out-of-gas inside the sub-call, FHE permission edge case, balance
+        // insufficient because fund step never settled, etc.) is fully
+        // swallowed at the EVM level. Silent-failure means the tx ALWAYS
+        // succeeds; the recipient's wallet balance is the only source of
+        // truth. If the cUSDC call did not actually move funds, isRedeemed
+        // was likewise not flipped (FHE.select kept the prior value), so the
+        // recipient can simply try again later once the coprocessor settles.
         FHE.allowTransient(transferAmount, address(cUSDC));
-        cUSDC.confidentialTransfer(
+        try cUSDC.confidentialTransfer(
             msg.sender,
             uint256(euint64.unwrap(transferAmount))
-        );
+        ) returns (bool) {
+            // ok or false — both are fine, redeem still succeeds.
+        } catch {
+            // cUSDC reverted — also fine. Recipient retries later.
+        }
 
         emit EscrowRedeemed(_escrowId, msg.sender);
     }

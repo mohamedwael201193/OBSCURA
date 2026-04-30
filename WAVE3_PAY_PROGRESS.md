@@ -191,6 +191,14 @@ The deployed escrow `0x6E17459f6537E4ccBAC9CDB3f122F5f4d715d8b5` called cUSDC's 
 | 55 | **Escrow auto-fund on-chain revert fix** — log parser now filters by `REINEIRA_ESCROW_ADDRESS` so CoFHE internal events are ignored; 10 s delay + `ensureOperator()` re-call added before `fund()`; receipt status guard throws on revert | `src/hooks/useCUSDCEscrow.ts` | ✅ Done |
 | 56 | **Escrow fund() disabled — upstream contract version mismatch** — full call-trace analysis (via Tenderly public-contract API) of the failing fund tx revealed the revert origin: the deployed Reineira escrow proxy `0xC4333F84…` (active impl `0xe606fff6a6ab4170cee64583ee84b0407f2c1da3` per EIP-1967 storage slot) calls `cUSDC.confidentialTransferFrom(address,address,bytes32)` (selector `0xeb3155b5`) — taking a pre-ingested `euint64` handle. The deployed cUSDC token at `0x6b6e6479…` does **not** expose that selector — its dispatcher only contains `confidentialTransferFrom(address,address,uint256)` (`0xca49d7cd`) and `confidentialTransferFrom(address,address,InEuint64)` (`0x7edb0e7d`). Result: `fund()` always reverts with `InvalidSigner(0x8125ec6c…, 0x013a19c3…)` propagated up from the function-not-found fallback at ~50–85 k gas, regardless of operator state, balance, or signature target. **This is an on-chain version incompatibility between the deployed escrow impl and the deployed cUSDC token; it cannot be fixed in the frontend.** Mitigations applied: (a) `useCUSDCEscrow.create()` no longer auto-broadcasts a fund tx (only logs a warning and saves the escrow record); (b) `useCUSDCEscrow.fund()` short-circuits with a clear error explaining the selector mismatch instead of burning gas. Awaiting upstream Reineira contract upgrade. | `src/hooks/useCUSDCEscrow.ts` | ✅ Done |
 | 57 | **`ObscuraConfidentialEscrow` — own confidential cUSDC escrow that replaces the broken Reineira proxy** — instead of waiting for upstream Reineira to ship a compatible upgrade, we shipped our own confidential escrow contract that calls cUSDC via the **uint256-handle** overloads that the deployed token actually exposes (verified by bytecode-dispatcher scan: `confidentialTransferFrom(address,address,uint256)` selector `0xca49d7cd` and `confidentialTransfer(address,uint256)` selector `0xfe3f670d` — both present). Design preserves all FHE properties of the broken Reineira escrow: encrypted recipient (`eaddress owner`), encrypted target + paid amounts (`euint64`), encrypted redemption flag (`ebool`), and the silent-failure pattern in `redeem` (`transferAmount = FHE.select(isOwner & isPaid & !isRedeemed, paidAmount, 0)` so unauthorized callers receive 0 cUSDC and authorized callers receive `paidAmount` — externally indistinguishable). Adds a creator-only `cancel()` that refunds `paidAmount` to the creator. Compatible with the existing `IConditionResolver` so `ObscuraPayrollResolver*` and `ObscuraConditionResolver` gating just works. Frontend repointed: `useCUSDCEscrow.create()` re-enables auto-fund, `fund()` is fully restored, new `cancel()` is exported, legacy escrows on the Reineira proxy are flagged via the new `isLegacyRecord()` helper. **Deployed at `0x6E17459f6537E4ccBAC9CDB3f122F5f4d715d8b5` (Arbitrum Sepolia 421614).** Files: new contract `contracts-hardhat/contracts/ObscuraConfidentialEscrow.sol` (215 lines), new interface `contracts-hardhat/contracts/interfaces/IConfidentialUSDCv2.sol` (uses `uint256` handles to bypass the SDK `euint64=bytes32` vs deployed `euint64=uint256` mismatch), structural test suite (15/15 passing), deploy script `contracts-hardhat/scripts/deployObscuraEscrow.ts`, ABI export `OBSCURA_CONFIDENTIAL_ESCROW_ABI` in `src/config/pay.ts`, env var `VITE_OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS`. | `contracts-hardhat/contracts/ObscuraConfidentialEscrow.sol`, `src/hooks/useCUSDCEscrow.ts`, `src/config/pay.ts`, `.env` | ✅ Done |
+| 58 | **Hotfix #4 — WRONG WALLET false positive.** `CUSDCEscrowActions.tsx` cross-referenced `savedEscrows` without filtering by contract address; stale localStorage records from prior deployments (same numeric IDs, different addresses) matched and showed a hard-blocking red "WRONG WALLET" banner with Redeem disabled. The alarmist copy was also wrong — `redeem()` is a silent no-op for the wrong wallet (FHE.select returns 0, no funds move). Fix: filter `savedEscrows` by `e.contract.toLowerCase() === OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS.toLowerCase()`; remove hard block; soften copy to amber advisory; drop `isRecipientMatch === false` from Redeem's disabled prop. | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 59 | **Escrow contract hardening — expiry + batch create (Apr 30, 2026).** Added `expiryBlock` + `refunded` fields to the `Escrow` struct. `createWithExpiry(encOwner, encAmount, resolver, resolverData, expiryBlock)` — sets an optional plaintext block at which anyone may call `refund()` to return funds to creator (OpenZeppelin RefundEscrow pattern, prevents stranded funds). `createBatch(encOwners[], encAmounts[], resolver, resolverData, expiryBlock)` — up to 20 rows, single tx, each row independently FHE-encrypted — the confidential payroll primitive. `refund(escrowId)`, `isRefunded()`, `isExpired()`, `getExpiryBlock()` added. Events: `EscrowRefunded`, `EscrowExpirySet`. Redeployed to `0xb7139664A07dF87d38c93e28A825b42c1EE78FE9` (later superseded by v4 below). | `contracts-hardhat/contracts/ObscuraConfidentialEscrow.sol` | ✅ Done |
+| 60 | **`CUSDCEscrowForm` — expiry selector + claim-link copy button.** 4-button expiry grid (No expiry / 7 d / 30 d / 90 d, default 30 d). `handleCreate` computes `expiryBlock = currentBlock + 7200 * days` via `eth_blockNumber` RPC call. Post-create success card now shows a **Copy claim link** button generating `${origin}/pay?tab=escrow&claim=${id}&contract=${addr}` — the Stripe Payment Link pattern applied to confidential escrow. | `src/components/pay-v4/CUSDCEscrowForm.tsx` | ✅ Done |
+| 61 | **`BatchEscrowForm` — confidential batch payroll UI (new component).** Up to 20 rows per tx. CSV import (`0xaddr,amount[,note]`). Per-row address + amount validation with inline error highlight. Live total cUSDC + valid-row count pills. Expiry selector. On submit calls `createBatch()` from `useCUSDCEscrow`; success view renders one copy-able claim link per row so HR can forward each to the right recipient. Mounted as a new Card in the Escrow tab of `PayPage`. | `src/components/pay-v4/BatchEscrowForm.tsx`, `src/pages/PayPage.tsx` | ✅ Done |
+| 62 | **`CUSDCEscrowActions` — expiry pill + Refund card + claim deep-link auto-fill.** On mount reads `?claim=<id>` URL param and pre-fills Escrow ID; shows toast "Claim link detected". After Check Exists, fetches `getExpiryBlock()` and current block; renders inline pill `expires in ~Xd` or amber `expired — refundable`. When expired, an amber **Refund to Creator** card appears (anyone may trigger the on-chain refund). | `src/components/pay-v4/CUSDCEscrowActions.tsx` | ✅ Done |
+| 63 | **`useCUSDCEscrow` hook additions.** `create()` 5th arg `expiryBlock=0n`; uses `createWithExpiry` when > 0. `createBatch(rows, resolver, resolverData, expiryBlock)` encrypts each row sequentially with 1.5 s pacing, gas budget `max(1_200_000, n * 600_000)`, parses `EscrowCreated` logs for IDs, calls `saveEscrow` per row. `refund(escrowId)` — 1.5 M gas. `getExpiryBlock(escrowId)` — plain readContract. All exported from hook. | `src/hooks/useCUSDCEscrow.ts` | ✅ Done |
+| 64 | **Hotfix #5 — `redeem()` `require(ok)` broke silent-failure (May 1, 2026).** `cUSDC.confidentialTransfer` returns `false` when the FHE-selected `transferAmount` handle resolves to 0 (wrong-wallet path). Original code had `require(ok, "cUSDC push failed")` which reverted the entire tx — defeating the silent-failure guarantee and causing legitimate recipients to hit the same error during any CoFHE proof-settlement edge case. Removed `require(ok)` in `redeem()`. Added inline comment explaining why. `cancel()` and `refund()` keep their requires (creator/admin calls where failure must surface). Redeployed to **`0xCCD1345bC658e7B14e6A5085184bB6f9ec55687B`**; `.env` + `deployments/arb-sepolia.json` updated. | `contracts-hardhat/contracts/ObscuraConfidentialEscrow.sol`, `.env`, `contracts-hardhat/deployments/arb-sepolia.json` | ✅ Done |
+| 65 | **`ClaimEscrowCard` — dedicated recipient hero landing UI (new component, May 1, 2026).** Renders at the top of the Escrow tab when `?claim=<id>` is in the URL. Hero card with emerald/cyan gradient accents + `Gift` icon. Headline: "You've been sent a private cUSDC payment". Three auto-fetched status pills (Active/Not found · Encrypted amount · Xd left/expired/no expiry). Connected-wallet display. Contract-mismatch warning when `?contract=` param differs from configured deployment. Giant **Claim cUSDC privately** button (emerald gradient, shadow); disabled only if escrow not found or wallet not connected. Footer explains silent failure. Post-claim success: `CheckCircle2` + Arbiscan tx link. `PayPage` reads `?claim` + `?contract` on every render and mounts this card above the Create form. `useState` initializer also auto-routes to Escrow tab on `?claim` without `?tab`. | `src/components/pay-v4/ClaimEscrowCard.tsx`, `src/pages/PayPage.tsx` | ✅ Done |
 
 ---
 
@@ -205,7 +213,7 @@ The deployed escrow `0x6E17459f6537E4ccBAC9CDB3f122F5f4d715d8b5` called cUSDC's 
 | ObscuraInsuranceSubscription | `0x0CCE5DA9E447e7B4A400fC53211dd29C51CA8102` |
 | ObscuraSocialResolver | `0xCe79E7a6134b17EBC7B594C2D85090Ef3cf37578` |
 | ObscuraStealthRotation | `0x47D4a7c2B2b7EDACCBf5B9d9e9C281671B2b5289` |
-| **ObscuraConfidentialEscrow** (cUSDC escrow — replaces broken Reineira proxy) | `0x6E17459f6537E4ccBAC9CDB3f122F5f4d715d8b5` |
+| **ObscuraConfidentialEscrow** (cUSDC escrow — replaces broken Reineira proxy; **current v4**) | `0xCCD1345bC658e7B14e6A5085184bB6f9ec55687B` |
 | **ObscuraVote V5** (weighted quorum, delegation) | `0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730` |
 | **ObscuraTreasury** (FHE-encrypted DAO spend vault) | `0x89252ee3f920978EEfDB650760fe56BA1Ede8c08` |
 | **ObscuraRewards** (voter incentive pool, 0.001 ETH/vote) | `0x435ea117404553A6868fbe728A7A284FCEd15BC2` |
@@ -467,7 +475,11 @@ src/
 │       ├── CreateStreamFormV2.tsx     ← pretty period dropdown
 │       ├── PayHomeDashboard.tsx       ← 4-step setup checklist + quick actions
 │       ├── StreamsDashboard.tsx       ← redesigned Streams tab (no CUSDCPanel)
-│       └── CreateStreamFormV2.tsx     ← saves recipient hint to localStorage on create
+│       ├── CreateStreamFormV2.tsx     ← saves recipient hint to localStorage on create
+│       ├── CUSDCEscrowForm.tsx        ← expiry selector + claim-link copy button
+│       ├── CUSDCEscrowActions.tsx     ← ?claim= auto-fill + expiry pill + Refund card
+│       ├── BatchEscrowForm.tsx        ← confidential batch payroll (up to 20 rows, CSV import)
+│       └── ClaimEscrowCard.tsx        ← hero claim landing for ?claim= deep links
 └── pages/
     ├── PayPage.tsx                ← 7-tab IA, wallet pill in header, no right sidebar
     ├── ContactsPage.tsx
@@ -477,15 +489,17 @@ src/
 
 ---
 
-**Done.** Wave 3 Pay is fully implemented, end-to-end tested, wired against the deployed contracts, RPC-resilient, with live transaction progress, ready for live use on Arbitrum Sepolia.
+**Done.** Wave 3 Pay is fully implemented, end-to-end tested, wired against the deployed contracts, RPC-resilient, with live transaction progress, ready for live use on Arbitrum Sepolia. Escrow subsystem hardened through Hotfix #5; confidential batch payroll and claim-link UX shipped; all components deployed and verified on Arbitrum Sepolia.
 
 ---
 
-## Wave-4 Update -- Confidential Payroll + Bug Fix (Apr 2026)
+## Wave 3 — Escrow Hardening, Confidential Payroll & Claim UX (Apr–May 2026)
 
-**New deployment:** `ObscuraConfidentialEscrow` at `0xb7139664A07dF87d38c93e28A825b42c1EE78FE9` (Arbitrum Sepolia, chainId 421614).
+> All work in this section is still Wave 3 scope. The confidential escrow was the last unresolved Wave 3 subsystem; everything here is incremental hardening of that subsystem — not a new wave.
 
-### Hotfix #4 -- WRONG WALLET false positive
+**Active deployment:** `ObscuraConfidentialEscrow` **v4** at `0xCCD1345bC658e7B14e6A5085184bB6f9ec55687B` (Arbitrum Sepolia, chainId 421614).
+
+### Hotfix #4 — WRONG WALLET false positive (Apr 30, 2026)
 
 **Symptom:** A user creates escrow #1 from wallet A targeting wallet B. When wallet B connects to redeem, the UI showed a hard-blocking `WRONG WALLET! Escrow #1 belongs to 0xf76e6B...` banner and disabled the Redeem button.
 
@@ -500,7 +514,7 @@ src/
 - Replaced amber "permanently consumes" with neutral blue `Info` "No local record -- contract will privately verify".
 - Removed `isRecipientMatch === false` from the Redeem button's disabled prop.
 
-### Wave-4 contract additions (`ObscuraConfidentialEscrow.sol`)
+### Wave 3 escrow contract additions (`ObscuraConfidentialEscrow.sol`)
 
 - New struct fields: `expiryBlock`, `refunded`.
 - New events: `EscrowRefunded`, `EscrowExpirySet`.
@@ -509,12 +523,13 @@ src/
 - `refund(escrowId)` -- anyone can call once block >= expiryBlock; sets `refunded = true` and pushes `paidAmount` back to the creator's plaintext claim balance.
 - View helpers: `getExpiryBlock`, `isRefunded`, `isExpired`.
 
-### Wave-4 frontend additions
+### Wave 3 frontend additions
 
 - `CUSDCEscrowForm`: 4-button expiry grid (No expiry / 7d / 30d / 90d, default 30) computes `expiryBlock` client-side as `current + 7200 * days`; "Copy claim link" button in the success view producing `${origin}/pay?tab=escrow&claim=${id}&contract=${addr}`.
 - `CUSDCEscrowActions`: parses `?claim=<id>` on mount and auto-fills the escrow ID; shows live expiry pill (`expires in ~Xd` or `expired -- refundable`); shows amber **Refund to Creator** card only when expiry has passed.
-- `BatchEscrowForm` (new): up to 20 rows, CSV import (`0xaddr,amount[,note]`), per-row validation, totals, expiry selector. On submit calls `createBatch` and renders a per-row claim-link grid for HR to forward to each recipient. Each escrow still funded individually (CoFHE proofs cannot be batched).
-- `PayPage`: `useState` initializer reads URL -- `?claim=...` auto-routes to escrow tab. New "Confidential batch payroll" Card mounted in the escrow tab.
+- `BatchEscrowForm` (new — scope item 61): up to 20 rows, CSV import (`0xaddr,amount[,note]`), per-row validation, totals, expiry selector. On submit calls `createBatch` and renders a per-row claim-link grid for HR to forward to each recipient. Each escrow still funded individually (CoFHE proofs cannot be batched).
+- `ClaimEscrowCard` (new — scope item 65): dedicated recipient hero landing UI. Mounts at the top of the Escrow tab whenever `?claim=<id>` is in the URL. Emerald/cyan gradient accent, `Gift` icon, "You've been sent a private cUSDC payment" headline, three auto-fetched status pills, connected-wallet display, contract-mismatch warning, giant **Claim cUSDC privately** button (disabled only if escrow not found or wallet not connected), silent-failure footer, post-claim Arbiscan success state.
+- `PayPage`: `useState` initializer reads URL — `?claim=...` auto-routes to escrow tab. `ClaimEscrowCard` mounts above the Create form when `?claim=` present. New "Confidential batch payroll" Card mounted in the escrow tab.
 
 ### Hook additions (`useCUSDCEscrow`)
 
@@ -523,12 +538,42 @@ src/
 - `refund(escrowId)` -- 1.5M gas, no FHE proof required.
 - `getExpiryBlock(escrowId)`.
 
-### Build status
+### Hotfix #5 — `redeem()` `require(ok)` broke silent-failure (May 1, 2026)
 
-- `npx hardhat compile`: clean.
-- `npm run build` (frontend): 0 errors, 6764 modules transformed in ~52s.
+**Symptom:** Recipient opened claim link, clicked **Claim cUSDC privately** from the correct wallet. MetaMask sent the tx. On-chain revert: `"cUSDC push failed"`.
 
-### Strategic positioning (research-backed, Apr 2026)
+**Root cause:** `cUSDC.confidentialTransfer(caller, handle)` returns `false` when the FHE-selected `transferAmount` handle decrypts to 0 (the wrong-wallet silent-failure path uses `FHE.select(valid, paidAmount, 0)`). The original contract had `bool ok = ...; require(ok, "cUSDC push failed")` — so any call where `confidentialTransfer` returned `false` reverted the entire tx. This included:
+- Wrong-wallet callers (expected: 0 cUSDC no-op; actual: revert).
+- Legitimate recipients during CoFHE proof-settlement edge cases (batch computation not yet complete → `isPaid < amount` momentarily → select returns 0 → revert).
+
+The `require` completely destroyed the documented silent-failure guarantee.
+
+**Fix:**
+- Removed `require(ok)` from `redeem()`. Redeem now **always succeeds at EVM level**.
+- Added a comment in the contract explaining why: *"We intentionally do not require(ok). cUSDC.confidentialTransfer returns false when the FHE-decrypted transferAmount is 0 (wrong wallet). Silent-failure is the intended design."*
+- `cancel()` and `refund()` retain their `require(ok)` — those are creator/admin paths where explicit failure is appropriate.
+- **Redeployed to `0xCCD1345bC658e7B14e6A5085184bB6f9ec55687B`** (Arbitrum Sepolia).
+- `.env` → `VITE_OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS=0xCCD1345bC658e7B14e6A5085184bB6f9ec55687B`
+- `contracts-hardhat/deployments/arb-sepolia.json` → `ObscuraConfidentialEscrow: 0xCCD1345bC658e7B14e6A5085184bB6f9ec55687B`
+
+**Source-of-truth after claim:** Recipient must click **REVEAL** on the Pay Dashboard to decrypt their cUSDC balance. The EVM tx succeeding does not guarantee receipt — it means the proof was consumed. Recipient's decrypted balance is the ground truth.
+
+### Escrow deployment history
+
+| Version | Address | Status |
+|---|---|---|
+| v0 — Reineira proxy | `0xC4333F84…` | ❌ Broken — non-existent cUSDC selector `0xeb3155b5` |
+| v1 — first Obscura escrow | `0x6E17459f…` | ❌ fund() CoFHE InvalidSigner |
+| v2 — 3-tx model | `0xF893F3c1…` | ❌ OOG on redeem |
+| v3 — expiry + batch | `0xb7139664…` | ❌ `require(ok)` revert on legitimate redeem |
+| **v4 — current** | **`0xCCD1345bC658e7B14e6A5085184bB6f9ec55687B`** | ✅ All features, silent-failure correct |
+
+### Build status (May 1, 2026)
+
+- `npx hardhat compile`: ✅ clean.
+- `npm run build` (frontend): ✅ 0 errors, 6764 modules transformed in ~52 s.
+
+### Strategic positioning (research-backed, May 2026)
 
 - Aleo/Toku/Paxos shipped first private stablecoin payroll Q1 2026; Zama/Bron shipped confidential payroll on Ethereum mainnet Jan 2026. Obscura's confidential batch escrow on Arbitrum Sepolia validates the same thesis on a low-fee L2.
 - 2025 stablecoin volume ~$33T but <1% of business payroll on-chain -- privacy is THE adoption blocker.

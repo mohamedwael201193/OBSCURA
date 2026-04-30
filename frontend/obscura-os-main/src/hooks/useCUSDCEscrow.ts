@@ -155,7 +155,7 @@ export function useCUSDCEscrow() {
 
         // ── 1. create ──
         const createFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-        const hash = await writeContractAsync({
+        const hash = await withRateLimitRetry(() => writeContractAsync({
           address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
           abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
           functionName: 'create',
@@ -170,11 +170,11 @@ export function useCUSDCEscrow() {
           maxFeePerGas: createFees.maxFeePerGas,
           maxPriorityFeePerGas: createFees.maxPriorityFeePerGas,
           gas: 1_200_000n,
-        });
+        }));
 
         // Parse escrow id from EscrowCreated(uint256 indexed escrowId, …)
         // emitted by THIS contract (filter to avoid CoFHE internal events).
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        const receipt = await withRateLimitRetry(() => publicClient.waitForTransactionReceipt({ hash }));
         let escrowId = '?';
         for (const log of receipt.logs) {
           if (
@@ -220,7 +220,7 @@ export function useCUSDCEscrow() {
           );
 
           const fundFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-          const fundHash = await writeContractAsync({
+          const fundHash = await withRateLimitRetry(() => writeContractAsync({
             address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
             abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
             functionName: 'fund',
@@ -230,8 +230,8 @@ export function useCUSDCEscrow() {
             maxFeePerGas: fundFees.maxFeePerGas,
             maxPriorityFeePerGas: fundFees.maxPriorityFeePerGas,
             gas: 1_500_000n,
-          });
-          const fundReceipt = await publicClient.waitForTransactionReceipt({ hash: fundHash });
+          }));
+          const fundReceipt = await withRateLimitRetry(() => publicClient.waitForTransactionReceipt({ hash: fundHash }));
           if (fundReceipt.status !== 'success') {
             throw new Error(`Auto-fund tx reverted on-chain (hash: ${fundHash})`);
           }
@@ -281,7 +281,7 @@ export function useCUSDCEscrow() {
         // args — CoFHE only processes FHE proofs in real txs, not eth_call.
         // Skip simulation and send directly.
         const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-        const hash = await writeContractAsync({
+        const hash = await withRateLimitRetry(() => writeContractAsync({
           address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
           abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
           functionName: 'fund',
@@ -291,8 +291,8 @@ export function useCUSDCEscrow() {
           maxFeePerGas: fees.maxFeePerGas,
           maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
           gas: 1_500_000n,
-        });
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        }));
+        const receipt = await withRateLimitRetry(() => publicClient.waitForTransactionReceipt({ hash }));
         if (receipt.status !== 'success') {
           throw new Error(`fund() tx reverted on-chain (hash: ${hash})`);
         }

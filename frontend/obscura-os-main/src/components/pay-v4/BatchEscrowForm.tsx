@@ -42,8 +42,18 @@ export default function BatchEscrowForm() {
   const [createdHash, setCreatedHash] = useState<`0x${string}` | null>(null);
   const [linkCopiedIdx, setLinkCopiedIdx] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Auto-fund per-row state. CoFHE proofs cannot be batched (each
+  // InEuint64 is wallet-bound to its immediate caller), so funding is
+  // a sequential client-side loop of 2 txs per escrow:
+  //   (a) cUSDC.confidentialTransfer(escrow, encAmt)
+  //   (b) escrow.fund(id, encAmt) -- record paidAmount
+  type FundStatus = "pending" | "funding" | "done" | "failed";
+  const [fundingResults, setFundingResults] = useState<
+    Array<{ id: string; status: FundStatus; error?: string }>
+  >([]);
+  const [fundingIndex, setFundingIndex] = useState<number | null>(null);
 
-  const { createBatch, status, stepIndex, isTxPending, reset } = useCUSDCEscrow();
+  const { createBatch, fund, status, stepIndex, isTxPending, reset } = useCUSDCEscrow();
   const usdcBalance = useUSDCBalance();
 
   const isProcessing = status !== "idle" && status !== "ready" && status !== "error";
@@ -150,16 +160,56 @@ export default function BatchEscrowForm() {
       setCreatedIds(ids);
       setCreatedHash(hash);
       toast.success(
-        `Created ${ids.length} confidential escrows in one tx. ` +
-        `${expiryDays > 0 ? `Auto-refund in ${expiryDays} days. ` : ""}` +
-        `Each row will need to be funded individually (CoFHE proofs cannot be batched).`,
-        { duration: 12000 }
+        `Created ${ids.length} confidential escrows. Now auto-funding each (${ids.length * 2} txs)…`,
+        { duration: 8000 }
       );
+
+      // ── Auto-fund loop ───────────────────────────────────────
+      // Mirrors the single-create flow: 2 txs per escrow. CoFHE
+      // proofs are wallet-bound so we cannot batch — but we can
+      // queue them sequentially without user clicks between rows.
+      const initial = ids.map((id) => ({ id, status: "pending" as FundStatus }));
+      setFundingResults(initial);
+      let okCount = 0;
+      let failCount = 0;
+      for (let i = 0; i < ids.length; i++) {
+        setFundingIndex(i);
+        setFundingResults((prev) =>
+          prev.map((r, idx) => (idx === i ? { ...r, status: "funding" } : r))
+        );
+        try {
+          await fund(BigInt(ids[i]), payload[i].amount);
+          okCount++;
+          setFundingResults((prev) =>
+            prev.map((r, idx) => (idx === i ? { ...r, status: "done" } : r))
+          );
+        } catch (fundErr) {
+          failCount++;
+          const msg = (fundErr as Error).message || String(fundErr);
+          setFundingResults((prev) =>
+            prev.map((r, idx) =>
+              idx === i ? { ...r, status: "failed", error: msg.slice(0, 140) } : r
+            )
+          );
+          // Continue to next row — partial success is better than aborting.
+          console.warn(`[BatchFund] row ${i} (escrow #${ids[i]}) failed:`, msg);
+        }
+      }
+      setFundingIndex(null);
+      if (failCount === 0) {
+        toast.success(`All ${okCount} escrows funded. Recipients can now claim.`, { duration: 10000 });
+      } else {
+        toast.warning(
+          `Funded ${okCount}/${ids.length}. ${failCount} failed — retry from Escrow Actions → Fund.`,
+          { duration: 14000 }
+        );
+      }
     } catch (err) {
       toast.error((err as Error).message || "Batch create failed");
     } finally {
       setSubmitting(false);
     }
+  };
 
   const copyLink = (id: string, idx: number) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -182,28 +232,74 @@ export default function BatchEscrowForm() {
           </div>
         </div>
 
-        <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
-          Share each claim link with its respective recipient. Each escrow's amount and recipient are encrypted on-chain — no other recipient (or observer) can see another row's contents.
-          <span className="block mt-2 text-amber-300/80">
-            ⚠ Each escrow still needs to be funded individually using the Fund button in Escrow Actions — CoFHE proofs cannot be batched per-row.
-          </span>
-        </p>
+        {(() => {
+          const okN = fundingResults.filter((r) => r.status === "done").length;
+          const failN = fundingResults.filter((r) => r.status === "failed").length;
+          const stillFunding = fundingIndex !== null;
+          if (stillFunding) {
+            return (
+              <p className="text-[12px] text-cyan-300/85 leading-relaxed">
+                Auto-funding row <strong>{(fundingIndex ?? 0) + 1}</strong> of {createdIds.length} — confirm 2 MetaMask popups per row (cUSDC transfer + on-chain record). Each row's amount and recipient remain encrypted.
+              </p>
+            );
+          }
+          if (fundingResults.length > 0 && failN === 0) {
+            return (
+              <p className="text-[12px] text-emerald-300/85 leading-relaxed">
+                ✓ All {okN} escrows funded. Share each claim link with its recipient — they call Redeem to receive the cUSDC. Recipients are encrypted on-chain.
+              </p>
+            );
+          }
+          if (fundingResults.length > 0 && failN > 0) {
+            return (
+              <p className="text-[12px] text-amber-300/85 leading-relaxed">
+                Funded {okN}/{createdIds.length}. {failN} row{failN > 1 ? "s" : ""} failed — open Escrow Actions, paste the failed escrow ID, and click Fund to retry.
+              </p>
+            );
+          }
+          return (
+            <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
+              Share each claim link with its respective recipient. Each escrow's amount and recipient are encrypted on-chain.
+            </p>
+          );
+        })()}
 
         <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-          {createdIds.map((id, i) => (
-            <div key={id} className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-500/[0.04] border border-emerald-500/15">
-              <span className="font-mono text-[13px] text-emerald-300 font-semibold w-12">#{id}</span>
-              <span className="font-mono text-[11px] text-muted-foreground/55 truncate flex-1">
-                {filteredRows[i]?.recipient.slice(0, 8)}…{filteredRows[i]?.recipient.slice(-6)}
-              </span>
-              <span className="font-mono text-[11px] text-foreground/70">{filteredRows[i]?.amount} cUSDC</span>
-              <button onClick={() => copyLink(id, i)}
-                className="px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-cyan-300 text-[10px] uppercase tracking-wider inline-flex items-center gap-1 transition-colors">
-                {linkCopiedIdx === i ? <CheckCircle2 className="w-3 h-3" /> : <Link2 className="w-3 h-3" />}
-                {linkCopiedIdx === i ? "Copied" : "Link"}
-              </button>
-            </div>
-          ))}
+          {createdIds.map((id, i) => {
+            const fr = fundingResults[i];
+            const fundLabel =
+              fr?.status === "done" ? "funded" :
+              fr?.status === "failed" ? "failed" :
+              fr?.status === "funding" ? "funding…" :
+              fr?.status === "pending" ? "queued" : "";
+            const fundColor =
+              fr?.status === "done" ? "text-emerald-300" :
+              fr?.status === "failed" ? "text-red-300" :
+              fr?.status === "funding" ? "text-cyan-300 animate-pulse" :
+              "text-muted-foreground/45";
+            return (
+              <div key={id} className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-500/[0.04] border border-emerald-500/15">
+                <span className="font-mono text-[13px] text-emerald-300 font-semibold w-12">#{id}</span>
+                <span className="font-mono text-[11px] text-muted-foreground/55 truncate flex-1">
+                  {filteredRows[i]?.recipient.slice(0, 8)}…{filteredRows[i]?.recipient.slice(-6)}
+                </span>
+                <span className="font-mono text-[11px] text-foreground/70">{filteredRows[i]?.amount} cUSDC</span>
+                {fundLabel && (
+                  <span
+                    className={`font-mono text-[10px] uppercase tracking-wider w-16 text-right ${fundColor}`}
+                    title={fr?.error}
+                  >
+                    {fundLabel}
+                  </span>
+                )}
+                <button onClick={() => copyLink(id, i)}
+                  className="px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-cyan-300 text-[10px] uppercase tracking-wider inline-flex items-center gap-1 transition-colors">
+                  {linkCopiedIdx === i ? <CheckCircle2 className="w-3 h-3" /> : <Link2 className="w-3 h-3" />}
+                  {linkCopiedIdx === i ? "Copied" : "Link"}
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         {createdHash && (
@@ -213,7 +309,7 @@ export default function BatchEscrowForm() {
           </a>
         )}
 
-        <motion.button onClick={() => { setCreatedIds(null); setCreatedHash(null); reset(); setRows([{ recipient: "", amount: "", note: "" }]); }}
+        <motion.button onClick={() => { setCreatedIds(null); setCreatedHash(null); setFundingResults([]); setFundingIndex(null); reset(); setRows([{ recipient: "", amount: "", note: "" }]); }}
           whileTap={{ scale: 0.99 }} className="btn-pay btn-pay-ghost w-full py-2.5">
           Create Another Batch
         </motion.button>
@@ -317,7 +413,7 @@ export default function BatchEscrowForm() {
           disabled={isProcessing || isTxPending || submitting || validCount === 0}
           whileTap={{ scale: 0.98 }}
           className="btn-pay btn-pay-emerald flex-[2] py-2 disabled:opacity-50">
-          {isProcessing ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Encrypting & sending…</> : <>Create {validCount} Confidential Escrows</>}
+          {isProcessing || submitting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Encrypting, creating & funding…</> : <>Create + Fund {validCount} Confidential Escrows</>}
         </motion.button>
       </div>
 

@@ -8,6 +8,36 @@
 
 ---
 
+## 🔧 Hotfix #7 (May 1, 2026) — Batch escrow auto-fund (parity with single create)
+
+**User feedback:** *"in normal escrow when create escrow he create and auto fund success — search this point full deep search."*
+
+**Investigation:**
+- Verified the cofhe-contracts standard (`@fhenixprotocol/cofhe-contracts`) and Fhenix docs (cofhe-docs.fhenix.zone, fhenix.io/sandbox, the public Fluton write-up). **There is no `confidentialTransferBatch` / multi-recipient primitive in CoFHE today.** The Fluton "Confidentiality Adapter" is an off-chain bundling concept, not an on-chain function.
+- Re-confirmed Hotfix #2's root finding: every `InEuint64` proof's recovered signer must equal the *immediate* caller of CoFHE's input verifier. A relay/proxy contract cannot forward the same proof to a sub-call. So one batch create cannot atomically pull cUSDC from the user into N escrows in a single tx.
+- The single-escrow `useCUSDCEscrow.create()` already runs **3 sequential txs per escrow** behind one button click: (1) `escrow.create`, (2) `cUSDC.confidentialTransfer(escrow, encAmt)`, (3) `escrow.fund(id, encAmt)` (record). That is the user's "auto-fund" experience.
+- **Fix:** make the batch flow do exactly the same thing — one `createBatch` tx for the N records, then a sequential client-side loop of (transfer + fund-record) per row. Total popups: `1 + 2·N`. Failure of one row does not abort — the loop continues so partial success is preserved.
+
+**Bug uncovered during the fix:** Hotfix #6's edit had eaten the closing `};` of `handleSubmit` in `BatchEscrowForm.tsx`. tsc accepted it (everything after the missing brace was nested inside `handleSubmit` but still syntactically valid TS), and Vite still rendered because React called the (now JSX-returning) handler from `onClick`. The component itself was effectively undefined-returning between renders, but the success card would render once the `if (createdIds…)` path was hit *inside* the handler — by accident. Closing brace restored.
+
+**Implementation:**
+
+1. **`BatchEscrowForm.tsx`** — added `fundingResults` state (`Array<{ id, status: 'pending'|'funding'|'done'|'failed', error? }>`) and `fundingIndex` state. After `createBatch` resolves with `{ ids, hash }`, a `for` loop calls `fund(BigInt(ids[i]), payload[i].amount)` per row, updating per-row status as it progresses. Each row failure is caught locally so the loop continues to the next row.
+
+2. **Success panel UI** — each row now shows a per-row status badge: `queued` (muted) → `funding…` (cyan, pulsing) → `funded` (emerald) or `failed` (red, hover-tooltip with truncated error). Header copy switches between three states: "auto-funding row X of N", "✓ All N escrows funded", or "Funded K/N — retry the rest from Escrow Actions".
+
+3. **Submit button copy** — changed from "Create N Confidential Escrows" to "Create + Fund N Confidential Escrows" / "Encrypting, creating & funding…" to set the right MetaMask-popup expectation (1 batch tx + 2 per row).
+
+4. **Reset button** — also clears `fundingResults` and `fundingIndex` so reopening the form starts clean.
+
+5. Closing-brace bug fix in `handleSubmit`.
+
+**Trust model unchanged:** `paidAmount` recorded in step 3 of each row is caller-asserted (same as single create). Underreport → recipient's redeem fails the encrypted `isPaid >= amount` check; overreport → escrow's outbound `confidentialTransfer` reverts on insufficient balance. Either way only the funder is hurt.
+
+**No contract changes.** `ObscuraConfidentialEscrow` at `0xF893F3c1603E0E9B01be878a0E7e369fF704CCF1` continues to be the canonical address.
+
+---
+
 ## 🔧 Hotfix #6 (May 1, 2026) — Batch escrow: duplicate IDs, wrong success display, duplicate React keys
 
 **Symptoms:**

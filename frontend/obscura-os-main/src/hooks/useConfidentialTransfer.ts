@@ -27,7 +27,7 @@ export function useConfidentialTransfer() {
         await initFHEClient(publicClient, walletClient);
 
         const encryptedInputs = await encryptAmount(amount, (step) => {
-          console.log('[FHE Transfer Encrypt]', step);
+          if (import.meta.env.DEV) console.log('[FHE Transfer Encrypt]', step);
         });
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);

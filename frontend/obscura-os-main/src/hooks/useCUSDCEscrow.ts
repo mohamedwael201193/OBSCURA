@@ -159,7 +159,7 @@ export function useCUSDCEscrow() {
         const encryptedInputs = await encryptAddressAndAmount(
           ownerAddress,
           amount,
-          (step) => console.log('[FHE Escrow Encrypt #1 create]', step)
+          (step) => { if (import.meta.env.DEV) console.log('[FHE Escrow Encrypt #1 create]', step); }
         );
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);
@@ -226,9 +226,7 @@ export function useCUSDCEscrow() {
           // Wait for the create tx's CoFHE state to settle before the
           // next encryption (the proof commit window).
           await new Promise((r) => setTimeout(r, 8000));
-          const transferEnc = await encryptAmount(amount, (step) =>
-            console.log('[FHE Escrow Encrypt #2 cUSDC transfer]', step)
-          );
+          const transferEnc = await encryptAmount(amount, (step) => { if (import.meta.env.DEV) console.log('[FHE Escrow Encrypt #2 cUSDC transfer]', step); });
           const transferFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
           const transferHash = await withRateLimitRetry(() => writeContractAsync({
             address: REINEIRA_CUSDC_ADDRESS,
@@ -251,9 +249,7 @@ export function useCUSDCEscrow() {
 
           // ── 3. escrow.fund(escrowId, amount) ── (record only)
           await new Promise((r) => setTimeout(r, 8000));
-          const fundEnc = await encryptAmount(amount, (step) =>
-            console.log('[FHE Escrow Encrypt #3 fund record]', step)
-          );
+          const fundEnc = await encryptAmount(amount, (step) => { if (import.meta.env.DEV) console.log('[FHE Escrow Encrypt #3 fund record]', step); });
           const fundFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
           const fundHash = await withRateLimitRetry(() => writeContractAsync({
             address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
@@ -308,9 +304,7 @@ export function useCUSDCEscrow() {
         await initFHEClient(publicClient, walletClient);
 
         // ── 1. cUSDC transfer ──
-        const transferEnc = await encryptAmount(amount, (step) =>
-          console.log('[FHE Fund Encrypt #1 cUSDC]', step)
-        );
+        const transferEnc = await encryptAmount(amount, (step) => { if (import.meta.env.DEV) console.log('[FHE Fund Encrypt #1 cUSDC]', step); });
         fheStatus.setStep(FHEStepStatus.COMPUTING);
         const tFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
         const transferHash = await withRateLimitRetry(() => writeContractAsync({
@@ -333,9 +327,7 @@ export function useCUSDCEscrow() {
 
         // ── 2. escrow.fund record ──
         await new Promise((r) => setTimeout(r, 8000));
-        const recEnc = await encryptAmount(amount, (step) =>
-          console.log('[FHE Fund Encrypt #2 record]', step)
-        );
+        const recEnc = await encryptAmount(amount, (step) => { if (import.meta.env.DEV) console.log('[FHE Fund Encrypt #2 record]', step); });
         const fFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
         const hash = await withRateLimitRetry(() => writeContractAsync({
           address: OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,

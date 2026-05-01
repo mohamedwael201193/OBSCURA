@@ -20,7 +20,7 @@ interface Props {
 export default function ContactPicker({
   value,
   onChange,
-  placeholder = "0x address, name.eth, @handle, or contact label",
+  placeholder = "0x address or saved contact label",
   label = "Recipient",
   disabled,
 }: Props) {

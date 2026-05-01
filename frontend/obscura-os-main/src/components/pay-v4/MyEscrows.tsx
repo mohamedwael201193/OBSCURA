@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileText, Copy, Trash2, ExternalLink, CheckCircle, AlertTriangle } from "lucide-react";
+import { FileText, Copy, Trash2, ExternalLink, CheckCircle, AlertTriangle, ShieldCheck } from "lucide-react";
 import type { SavedEscrow } from "@/hooks/useCUSDCEscrow";
 import { formatUnits } from "viem";
 import { useAccount } from "wagmi";
 import { getJSON, setJSON, migrateGlobalKey } from "@/lib/scopedStorage";
+import EmptyState from "./EmptyState";
 
 const STORAGE_KEY = 'obscura_cusdc_escrows';
 
@@ -53,20 +54,15 @@ export default function MyEscrows() {
 
   if (escrows.length === 0) {
     return (
-      <div className="pay-card p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-            <FileText className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div>
-            <h3 className="font-display text-sm font-semibold text-foreground">My Escrows</h3>
-            <p className="text-[10px] text-muted-foreground/45 tracking-widest uppercase">Saved Locally</p>
-          </div>
-        </div>
-        <div className="py-6 text-center text-muted-foreground/35 text-[12px] font-mono">
-          No escrows created yet. Use the form above to create one.
-        </div>
-      </div>
+      <EmptyState
+        icon={ShieldCheck}
+        title="No escrows yet"
+        description="Create your first confidential escrow to lock cUSDC for a specific recipient. Amounts and parties stay encrypted end-to-end."
+        cta={{
+          label: "Create an escrow",
+          onClick: () => document.getElementById("create-escrow-anchor")?.scrollIntoView({ behavior: "smooth" }),
+        }}
+      />
     );
   }
 

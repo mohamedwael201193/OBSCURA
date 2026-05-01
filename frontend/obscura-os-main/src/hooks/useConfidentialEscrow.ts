@@ -45,7 +45,7 @@ export function useConfidentialEscrow() {
         const encryptedInputs = await encryptAddressAndAmount(
           ownerAddress,
           amount,
-          (step) => console.log('[FHE Escrow Encrypt]', step)
+          (step) => { if (import.meta.env.DEV) console.log('[FHE Escrow Encrypt]', step); }
         );
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);
@@ -102,7 +102,7 @@ export function useConfidentialEscrow() {
         await initFHEClient(publicClient, walletClient);
 
         const encryptedInputs = await encryptAmount(amount, (step) => {
-          console.log('[FHE Fund Encrypt]', step);
+          if (import.meta.env.DEV) console.log('[FHE Fund Encrypt]', step);
         });
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);

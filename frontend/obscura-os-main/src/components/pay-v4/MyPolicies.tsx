@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { FileText, Copy, ExternalLink, Trash2 } from "lucide-react";
+import { FileText, Copy, ExternalLink, Trash2, Umbrella } from "lucide-react";
 import { toast } from "sonner";
 import type { SavedPolicy } from "@/hooks/useInsurePayroll";
+import EmptyState from "./EmptyState";
 
 const POLICIES_KEY = "obscura_insurance_policies";
 
@@ -37,7 +38,19 @@ export default function MyPolicies() {
     setPolicies(all);
   };
 
-  if (policies.length === 0) return null;
+  if (policies.length === 0) {
+    return (
+      <EmptyState
+        icon={Umbrella}
+        title="No coverage yet"
+        description="Buy a policy to insure your encrypted streams against missed cycles. Premiums and payouts both stay confidential on-chain."
+        cta={{
+          label: "Buy your first policy",
+          onClick: () => document.getElementById("buy-coverage-anchor")?.scrollIntoView({ behavior: "smooth" }),
+        }}
+      />
+    );
+  }
 
   return (
     <div className="pay-card p-5 space-y-4">

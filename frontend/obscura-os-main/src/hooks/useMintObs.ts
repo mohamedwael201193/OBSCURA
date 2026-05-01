@@ -27,7 +27,7 @@ export function useMintObs() {
         await initFHEClient(publicClient, walletClient);
 
         const encryptedInputs = await encryptAmount(amount, (step) => {
-          console.log('[FHE Mint Encrypt Step]', step);
+          if (import.meta.env.DEV) console.log('[FHE Mint Encrypt Step]', step);
         });
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);

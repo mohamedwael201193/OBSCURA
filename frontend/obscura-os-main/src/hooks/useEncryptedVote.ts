@@ -29,7 +29,7 @@ export function useEncryptedVote() {
 
         // Encrypt option index (0-based)
         const encryptedInputs = await encryptAmount(BigInt(optionIndex), (step) => {
-          console.log('[FHE Vote Encrypt Step]', step);
+          if (import.meta.env.DEV) console.log('[FHE Vote Encrypt Step]', step);
         });
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);

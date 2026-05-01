@@ -36,6 +36,11 @@ export const REINEIRA_ESCROW_ADDRESS = import.meta.env
  *  inbound, 0xfe3f670d outbound). End-to-end working on Arbitrum Sepolia. */
 export const OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS = import.meta.env
   .VITE_OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS as `0x${string}` | undefined;
+/** Obscura confidential invoice contract — Phase B1.
+ *  Inverse of escrow: creator publishes an encrypted billed amount; payer
+ *  pays via cUSDC.confidentialTransfer + invoice.recordPayment. */
+export const OBSCURA_INVOICE_ADDRESS = import.meta.env
+  .VITE_OBSCURA_INVOICE_ADDRESS as `0x${string}` | undefined;
 export const REINEIRA_COVERAGE_MANAGER_ADDRESS = import.meta.env
   .VITE_REINEIRA_COVERAGE_MANAGER_ADDRESS as `0x${string}` | undefined;
 export const REINEIRA_POOL_FACTORY_ADDRESS = import.meta.env
@@ -544,6 +549,130 @@ export const OBSCURA_CONFIDENTIAL_ESCROW_ABI = [
     inputs: [
       { name: "escrowId", type: "uint256", indexed: true },
       { name: "expiryBlock", type: "uint256", indexed: false },
+    ],
+    anonymous: false,
+  },
+] as const;
+
+// ─── ObscuraInvoice ABI (Phase B1) ──────────────────────────────────────
+// Confidential invoice contract. Creator publishes encrypted billed amount;
+// payer pays via cUSDC.confidentialTransfer + invoice.recordPayment.
+export const OBSCURA_INVOICE_ABI = [
+  {
+    type: "function",
+    name: "create",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_encAmount", type: "tuple", components: [...InEuint64Components] },
+      { name: "_memoHash", type: "bytes32" },
+      { name: "_expiryBlock", type: "uint256" },
+    ],
+    outputs: [{ name: "invoiceId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "recordPayment",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_invoiceId", type: "uint256" },
+      { name: "_encPayment", type: "tuple", components: [...InEuint64Components] },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "cancel",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_invoiceId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "exists",
+    stateMutability: "view",
+    inputs: [{ name: "_invoiceId", type: "uint256" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "getCreator",
+    stateMutability: "view",
+    inputs: [{ name: "_invoiceId", type: "uint256" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "isCancelled",
+    stateMutability: "view",
+    inputs: [{ name: "_invoiceId", type: "uint256" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "getExpiryBlock",
+    stateMutability: "view",
+    inputs: [{ name: "_invoiceId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "getMemoHash",
+    stateMutability: "view",
+    inputs: [{ name: "_invoiceId", type: "uint256" }],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
+  {
+    type: "event",
+    name: "InvoiceCreated",
+    inputs: [
+      { name: "invoiceId", type: "uint256", indexed: true },
+      { name: "creator", type: "address", indexed: true },
+      { name: "memoHash", type: "bytes32", indexed: false },
+      { name: "expiryBlock", type: "uint256", indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "InvoicePaid",
+    inputs: [
+      { name: "invoiceId", type: "uint256", indexed: true },
+      { name: "payer", type: "address", indexed: true },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "InvoiceCancelled",
+    inputs: [
+      { name: "invoiceId", type: "uint256", indexed: true },
+    ],
+    anonymous: false,
+  },
+  // Phase B3 — selective disclosure
+  {
+    type: "function",
+    name: "grantAuditor",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_invoiceId", type: "uint256" },
+      { name: "_auditor", type: "address" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "getAuditors",
+    stateMutability: "view",
+    inputs: [{ name: "_invoiceId", type: "uint256" }],
+    outputs: [{ name: "", type: "address[]" }],
+  },
+  {
+    type: "event",
+    name: "AuditorGranted",
+    inputs: [
+      { name: "invoiceId", type: "uint256", indexed: true },
+      { name: "auditor", type: "address", indexed: true },
     ],
     anonymous: false,
   },

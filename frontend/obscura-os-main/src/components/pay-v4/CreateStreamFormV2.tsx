@@ -38,7 +38,9 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
   const [hint, setHint] = useState("");
   const [period, setPeriod] = useState(PERIODS[2].seconds);
   const [durationDays, setDurationDays] = useState("90");
-  const [jitterSeconds, setJitterSeconds] = useState("0");
+  // Privacy-by-default: 5-minute jitter window prevents timing correlation
+  // attacks across cycles. Power users can set 0 to disable.
+  const [jitterSeconds, setJitterSeconds] = useState("300");
   const [autoInsure, setAutoInsure] = useState(false);
   const [maxPremium, setMaxPremium] = useState("1.00");
   const [submitting, setSubmitting] = useState(false);
@@ -197,7 +199,7 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
               value={jitterSeconds}
               onChange={(e) => setJitterSeconds(e.target.value)}
               className="mt-0 font-mono bg-white/[0.03] border-white/[0.09] focus:border-emerald-500/40 text-[12px]"
-              placeholder="0 disables jitter"
+              placeholder="e.g. 300 — set 0 to disable"
             />
           </div>
         </div>

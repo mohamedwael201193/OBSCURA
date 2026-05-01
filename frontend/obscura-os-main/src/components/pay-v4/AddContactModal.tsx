@@ -36,7 +36,7 @@ export default function AddContactModal({ open, onClose, onAdded }: Props) {
       return;
     }
     if (!isAddress(trimmedTarget)) {
-      setError("Target must be a 0x address (ENS support coming soon)");
+      setError("Target must be a 0x address.");
       return;
     }
     try {

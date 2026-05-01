@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Gift, Loader2, CheckCircle2, AlertCircle, Lock, ExternalLink, ShieldCheck } from "lucide-react";
+import { Gift, Loader2, CheckCircle2, AlertCircle, Lock, ExternalLink, ShieldCheck, Eye, ArrowUpRight } from "lucide-react";
 import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
+import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
 import { useAccount, usePublicClient } from "wagmi";
 import { toast } from "sonner";
 import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS } from "@/config/pay";
+import { getTrackedUnits, setTrackedUnits } from "@/lib/trackedBalance";
+import { formatUSDC } from "@/lib/usdc";
 
 /**
  * ClaimEscrowCard — dedicated landing UI for ?claim=<id> deep links.
@@ -23,12 +26,23 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { redeem, checkExists, getExpiryBlock, txHash, isTxPending, status } = useCUSDCEscrow();
+  const { reveal, busy: revealBusy, decrypted: cusdcDecrypted } = useCUSDCBalance();
 
   const [exists, setExists] = useState<boolean | null>(null);
   const [expiryInfo, setExpiryInfo] = useState<{ block: bigint; current: bigint } | null>(null);
   const [redeemHash, setRedeemHash] = useState<string | null>(null);
   const [redeemed, setRedeemed] = useState(false);
   const [loadingProbe, setLoadingProbe] = useState(true);
+
+  // ── Phase A1/A2/A5 — post-claim verification state ────────────────────────
+  // Track balance before/after the redeem tx so we can show "+X.XX cUSDC"
+  // (or detect zero-delta = wrong wallet / already claimed).
+  type VerifyPhase = "idle" | "settling" | "revealing" | "confirmed" | "zero-delta" | "reveal-failed";
+  const [verifyPhase, setVerifyPhase] = useState<VerifyPhase>("idle");
+  const [preClaimUnits, setPreClaimUnits] = useState<bigint | null>(null);
+  const [postClaimUnits, setPostClaimUnits] = useState<bigint | null>(null);
+  const [settleSecondsLeft, setSettleSecondsLeft] = useState(0);
+  const settleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isProcessing = status !== "idle" && status !== "ready" && status !== "error";
 
@@ -72,18 +86,88 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
       return;
     }
     try {
+      // Capture pre-claim tracked balance so we can compute the delta
+      // after the FHE coprocessor settles. Tracked balance is our best
+      // local snapshot — Reineira's confidentialBalanceOf returns 403 on
+      // sealOutput from third-party wallets, so we cannot eth_call decrypt.
+      const pre = address ? getTrackedUnits(address) : 0n;
+      setPreClaimUnits(pre);
+
       const hash = await redeem(BigInt(claimId));
       setRedeemHash(hash);
       setRedeemed(true);
+
+      // Start the ~30 s settling countdown. CoFHE finalizes the encrypted
+      // transfer asynchronously after the on-chain tx is mined.
+      setVerifyPhase("settling");
+      const SETTLE_SECONDS = 30;
+      setSettleSecondsLeft(SETTLE_SECONDS);
+      if (settleTimerRef.current) clearInterval(settleTimerRef.current);
+      settleTimerRef.current = setInterval(() => {
+        setSettleSecondsLeft((s) => {
+          if (s <= 1) {
+            if (settleTimerRef.current) clearInterval(settleTimerRef.current);
+            return 0;
+          }
+          return s - 1;
+        });
+      }, 1000);
+
       toast.success(
-        `Claim transaction sent. If this wallet is the encrypted recipient, the cUSDC will appear in your balance shortly. ` +
-        `If not, the transaction harmlessly transfers 0 — no funds lost, no information leaked.`,
-        { duration: 12000 }
+        "Claim transaction confirmed. Verifying receipt on the FHE coprocessor…",
+        { duration: 6000 }
       );
     } catch (err) {
       toast.error((err as Error).message || "Claim failed");
+      setVerifyPhase("idle");
     }
-  }, [claimId, redeem, isConnected]);
+  }, [claimId, redeem, isConnected, address]);
+
+  // After the settle countdown hits zero, automatically request a fresh
+  // FHE decryption of the user's cUSDC balance and compute the delta.
+  const runVerify = useCallback(async () => {
+    if (!address) return;
+    setVerifyPhase("revealing");
+    try {
+      await reveal();
+      // useCUSDCBalance updates `decrypted` in state; we read it from the
+      // hook closure on the next render via the effect below.
+    } catch (err) {
+      console.warn("[ClaimEscrowCard] reveal failed:", err);
+      setVerifyPhase("reveal-failed");
+    }
+  }, [address, reveal]);
+
+  // When settling timer reaches zero, auto-trigger the reveal.
+  useEffect(() => {
+    if (verifyPhase === "settling" && settleSecondsLeft === 0) {
+      void runVerify();
+    }
+  }, [verifyPhase, settleSecondsLeft, runVerify]);
+
+  // When `cusdcDecrypted` updates after a reveal, compute the delta and
+  // persist the new balance to the tracked store.
+  useEffect(() => {
+    if (verifyPhase !== "revealing") return;
+    if (cusdcDecrypted === null || cusdcDecrypted === undefined) return;
+    if (revealBusy) return;
+    const post = cusdcDecrypted;
+    setPostClaimUnits(post);
+    if (address) setTrackedUnits(address, post);
+    const pre = preClaimUnits ?? 0n;
+    if (post > pre) {
+      const delta = post - pre;
+      setVerifyPhase("confirmed");
+      toast.success(`+${formatUSDC(delta)} cUSDC received privately`, { duration: 10000 });
+    } else {
+      setVerifyPhase("zero-delta");
+    }
+  }, [cusdcDecrypted, revealBusy, verifyPhase, preClaimUnits, address]);
+
+  // Cleanup the timer on unmount.
+  useEffect(() => () => {
+    if (settleTimerRef.current) clearInterval(settleTimerRef.current);
+  }, []);
 
   const expired = expiryInfo && expiryInfo.block > 0n && expiryInfo.current >= expiryInfo.block;
   const daysLeft = expiryInfo && expiryInfo.block > 0n && expiryInfo.current < expiryInfo.block
@@ -187,16 +271,87 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
           </motion.div>
         ) : (
           <motion.div key="success" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="relative space-y-3">
-            <div className="px-4 py-3.5 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/30 flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <div className="font-display text-sm font-semibold text-emerald-300">Claim transaction sent</div>
-                <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
-                  Click <b>REVEAL</b> on the Pay Dashboard to decrypt your cUSDC balance and confirm receipt.
-                  If your wallet was the encrypted recipient, the amount has been transferred privately.
-                </p>
+            {/* Phase: settling — countdown while CoFHE finalizes */}
+            {verifyPhase === "settling" && (
+              <div className="px-4 py-3.5 rounded-xl bg-cyan-500/[0.06] border border-cyan-500/25 flex items-start gap-3">
+                <Loader2 className="w-5 h-5 text-cyan-300 shrink-0 mt-0.5 animate-spin" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-sm font-semibold text-cyan-200">Settling on the FHE coprocessor…</div>
+                  <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
+                    Your transaction is mined. Waiting <span className="font-mono text-cyan-300">{settleSecondsLeft}s</span> for the encrypted balance to settle, then automatically revealing your new balance.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Phase: revealing — actively decrypting */}
+            {verifyPhase === "revealing" && (
+              <div className="px-4 py-3.5 rounded-xl bg-cyan-500/[0.06] border border-cyan-500/25 flex items-start gap-3">
+                <Loader2 className="w-5 h-5 text-cyan-300 shrink-0 mt-0.5 animate-spin" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-sm font-semibold text-cyan-200">Decrypting your balance…</div>
+                  <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
+                    Asking the CoFHE coprocessor for a fresh decryption permit. This usually takes 5–20 seconds.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Phase: confirmed — positive delta, success */}
+            {verifyPhase === "confirmed" && preClaimUnits !== null && postClaimUnits !== null && (
+              <div className="px-4 py-3.5 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/30 flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-sm font-semibold text-emerald-300 flex items-center gap-2">
+                    Confirmed — you received <ArrowUpRight className="w-3.5 h-3.5" />
+                    <span className="font-mono">+{formatUSDC(postClaimUnits - preClaimUnits)} cUSDC</span>
+                  </div>
+                  <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
+                    Pre-claim: <span className="font-mono">{formatUSDC(preClaimUnits)}</span> cUSDC ·
+                    Post-claim: <span className="font-mono text-emerald-200">{formatUSDC(postClaimUnits)}</span> cUSDC.
+                    The funds are now in your encrypted balance.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Phase: zero-delta — wrong wallet or already claimed */}
+            {verifyPhase === "zero-delta" && (
+              <div className="px-4 py-3.5 rounded-xl bg-amber-500/[0.06] border border-amber-500/30 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-sm font-semibold text-amber-200">Transaction confirmed — no funds moved</div>
+                  <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
+                    Your balance did not change. This wallet is most likely <b>not</b> the encrypted recipient of escrow #{claimId},
+                    or the escrow has already been claimed. No funds were lost — the FHE silent-failure guarantee held.
+                  </p>
+                  <p className="text-[11px] text-muted-foreground/50 leading-relaxed mt-2">
+                    Ask the sender to confirm the recipient address they encrypted, or to re-send to this wallet.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Phase: reveal-failed — fallback (e.g. Reineira 403) */}
+            {verifyPhase === "reveal-failed" && (
+              <div className="px-4 py-3.5 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/30 flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-sm font-semibold text-emerald-300">Claim transaction confirmed</div>
+                  <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
+                    The decryption permit could not be granted (Reineira cUSDC contract limitation).
+                    Click <b>REVEAL</b> on the Pay header to manually decrypt your new balance and confirm the receipt.
+                  </p>
+                  <button
+                    onClick={() => void runVerify()}
+                    className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-mono text-emerald-300 hover:text-emerald-200"
+                  >
+                    <Eye className="w-3 h-3" /> Try reveal again
+                  </button>
+                </div>
+              </div>
+            )}
+
             {redeemHash && (
               <a href={`https://sepolia.arbiscan.io/tx/${redeemHash}`} target="_blank" rel="noopener noreferrer"
                 className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] text-cyan-300 hover:text-cyan-200 text-[11px] font-mono transition-colors">

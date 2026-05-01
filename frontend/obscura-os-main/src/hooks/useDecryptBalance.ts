@@ -56,7 +56,7 @@ export function useDecryptBalance() {
 
       // Decrypt the handle
       const plaintext = await decryptBalance(handle, (step) => {
-        console.log('[FHE Decrypt Step]', step);
+        if (import.meta.env.DEV) console.log('[FHE Decrypt Step]', step);
       });
 
       setDecryptedBalance(plaintext);
@@ -129,7 +129,7 @@ export function useDecryptAggregate() {
       if (!handle) throw new Error('No aggregate total found');
 
       const plaintext = await decryptBalance(handle, (step) => {
-        console.log('[FHE Aggregate Decrypt Step]', step);
+        if (import.meta.env.DEV) console.log('[FHE Aggregate Decrypt Step]', step);
       });
 
       setDecryptedTotal(plaintext);

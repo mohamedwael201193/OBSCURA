@@ -8,6 +8,39 @@
 
 ---
 
+## 🔧 Hotfix #5 (May 1, 2026) — Subscription first-cycle cUSDC transfer
+
+**Symptom:**
+User clicks "Start subscription", gets a "Contract interaction — Confirmed" MetaMask notification, sees a success toast, but **no cUSDC leaves the wallet**. The merchant receives nothing.
+
+**Root cause:**
+`SubscriptionForm.submit()` only called `usePayStreamV2().createStream()` which registers the stream *schedule* on-chain (encrypted recipient hint + period/start/end). It does **not** transfer any cUSDC. Actual payments only happen when `tickStream()` is called — previously that required the user to click "Pay all due" in StreamsDashboard manually, 30 days later.
+
+**Fix (`SubscriptionForm.tsx`):**
+After `createStream()` succeeds (stream schedule confirmed), the form now immediately executes cycle 1 via `useTickStream().tick()` (the battle-tested direct-transfer path: `cUSDC.confidentialTransfer → stealth announce`):
+1. Reads the merchant's stealth meta-address from `ObscuraStealthRegistry.getMetaAddress()`.
+2. Calls `tickStream.tick({ streamId, amount: parseUnits(monthly, 6), recipientMeta })`.
+3. Adds a separate receipt entry for the cycle-1 payment.
+4. Success toast now reads: *"Subscription #N active — X cUSDC paid now, renews in 30 days"*.
+5. If the tick fails (edge case: merchant meta gone), a warning toast tells the user to retry via "Pay all due" in Streams — the schedule is already created so the stream is not lost.
+
+Also fixed a display-only bug: `recipientStatus === "ready"` → `recipientStatus === "registered"` (the hook returns `"registered"`, not `"ready"`; the checkmark badge was never showing).
+
+**UX flow after fix:**
+`Start subscription` button → MetaMask #1 (createStream + ensureOperator) → MetaMask #2 (confidentialTransfer) → 12s announce countdown → MetaMask #3 (announce) → success. Three tx total, first month paid immediately.
+
+---
+
+## 🔧 Hotfix #4 (May 1, 2026) — Arrow-callback if-statement syntax errors
+
+**Symptom:**
+`npm run dev` failed with `Expression expected` in `useCUSDCEscrow.ts` (lines 162, 230, 254, 311, 336) and `useInvoice.ts` (lines 93, 162, 187) because Phase-E's console.log gating regex emitted `(step) => if (import.meta.env.DEV) console.log(...)` — invalid JS (arrow function body cannot be an `if` statement without braces).
+
+**Fix:**
+All 8 occurrences (across `useConfidentialEscrow.ts`, `useCUSDCEscrow.ts` ×5, `useInvoice.ts` ×2) replaced with properly braced form: `(step) => { if (import.meta.env.DEV) console.log(...); }`. tsc clean.
+
+---
+
 ## 🔧 Hotfix #3 (Apr 30, 2026) — Redeem out-of-gas + clearer Escrow ID UX
 
 **Symptom:**
@@ -580,3 +613,290 @@ The `require` completely destroyed the documented silent-failure guarantee.
 - Coinbase Commerce + Stripe Payment Links validate the claim-link UX pattern Obscura now ships.
 - Strict confidentiality (amounts/parties hidden) -- NOT anonymity (identity hidden) -- keeps Obscura in the regulatory-safe Circle Confidential ERC-20 lane.
 
+
+---
+
+## Wave 3 — Phases A through D — Pay Product Hardening (May 1, 2026)
+
+> Privacy-first payments product hardening: visibility (A), commercial primitives (B), interop (C), polish (D). All on **Arbitrum Sepolia**, all encrypted end-to-end via **Phenix CoFHE** on real cUSDC at `0x6b6e6479b8b3237933c3ab9d8be969862d4ed89f`. Zero mocks.
+
+### Live deployments (May 1, 2026)
+
+| Contract | Address | Wave |
+|---|---|---|
+| ObscuraConfidentialEscrow | `0x889DD94ddBAc614D4A4346bfE5b32a3151578D9A` | W3 hotfixes |
+| **ObscuraInvoice (B1+B3)** | **`0x62a86C8d68fF32ea41Faf349db6EF7EF496620b7`** | **NEW** |
+
+### Phase A — UX visibility gaps
+
+| # | Phase | Status | Surface |
+|---|---|---|---|
+| A1 | Auto-refresh balance after redeem | DONE | useCUSDCBalance + ClaimEscrowCard |
+| A2 | Post-claim verification card with delta | DONE | ClaimEscrowCard |
+| A3 | Recipient inbox notification banner + Web Push | DONE | NewPaymentBanner + PayPage |
+| A4 | Auto-pay all due stream cycles + persisted tickAmount | DONE | StreamList |
+| A5 | "What just happened" tx receipt on claim | DONE | ClaimEscrowCard |
+
+**A1/A2/A5 implementation summary**:  ClaimEscrowCard now snapshots `getTrackedUnits(addr)` immediately before sending the redeem tx, sets `verifyPhase = "settling"`, runs a 30 s countdown so the CoFHE proof commit window fully settles, then auto-invokes `useCUSDCBalance.reveal()`. When the new `cusdcDecrypted` arrives, it computes `post − pre` and persists it via `setTrackedUnits`. Five conditional cards (`settling`, `revealing`, `confirmed`, `zero-delta`, `reveal-failed`) each show the right action and a copy-able tx hash. This solves the long-standing "Did the cUSDC actually arrive?" UX gap caused by Reineira cUSDC returning HTTP 403 on third-party `sealOutput` decrypts.
+
+**A3**:  `NewPaymentBanner` reads `useStealthInbox()`, filters `!claimed && amount > 0n`, persists per-id dismissal under `obscura.inbox.banner-dismiss-ids.v1:<addr>`. Requests `Notification.requestPermission()` once and posts a Web Push when `document.hidden`. Mounted at the top of every Pay tab except Receive.
+
+**A4**:  `StreamList` now persists `tickAmount` to `obscura.streams.tickAmount.v1` so it survives reloads. A new "Pay all due cycles" gradient button at the top of the employer view loops through every stream with `pendingCycles > 0` and a saved recipient and pays them in sequence with the same amount. Each individual tick reuses the existing `tickOne` pipeline (direct or stealth, per `payMode`).
+
+### Phase B — Commercial primitives
+
+#### B1 — Confidential Invoices (NEW)
+
+End-to-end privacy-preserving billing primitive — the inverse of escrow.
+
+- **Contract**:  `contracts-hardhat/contracts/ObscuraInvoice.sol`. Struct `Invoice { creator, amount, paidAmount, isPaid, exists, cancelled, expiryBlock, memoHash }`. Functions `create(InEuint64,bytes32,uint256) → invoiceId`, `recordPayment(uint256,InEuint64)`, `cancel(uint256)`. Two-tx payment model documented in NatSpec: payer first does `cUSDC.confidentialTransfer(creator, encAmount)`, then `invoice.recordPayment(invoiceId, encAmount)` for the encrypted receipt + `isPaid` flag (`paidAmount += payment; isPaid = gte(paidAmount, amount)`).  This dual-tx pattern is forced by CoFHE's `InvalidSigner (0x7ba5ffb5)` guard which rejects forwarded `InEuint64` proofs.
+- **Frontend hook**:  `src/hooks/useInvoice.ts`. `createInvoice` (encrypts amount + keccak256 memo), `payInvoice` (2-tx with 8 s settle gap), `cancelInvoice`, `probeInvoice`. Persists per-wallet history under `obscura.invoices.created.v1:<addr>` and `obscura.invoices.paid.v1:<addr>`.
+- **Creator UI**:  `src/components/pay-v4/InvoiceForm.tsx`. Amount + memo + expiry (None/7d/30d/90d). On success copies a `?invoice=<id>&contract=<addr>` link to the clipboard.
+- **Payer UI**:  `src/components/pay-v4/InvoicePayCard.tsx`. Probes invoice on mount, shows status / creator / current encrypted balance, runs the 2-tx payment, decrements local tracked cUSDC and shows confirmation with arbiscan link.
+- **PayPage routing**:  `?invoice=<id>` auto-routes to escrow tab, mounts `InvoicePayCard` at the top of the section. `InvoiceForm` is rendered as a new card above the create-escrow card.
+
+#### B2 — Confidential Subscriptions (NEW)
+
+Stripe Billing-style wrapper around `ObscuraPayStreamV2` — no new contract.
+
+- **`src/components/pay-v4/SubscriptionForm.tsx`**:  Merchant address + monthly cUSDC + duration in months (3/6/12/24 quick-picks). Internally calls `usePayStreamV2.createStream` with `periodSeconds = 2_592_000` (30 days), `endTime = startTime + months × 30d`. Persists merchant under `v2_stream_recipient_<id>`, sets default `tickAmount` so A4's "Pay all due" picks it up, and tags the stream as a subscription under `obscura.subscription.<id>`. Lifetime cap surfaced clearly in the form (Stripe Checkout pattern).
+- **PayPage**:  rendered at the top of the Streams tab. Existing `StreamsDashboard` below shows them in the unified stream list — pause / cancel / pay-cycle work identically.
+
+#### B3 — Auditor View / Selective Disclosure (NEW)
+
+The single biggest enterprise unlock — accountants and regulators get verifiable read-only access to specific invoices.
+
+- **Contract addition**:  `ObscuraInvoice.grantAuditor(uint256 invoiceId, address auditor)` calls `FHE.allow(amount/paidAmount/isPaid, auditor)`, appends to per-invoice `_auditors[]`, emits `AuditorGranted(invoiceId, auditor)`. View `getAuditors(invoiceId)` returns the public list. CoFHE `FHE.allow` is permanent — UI surfaces this clearly.
+- **Frontend**:  `src/components/pay-v4/AuditorGrantPanel.tsx`. Inline panel that opens after a successful invoice creation. Address input + "Grant" button + amber permanence warning + list of granted auditors. Wired into `InvoiceForm` post-success card.
+
+### Phase C — Interop & accounting
+
+#### C1 — `@obscura/pay-402` HTTP 402 middleware (NEW)
+
+A new workspace package at `packages/pay-402/` (`name: "@obscura/pay-402"`).
+
+- **`src/index.ts`**:  Framework-agnostic `verifyOrChallenge(invoiceIdHeader, opts)` core, plus an Express adapter `paymentRequired(opts)` and a Web Fetch adapter `withPaymentRequired(opts, handler)` (Hono / Bun / Cloudflare Workers compatible). Hook points: `mintInvoice` and `isPaidDecryptor` are injected by the deploying server (production setups pre-mint a pool of invoices and decrypt the `isPaid` handle via cofhejs holding the merchant key). Headers used: `X-Payment-Invoice`, `X-Payment-Contract`, `X-Payment-Currency`, `X-Payment-Amount-Micro`, `X-Payment-Claim-Url`. JSON body uses code `PAYMENT_REQUIRED` with embedded `claimUrl` pointing at Obscura's `/pay?invoice=…&contract=…` route.
+- **`README.md`**:  Quickstart + how-it-works + hook documentation.
+- **`package.json` / `tsconfig.json`**:  Standalone TypeScript build target ES2022, no runtime deps beyond viem.
+
+#### C2 — CSV export (NEW)
+
+- **`src/lib/exportCsv.ts`**:  `toCsv(rows, columns) → string` (RFC-4180 escape, BOM-prefixed for Excel) and `downloadCsv(filename, content)` (Blob URL, auto-revoke).
+- **`PaymentReceipt.tsx`**:  the receipts list now exposes both **CSV** and **JSON** export buttons. Default columns: Date, Kind, Amount (cUSDC), Recipient label, Note, Tx hash, Chain ID. Filename auto-stamps with the ISO date.
+
+### Phase D — Polish, tests, docs
+
+- **`tests/wave3-pay-smoke.spec.ts`**:  Playwright smoke spec covering Pay home rendering with no console errors, Streams tab subscription card visibility (B2), `?invoice=` and `?claim=` URL routing (B1 + existing flow), and receipt list mount (C2). Five tests, all wallet-independent so they run in CI without secrets.
+- **This document**:  Updated with full Wave-3 completion summary.
+- **Type safety**:  `npx tsc --noEmit` passes clean across the entire frontend after every phase.
+
+---
+
+### How to test the new features
+
+**Prerequisites**:  a wallet on Arbitrum Sepolia with some Sepolia ETH and some cUSDC (use the Send tab → "Encrypt cUSDC" flow if you only hold USDC).
+
+#### B1 — Confidential Invoices
+
+1. Open `/pay?tab=escrow`, scroll to the new **"Request a private payment"** card.
+2. Enter `5.00` as the amount, optional memo (`"April rent"`), pick `30d` expiry.
+3. Click **Create encrypted invoice**. Approve the tx in your wallet. The success card shows the invoice id and copies a `?invoice=<id>&contract=<addr>` URL to the clipboard.
+4. Open that URL in a different wallet. The **InvoicePayCard** should mount with status "Open", the creator address truncated, and your encrypted balance.
+5. Enter `5.00`, click **Pay invoice privately**. Approve **two** wallet popups (cUSDC.confidentialTransfer, then invoice.recordPayment). The card flips to "Paid −5.00 cUSDC" with a tx link.
+6. Switch back to the creator wallet → Receive tab → reveal cUSDC balance. The amount should have grown by 5.
+
+#### B2 — Confidential Subscriptions
+
+1. Open `/pay?tab=streams`. The new **"Confidential subscription"** card is at the top.
+2. Enter a merchant address that has registered a stealth meta-address. Pick `$10/month`, `12 months` quick presets.
+3. The summary shows lifetime cap = `120.00 cUSDC`. Click **Start subscription**. Approve the create-stream tx.
+4. Scroll to "Streams You're Paying" — you'll see the new stream with period "30d". Wait for or fast-forward the next cycle, then click **Pay all due cycles** (A4) to charge it with one click.
+
+#### B3 — Auditor View
+
+1. Create an invoice as in B1.
+2. In the success card, click **Grant auditor view (selective disclosure)**.
+3. Enter your accountant's wallet address, click **Grant**. Approve the tx.
+4. From the auditor wallet, open the invoice (programmatically or via a contract reader) and call `getAmount(id)` → handle, then decrypt via cofhejs. The auditor will get the plaintext amount.
+
+#### A4 — Auto-pay all due
+
+1. Create two subscriptions (B2) one minute apart (use 1-minute periods if you tweak `MONTH_SECONDS` for a quick test).
+2. Wait until both are due → both stream rows show "1 pending".
+3. Click the green **Pay all due cycles** button at the top of the streams card. Both get paid in one button click. Toast: *"Auto-paid 2 of 2 due stream(s)"*.
+
+#### A1/A2/A3/A5 — Visibility
+
+1. Create + fund an escrow as the sender.
+2. From the recipient wallet open the claim URL. The **NewPaymentBanner** (A3) appears at the top with browser-permission prompt.
+3. Click **Claim my private cUSDC**. The card flows: `settling (30 s countdown)` → `revealing (auto)` → **`confirmed +X.XX cUSDC received privately`** with the tx hash and "View on arbiscan" link (A1+A2+A5).
+
+#### C2 — CSV export
+
+1. Make any payment (transfer / stream tick / escrow create). A receipt is appended to the local ledger.
+2. Open the receipts panel on Pay home. Click **CSV** — a file `obscura-receipts-YYYY-MM-DD.csv` downloads. Open in Excel — UTF-8, fully escaped, with a BOM so non-ASCII memos render correctly.
+
+#### C1 — `@obscura/pay-402` middleware
+
+1. `cd packages/pay-402 && npm install && npm run build`.
+2. Wire into any Express app per the README quickstart with the live `ObscuraInvoice` address `0x62a86C8d68fF32ea41Faf349db6EF7EF496620b7`.
+3. `curl http://localhost:3000/api/premium` → returns HTTP 402 + JSON challenge with `claimUrl` pointing at the Obscura `/pay?invoice=…` route.
+4. Open the claimUrl, pay the invoice (B1 flow), then `curl -H "X-Payment-Invoice: <id>" http://localhost:3000/api/premium` → 200 with the protected payload.
+
+#### Playwright smoke (D)
+
+```bash
+cd frontend/obscura-os-main
+npm run dev          # in another terminal — leave running on :8080
+npx playwright test tests/wave3-pay-smoke.spec.ts
+```
+
+All five tests should pass with zero console errors.
+
+---
+
+### Files added / modified in Phases A→D
+
+**New contracts**:
+- `contracts-hardhat/contracts/ObscuraInvoice.sol` — B1 + B3
+- `contracts-hardhat/scripts/deployInvoice.ts`
+
+**New frontend modules**:
+- `src/hooks/useInvoice.ts` — B1
+- `src/components/pay-v4/InvoiceForm.tsx` — B1
+- `src/components/pay-v4/InvoicePayCard.tsx` — B1
+- `src/components/pay-v4/AuditorGrantPanel.tsx` — B3
+- `src/components/pay-v4/SubscriptionForm.tsx` — B2
+- `src/components/pay-v4/NewPaymentBanner.tsx` — A3
+- `src/lib/exportCsv.ts` — C2
+- `tests/wave3-pay-smoke.spec.ts` — D
+
+**Modified frontend**:
+- `src/components/pay-v4/ClaimEscrowCard.tsx` — A1 + A2 + A5
+- `src/components/pay-v4/StreamList.tsx` — A4
+- `src/components/pay-v4/PaymentReceipt.tsx` — C2
+- `src/pages/PayPage.tsx` — wiring A3, B1, B2 + URL routing
+- `src/config/pay.ts` — invoice address + ABI + B3 additions
+- `.env` — `VITE_OBSCURA_INVOICE_ADDRESS`
+
+**New package**:
+- `packages/pay-402/` — package.json, tsconfig.json, src/index.ts, README.md
+
+---
+
+## Wave 3 \u2014 Phase E \u2014 UX / PMF Hardening (May 1, 2026)
+
+> Pure polish pass. **No new contracts. No new features.** Every contract that exists already is still there \u2014 we just moved cards into the right order, killed dead code, stripped console-log spam, and added empty-state CTAs everywhere a Pay surface could render `null`. The product is now PMF-defensible: a non-crypto user can land on `/pay`, see a clear hero with three trust chips, connect a wallet, and find Send / Receive / Subscribe / Invoice in the obvious place.
+
+### Phase 1 \u2014 Dead-code purge
+
+Deleted **15 confirmed-orphan files** (zero imports anywhere):
+
+- `src/components/pay/`: `BalanceReveal.tsx`, `ObsBalanceReveal.tsx`, `TransferForm.tsx`, `PayrollForm.tsx`, `MintObsForm.tsx`, `CreateEscrowForm.tsx`, `EscrowList.tsx`, `EscrowActions.tsx`, `DashboardStats.tsx`, `AuditView.tsx`, `EmployeeList.tsx` (11 Wave-1 components, all `import` count = 0).
+- `src/components/pay-v4/OnboardingWizard.tsx` \u2014 never rendered (the SettingsPanel "Replay onboarding" toggle did not actually mount it).
+- `src/pages/VotePage.old.tsx` \u2014 stale duplicate of VotePage.tsx.
+- `src/hooks/useDecryptObsBalance.ts`, `useEncryptedPayroll.ts` \u2014 only consumed by the deleted Wave-1 components above.
+
+`pay/ClaimDailyObsForm.tsx` was kept because `VotePage.tsx` still uses it. `tsc --noEmit` clean.
+
+### Phase 2 \u2014 Tab reordering (the "right place" fix)
+
+- **Escrow tab \u2014 grouped + collapsed**: order is now `Hero (URL-driven) \u2192 Group A: Send (Create escrow + collapsible Batch payroll) \u2192 Group B: Receive (Invoice form) \u2192 Group C: Manage (Your escrows + collapsible Fund/Redeem/Refund) \u2192 Group D: Advanced (collapsible Resolver-gated)`. Previously REQUEST showed before SEND, which is the opposite of what every other payments app does. Collapsed sections shrink the visual noise from 7 stacked cards to 3 cards + 3 expandable summaries.
+- **Insurance tab**: unchanged order, but `Buy coverage` now has an `id="buy-coverage-anchor"` so the new `MyPolicies` empty-state CTA can scroll to it.
+- **Sidebar**: "Advanced" \u2192 **"Legacy"** (key unchanged, label only). The whole tab now opens with an amber banner explaining V1 surfaces are kept only for accessing pre-Wave-3 escrows / streams.
+- **Streams tab**: already had `SubscriptionForm` first then `StreamsDashboard` from B2 \u2014 order preserved.
+
+### Phase 3 \u2014 Empty-state pass
+
+New shared `src/components/pay-v4/EmptyState.tsx` (lucide icon + title + description + optional CTA, ~50 lines, no new deps). Wired into:
+
+- `MyPolicies` \u2014 was returning `null`, now shows "No coverage yet" + **Buy your first policy** CTA that scrolls to the form.
+- `MyEscrows` \u2014 replaces the ad-hoc empty card with the shared component for visual consistency, CTA scrolls to `Create an escrow`.
+- `StreamList` \u2014 single-line "No streams yet" replaced with proper hint that varies by `mode` (employer vs recipient).
+- `StealthInboxV2` \u2014 generic "No incoming payments" replaced with empty state including share-meta-address hint.
+
+### Phase 4 \u2014 Privacy & FHE-purity hardening
+
+- **Stripped 13 production console.log calls** across `useConfidentialEscrow`, `useConfidentialTransfer`, `useCUSDCEscrow`, `useCUSDCTransfer`, `useDecryptBalance`, `useEncryptedVote`, `useMintObs`, `useInvoice`. All now wrapped in `if (import.meta.env.DEV)` so production builds emit zero `[FHE \u2026]` log lines. This stops tx-flow timing leakage into any DevTools recording.
+- **Privacy-by-default jitter**: `CreateStreamFormV2` now defaults `jitterSeconds` to **300 (5 min)** instead of 0. Users opting out of jitter must set 0 explicitly. Placeholder copy updated to reflect the new default.
+- **Legacy surfaces banner**: amber banner on the Legacy tab makes the V1 deprecation visible at a glance.
+
+### Phase 5 \u2014 PMF & market polish
+
+- **Disconnected hero**: every disconnected `NotConnected` card on `/pay` now renders three trust-chips: `\ud83d\udd12 Fhenix CoFHE encrypted` \u00b7 `\ud83c\udf10 Arbitrum Sepolia` \u00b7 `\ud83d\udee1\ufe0f No backend, no logs`. Larger icon, clearer copy, "Connect your wallet" headline.
+- **Copy fixes**:
+  - `AddContactModal`: removed "(ENS support coming soon)" \u2014 now says "Target must be a 0x address."
+  - `ContactPicker`: placeholder changed from `"0x address, name.eth, @handle, or contact label"` to `"0x address or saved contact label"` (no false promises).
+
+### Phase 6 \u2014 Tests & docs
+
+- `tests/wave3-pay-smoke.spec.ts` extended with three new wallet-independent smoke tests:
+  1. Disconnected `/pay?tab=send` shows the three trust chips.
+  2. Sidebar exposes "Legacy" (rename verification).
+  3. Existing five tests preserved.
+- This document updated.
+
+---
+
+### Backend / DB on Render \u2014 verdict
+
+**The Pay product itself does NOT need a backend or database.** All state is on-chain (Arbitrum Sepolia); decryption is client-side via Fhenix CoFHE Threshold Network; the only outbound HTTP call is to Circle's CCTP attestation API for cross-chain USDC bridging (their service, not ours). This is a marketing strength: *"Your payments never touch our servers because we don't have any."*
+
+A small Render service is recommended **for non-Pay surfaces in Wave 4**:
+
+- **Web Push relay** so `NewPaymentBanner`'s `Notification` permission can actually deliver background pushes (needs VAPID server keys + tiny Postgres).
+- **Social-handle prefix-search** for `ObscuraSocialResolver` autocomplete.
+- **Marketing site / blog** at obscura.xyz (Render static, $0/mo).
+- **Privacy-first analytics** (Plausible self-host).
+
+All of these are out of scope for Wave 3.
+
+---
+
+### How to verify Phase E
+
+```bash
+# 1. Type-check
+cd frontend/obscura-os-main && npx tsc --noEmit
+
+# 2. Smoke tests (5 original + 3 new = 8)
+npm run dev   # in another terminal
+npx playwright test tests/wave3-pay-smoke.spec.ts
+
+# 3. Production-build console hygiene
+npm run build && npm run preview
+# Open DevTools console, perform a send + invoice + subscribe flow.
+# Should see ZERO `[FHE \u2026]` or `[Invoice \u2026]` log lines.
+
+# 4. Manual UX QA matrix \u2014 3 wallet states \u00d7 7 tabs = 21 cells
+# - Disconnected: every tab shows the new hero with three trust chips
+# - Connected, no on-chain state: every list surface shows an EmptyState card with CTA
+# - Connected, with state: original behaviour preserved
+
+# 5. Grep checks
+grep -rn "Coming soon\|TODO\|FIXME\|name.eth\|@handle" frontend/obscura-os-main/src/components/pay-v4/  # \u2192 0 matches
+grep -rn "from \"@/components/pay/\"" frontend/obscura-os-main/src/   # \u2192 only ClaimDailyObsForm in VotePage
+```
+
+### Files changed in Phase E
+
+**Deleted (15)**
+- 11 \u00d7 `src/components/pay/*.tsx` (Wave 1 dead components)
+- `src/components/pay-v4/OnboardingWizard.tsx`
+- `src/pages/VotePage.old.tsx`
+- `src/hooks/useDecryptObsBalance.ts`, `useEncryptedPayroll.ts`
+
+**New (1)**
+- `src/components/pay-v4/EmptyState.tsx`
+
+**Modified (12)**
+- `src/pages/PayPage.tsx` \u2014 sidebar rename, NotConnected hero, escrow-tab regrouping, insurance anchor, Legacy banner
+- `src/components/pay-v4/MyPolicies.tsx` \u2014 EmptyState wiring
+- `src/components/pay-v4/MyEscrows.tsx` \u2014 EmptyState wiring
+- `src/components/pay-v4/StreamList.tsx` \u2014 EmptyState wiring
+- `src/components/pay-v4/StealthInboxV2.tsx` \u2014 EmptyState wiring
+- `src/components/pay-v4/AddContactModal.tsx` \u2014 ENS copy fix
+- `src/components/pay-v4/ContactPicker.tsx` \u2014 placeholder copy fix
+- `src/components/pay-v4/CreateStreamFormV2.tsx` \u2014 jitter default 0\u2192300
+- `src/hooks/useConfidentialEscrow.ts`, `useConfidentialTransfer.ts`, `useCUSDCEscrow.ts`, `useCUSDCTransfer.ts`, `useDecryptBalance.ts`, `useEncryptedVote.ts`, `useMintObs.ts`, `useInvoice.ts` \u2014 console.log gating
+- `tests/wave3-pay-smoke.spec.ts` \u2014 3 new assertions

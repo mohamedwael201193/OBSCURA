@@ -87,7 +87,10 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   const { tick, isTicking } = useTickStream();
   const { transfer: directTransfer } = useCUSDCTransfer();
   const { writeContractAsync } = useWriteContract();
-  const [tickAmount, setTickAmount] = useState("");
+  // A4: persist per-cycle amount so user doesn't have to retype every reload.
+  const TICK_AMOUNT_KEY = "obscura.streams.tickAmount.v1";
+  const [tickAmount, setTickAmount] = useState(() => getString(TICK_AMOUNT_KEY, undefined) ?? "");
+  useEffect(() => { setString(TICK_AMOUNT_KEY, undefined, tickAmount); }, [tickAmount]);
   const [payMode, setPayMode] = useState<"direct" | "stealth">("direct");
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [lastPayment, setLastPayment] = useState<{ streamId: string; txHash: string; announceTx?: string; amount: string; stealthAddress?: string } | null>(null);
@@ -209,6 +212,41 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
     }
   };
 
+  // A4: "Pay all due cycles" — loop through streams with pendingCycles>0
+  // and tick each in sequence with the same per-cycle amount.
+  const [autoPaying, setAutoPaying] = useState(false);
+  const payAllDue = useCallback(async () => {
+    if (autoPaying) return;
+    if (!tickAmount || Number(tickAmount) <= 0) {
+      toast.error("Set a per-cycle amount first");
+      return;
+    }
+    const due = streams.filter((s) => {
+      const localLastTick = getLastLocalTick(s.id);
+      const eff = Math.max(Number(s.lastTickTime), localLastTick);
+      const pending = Math.max(0, Math.floor((Math.floor(Date.now() / 1000) - eff) / Number(s.periodSeconds)));
+      const stored = (savedOverrides[s.id.toString()] ?? s.recipientHint) as `0x${string}`;
+      return pending > 0 && stored !== ZERO_ADDR && isAddress(stored) && !s.paused;
+    });
+    if (due.length === 0) {
+      toast.info("No streams currently due");
+      return;
+    }
+    setAutoPaying(true);
+    let okCount = 0;
+    for (const s of due) {
+      try {
+        const stored = (savedOverrides[s.id.toString()] ?? s.recipientHint) as `0x${string}`;
+        await tickOne({ ...s, recipientHint: stored });
+        okCount += 1;
+      } catch (err) {
+        console.error("[payAllDue]", s.id.toString(), err);
+      }
+    }
+    setAutoPaying(false);
+    toast.success(`Auto-paid ${okCount} of ${due.length} due stream(s)`);
+  }, [autoPaying, streams, tickAmount, savedOverrides, getLastLocalTick]);
+
   if (!address) return null;
 
   return (
@@ -233,6 +271,22 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           Refresh
         </button>
       </div>
+
+      {mode === "employer" && streams.some((s) => {
+        const localLastTick = getLastLocalTick(s.id);
+        const eff = Math.max(Number(s.lastTickTime), localLastTick);
+        const pending = Math.max(0, Math.floor((now - eff) / Number(s.periodSeconds)));
+        return pending > 0 && !s.paused;
+      }) && (
+        <button
+          disabled={autoPaying || isTicking}
+          onClick={payAllDue}
+          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-400 text-black font-display font-semibold text-[12px] inline-flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          <Zap className="w-3.5 h-3.5" />
+          {autoPaying ? "Paying all due cycles…" : `Pay all due cycles (${tickAmount || "—"} cUSDC each)`}
+        </button>
+      )}
 
       {mode === "employer" && (
         <div className="space-y-4">
@@ -304,7 +358,14 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
         <div className="text-[12px] text-muted-foreground/50 text-center py-4">Loading streams…</div>
       )}
       {!isLoading && streams.length === 0 && (
-        <div className="text-[12px] text-muted-foreground/40 text-center py-6">No streams yet.</div>
+        <div className="text-center py-8">
+          <div className="text-[13px] text-foreground/80 mb-1">No streams yet</div>
+          <p className="text-[12px] text-muted-foreground/55 max-w-xs mx-auto">
+            {mode === "employer"
+              ? "Create a confidential subscription or custom stream above to start paying recipients on a recurring schedule."
+              : "You're not receiving any streams yet. Share your stealth meta-address with a payer to get started."}
+          </p>
+        </div>
       )}
 
       <div className="space-y-2.5">

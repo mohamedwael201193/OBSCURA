@@ -5,8 +5,9 @@
  */
 import { Card } from "@/components/elite/Layout";
 import { Button } from "@/components/ui/button";
-import { Download, Trash2, ExternalLink } from "lucide-react";
+import { Download, Trash2, ExternalLink, FileSpreadsheet } from "lucide-react";
 import { useReceipts, type Receipt } from "@/hooks/useReceipts";
+import { toCsv, downloadCsv } from "@/lib/exportCsv";
 
 const KIND_LABEL: Record<Receipt["kind"], string> = {
   transfer: "Transfer",
@@ -81,9 +82,41 @@ export function ReceiptList({ limit }: { limit?: number }) {
         <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/55 font-mono">
           Recent receipts ({receipts.length})
         </div>
-        <Button variant="outline" size="sm" onClick={() => exportJSON()}>
-          <Download className="w-3.5 h-3.5 mr-1" /> Export
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const csv = toCsv(
+                receipts.map((r) => ({
+                  date: new Date(r.timestamp).toISOString(),
+                  kind: KIND_LABEL[r.kind] ?? r.kind,
+                  amount: r.amount ?? "",
+                  recipient: r.recipientLabel ?? "",
+                  note: r.note ?? "",
+                  txHash: r.txHash,
+                  chainId: r.chainId,
+                })),
+                [
+                  { key: "date", label: "Date (UTC)" },
+                  { key: "kind", label: "Kind" },
+                  { key: "amount", label: "Amount (cUSDC)" },
+                  { key: "recipient", label: "Recipient label" },
+                  { key: "note", label: "Note" },
+                  { key: "txHash", label: "Tx hash" },
+                  { key: "chainId", label: "Chain ID" },
+                ]
+              );
+              downloadCsv(`obscura-receipts-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+            }}
+            title="Export as CSV (Excel-friendly)"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 mr-1" /> CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => exportJSON()}>
+            <Download className="w-3.5 h-3.5 mr-1" /> JSON
+          </Button>
+        </div>
       </div>
       <div className="space-y-2">
         {shown.map((r) => (

@@ -47,6 +47,8 @@ import CUSDCEscrowActions from "@/components/pay-v4/CUSDCEscrowActions";
 import MyEscrows from "@/components/pay-v4/MyEscrows";
 import BatchEscrowForm from "@/components/pay-v4/BatchEscrowForm";
 import ClaimEscrowCard from "@/components/pay-v4/ClaimEscrowCard";
+import InvoiceForm from "@/components/pay-v4/InvoiceForm";
+import InvoicePayCard from "@/components/pay-v4/InvoicePayCard";
 import CreateStreamForm from "@/components/pay-v4/CreateStreamForm";
 import CreateStreamFormV2 from "@/components/pay-v4/CreateStreamFormV2";
 import StreamList from "@/components/pay-v4/StreamList";
@@ -63,9 +65,11 @@ import ResolverManager from "@/components/pay-v4/ResolverManager";
 import UnifiedSendForm from "@/components/pay-v4/UnifiedSendForm";
 import BulkPayrollImport from "@/components/pay-v4/BulkPayrollImport";
 import StreamsDashboard from "@/components/pay-v4/StreamsDashboard";
+import SubscriptionForm from "@/components/pay-v4/SubscriptionForm";
 import { ReceiptList } from "@/components/pay-v4/PaymentReceipt";
 import AddContactModal from "@/components/pay-v4/AddContactModal";
 import PayHomeDashboard from "@/components/pay-v4/PayHomeDashboard";
+import NewPaymentBanner from "@/components/pay-v4/NewPaymentBanner";
 
 import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
@@ -110,7 +114,7 @@ const baseSidebarSections: SidebarSection[] = [
     items: [
       { key: "contacts", label: "Contacts", icon: WalletIcon },
       { key: "settings", label: "Settings", icon: Shield },
-      { key: "advanced", label: "Advanced", icon: Wrench },
+      { key: "advanced", label: "Legacy", icon: Wrench },
     ],
   },
 ];
@@ -131,11 +135,16 @@ const featureItems = [
 
 const NotConnected = ({ message }: { message: string }) => (
   <Card className="p-10 text-center">
-    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-3">
-      <WalletIcon className="w-5 h-5 text-emerald-400" />
+    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-4">
+      <WalletIcon className="w-6 h-6 text-emerald-400" />
     </div>
-    <div className="font-display text-[15px] text-foreground mb-1">Wallet not connected</div>
-    <p className="text-[12px] text-muted-foreground/65 max-w-sm mx-auto">{message}</p>
+    <div className="font-display text-base text-foreground mb-1.5">Connect your wallet</div>
+    <p className="text-[12.5px] text-muted-foreground/70 max-w-sm mx-auto leading-relaxed mb-5">{message}</p>
+    <div className="flex items-center justify-center gap-2 flex-wrap text-[11px] text-emerald-300/70">
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-emerald-500/20 bg-emerald-500/[0.04]"><Lock className="w-3 h-3" /> Fhenix CoFHE encrypted</span>
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-emerald-500/20 bg-emerald-500/[0.04]"><Network className="w-3 h-3" /> Arbitrum Sepolia</span>
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-emerald-500/20 bg-emerald-500/[0.04]"><ShieldCheck className="w-3 h-3" /> No backend, no logs</span>
+    </div>
   </Card>
 );
 
@@ -470,8 +479,9 @@ const PayPage = () => {
     try {
       const params = new URLSearchParams(window.location.search);
       const t = params.get("tab");
-      // Auto-route claim links to escrow tab even when ?tab is omitted.
+      // Auto-route claim & invoice links to escrow tab even when ?tab is omitted.
       if (params.get("claim")) return "escrow";
+      if (params.get("invoice")) return "escrow";
       if (t) return t as Tab;
     } catch { /* ignore */ }
     return "home";
@@ -567,11 +577,17 @@ const PayPage = () => {
       case "streams":
         if (!isConnected) return <NotConnected message="Connect your wallet to create payroll streams." />;
         return (
-          <StreamsDashboard
-            onNavigate={(t) => setTab(t)}
-            refreshKey={streamRefreshKey}
-            onRefresh={refreshStreams}
-          />
+          <div className="space-y-4">
+            <Card>
+              <CardHeader title="Confidential subscription" eyebrow="Subscriptions · NEW" />
+              <div className="p-5"><SubscriptionForm onCreated={refreshStreams} /></div>
+            </Card>
+            <StreamsDashboard
+              onNavigate={(t) => setTab(t)}
+              refreshKey={streamRefreshKey}
+              onRefresh={refreshStreams}
+            />
+          </div>
         );
 
       case "escrow": {
@@ -579,40 +595,70 @@ const PayPage = () => {
         // Read ?claim and ?contract on every render so the hero card stays
         // visible after the user redeems and we don't have to remount.
         let claimId: string | null = null;
+        let invoiceId: string | null = null;
         let contractParam: string | null = null;
         if (typeof window !== "undefined") {
           try {
             const params = new URLSearchParams(window.location.search);
             const c = params.get("claim");
             if (c && /^\d+$/.test(c)) claimId = c;
+            const inv = params.get("invoice");
+            if (inv && /^\d+$/.test(inv)) invoiceId = inv;
             contractParam = params.get("contract");
           } catch { /* ignore */ }
         }
         return (
           <div className="space-y-4">
+            {/* Hero cards (URL-driven) */}
+            {invoiceId && (
+              <InvoicePayCard invoiceId={invoiceId} contractParam={contractParam} />
+            )}
             {claimId && (
               <ClaimEscrowCard claimId={claimId} contractParam={contractParam} />
             )}
+
+            {/* GROUP A — Send money */}
+            <div id="create-escrow-anchor">
+              <Card>
+                <CardHeader title="Create an escrow" eyebrow="Send · Confidential escrow" />
+                <div className="p-5"><CUSDCEscrowForm /></div>
+              </Card>
+            </div>
+            <details className="pay-card group">
+              <summary className="flex items-center justify-between cursor-pointer p-5 text-[13px] text-foreground/85 hover:text-foreground">
+                <span><span className="text-emerald-300/70 text-[10px] tracking-[0.18em] uppercase mr-2">Send · Batch</span>Confidential batch payroll — up to 20 in one tx</span>
+                <span className="text-[11px] text-muted-foreground/50 group-open:hidden">Expand ▾</span>
+              </summary>
+              <div className="px-5 pb-5"><BatchEscrowForm /></div>
+            </details>
+
+            {/* GROUP B — Request money */}
             <Card>
-              <CardHeader title="Create an escrow" eyebrow="Escrow" />
-              <div className="p-5"><CUSDCEscrowForm /></div>
+              <CardHeader title="Request a private payment" eyebrow="Receive · Confidential invoice" />
+              <div className="p-5"><InvoiceForm /></div>
             </Card>
+
+            {/* GROUP C — Manage */}
             <Card>
-              <CardHeader title="Confidential batch payroll" eyebrow="Up to 20 in one tx" />
-              <div className="p-5"><BatchEscrowForm /></div>
-            </Card>
-            <Card>
-              <CardHeader title="Your escrows" />
+              <CardHeader title="Your escrows" eyebrow="Manage" />
               <div className="p-5"><MyEscrows /></div>
             </Card>
-            <Card>
-              <CardHeader title="Fund / Redeem / Refund / Inspect" />
-              <div className="p-5"><CUSDCEscrowActions /></div>
-            </Card>
-            <Card>
-              <CardHeader title="Resolver-gated escrows" eyebrow="Advanced" />
-              <div className="p-5"><ResolverManager /></div>
-            </Card>
+            <details className="pay-card group">
+              <summary className="flex items-center justify-between cursor-pointer p-5 text-[13px] text-foreground/85 hover:text-foreground">
+                <span><span className="text-emerald-300/70 text-[10px] tracking-[0.18em] uppercase mr-2">Manage</span>Fund / Redeem / Refund / Inspect by escrow ID</span>
+                <span className="text-[11px] text-muted-foreground/50 group-open:hidden">Expand ▾</span>
+              </summary>
+              <div className="px-5 pb-5"><CUSDCEscrowActions /></div>
+            </details>
+
+            {/* GROUP D — Advanced */}
+            <details className="pay-card group">
+              <summary className="flex items-center justify-between cursor-pointer p-5 text-[13px] text-foreground/85 hover:text-foreground">
+                <span><span className="text-amber-300/70 text-[10px] tracking-[0.18em] uppercase mr-2">Advanced</span>Resolver-gated escrows (time-locks &amp; approvers)</span>
+                <span className="text-[11px] text-muted-foreground/50 group-open:hidden">Expand ▾</span>
+              </summary>
+              <div className="px-5 pb-5"><ResolverManager /></div>
+            </details>
           </div>
         );
       }
@@ -621,10 +667,12 @@ const PayPage = () => {
         if (!isConnected) return <NotConnected message="Connect your wallet to buy or manage insurance." />;
         return (
           <div className="space-y-4">
-            <Card>
-              <CardHeader title="Buy coverage" eyebrow="Insurance" />
-              <div className="p-5"><BuyCoverageForm /></div>
-            </Card>
+            <div id="buy-coverage-anchor">
+              <Card>
+                <CardHeader title="Buy coverage" eyebrow="Insurance" />
+                <div className="p-5"><BuyCoverageForm /></div>
+              </Card>
+            </div>
             <Card>
               <CardHeader title="Your policies" />
               <div className="p-5"><MyPolicies /></div>
@@ -641,19 +689,24 @@ const PayPage = () => {
         );
 
       case "advanced":
-        if (!isConnected) return <NotConnected message="Connect your wallet to access advanced tools." />;
+        if (!isConnected) return <NotConnected message="Connect your wallet to access legacy V1 surfaces." />;
         return (
           <div className="space-y-4">
+            <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.05] p-3.5 text-[12px] text-amber-200/85 leading-relaxed">
+              <span className="font-semibold text-amber-200">Legacy V1 surfaces.</span>{" "}
+              These are deprecated payment forms kept for accessing old escrows / streams created before the Wave 3 V2 redeploy.
+              Use the main tabs (Send, Streams, Escrow) for new payments — they include better privacy (encrypted recipient hints, jitter) and bug fixes.
+            </div>
             <Card>
-              <CardHeader title="Legacy direct cUSDC transfer" eyebrow="Advanced" />
+              <CardHeader title="Legacy direct cUSDC transfer" eyebrow="Legacy · V1" />
               <div className="p-5"><CUSDCTransferForm /></div>
             </Card>
             <Card>
-              <CardHeader title="Legacy stream creator" eyebrow="V1" />
+              <CardHeader title="Legacy stream creator" eyebrow="Legacy · V1" />
               <div className="p-5"><CreateStreamForm onCreated={refreshStreams} /></div>
             </Card>
             <Card>
-              <CardHeader title="Legacy stealth inbox" eyebrow="V1" />
+              <CardHeader title="Legacy stealth inbox" eyebrow="Legacy · V1" />
               <div className="p-5"><StealthInbox /></div>
             </Card>
             <Card>
@@ -699,6 +752,10 @@ const PayPage = () => {
               </div>
             }
           />
+
+          {isConnected && tab !== "receive" && (
+            <NewPaymentBanner onOpenInbox={() => setTab("receive")} />
+          )}
 
           <AnimatePresence mode="wait">
             <motion.div

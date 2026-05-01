@@ -1,0 +1,36 @@
+{
+  "name": "@obscura/pay-402",
+  "version": "0.1.0",
+  "description": "HTTP 402 Payment Required middleware that demands a confidential cUSDC payment via ObscuraInvoice before serving a resource.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test --import tsx test/*.test.ts"
+  },
+  "keywords": [
+    "x402",
+    "fhe",
+    "cofhe",
+    "obscura",
+    "confidential-payments",
+    "http-402"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "viem": "^2.0.0"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0",
+    "@types/node": "^20.11.0"
+  }
+}

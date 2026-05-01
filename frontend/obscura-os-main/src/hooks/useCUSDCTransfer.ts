@@ -50,7 +50,7 @@ export function useCUSDCTransfer() {
         await initFHEClient(publicClient, walletClient);
 
         const encryptedInputs = await encryptAmount(amount, (step) => {
-          console.log('[FHE cUSDC Transfer Encrypt]', step);
+          if (import.meta.env.DEV) console.log('[FHE cUSDC Transfer Encrypt]', step);
         });
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);

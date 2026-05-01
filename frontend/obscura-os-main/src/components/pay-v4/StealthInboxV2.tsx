@@ -99,8 +99,12 @@ export default function StealthInboxV2() {
       )}
 
       {inbox.items.length === 0 ? (
-        <div className="text-center py-6 text-[12px] text-muted-foreground/65">
-          No incoming payments scanned yet.
+        <div className="text-center py-8">
+          <Inbox className="w-6 h-6 mx-auto mb-2 text-emerald-400/60" />
+          <div className="text-[13px] text-foreground/80 mb-1">Inbox empty</div>
+          <p className="text-[12px] text-muted-foreground/60 max-w-xs mx-auto">
+            No incoming stealth payments scanned yet. Share your stealth meta-address from the Receive tab to start receiving private cUSDC.
+          </p>
         </div>
       ) : (
         <div className="space-y-2">

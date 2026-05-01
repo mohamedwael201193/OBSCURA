@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWriteContract, usePublicClient, useWalletClient, useAccount } from 'wagmi';
+import { parseEventLogs } from 'viem';
 import {
   REINEIRA_CUSDC_ADDRESS,
   REINEIRA_CUSDC_ABI,
@@ -603,17 +604,16 @@ export function useCUSDCEscrow() {
         const receipt = await withRateLimitRetry(() =>
           publicClient.waitForTransactionReceipt({ hash })
         );
-        // Parse EscrowCreated logs to extract ids in order.
-        const ids: string[] = [];
-        for (const log of receipt.logs) {
-          if (
-            log.address.toLowerCase() === OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS.toLowerCase() &&
-            log.topics.length >= 2 &&
-            log.topics[1]
-          ) {
-            ids.push(BigInt(log.topics[1]).toString());
-          }
-        }
+        // Parse ONLY EscrowCreated events — previous approach caught EscrowFunded
+        // and other events that also have escrowId in topics[1], producing phantom IDs.
+        const createdLogs = parseEventLogs({
+          abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI,
+          eventName: 'EscrowCreated',
+          logs: receipt.logs,
+        });
+        const ids: string[] = createdLogs.map(
+          (l) => (l.args as { escrowId: bigint }).escrowId.toString()
+        );
 
         // Persist each row in localStorage so My Escrows shows them.
         for (let i = 0; i < ids.length && i < rows.length; i++) {

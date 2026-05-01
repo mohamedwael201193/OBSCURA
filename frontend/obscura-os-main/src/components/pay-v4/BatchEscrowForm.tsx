@@ -36,10 +36,12 @@ const isValidAddress = (s: string) => /^0x[a-fA-F0-9]{40}$/.test(s.trim());
  */
 export default function BatchEscrowForm() {
   const [rows, setRows] = useState<Row[]>([{ recipient: "", amount: "", note: "" }]);
+  const [filteredRows, setFilteredRows] = useState<Row[]>([]);
   const [expiryDays, setExpiryDays] = useState<number>(30);
   const [createdIds, setCreatedIds] = useState<string[] | null>(null);
   const [createdHash, setCreatedHash] = useState<`0x${string}` | null>(null);
   const [linkCopiedIdx, setLinkCopiedIdx] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const { createBatch, status, stepIndex, isTxPending, reset } = useCUSDCEscrow();
   const usdcBalance = useUSDCBalance();
@@ -105,6 +107,7 @@ export default function BatchEscrowForm() {
   };
 
   const handleSubmit = async () => {
+    if (submitting) return;
     const filtered = rows.filter((r) => isValidAddress(r.recipient) && Number(r.amount) > 0);
     if (filtered.length === 0) {
       toast.error("Add at least one valid row (address + amount > 0)");
@@ -115,7 +118,7 @@ export default function BatchEscrowForm() {
       return;
     }
     try {
-      // Compute expiry block client-side.
+        setSubmitting(true);
       let expiryBlock = 0n;
       if (expiryDays > 0) {
         const blocksPerDay = 7200n;
@@ -143,6 +146,7 @@ export default function BatchEscrowForm() {
         "0x" as `0x${string}`,
         expiryBlock
       );
+      setFilteredRows(filtered);
       setCreatedIds(ids);
       setCreatedHash(hash);
       toast.success(
@@ -153,8 +157,9 @@ export default function BatchEscrowForm() {
       );
     } catch (err) {
       toast.error((err as Error).message || "Batch create failed");
+    } finally {
+      setSubmitting(false);
     }
-  };
 
   const copyLink = (id: string, idx: number) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -189,9 +194,9 @@ export default function BatchEscrowForm() {
             <div key={id} className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-500/[0.04] border border-emerald-500/15">
               <span className="font-mono text-[13px] text-emerald-300 font-semibold w-12">#{id}</span>
               <span className="font-mono text-[11px] text-muted-foreground/55 truncate flex-1">
-                {rows[i]?.recipient.slice(0, 8)}…{rows[i]?.recipient.slice(-6)}
+                {filteredRows[i]?.recipient.slice(0, 8)}…{filteredRows[i]?.recipient.slice(-6)}
               </span>
-              <span className="font-mono text-[11px] text-foreground/70">{rows[i]?.amount} cUSDC</span>
+              <span className="font-mono text-[11px] text-foreground/70">{filteredRows[i]?.amount} cUSDC</span>
               <button onClick={() => copyLink(id, i)}
                 className="px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-cyan-300 text-[10px] uppercase tracking-wider inline-flex items-center gap-1 transition-colors">
                 {linkCopiedIdx === i ? <CheckCircle2 className="w-3 h-3" /> : <Link2 className="w-3 h-3" />}
@@ -309,7 +314,7 @@ export default function BatchEscrowForm() {
           <Plus className="w-3.5 h-3.5" /> Add row
         </motion.button>
         <motion.button onClick={handleSubmit}
-          disabled={isProcessing || isTxPending || validCount === 0}
+          disabled={isProcessing || isTxPending || submitting || validCount === 0}
           whileTap={{ scale: 0.98 }}
           className="btn-pay btn-pay-emerald flex-[2] py-2 disabled:opacity-50">
           {isProcessing ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Encrypting & sending…</> : <>Create {validCount} Confidential Escrows</>}

@@ -8,6 +8,34 @@
 
 ---
 
+## 🔧 Hotfix #6 (May 1, 2026) — Batch escrow: duplicate IDs, wrong success display, duplicate React keys
+
+**Symptoms:**
+- 2 addresses sent → success panel shows "4 Confidential Escrows Created" with duplicate IDs (#1 ×2, #2 ×2).
+- Recipient addresses and amounts in success rows show empty/wrong values for the duplicate entries.
+- Console: `Warning: Encountered two children with the same key '2'` from `BatchEscrowForm` and `MyEscrows`.
+- No cUSDC transferred (expected — escrow requires separate fund() step, but user confused by phantom rows).
+
+**Root cause (3 bugs):**
+
+1. **Log parsing in `createBatch`** (`useCUSDCEscrow.ts`): iterated `receipt.logs` and pushed `BigInt(log.topics[1])` for **any** event from the escrow contract with `topics.length >= 2`. Other events (`EscrowFunded`, `EscrowRedeemed`, `EscrowCancelled`) also match — each has `escrowId` indexed in topics[1]. A 2-row batch creates 2 `EscrowCreated` events + potentially 2 additional events = 4 entries with duplicate IDs.
+
+2. **Success panel used `rows[i]`** (`BatchEscrowForm.tsx`): `rows` is the unfiltered state array (includes empty rows). The batch only processes `filtered` rows. The success panel then indexed into `rows` with `i` from `createdIds`, hitting wrong/empty entries.
+
+3. **`MyEscrows` key = `txHash`**: All N escrows from one batch share the same `txHash` → duplicate React keys → React silently drops entries and emits key warning.
+
+**Fixes:**
+
+1. `useCUSDCEscrow.createBatch()` — replaced manual log iteration with `parseEventLogs({ abi: OBSCURA_CONFIDENTIAL_ESCROW_ABI, eventName: 'EscrowCreated', logs: receipt.logs })`. Only `EscrowCreated` events are counted; all other events are ignored.
+
+2. `BatchEscrowForm.tsx` — added `filteredRows` state; set to `filtered` before calling `createBatch`; success panel now references `filteredRows[i]` instead of `rows[i]`. Also added `submitting` boolean state to guard against double-click race window before `isProcessing` activates.
+
+3. `MyEscrows.tsx` — changed `key={escrow.txHash}` to `key={\`${escrow.escrowId}-${escrow.contract ?? escrow.txHash}\`}`.
+
+**About "no cUSDC transferred":** This is intentional by design — CoFHE proofs are wallet-bound and cannot be proxied through an intermediary contract (see Hotfix #2). `createBatch` creates escrow records only; each must be funded individually via **Escrow Actions → Fund**. The warning in the success panel explains this. A future improvement could auto-fund each in sequence client-side (N+1 MetaMask popups).
+
+---
+
 ## 🔧 Hotfix #5 (May 1, 2026) — Subscription first-cycle cUSDC transfer
 
 **Symptom:**

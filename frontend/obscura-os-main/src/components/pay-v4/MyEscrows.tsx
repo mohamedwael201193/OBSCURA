@@ -88,8 +88,10 @@ export default function MyEscrows() {
           const isRecipient = address?.toLowerCase() === escrow.recipient.toLowerCase();
           const formattedAmt = formatAmount(escrow.amount);
           const isTinyAmount = (() => { try { return BigInt(escrow.amount) < 1000n; } catch { return false; } })();
+          // Use escrowId + contract address as key — batch escrows share the same txHash
+          const rowKey = `${escrow.escrowId}-${escrow.contract ?? escrow.txHash}`;
           return (
-            <motion.div key={escrow.txHash} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
+            <motion.div key={rowKey} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
               className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.025] border border-white/[0.07]">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">

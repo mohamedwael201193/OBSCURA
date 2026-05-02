@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Lock, Plus, Copy, CheckCircle2, Loader2, ExternalLink, Link2, Clock } from "lucide-react";
 import UsdcIcon from "@/components/shared/UsdcIcon";
 import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
-import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
 import { parseUnits } from "viem";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS } from "@/config/pay";
+import { FHEStepStatus } from "@/lib/constants";
+import TxProgressPanel from "@/components/shared/TxProgressPanel";
+import type { TxStep } from "@/hooks/useTxProgress";
 
 // Arbitrum One/Sepolia produces ~7200 blocks/day (12s avg, but L2 rolls up
 // faster — 7200 is the conservative number). 0 = no expiry (legacy mode).
@@ -29,6 +31,29 @@ export default function CUSDCEscrowForm() {
 
   const { create, txHash, isTxPending, status, stepIndex, lastEscrowId, reset } = useCUSDCEscrow();
   const usdcBalance = useUSDCBalance();
+
+  // Map useCUSDCEscrow's (status, stepIndex) to TxStep[] for TxProgressPanel.
+  const escrowSteps = useMemo((): TxStep[] => {
+    type S = TxStepStatus;
+    function st(phase: number, label: string, type: TxStep["type"], sub: string): TxStep {
+      const active = stepIndex === phase && status !== FHEStepStatus.READY && status !== FHEStepStatus.IDLE && status !== FHEStepStatus.ERROR;
+      const done   = stepIndex > phase || (status === FHEStepStatus.READY && stepIndex >= phase);
+      const error  = status === FHEStepStatus.ERROR && stepIndex === phase;
+      const s: S   = error ? "error" : done ? "done" : active ? "active" : "idle";
+      return { id: `step${phase}`, type, label, sublabel: sub, status: s, txHash: done && phase === 1 ? (txHash ?? undefined) : undefined };
+    }
+    return [
+      st(0, "FHE Encrypt",    "fhe_encrypt", "Sealing escrow amount with CoFHE"),
+      st(1, "Create Escrow",  "create",      "On-chain record creation"),
+      st(2, "FHE Encrypt",    "fhe_encrypt", "Sealing transfer amount"),
+      st(3, "Fund Transfer",  "transfer",    "cUSDC → escrow contract"),
+      st(4, "Record Funding", "fund",        "Marking escrow as funded"),
+    ] as TxStep[];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, stepIndex, txHash]);
+
+  // Needed for the useMemo above to compile — import the type.
+  type TxStepStatus = TxStep["status"];
 
   const isValidAddress = (addr: string) => /^0x[a-fA-F0-9]{40}$/.test(addr);
   const isProcessing = status !== "idle" && status !== "ready" && status !== "error";
@@ -254,15 +279,18 @@ export default function CUSDCEscrowForm() {
       )}
 
       {status !== "idle" && (
-        <div className="rounded-lg bg-white/[0.025] border border-white/[0.07] p-4">
-          {isProcessing && (
-            <div className="flex items-center gap-2.5 mb-3">
-              <Loader2 className="w-3.5 h-3.5 text-emerald-400 animate-spin shrink-0" />
-              <span className="text-[12px] text-emerald-300">Creating &amp; funding escrow…</span>
-            </div>
-          )}
-          <AsyncStepper status={status} stepIndex={stepIndex} />
-        </div>
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="overflow-hidden"
+        >
+          <TxProgressPanel
+            steps={escrowSteps}
+            title="Creating &amp; funding escrow"
+            subtitle="5-step FHE flow: create → transfer → fund"
+            doneMessage={`Escrow #${lastEscrowId} created and funded`}
+          />
+        </motion.div>
       )}
 
       {!isDone && (

@@ -29,6 +29,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import UsdcIcon from "@/components/shared/UsdcIcon";
+import TxProgressPanel from "@/components/shared/TxProgressPanel";
+import type { TxStep } from "@/hooks/useTxProgress";
 
 import ContactPicker from "./ContactPicker";
 import { useCUSDCTransfer } from "@/hooks/useCUSDCTransfer";
@@ -445,35 +447,27 @@ export default function UnifiedSendForm() {
             )}
           </div>
           {progress.length > 0 && (
-            <div className="mt-4 p-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.03]">
-              <div className="text-[10px] tracking-[0.22em] uppercase text-emerald-300/70 font-mono mb-2">
-                Transaction progress
-              </div>
-              <div className="space-y-1.5">
-                {progress.map((p, i) => (
-                  <div key={i} className="flex items-start gap-2 text-[11.5px]">
-                    <span className="mt-0.5 shrink-0 w-3.5 h-3.5 inline-flex items-center justify-center">
-                      {p.status === "done" && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-                      {p.status === "active" && <Loader2 className="w-3.5 h-3.5 text-emerald-300 animate-spin" />}
-                      {p.status === "pending" && <span className="w-1.5 h-1.5 rounded-full bg-white/20" />}
-                      {p.status === "error" && <AlertTriangle className="w-3.5 h-3.5 text-red-400" />}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className={
-                        p.status === "done" ? "text-foreground/85" :
-                        p.status === "active" ? "text-emerald-200" :
-                        p.status === "error" ? "text-red-300" :
-                        "text-muted-foreground/55"
-                      }>
-                        {p.label}
-                      </div>
-                      {p.detail && (
-                        <div className="text-[10px] font-mono text-muted-foreground/55 mt-0.5 truncate">{p.detail}</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="mt-4">
+              <TxProgressPanel
+                steps={progress.map((p, i): TxStep => ({
+                  id: `send-step-${i}`,
+                  type: p.label.toLowerCase().includes("encrypt") ? "fhe_encrypt"
+                      : p.label.toLowerCase().includes("announce") ? "announce"
+                      : p.label.toLowerCase().includes("confirm") ? "record"
+                      : p.label.toLowerCase().includes("operator") ? "approve"
+                      : "transfer",
+                  label: p.label,
+                  sublabel: p.detail,
+                  status: p.status === "pending" ? "idle"
+                        : p.status === "active"  ? "active"
+                        : p.status === "done"    ? "done"
+                        : "error",
+                  txHash: (p.detail && p.detail.includes("…")) ? undefined : undefined,
+                }))}
+                title={mode === "stealth" ? "Sending privately (stealth)" : "Sending confidentially"}
+                subtitle={mode === "stealth" ? "2-tx stealth flow" : "Direct confidential transfer"}
+                doneMessage="Payment confirmed on-chain"
+              />
             </div>
           )}
           {error && (

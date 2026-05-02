@@ -8,6 +8,12 @@ import { toast } from "sonner";
 import { OBSCURA_INVOICE_ADDRESS } from "@/config/pay";
 import { parseUSDC, formatUSDC } from "@/lib/usdc";
 import { getTrackedUnits, addTrackedUnits } from "@/lib/trackedBalance";
+import {
+  useTxProgress,
+  INVOICE_PAY_STEALTH_STEPS,
+  INVOICE_PAY_DIRECT_STEPS,
+} from "@/hooks/useTxProgress";
+import TxProgressPanel from "@/components/shared/TxProgressPanel";
 
 /**
  * InvoicePayCard — Phase B1 payer-side UI.
@@ -46,6 +52,12 @@ export default function InvoicePayCard({
   const [paidHash, setPaidHash] = useState<string | null>(null);
   const [paidAmount, setPaidAmount] = useState<bigint | null>(null);
   const probedOnce = useRef(false);
+
+  // Determine which step template to use (resolved after probe).
+  // We start with stealth template and can switch to direct after probe.
+  const stealthTemplate = info?.creatorHasMeta === false ? INVOICE_PAY_DIRECT_STEPS : INVOICE_PAY_STEALTH_STEPS;
+  const progress = useTxProgress(stealthTemplate);
+
 
   const contractMismatch =
     contractParam &&
@@ -95,14 +107,17 @@ export default function InvoicePayCard({
       toast.error((err as Error).message || "Invalid amount");
       return;
     }
+    // Reset progress to the correct template (stealth vs direct).
+    const template = info.creatorHasMeta ? INVOICE_PAY_STEALTH_STEPS : INVOICE_PAY_DIRECT_STEPS;
+    progress.resetSteps(template);
     setBusy(true);
     try {
-      const { recordHash } = await payInvoice(BigInt(invoiceId), units);
+      const { recordHash } = await payInvoice(BigInt(invoiceId), units, (id, status, extra) => {
+        progress.setStepStatus(id, status, extra);
+        if (extra?.countdownSec !== undefined) progress.setCountdown(id, extra.countdownSec);
+      });
       setPaidHash(recordHash);
       setPaidAmount(units);
-      // Decrement payer's tracked cUSDC by what we just sent. Reineira
-      // doesn't grant decrypt permits to third parties so we cannot
-      // re-decrypt — tracked balance is the source of truth client-side.
       addTrackedUnits(address, -units);
       toast.success(`Paid ${formatUSDC(units)} cUSDC privately to invoice #${invoiceId}`);
     } catch (err) {
@@ -110,7 +125,7 @@ export default function InvoicePayCard({
     } finally {
       setBusy(false);
     }
-  }, [isConnected, address, info, amount, invoiceId, payInvoice]);
+  }, [isConnected, address, info, amount, invoiceId, payInvoice, progress]);
 
   const trackedUnits = address ? getTrackedUnits(address) : 0n;
 
@@ -208,23 +223,46 @@ export default function InvoicePayCard({
               </p>
             </div>
 
-            <motion.button
-              onClick={handlePay}
-              disabled={busy || !info?.exists || info?.cancelled || !isConnected}
-              whileTap={{ scale: 0.99 }}
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 disabled:from-muted-foreground/20 disabled:to-muted-foreground/20 disabled:opacity-50 text-black font-display font-bold text-[15px] tracking-wide inline-flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/25 transition-all"
-            >
-              {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Paying privately…</>
-                : !isConnected ? "Connect wallet"
-                : !info?.exists ? "Invoice not found"
-                : info.cancelled ? "Invoice cancelled"
-                : <><Lock className="w-4 h-4" /> Pay invoice privately</>}
-            </motion.button>
-            <p className="text-[10px] text-muted-foreground/45 leading-relaxed text-center">
-              {info?.creatorHasMeta
-                ? "3 transactions: (1) cUSDC → stealth address, (2) announce (recipient scans inbox), (3) on-chain receipt. Recipient's wallet address is never on-chain."
-                : "2 transactions: (1) cUSDC.confidentialTransfer, (2) invoice.recordPayment receipt. Amount encrypted via CoFHE. Creator not stealth-registered — recipient address visible on-chain."}
-            </p>
+            {/* Transaction progress panel — shown while busy */}
+            <AnimatePresence>
+              {busy && (
+                <motion.div
+                  key="progress"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <TxProgressPanel
+                    steps={progress.steps}
+                    title="Paying invoice privately"
+                    subtitle={info?.creatorHasMeta ? "3-transaction stealth flow" : "2-transaction direct flow"}
+                    doneMessage="Invoice paid — receipt confirmed on-chain"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!busy && (
+              <>
+                <motion.button
+                  onClick={handlePay}
+                  disabled={!info?.exists || info?.cancelled || !isConnected}
+                  whileTap={{ scale: 0.99 }}
+                  className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-400 hover:from-cyan-400 hover:to-cyan-300 disabled:from-muted-foreground/20 disabled:to-muted-foreground/20 disabled:opacity-50 text-black font-display font-bold text-[15px] tracking-wide inline-flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/25 transition-all"
+                >
+                  {!isConnected ? "Connect wallet"
+                    : !info?.exists ? "Invoice not found"
+                    : info.cancelled ? "Invoice cancelled"
+                    : <><Lock className="w-4 h-4" /> Pay invoice privately</>}
+                </motion.button>
+                <p className="text-[10px] text-muted-foreground/45 leading-relaxed text-center">
+                  {info?.creatorHasMeta
+                    ? "3 transactions: (1) cUSDC → stealth address, (2) announce (recipient scans inbox), (3) on-chain receipt. Recipient's wallet address is never on-chain."
+                    : "2 transactions: (1) cUSDC.confidentialTransfer, (2) invoice.recordPayment receipt. Amount encrypted via CoFHE. Creator not stealth-registered — recipient address visible on-chain."}
+                </p>
+              </>
+            )}
           </motion.div>
         ) : (
           <motion.div key="paid" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="relative space-y-3">

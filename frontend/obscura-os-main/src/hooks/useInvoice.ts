@@ -143,7 +143,12 @@ export function useInvoice() {
   );
 
   const payInvoice = useCallback(
-    async (invoiceId: bigint, amount: bigint) => {
+    async (
+      invoiceId: bigint,
+      amount: bigint,
+      onProgress?: (id: string, status: "active" | "done" | "error", extra?: { txHash?: `0x${string}`; errorMsg?: string; countdownSec?: number }) => void,
+    ) => {
+      const emit = onProgress ?? (() => {});
       if (!publicClient || !walletClient || !address || !OBSCURA_INVOICE_ADDRESS || !REINEIRA_CUSDC_ADDRESS) {
         throw new Error("Wallet not connected or contracts not configured");
       }
@@ -162,15 +167,6 @@ export function useInvoice() {
       }
 
       // ── Stealth routing ────────────────────────────────────────────
-      // Best practice (matches Monero subaddress invoices + Zcash z-addr
-      // payment requests): route the cUSDC transfer through a fresh
-      // one-time stealth address derived from the creator's published
-      // meta-address. This prevents on-chain observers from linking the
-      // cUSDC flow directly to the creator's wallet address. The creator
-      // scans their stealth inbox to find the payment.
-      //
-      // If the creator has no stealth meta registered we fall back to the
-      // direct path (current behaviour) with a console warning.
       let stealthPayment: ReturnType<typeof deriveStealthPayment> | null = null;
       if (OBSCURA_STEALTH_REGISTRY_ADDRESS) {
         try {
@@ -185,22 +181,21 @@ export function useInvoice() {
             stealthPayment = deriveStealthPayment(meta);
           }
         } catch {
-          // Registry not available or no meta — fall back to direct path.
+          // no meta — fall back to direct path
         }
       }
       if (!stealthPayment) {
-        console.warn(
-          "[Invoice] Creator has no stealth meta-address registered. " +
-          "Falling back to direct payment — creator's wallet address will be visible on-chain."
-        );
+        console.warn("[Invoice] Creator has no stealth meta registered. Falling back to direct payment.");
       }
 
       const actualRecipient = stealthPayment ? stealthPayment.stealthAddress : creator;
 
-      // ── Tx 1: cUSDC.confidentialTransfer(recipient, encAmount) ──
-      // Recipient is either a fresh one-time stealth address (private) or
-      // the creator's wallet directly (fallback).
+      // ── Tx 1: FHE encrypt + cUSDC.confidentialTransfer ───────────
+      emit("enc1", "active");
       const transferEnc = await encryptAmount(amount, (s) => { if (import.meta.env.DEV) console.log("[Invoice pay encrypt #1 cUSDC]", s); });
+      emit("enc1", "done");
+
+      emit("transfer", "active");
       const tFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
       const transferHash = await withRateLimitRetry(() => writeContractAsync({
         address: REINEIRA_CUSDC_ADDRESS,
@@ -217,19 +212,21 @@ export function useInvoice() {
         publicClient.waitForTransactionReceipt({ hash: transferHash })
       );
       if (transferReceipt.status !== "success") {
+        emit("transfer", "error", { errorMsg: `cUSDC transfer reverted (tx: ${transferHash})` });
         throw new Error(`cUSDC transfer reverted (tx: ${transferHash})`);
       }
+      emit("transfer", "done", { txHash: transferHash });
 
       // ── Tx 2 (stealth only): announce ──────────────────────────────
-      // Required so the creator's inbox scanner can find the payment.
-      // 12 s rate-limit delay (same as useTickStream) before submitting.
       let announceHash: `0x${string}` | null = null;
       if (stealthPayment && OBSCURA_STEALTH_REGISTRY_ADDRESS) {
         const ANNOUNCE_DELAY = 12_000;
         const toastId = "invoice-announce-countdown";
         let remaining = ANNOUNCE_DELAY / 1000;
+        emit("wait1", "active", { countdownSec: remaining });
         const countdown = setInterval(() => {
           remaining--;
+          emit("wait1", "active", { countdownSec: remaining });
           if (remaining > 0) {
             import("sonner").then(({ toast }) =>
               toast.loading(`Transfer confirmed ✓ — announcing in ${remaining}s…`, { id: toastId })
@@ -244,11 +241,13 @@ export function useInvoice() {
         await new Promise((r) => setTimeout(r, ANNOUNCE_DELAY));
         clearInterval(countdown);
         import("sonner").then(({ toast }) => toast.dismiss(toastId));
+        emit("wait1", "done");
 
         const metadata = encodeAbiParameters(
           [{ name: "invoiceId", type: "uint256" }, { name: "amount", type: "uint256" }],
           [invoiceId, amount]
         );
+        emit("announce", "active");
         const aFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
         announceHash = await withRateLimitRetry(() => writeContractAsync({
           address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
@@ -267,15 +266,31 @@ export function useInvoice() {
         if (announceReceipt.status !== "success") {
           console.warn("[Invoice] Announce reverted — creator may not find the payment in their inbox.");
         }
-        // Brief pause so CoFHE proof commit window settles before recordPayment.
+        emit("announce", "done", { txHash: announceHash! });
+
+        // 5 s proof-settle window
+        let settle = 5;
+        emit("wait2", "active", { countdownSec: settle });
+        const settle$ = setInterval(() => { settle--; emit("wait2", "active", { countdownSec: settle }); }, 1_000);
         await new Promise((r) => setTimeout(r, 5000));
+        clearInterval(settle$);
+        emit("wait2", "done");
       } else {
         // Direct path: standard 8 s proof-commit pause.
+        let settle = 8;
+        emit("wait1", "active", { countdownSec: settle });
+        const settle$ = setInterval(() => { settle--; emit("wait1", "active", { countdownSec: settle }); }, 1_000);
         await new Promise((r) => setTimeout(r, 8000));
+        clearInterval(settle$);
+        emit("wait1", "done");
       }
 
       // ── Tx 3 (or 2 for direct): invoice.recordPayment ──────────────
+      emit("enc2", "active");
       const recEnc = await encryptAmount(amount, (s) => { if (import.meta.env.DEV) console.log("[Invoice pay encrypt #2 record]", s); });
+      emit("enc2", "done");
+
+      emit("record", "active");
       const rFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
       const recordHash = await withRateLimitRetry(() => writeContractAsync({
         address: OBSCURA_INVOICE_ADDRESS,
@@ -292,8 +307,10 @@ export function useInvoice() {
         publicClient.waitForTransactionReceipt({ hash: recordHash })
       );
       if (recordReceipt.status !== "success") {
+        emit("record", "error", { errorMsg: `recordPayment reverted (tx: ${recordHash})` });
         throw new Error(`recordPayment reverted (tx: ${recordHash})`);
       }
+      emit("record", "done", { txHash: recordHash });
 
       // Cache the paid record locally for the payer's history.
       pushPaid(address, {

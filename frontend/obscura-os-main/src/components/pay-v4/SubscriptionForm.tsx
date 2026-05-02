@@ -13,12 +13,14 @@
  * total summary, transparent renewal frequency.
  */
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Repeat, CheckCircle2, Loader2, Calendar, ArrowRight } from "lucide-react";
 import { isAddress, parseUnits } from "viem";
 import { toast } from "sonner";
 import { arbitrumSepolia } from "viem/chains";
 import { usePublicClient } from "wagmi";
+import TxProgressPanel from "@/components/shared/TxProgressPanel";
+import { useTxProgress, SUBSCRIPTION_STEPS } from "@/hooks/useTxProgress";
 
 import { usePayStreamV2 } from "@/hooks/usePayStreamV2";
 import { useTickStream } from "@/hooks/useTickStream";
@@ -53,6 +55,7 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
   const [monthly, setMonthly] = useState("10.00");
   const [months, setMonths] = useState("12");
   const [submitting, setSubmitting] = useState(false);
+  const subProgress = useTxProgress(SUBSCRIPTION_STEPS);
 
   const recipientStatus = useRecipientStealthCheck(merchant);
 
@@ -86,8 +89,10 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
     const amountRaw = parseUnits(monthly, 6);
 
     setSubmitting(true);
+    subProgress.resetSteps();
     try {
       // ── Step 1: register stream schedule on-chain ──────────────────────
+      subProgress.setStepStatus("create", "active");
       toast.loading("Creating subscription schedule…", { id: "sub-create" });
       const { hash, streamId } = await stream.createStream({
         recipientAddress: merchant as `0x${string}`,
@@ -96,6 +101,7 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
         endTime,
         jitterSeconds: 0,
       });
+      subProgress.setStepStatus("create", "done", { txHash: hash });
       toast.dismiss("sub-create");
 
       // Persist recipient locally so StreamList can show plaintext label.
@@ -122,6 +128,7 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
 
       // ── Step 2: pay cycle 1 immediately via direct cUSDC transfer ──────
       try {
+        subProgress.setStepStatus("enc1", "active");
         toast.loading("Schedule active — paying first cycle now…", { id: "sub-tick" });
 
         // Fetch merchant's stealth meta-address from registry.
@@ -137,6 +144,8 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
         }
 
         if (!recipientMeta) throw new Error("Could not read merchant stealth meta-address");
+        subProgress.setStepStatus("enc1", "done");
+        subProgress.setStepStatus("transfer", "active");
         toast.dismiss("sub-tick");
 
         const { txHash: tickHash } = await tickStream.tick({
@@ -144,6 +153,9 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
           amount: amountRaw,
           recipientMeta,
         });
+        subProgress.setStepStatus("transfer", "done", { txHash: tickHash });
+        subProgress.setStepStatus("wait1", "done");
+        subProgress.setStepStatus("announce", "done");
 
         receipts.add({
           kind: "stream-create",
@@ -284,6 +296,25 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
           You only spend cUSDC at each renewal. Each charge is encrypted end-to-end via CoFHE.
         </p>
       </div>
+
+      <AnimatePresence>
+        {submitting && (
+          <motion.div
+            key="sub-progress"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <TxProgressPanel
+              steps={subProgress.steps}
+              title="Starting subscription"
+              subtitle="Create schedule + pay first cycle"
+              doneMessage="Subscription active — first month paid"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <motion.div whileTap={{ scale: 0.99 }}>
         <Button

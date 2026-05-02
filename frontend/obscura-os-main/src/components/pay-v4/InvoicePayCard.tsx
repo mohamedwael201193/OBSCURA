@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Loader2, CheckCircle2, AlertCircle, Lock, ExternalLink, ShieldCheck, ArrowDownLeft } from "lucide-react";
+import { FileText, Loader2, CheckCircle2, AlertCircle, Lock, ExternalLink, ShieldCheck, ArrowDownLeft, EyeOff } from "lucide-react";
 import { useInvoice } from "@/hooks/useInvoice";
 import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
 import { useAccount, usePublicClient } from "wagmi";
@@ -37,7 +37,8 @@ export default function InvoicePayCard({
   const [busy, setBusy] = useState(false);
   const [info, setInfo] = useState<{
     exists: boolean;
-    creator: `0x${string}`;
+    _creator: `0x${string}`;
+    creatorHasMeta: boolean;
     cancelled: boolean;
     expiryBlock: bigint;
   } | null>(null);
@@ -149,8 +150,14 @@ export default function InvoicePayCard({
           </div>
           <div className="px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.07]">
             <div className="text-[9px] tracking-[0.15em] uppercase text-muted-foreground/45 mb-0.5">Pay to</div>
-            <div className="font-mono text-[11px] font-semibold truncate">
-              {info?.creator ? `${info.creator.slice(0, 8)}…${info.creator.slice(-6)}` : "—"}
+            <div className="text-[11px] font-semibold flex items-center gap-1.5">
+              {loadingProbe ? (
+                "—"
+              ) : info?.creatorHasMeta ? (
+                <><EyeOff className="w-3 h-3 text-emerald-400" /><span className="text-emerald-300">Private (stealth)</span></>
+              ) : (
+                <><AlertCircle className="w-3 h-3 text-amber-400" /><span className="text-amber-300 font-mono text-[10px]">Unshielded</span></>
+              )}
             </div>
           </div>
           <div className="px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.07]">
@@ -214,8 +221,9 @@ export default function InvoicePayCard({
                 : <><Lock className="w-4 h-4" /> Pay invoice privately</>}
             </motion.button>
             <p className="text-[10px] text-muted-foreground/45 leading-relaxed text-center">
-              Two transactions: (1) cUSDC.confidentialTransfer to creator, (2) invoice.recordPayment receipt.
-              Both encrypted end-to-end via Phenix CoFHE.
+              {info?.creatorHasMeta
+                ? "3 transactions: (1) cUSDC → stealth address, (2) announce (recipient scans inbox), (3) on-chain receipt. Recipient's wallet address is never on-chain."
+                : "2 transactions: (1) cUSDC.confidentialTransfer, (2) invoice.recordPayment receipt. Amount encrypted via CoFHE. Creator not stealth-registered — recipient address visible on-chain."}
             </p>
           </motion.div>
         ) : (

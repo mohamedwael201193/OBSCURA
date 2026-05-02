@@ -8,6 +8,40 @@
 
 ---
 
+## 🔧 Hotfix #8 (May 2, 2026) — Invoice full stealth privacy (Monero/Zcash model)
+
+**User feedback:** *"i test create invoice i see he need the adrees to reqest and i copy link and open the another account and pay 1 cusdc to him — is the show the adrees he req is privacy or what"*
+
+**Two leaks found:**
+
+1. **On-chain calldata (Leak 1):** `payInvoice()` called `cUSDC.confidentialTransfer(creator, encAmt)` where `creator` is the invoice creator's real wallet address. Chain observers could see a directional link `payer → creator wallet` even though the amount was FHE-encrypted.
+
+2. **UI (Leak 2):** `InvoicePayCard` showed `Pay to: 0xf76e6B…bC71a3` — the creator's real wallet address was visible to the payer in plain text.
+
+**Research:** Monero subaddress invoices, Zcash z-address payment requests, and Lightning BOLT-12 blinded paths all share the same principle: the payer only ever sees/pays to a one-time derived address; the recipient's real identity is never on-chain. We matched this model using the existing ERC-5564 stealth stack already built for streams.
+
+**Fix applied (`af16bde`):**
+
+`useInvoice.ts`:
+- `payInvoice()` looks up creator's stealth meta from `ObscuraStealthRegistry.getMetaAddress(creator)`. If registered:
+  1. `deriveStealthPayment(meta)` → fresh one-time `stealthAddr + ephemeralPubKey + viewTag`
+  2. **Tx 1:** `cUSDC.confidentialTransfer(stealthAddr, encAmt)` — on-chain only shows a random address, not the creator's wallet
+  3. **12 s rate-limit delay** + countdown toast (same pattern as `useTickStream`)
+  4. **Tx 2:** `announce(stealthAddr, ephPubKey, viewTag, invoiceId+amount)` — creator's inbox scanner finds it
+  5. **5 s settle delay** + **Tx 3:** `recordPayment(invoiceId, encAmt)`
+  - Total: **3 transactions.** Creator's real wallet address never appears in calldata.
+- Falls back to direct 2-tx path if creator has no stealth meta (logs a warning).
+- `probeInvoice()` returns `creatorHasMeta: boolean` and renames `creator → _creator` (private field) so the UI layer cannot accidentally expose the raw address to the payer.
+- Added imports: `deriveStealthPayment`, `MetaAddress`, `encodeAbiParameters`, stealth registry ABI/address.
+
+`InvoicePayCard.tsx`:
+- **"Pay to" field** now shows `Private (stealth)` with shield + EyeOff icon (emerald) when `creatorHasMeta = true`, or `Unshielded` (amber warning icon) when the creator has no stealth meta. Raw wallet address is **never displayed to the payer**.
+- Footer copy reflects 3-tx vs 2-tx path and explains what each tx does.
+
+**Result:** Invoice payments now match the privacy guarantees of Obscura streams and subscriptions — full ERC-5564 stealth routing end-to-end.
+
+---
+
 ## 🔧 Hotfix #7 (May 1, 2026) — Batch escrow auto-fund (parity with single create)
 
 **User feedback:** *"in normal escrow when create escrow he create and auto fund success — search this point full deep search."*

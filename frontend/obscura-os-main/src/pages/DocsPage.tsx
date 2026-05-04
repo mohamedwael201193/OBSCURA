@@ -614,6 +614,75 @@ const DocsPage = () => {
                   <li>Inbox filter, anti-regression operator pre-checks, gas clamping and wallet-scoped local state are inherited from the Wave 2 hardening.</li>
                 </ul>
               </div>
+
+              <div className="mt-6 glass-panel rounded-md p-4 border border-violet-500/20 bg-violet-500/[0.03]">
+                <div className="text-[12px] text-foreground/85 mb-3">Invoice Full Stealth Privacy — Monero/Zcash model (Hotfix #8)</div>
+                <p className="text-[12px] text-muted-foreground/75 mb-3">
+                  Before Wave 3, <code className="text-primary/70">payInvoice()</code> transferred cUSDC directly to the creator's real wallet address — visible in calldata. The InvoicePayCard also displayed it in plaintext. Wave 3 fixes both leaks with full ERC-5564 stealth routing.
+                </p>
+                <ul className="text-[12px] text-muted-foreground/75 space-y-1.5 list-disc pl-4 mb-3">
+                  <li><code className="text-primary/70">deriveStealthPayment(meta)</code> → fresh one-time <code>stealthAddr + ephemeralPubKey + viewTag</code></li>
+                  <li><code className="text-primary/70">cUSDC.confidentialTransfer(stealthAddr, encAmt)</code> — amount FHE-encrypted, destination is the one-time address</li>
+                  <li><code className="text-primary/70">ObscuraPayStream.announce(ephemeralPubKey, viewTag, stealthAddr)</code> — on-chain stealth announcement for scanning</li>
+                </ul>
+                <div className="text-[11px] text-muted-foreground/55">
+                  Payer sees <strong className="text-emerald-400/80">Private (stealth)</strong> badge — creator's real wallet never appears in calldata or UI. Falls back to direct 2-tx path if creator has no stealth meta registered.
+                </div>
+              </div>
+
+              <div className="mt-6 glass-panel rounded-md p-4 border border-cyan-500/20 bg-cyan-500/[0.03]">
+                <div className="text-[12px] text-foreground/85 mb-3">Animated TxProgressPanel — real-time SVG transaction progress</div>
+                <p className="text-[12px] text-muted-foreground/75 mb-3">
+                  Every multi-step transaction in all pay features now renders an inline animated SVG panel, replacing plain spinners. Built with Framer Motion throughout.
+                </p>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {[
+                    { icon: "🔐", label: "FHE Encrypt", desc: "Padlock + pulsing circuit nodes, shackle path animation" },
+                    { icon: "💸", label: "Transfer", desc: "Coin flying right with motion trail" },
+                    { icon: "📡", label: "Announce", desc: "Radio tower with expanding ring waves" },
+                    { icon: "⏳", label: "Wait", desc: "Hourglass with falling sand + live countdown seconds" },
+                    { icon: "📄", label: "Record", desc: "Document with stamp animation + drawn checkmark" },
+                    { icon: "🛡️", label: "Create", desc: "Spinning dashed ring + shield assembly" },
+                    { icon: "🏦", label: "Vault", desc: "Rotating dial + coin in/out (fund vs redeem)" },
+                    { icon: "❌", label: "Error", desc: "Animated red X circle" },
+                  ].map((item) => (
+                    <div key={item.label} className="bg-secondary/20 rounded p-2">
+                      <div className="text-[11px] text-foreground/80 mb-0.5">{item.icon} {item.label}</div>
+                      <div className="text-[10px] text-muted-foreground/60">{item.desc}</div>
+                    </div>
+                  ))}
+                </div>
+                <ul className="text-[12px] text-muted-foreground/75 space-y-1 list-disc pl-4">
+                  <li>Step states: <code className="text-primary/70">idle</code> (number badge) → <code className="text-primary/70">active</code> (spinning halo) → <code className="text-primary/70">done</code> (spring checkmark) → <code className="text-primary/70">error</code> (×)</li>
+                  <li>Connecting lines grow from grey → cyan → emerald as steps complete</li>
+                  <li>Overall progress bar 0→100% across all steps</li>
+                  <li>Integrated into: InvoicePayCard (7-step stealth / 5-step direct), CUSDCEscrowForm (5-step), UnifiedSendForm, SubscriptionForm (5-step)</li>
+                </ul>
+              </div>
+
+              <div className="mt-6 glass-panel rounded-md p-4">
+                <div className="text-[12px] text-foreground/85 mb-3">8 Production Hotfixes</div>
+                <div className="space-y-2">
+                  {[
+                    { n: "#8", t: "Invoice stealth privacy", d: "3-tx ERC-5564 routing. Payer sees shield badge, never real wallet address." },
+                    { n: "#7", t: "Batch escrow auto-fund", d: "Sequential client-side fund loop after createBatch. Per-row status: queued → funding → funded/failed." },
+                    { n: "#6", t: "Duplicate escrow IDs", d: "parseEventLogs (EscrowCreated only). filteredRows state. key = escrowId-txHash." },
+                    { n: "#5", t: "Subscription first-cycle payment", d: "After createStream, immediately execute cycle-1 via useTickStream().tick()." },
+                    { n: "#4", t: "Arrow-callback if-statement syntax", d: "All 8 occurrences: (step) => if(...) replaced with properly braced form." },
+                    { n: "#3", t: "Redeem out-of-gas", d: "Gas limit 1.2M → 3M. Pre-flight simulateContract for real error messages." },
+                    { n: "#2", t: "CoFHE proxy constraint", d: "InEuint64 proofs are wallet-bound. fund() is now record-only. Client drives 3-tx flow." },
+                    { n: "#1", t: "Escrow selector mismatch", d: "Fixed interface to InEuint64 overload (0x7edb0e7d). Redeployed." },
+                  ].map((h) => (
+                    <div key={h.n} className="flex gap-3 text-[11.5px]">
+                      <span className="shrink-0 font-mono text-primary/60 w-6">{h.n}</span>
+                      <div>
+                        <span className="text-foreground/80">{h.t}</span>
+                        <span className="text-muted-foreground/55"> — {h.d}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </section>
 
             {/* ── DEPLOYED CONTRACTS ── */}

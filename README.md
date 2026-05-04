@@ -15,7 +15,9 @@
   <a href="#wave-1--obscurapay-live">Wave 1</a> ·
   <a href="#wave-2--obscurapay-v4-live">Wave 2 Pay</a> ·
   <a href="#wave-2--obscuravote-live">Wave 2 Vote</a> ·
-  <a href="#deployed-contracts">15 Contracts</a> ·
+  <a href="#wave-3--obscurapay-privacy-hardening-live">Wave 3 Pay</a> ·
+  <a href="#wave-3--obscuravote-dao-governance-stack-live">Wave 3 Vote</a> ·
+  <a href="#deployed-contracts">25 Contracts</a> ·
   <a href="#fhe-architecture">FHE</a> ·
   <a href="#roadmap">Roadmap</a>
 </p>
@@ -36,10 +38,11 @@ OBSCURA is not a single privacy tool — it's an **operating system** of five co
 
 **OBSCURA** is built by a collaborative team formed during the Fhenix Buildathon:
 
-- **Core contributor** — Full-stack architect. All 10 Solidity contracts, 5 interfaces, 14+ React hooks, complete 8-tab payment frontend, stealth payments, payroll insurance, cross-chain USDC bridge, cUSDC FHERC-20 integration. 142 tracked Pay tasks + full landing page, docs, and PMF page shipped.
-- **[DiablooDEVs](https://app.akindo.io/users/DiablooDEVs)** — ObscuraVote architect. Full governance contract (V4, 4 iterations), multi-option encrypted voting, coercion-resistant revoting, 7 frontend components, 5-tab VotePage. Merged into OBSCURA to combine complementary skills — payments + governance — into one stronger team, as encouraged by the Fhenix Buildathon organizers.
+- **Core contributor** — Full-stack architect. All 17+ Pay Solidity contracts across Waves 1–3, 5 interfaces, 14+ React hooks, complete 8-tab payment frontend, stealth payments, payroll insurance, cross-chain USDC bridge, cUSDC FHERC-20 integration, 7 new Wave 3 contracts, 8 production hotfixes, animated TxProgressPanel system. 142+ tracked tasks shipped.
+- **[DiablooDEVs](https://app.akindo.io/users/DiablooDEVs)** — ObscuraVote architect. Full governance contract (V1→V5, 5 iterations), full DAO stack (Treasury, Rewards, Delegation), 10 frontend components, full 5-tab VotePage with Wave 3 additions. Merged into OBSCURA to combine complementary skills — payments + governance — into one stronger team, as encouraged by the Fhenix Buildathon organizers.
 
-Two builders. Two live modules. One unified privacy operating system.
+Two builders. Three live waves. One unified privacy operating system.
+
 
 ---
 
@@ -245,9 +248,98 @@ Gas per vote: **N × 7 FHE ops** (eq + select + add/sub per option). Gas limit: 
 | `CastVoteForm` | Multi-option radio, OBS check, revote warning, eager FHE pre-init |
 | `ProposalList` | Search, status filters, countdown, category badges |
 | `TallyReveal` | Colored bars, winner highlight, quorum check, CSV export, finalize action |
-| `VoteDashboard` | Stats cards, privacy model explanation, FHE ops grid |
+| `VoteDashboard` | Stats cards, privacy model explanation, FHE ops grid, FHE banner, Vote Power stat |
 | `VotingHistory` | Per-proposal vote status, "Verify My Vote" (FHE self-decrypt), cancelled handling |
 | `AdminControls` | Per-proposal cancel + extend deadline (creator/admin enforced on-chain) |
+
+---
+
+## Wave 3 — ObscuraPay Privacy Hardening (LIVE)
+
+**7 new Solidity contracts deployed. 8 production hotfixes. Complete animated transaction progress system.**
+
+Wave 3 closes every metadata leak that survived Wave 2. Recipient hints are encrypted on-chain. Cycle commits use per-cycle salts. Schedules accept jitter windows. A rotation log limits the blast radius of a leaked viewing key to a single epoch. Invoice payments now follow the Monero/Zcash model — the payer never sees the recipient's real wallet address.
+
+### New Contracts (7)
+
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| **ObscuraPayStreamV2** | `0xb2fF39C496131d4AFd01d189569aF6FEBaC54d2C` | `InEaddress` encrypted recipient hint, per-cycle salt commits, configurable jitter (±seconds), pause/cancel |
+| **ObscuraPayrollResolverV2** | `0x0f130a6Fe6C200F1F8cc1594a8448AE45A3d7bBF` | Approve/cancel keyed by (escrowId, salt) — cycle-level actions unlinkable on-chain |
+| **ObscuraAddressBook** | `0x4095065ee7cc4C9f5210A328EC08e29B4Ac74Eef` | Encrypted contacts — `InEaddress` payload, label hash on-chain, plaintext labels stored locally per wallet |
+| **ObscuraInboxIndex** | `0xDF195fcfa6806F07740A5e3Bf664eE765eC98131` | Per-recipient bloom filter for ignored ephemeral keys; `ignoreSender` / `ignoreSenders` / `resetFilter` |
+| **ObscuraInsuranceSubscription** | `0x0CCE5DA9E447e7B4A400fC53211dd29C51CA8102` | Auto-charge every cycle up to a ciphertext premium cap chosen at subscribe time |
+| **ObscuraSocialResolver** | `0xCe79E7a6134b17EBC7B594C2D85090Ef3cf37578` | `@handle → meta-address` mapping; `selfRegister` or `registerWithEnsProof`, transferable ownership |
+| **ObscuraStealthRotation** | `0x47D4a7c2B2b7EDACCBf5B9d9e9C281671B2b5289` | Append-only rotation log — leaked viewing key exposes one epoch only |
+
+### ConfidentialEscrow (Redeployed)
+
+| Contract | Address | Reason |
+|----------|---------|--------|
+| **ObscuraConfidentialEscrow** | `0xF893F3c1603E0E9B01be878a0E7e369fF704CCF1` | 3-tx model: CoFHE proofs are wallet-bound; `fund()` is now record-only. Client drives: `escrow.create` → `cUSDC.confidentialTransfer` → `escrow.fund` |
+
+### Wave 3 Pay — Key Privacy Innovations
+
+**Invoice Full Stealth Privacy (Hotfix #8 — Monero/Zcash model):**
+Before Wave 3, `payInvoice()` called `cUSDC.confidentialTransfer(creator, encAmt)` — the creator's real wallet address appeared in calldata. The `InvoicePayCard` also displayed it in plaintext to the payer.
+
+Fix: `payInvoice()` looks up the creator's stealth meta from `ObscuraStealthRegistry`. If registered:
+1. `deriveStealthPayment(meta)` → fresh one-time `stealthAddr + ephemeralPubKey + viewTag`
+2. `cUSDC.confidentialTransfer(stealthAddr, encAmt)` — amount FHE-encrypted, destination one-time address
+3. `ObscuraPayStream.announce(ephemeralPubKey, viewTag, stealthAddr)` — on-chain stealth announcement
+
+Total: **3 transactions**. Creator's real wallet never appears in calldata. `InvoicePayCard` now shows "Private (stealth)" with a shield + EyeOff badge — the payer never sees the real wallet address.
+
+**Animated TxProgressPanel (all pay features):**
+Every multi-step transaction now renders a real-time animated SVG progress panel inline, replacing spinners:
+- **8 SVG icon types** — FHE padlock with pulsing circuit nodes (encrypt), coin-in-flight with motion trail (transfer), radio tower with expanding rings (announce), hourglass with falling sand + live countdown digits (wait), document with stamp animation and drawn checkmark (record), spinning dashed ring + shield assembly (create), vault dial + coin in/out (fund/redeem)
+- **Step transitions** — idle (number badge) → active (spinning halo, looping animation) → done (spring-in checkmark) → error (animated red ×)
+- **Progress bar** — grows from 0→100% as steps resolve
+- **Integrated into** — InvoicePayCard (7-step stealth / 5-step direct), CUSDCEscrowForm (5-step), UnifiedSendForm (adaptive), SubscriptionForm (5-step)
+
+### 8 Production Hotfixes Shipped
+
+| Hotfix | Issue | Fix |
+|--------|-------|-----|
+| **#8** | Invoice payer sees creator's real wallet address on-chain and in UI | ERC-5564 stealth routing (3-tx). "Private (stealth)" badge. Creator address never in calldata. |
+| **#7** | Batch escrow created records but did not auto-fund | Sequential client-side fund loop after `createBatch`. Per-row status badges: queued → funding → funded / failed |
+| **#6** | Batch escrow: duplicate IDs, wrong success panel rows, duplicate React keys | `parseEventLogs` (EscrowCreated only), `filteredRows` state, key = `escrowId-txHash` |
+| **#5** | Subscription button confirmed but no cUSDC transferred | After `createStream`, immediately execute cycle-1 via `useTickStream().tick()` |
+| **#4** | `npm run dev` failed — arrow function bodies were bare `if` statements | All 8 occurrences replaced with properly braced form `(step) => { if (...) ... }` |
+| **#3** | Redeem reverted (out-of-gas, no decoded reason) | Gas limit: 1.2M → 3M. Pre-flight `simulateContract` for real error messages. Escrow ID UX improvements |
+| **#2** | `InvalidSigner` on `fund()` — CoFHE proof proxying not possible | `fund()` becomes record-only. Client drives 3-tx flow: create → confidentialTransfer → fund(record). Redeployed to `0xF893F3c1603E0E9B01be878a0E7e369fF704CCF1` |
+| **#1** | `fund()` used non-existent selector `0xca49d7cd` | Fixed `IConfidentialUSDCv2.sol` interface to `InEuint64` overload (`0x7edb0e7d`). Redeployed. |
+
+---
+
+## Wave 3 — ObscuraVote DAO Governance Stack (LIVE)
+
+**3 contracts upgraded/deployed. Full DAO treasury, voter rewards, and delegation system.**
+
+### Upgraded / New Contracts (3)
+
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| **ObscuraVote V5** | `0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730` | Weighted quorum — `totalVoters += weight` instead of `++`. Delegation-aware: 5 delegators move quorum bar by 6 |
+| **ObscuraTreasury** | `0x89252ee3f920978EEfDB650760fe56BA1Ede8c08` | FHE-encrypted ETH spend vault. `attachSpend` stores amount as ciphertext + private mapping. Configurable timelock (5min–48h). `FHE.allowPublic` on execute = permanent transparency record |
+| **ObscuraRewards** | `0x435ea117404553A6868fbe728A7A284FCEd15BC2` | Voter incentive pool. 0.001 ETH per finalized-proposal vote. `euint64` encrypted balance per voter. Plain accounting drives ETH withdrawals |
+
+### New Frontend Panels (4)
+
+| Panel | Features |
+|-------|---------|
+| **DelegationPanel** | Profile header with gradient avatar, Vote Weight / Delegators / Mode stats, delegating-to card, set/change delegate form, active delegators list from on-chain event logs (no subgraph), collapsible FAQ |
+| **TreasuryPanel** | 5-state badge machine: Vote Pending → Start Timelock → Countdown (live) → Ready to Execute → Executed. Attach Spend with FHE encrypt stepper. Execute reads amount from private mapping — no user input needed |
+| **RewardsPanel** | 3 tabs: Earn Rewards (per-proposal claim), Withdraw (request + execute), Fund Pool (anyone can top up). Pending balance display |
+| **VoteSetupGuide** | 4-step onboarding: Get ETH → Claim $OBS → Cast First Vote → Set Delegate. Each step checks live on-chain state (`lastClaim()`, `voterParticipation()`, `delegateTo()`) |
+
+### VotePage Restructure (Wave 3)
+
+**Before (Wave 2):** Dashboard · Proposals · Cast Vote · Results · Create
+
+**After (Wave 3):** Dashboard · Proposals (subtabs: Create / Proposals / Cast Vote / Results) · Delegations · Treasury · Participation
+
+Additional: quorum progress bars in ProposalList, FHE banner + Vote Power stat card in VoteDashboard.
 
 ---
 
@@ -284,13 +376,34 @@ Gas per vote: **N × 7 FHE ops** (eq + select + add/sub per option). Gas limit: 
 | PoolFactory | `0x03bAc36d45fA6f5aD8661b95D73452b3BedcaBFD` |
 | PolicyRegistry | `0xf421363B642315BD3555dE2d9BD566b7f9213c8E` |
 
-### Wave 2 — ObscuraVote (1)
+### Wave 2 — ObscuraVote (upgraded to V5 in Wave 3)
 
 | Contract | Address |
 |----------|---------|
-| ObscuraVote (V4) | `0x5d91B5ccb581F543f7399eea1c65Dfa88b3f9B7a` |
+| ObscuraVote (V5) | `0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730` |
 
-**Total: 15 deployed contracts on Arbitrum Sepolia.**
+### Wave 3 — Pay Privacy Hardening (7 contracts)
+
+| Contract | Address |
+|----------|---------|
+| ObscuraPayStreamV2 | `0xb2fF39C496131d4AFd01d189569aF6FEBaC54d2C` |
+| ObscuraPayrollResolverV2 | `0x0f130a6Fe6C200F1F8cc1594a8448AE45A3d7bBF` |
+| ObscuraAddressBook | `0x4095065ee7cc4C9f5210A328EC08e29B4Ac74Eef` |
+| ObscuraInboxIndex | `0xDF195fcfa6806F07740A5e3Bf664eE765eC98131` |
+| ObscuraInsuranceSubscription | `0x0CCE5DA9E447e7B4A400fC53211dd29C51CA8102` |
+| ObscuraSocialResolver | `0xCe79E7a6134b17EBC7B594C2D85090Ef3cf37578` |
+| ObscuraStealthRotation | `0x47D4a7c2B2b7EDACCBf5B9d9e9C281671B2b5289` |
+| ObscuraConfidentialEscrow (v3) | `0xF893F3c1603E0E9B01be878a0E7e369fF704CCF1` |
+
+### Wave 3 — ObscuraVote DAO Stack (2 new contracts)
+
+| Contract | Address |
+|----------|---------|
+| ObscuraTreasury | `0x89252ee3f920978EEfDB650760fe56BA1Ede8c08` |
+| ObscuraRewards | `0x435ea117404553A6868fbe728A7A284FCEd15BC2` |
+
+**Total: 25 deployed contracts on Arbitrum Sepolia.**
+
 
 ---
 
@@ -364,9 +477,10 @@ const result = await decryptForView(ctHash, FheTypes.Uint64)
 |------|--------|--------|-------------|
 | **1** | **ObscuraPay** | ✅ Live | 4 contracts — encrypted payroll, escrows, conditions, $OBS FHERC-20 token |
 | **2** | **ObscuraPay v4 + ObscuraVote** | ✅ Live | 11 new contracts — stealth payments, recurring streams, cUSDC, insurance, cross-chain bridge, encrypted governance |
-| **3** | ObscuraVault | 🔒 Planned | MEV-protected sealed-bid auctions, encrypted yield vaults, private liquidity pools |
-| **4** | ObscuraTrust | 🔒 Planned | Selective disclosure, time-scoped auditor permits, ZK+FHE compliance attestations |
-| **5** | ObscuraMind | 🔒 Planned | Privacy-preserving AI inference, ML on encrypted data, cross-module credit scoring |
+| **3** | **ObscuraPay Hardening + ObscuraVote DAO** | ✅ Live | 10 new contracts — invoice stealth privacy, encrypted contacts, social resolver, stealth rotation, FHE-encrypted treasury, voter rewards, delegation, animated TxProgressPanel |
+| **4** | ObscuraVault | 🔒 Planned | MEV-protected sealed-bid auctions, encrypted yield vaults, private liquidity pools |
+| **5** | ObscuraTrust | 🔒 Planned | Selective disclosure, time-scoped auditor permits, ZK+FHE compliance attestations |
+| **6** | ObscuraMind | 🔒 Planned | Privacy-preserving AI inference, ML on encrypted data, cross-module credit scoring |
 
 ---
 
@@ -470,10 +584,11 @@ npx hardhat test
 
 ## What OBSCURA Proves
 
-- **FHE on EVM is production-ready.** 15 smart contracts deployed, processing real encrypted transactions with zero plaintext leakage across payments and governance.
-- **Complex business logic works on ciphertext.** Payroll accumulation, conditional escrows, stealth payments, coercion-resistant voting, insurance underwriting — all on encrypted data.
-- **UX can abstract FHE complexity.** 8-tab PayPage + 5-tab VotePage with async stepper, permit-gated decryption, and "What's Private?" panels. Zero user exposure to ciphertext internals.
-- **Composable encrypted modules scale.** Five modules sharing one FHE infrastructure, one ACL layer, one stablecoin. Each module reinforces the next.
+- **FHE on EVM is production-ready.** 25 smart contracts deployed across three waves, processing real encrypted transactions with zero plaintext leakage across payments and governance.
+- **Complex business logic works on ciphertext.** Payroll accumulation, conditional escrows, stealth payments, coercion-resistant voting, insurance underwriting, DAO treasury execution, voter reward accrual — all on encrypted data.
+- **UX can abstract FHE complexity.** 8-tab PayPage + 5-tab VotePage with animated real-time TxProgressPanel, async stepper, permit-gated decryption, and "What's Private?" panels. Zero user exposure to ciphertext internals.
+- **Invoice privacy matches Monero/Zcash.** Payer never sees recipient's real wallet address — ERC-5564 stealth routing on every invoice, `InEaddress` on every stream, per-cycle salts, jitter, and rotation logs make timing and linking attacks impractical.
+- **Composable encrypted modules scale.** Five modules sharing one FHE infrastructure, one ACL layer, one stablecoin. Each module reinforces the next. DAO vote results feed treasury. Payroll streams feed insurance subscriptions.
 
 ---
 

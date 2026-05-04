@@ -10,27 +10,27 @@ const products = [
     path: "/pay",
     status: "live",
     features: [
-      "Confidential cUSDC transfers with FHE-encrypted amounts",
-      "Encrypted escrows with silent failure pattern",
-      "Payroll streams to stealth recipient addresses",
-      "Cross-chain funding via Circle CCTP bridge",
-      "Payroll insurance with on-chain dispute resolution",
-      "Stealth addresses via ERC-5564 / ECDH",
+      "Confidential cUSDC transfers — amounts FHE-encrypted, never on-chain plaintext",
+      "Invoice privacy: payer sees 'Private (stealth)' — real wallet never in calldata",
+      "Payroll streams to one-time stealth addresses via ERC-5564 / ECDH",
+      "Animated TxProgressPanel: real-time SVG progress across all multi-tx flows",
+      "Encrypted escrows with silent failure pattern — FHE.select() returns 0",
+      "Cross-chain funding via Circle CCTP bridge · Insurance with dispute resolution",
     ],
   },
   {
     icon: Vote,
     name: "ObscuraVote",
-    tagline: "Coercion-Resistant Governance",
+    tagline: "Coercion-Resistant DAO Governance",
     path: "/vote",
     status: "live",
     features: [
-      "Encrypted ballots — votes hidden until tally finalized",
-      "FHE.add() tallies without revealing individual choices",
-      "Multi-option proposals with configurable deadlines",
-      "Anti-coercion revote before deadline",
-      "Token-gated proposal creation",
-      "Full voting history with cryptographic verification",
+      "Encrypted ballots — choices hidden until tally finalized via FHE.allowPublic()",
+      "Weighted quorum delegation: 5 delegators move the quorum bar by 6, not 1",
+      "FHE-encrypted DAO treasury with configurable timelock + FHE.allowPublic on execute",
+      "Voter reward pool: 0.001 ETH per finalized proposal, euint64 balances on-chain",
+      "On-chain delegation via event-log delegator tracking — no subgraph needed",
+      "Anti-coercion revoting — unlimited, externally indistinguishable from first vote",
     ],
   },
   {
@@ -94,13 +94,13 @@ const WaveModules = () => {
           className="mb-16"
         >
           <span className="text-xs tracking-[0.2em] uppercase text-primary text-glow-sm">
-            Five Encrypted Modules
+            Five Encrypted Modules — Three Waves Live
           </span>
           <h2 className="font-display text-3xl md:text-4xl mt-3 text-foreground tracking-tight">
             What We <span className="text-primary text-glow">Build</span>
           </h2>
           <p className="text-base text-muted-foreground mt-4 max-w-xl">
-            A complete privacy operating system — encrypted payments, governance, DeFi, compliance, and AI — all powered by Fully Homomorphic Encryption on Arbitrum.
+            A complete privacy operating system — 25 contracts live across 3 waves. Encrypted payments, DAO governance with FHE treasury, DeFi, compliance, and AI — all powered by Fully Homomorphic Encryption on Arbitrum.
           </p>
         </motion.div>
 

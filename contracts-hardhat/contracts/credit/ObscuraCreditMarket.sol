@@ -166,46 +166,77 @@ contract ObscuraCreditMarket {
 
     // ─── Lender side ─────────────────────────────────────────────────────
 
-    /// @notice Supply loanAsset. Caller must `cUSDC.setOperator(market)` first.
-    ///         Supply shares are tracked as plaintext uint128 (no FHE needed).
-    function supply(uint64 amtPlain, InEuint64 calldata encAmt) external {
+    /// @notice Supply loanAsset to the market.
+    /// @dev    Caller MUST first call:
+    ///           cUSDC.confidentialTransfer(address(this), encAmt)
+    ///         directly before calling this. CoFHE rejects InEuint64 proofs
+    ///         forwarded through intermediaries. Supply shares are plaintext.
+    function supply(uint64 amtPlain) external {
         accrueInterest();
-        IConfidentialUSDCv2(loanAsset).confidentialTransferFrom(msg.sender, address(this), encAmt);
         supplyShares[msg.sender] += amtPlain;
         totalSupplyAssets        += amtPlain;
         emit Supplied(msg.sender);
     }
 
-    /// @notice Withdraw loanAsset.
-    ///         User provides encrypted withdrawal amount. Market sends it back
-    ///         via confidentialTransferFrom(market → user) — market is its own
-    ///         sender so no operator approval needed.
-    function withdraw(uint64 amtPlain, InEuint64 calldata encAmt) external {
+    /// @notice Vault-internal: record supply on behalf of vault after it has
+    ///         already done cUSDC.confidentialTransfer(market, handle).
+    ///         Called by vault.reallocateSupply() after the direct cUSDC push.
+    function notifySupply(uint64 amtPlain) external {
+        accrueInterest();
+        supplyShares[msg.sender] += amtPlain;
+        totalSupplyAssets        += amtPlain;
+        emit Supplied(msg.sender);
+    }
+
+    /// @notice Withdraw loanAsset. Market IS the holder so no client InEuint64
+    ///         needed. Uses FHE.asEuint64(amtPlain) + FHE.allowTransient push.
+    function withdraw(uint64 amtPlain) external {
         accrueInterest();
         require(supplyShares[msg.sender] >= amtPlain, "InsufficientSupply");
         supplyShares[msg.sender] -= amtPlain;
         if (amtPlain <= totalSupplyAssets - totalBorrowAssets) {
             totalSupplyAssets -= amtPlain;
         }
-        // market == from == msg.sender inside cUSDC → passes operator check.
-        IConfidentialUSDCv2(loanAsset).confidentialTransferFrom(address(this), msg.sender, encAmt);
+        euint64 handle = FHE.asEuint64(amtPlain);
+        FHE.allowTransient(handle, loanAsset);
+        IConfidentialUSDCv2(loanAsset).confidentialTransfer(
+            msg.sender, uint256(euint64.unwrap(handle))
+        );
+        emit Withdrew(msg.sender);
+    }
+
+    /// @notice Vault-internal: withdraw liquidity back to calling vault.
+    ///         Market IS the holder. Uses FHE push pattern (no client InEuint64).
+    ///         Called by vault.reallocateWithdraw().
+    function withdrawToVault(uint64 amtPlain) external {
+        accrueInterest();
+        require(supplyShares[msg.sender] >= amtPlain, "InsufficientSupply");
+        supplyShares[msg.sender] -= amtPlain;
+        if (amtPlain <= totalSupplyAssets - totalBorrowAssets) {
+            totalSupplyAssets -= amtPlain;
+        }
+        euint64 handle = FHE.asEuint64(amtPlain);
+        FHE.allowTransient(handle, loanAsset);
+        IConfidentialUSDCv2(loanAsset).confidentialTransfer(
+            msg.sender, uint256(euint64.unwrap(handle))
+        );
         emit Withdrew(msg.sender);
     }
 
     // ─── Borrower side ───────────────────────────────────────────────────
 
     /// @notice Supply collateral.
-    ///         TWO InEuint64 are required because the cUSDC pull (encTransfer)
-    ///         and the encrypted collateral tracking (encAmt) each consume one
-    ///         client-provided ciphertext input.
+    /// @dev    Caller MUST first call:
+    ///           cCollateral.confidentialTransfer(address(this), encTransfer)
+    ///         directly. Then call this with a SEPARATE encAmt (same plaintext)
+    ///         for the FHE collateral accounting. The market consumes encAmt
+    ///         itself (msg.sender=user in market ctx → CoFHE accepts).
     function supplyCollateral(
         uint64 /*amtPlain*/,
-        InEuint64 calldata encTransfer,
         InEuint64 calldata encAmt
     ) external {
         accrueInterest();
         _ensurePos(msg.sender);
-        IConfidentialUSDCv2(collateralAsset).confidentialTransferFrom(msg.sender, address(this), encTransfer);
 
         euint64 add = FHE.asEuint64(encAmt);
         Position storage p = _pos[msg.sender];
@@ -293,17 +324,17 @@ contract ObscuraCreditMarket {
     }
 
     /// @notice Repay borrowed cUSDC.
-    ///         TWO InEuint64 required: encTransfer (cUSDC pull) and encAmt
-    ///         (encrypted amount to subtract from borrowShares). Both represent
-    ///         the same plaintext value but must be separate client ciphertexts.
+    /// @dev    Caller MUST first call:
+    ///           cUSDC.confidentialTransfer(address(this), encTransfer)
+    ///         directly. Then call this with a SEPARATE encAmt (same plaintext)
+    ///         for FHE borrow accounting. Market consumes encAmt directly
+    ///         (msg.sender=user in market ctx → CoFHE accepts).
     function repay(
         uint64 amtPlain,
-        InEuint64 calldata encTransfer,
         InEuint64 calldata encAmt
     ) external {
         accrueInterest();
         _ensurePos(msg.sender);
-        IConfidentialUSDCv2(loanAsset).confidentialTransferFrom(msg.sender, address(this), encTransfer);
 
         euint64 add = FHE.asEuint64(encAmt);
         Position storage p = _pos[msg.sender];

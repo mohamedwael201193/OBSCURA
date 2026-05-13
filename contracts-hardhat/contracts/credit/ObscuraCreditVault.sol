@@ -1,24 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import "../interfaces/IConfidentialUSDCv2.sol";
 import "./ObscuraCreditMarket.sol";
 
-/// @title ObscuraCreditVault
+/// @title ObscuraCreditVault v1.2
 /// @notice Curator-routed confidential vault (MetaMorpho-shaped).
 ///
-/// Share accounting is plaintext uint128 (same as Morpho ERC4626 shares).
-/// The privacy guarantee comes from the underlying cUSDC token: balances
-/// and transfer amounts are fully FHE-encrypted inside cUSDC — the vault
-/// only records WHO deposited and HOW MANY SHARES they hold, not the
-/// corresponding encrypted handle.
+/// Share accounting is plaintext uint128. Privacy comes from cUSDC.
 ///
-/// When FHE.asEuint64(plaintext) becomes available on mainnet (trivial
-/// encryption), shares can be upgraded to euint64 for full privacy.
+/// CoFHE pattern (critical): InEuint64 proofs cannot be forwarded through
+/// intermediary contracts — the proof's recovered signer must match the
+/// immediate caller of verifyInput (msg.sender in FHE.sol = the contract
+/// calling FHE functions, which equals the tx sender for direct calls).
 ///
-/// Withdraw: user provides an InEuint64 (same client-side encryption as
-/// deposit). The vault calls confidentialTransferFrom(vault → user) where
-/// vault == msg.sender == from, so no operator approval is needed.
+/// Incoming transfers (deposit): caller must pre-call
+///   cUSDC.confidentialTransfer(vaultAddress, encAmt)   ← direct, no proxy
+/// then call vault.deposit(amtPlain) to record shares.
+///
+/// Outgoing transfers (withdraw): vault IS the holder. Uses
+///   FHE.asEuint64(amtPlain) + FHE.allowTransient + confidentialTransfer(handle)
+/// so no client-provided InEuint64 is needed.
 contract ObscuraCreditVault {
     error NotCurator();
     error NotOwner();
@@ -87,15 +90,14 @@ contract ObscuraCreditVault {
 
     // ─── User-facing deposit / withdraw ──────────────────────────────────
 
-    /// @notice Deposit cUSDC into the vault.
-    /// @dev    Caller must call `cUSDC.setOperator(vaultAddress, until)` first.
-    ///         The InEuint64 is signed by the user's wallet and validated by the
-    ///         FHE coprocessor against the vault (as the immediate call target).
+    /// @notice Record a deposit after the caller has directly transferred cUSDC.
+    /// @dev    Caller MUST first call:
+    ///           cUSDC.confidentialTransfer(address(this), encAmt)
+    ///         directly (user → cUSDC, no proxy). CoFHE rejects InEuint64
+    ///         proofs forwarded through intermediary contracts. After the
+    ///         transfer confirm, call this function to record shares.
     /// @param amtPlain Plaintext deposit amount (base units, 6 dec for cUSDC).
-    /// @param encAmt   Client-side encrypted amount for the confidential pull.
-    function deposit(uint64 amtPlain, InEuint64 calldata encAmt) external {
-        IConfidentialUSDCv2(loanAsset).confidentialTransferFrom(msg.sender, address(this), encAmt);
-
+    function deposit(uint64 amtPlain) external {
         shares[msg.sender]    += amtPlain;
         totalShares           += amtPlain;
         publicTotalDeposited  += amtPlain;
@@ -103,43 +105,50 @@ contract ObscuraCreditVault {
     }
 
     /// @notice Withdraw cUSDC from the vault.
-    /// @dev    No operator setup needed: vault calls
-    ///         `cUSDC.confidentialTransferFrom(vault, user, encAmt)` where
-    ///         from == msg.sender == vault, so cUSDC's self-transfer rule
-    ///         grants permission.
+    /// @dev    Vault IS the cUSDC holder. Uses FHE.asEuint64(amtPlain) +
+    ///         FHE.allowTransient to push funds to user via the uint256-handle
+    ///         overload of confidentialTransfer. No client-side InEuint64 needed.
     /// @param amtPlain Plaintext amount to withdraw (checked against shares).
-    /// @param encAmt   Client-side encrypted amount — vault pushes it to user.
-    function withdraw(uint64 amtPlain, InEuint64 calldata encAmt) external {
+    function withdraw(uint64 amtPlain) external {
         if (shares[msg.sender] < amtPlain) revert InsufficientShares();
 
         shares[msg.sender]   -= amtPlain;
         totalShares          -= amtPlain;
         if (publicTotalDeposited >= amtPlain) publicTotalDeposited -= amtPlain;
 
-        // vault == msg.sender == from → cUSDC operator check passes (self-transfer).
-        IConfidentialUSDCv2(loanAsset).confidentialTransferFrom(address(this), msg.sender, encAmt);
+        euint64 handle = FHE.asEuint64(amtPlain);
+        FHE.allowTransient(handle, loanAsset);
+        IConfidentialUSDCv2(loanAsset).confidentialTransfer(
+            msg.sender, uint256(euint64.unwrap(handle))
+        );
         emit Withdrew(msg.sender, amtPlain);
     }
 
     // ─── Curator-only reallocation ────────────────────────────────────────
 
     /// @notice Route vault liquidity into an approved market (supply).
-    ///         Vault must already be operator on cUSDC for the market:
-    ///         call `setOperatorOn(market, until)` once after deploy.
-    function reallocateSupply(address market, uint64 amtPlain, InEuint64 calldata encAmt)
+    /// @dev    Vault trivially encrypts amtPlain, transfers cUSDC to market
+    ///         via confidentialTransfer(handle), then notifies market to
+    ///         record supply shares. No InEuint64 forwarding (CoFHE safe).
+    function reallocateSupply(address market, uint64 amtPlain)
         external onlyCurator
     {
         if (!isApprovedMarket[market]) revert MarketNotApproved();
         if (uint128(amtPlain) > marketCap[market]) revert CapExceeded();
-        ObscuraCreditMarket(market).supply(amtPlain, encAmt);
+        euint64 handle = FHE.asEuint64(amtPlain);
+        FHE.allowTransient(handle, loanAsset);
+        IConfidentialUSDCv2(loanAsset).confidentialTransfer(
+            market, uint256(euint64.unwrap(handle))
+        );
+        ObscuraCreditMarket(market).notifySupply(amtPlain);
         emit Reallocated(market, amtPlain, true);
     }
 
-    function reallocateWithdraw(address market, uint64 amtPlain, InEuint64 calldata encAmt)
+    function reallocateWithdraw(address market, uint64 amtPlain)
         external onlyCurator
     {
         if (!isApprovedMarket[market]) revert MarketNotApproved();
-        ObscuraCreditMarket(market).withdraw(amtPlain, encAmt);
+        ObscuraCreditMarket(market).withdrawToVault(amtPlain);
         emit Reallocated(market, amtPlain, false);
     }
 

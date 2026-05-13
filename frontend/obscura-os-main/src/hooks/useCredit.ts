@@ -156,6 +156,13 @@ export function useEnsureOperator(target?: `0x${string}`) {
 
 // ─────────────────────────────────────────────────────────────────────────
 // 4. useCreditMarket — supply / withdraw / supplyCollateral / withdrawCollateral / repay.
+//
+// CoFHE constraint: InEuint64 proofs cannot be forwarded through intermediary
+// contracts. All INCOMING transfers use a two-step pattern:
+//   1. cToken.confidentialTransfer(contract, encAmt)  ← user calls directly
+//   2. contract.function(amtPlain [, encAmt2])         ← contract records
+// All OUTGOING transfers (market IS holder) use no client InEuint64 —
+// the market does FHE.asEuint64 + allowTransient + confidentialTransfer internally.
 // ─────────────────────────────────────────────────────────────────────────
 export function useCreditMarket(market?: `0x${string}`) {
   const publicClient = usePublicClient();
@@ -163,47 +170,36 @@ export function useCreditMarket(market?: `0x${string}`) {
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const fhe = useFHEStatus();
-  const op = useEnsureOperator(market);
 
+  // ── Two-step supply: cUSDC.confidentialTransfer(market) → market.supply(amt) ──
   const supply = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
+      if (!publicClient || !walletClient || !market || !address || !REINEIRA_CUSDC_ADDRESS) throw new Error("not ready");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
-      const inputs = await encryptAmount(amount);
-      await op.ensure();
+      const enc = await encryptAmount(amount);
       fhe.setStep(FHEStepStatus.COMPUTING);
-      const fees = await estimateCappedFees(publicClient);
-      const hash = await writeContractAsync({
-        address: market,
-        abi: CREDIT_MARKET_ABI,
-        functionName: "supply",
-        args: [amount, inputs[0]],
-        account: address,
-        chain: arbitrumSepolia,
-        maxFeePerGas: fees.maxFeePerGas,
-        maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
-        gas: CREDIT_GAS_CAPS.supply,
-      });
-      fhe.setStep(FHEStepStatus.READY);
-      return hash;
-    },
-    [publicClient, walletClient, market, address, writeContractAsync, fhe, op]
-  );
 
-  const withdraw = useCallback(
-    async (amount: bigint) => {
-      if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
-      fhe.setStep(FHEStepStatus.ENCRYPTING);
-      await initFHEClient(publicClient, walletClient);
-      const inputs = await encryptAmount(amount);
-      fhe.setStep(FHEStepStatus.COMPUTING);
+      // Step 1 — direct cUSDC transfer to market (user is immediate CoFHE caller)
       const fees = await estimateCappedFees(publicClient);
-      const hash = await writeContractAsync({
-        address: market, abi: CREDIT_MARKET_ABI, functionName: "withdraw",
-        args: [amount, inputs[0]], account: address, chain: arbitrumSepolia,
+      const txTransfer = await writeContractAsync({
+        address: REINEIRA_CUSDC_ADDRESS, abi: REINEIRA_CUSDC_ABI,
+        functionName: "confidentialTransfer", args: [market, enc[0]],
+        account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
-        gas: CREDIT_GAS_CAPS.withdraw,
+        gas: 600_000n,
+      });
+      const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
+      if (r.status !== "success") throw new Error("cUSDC transfer to market failed");
+      await new Promise(res => setTimeout(res, 8000)); // CoFHE settle
+
+      // Step 2 — record supply shares (no FHE forwarding)
+      const fees2 = await estimateCappedFees(publicClient);
+      const hash = await writeContractAsync({
+        address: market, abi: CREDIT_MARKET_ABI, functionName: "supply",
+        args: [amount], account: address, chain: arbitrumSepolia,
+        maxFeePerGas: fees2.maxFeePerGas, maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
+        gas: CREDIT_GAS_CAPS.supply,
       });
       fhe.setStep(FHEStepStatus.READY);
       return hash;
@@ -211,29 +207,60 @@ export function useCreditMarket(market?: `0x${string}`) {
     [publicClient, walletClient, market, address, writeContractAsync, fhe]
   );
 
-  const supplyCollateral = useCallback(
+  // ── Withdraw: market IS holder, uses FHE.asEuint64 internally ──
+  const withdraw = useCallback(
     async (amount: bigint) => {
+      if (!publicClient || !market || !address) throw new Error("not ready");
+      const fees = await estimateCappedFees(publicClient);
+      const hash = await writeContractAsync({
+        address: market, abi: CREDIT_MARKET_ABI, functionName: "withdraw",
+        args: [amount], account: address, chain: arbitrumSepolia,
+        maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+        gas: CREDIT_GAS_CAPS.withdraw,
+      });
+      return hash;
+    },
+    [publicClient, market, address, writeContractAsync]
+  );
+
+  // ── Two-step supplyCollateral: cToken.confidentialTransfer → market.supplyCollateral ──
+  const supplyCollateral = useCallback(
+    async (amount: bigint, collateralTokenAddress: `0x${string}`) => {
       if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
-      // TWO separate ciphertexts: one for cUSDC.confidentialTransferFrom, one for FHE accounting.
-      const inputs1 = await encryptAmount(amount);
-      const inputs2 = await encryptAmount(amount);
-      await op.ensure();
+
+      // Step 1 — transfer collateral directly to market
+      const enc1 = await encryptAmount(amount);
       fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
+      const txTransfer = await writeContractAsync({
+        address: collateralTokenAddress, abi: REINEIRA_CUSDC_ABI,
+        functionName: "confidentialTransfer", args: [market, enc1[0]],
+        account: address, chain: arbitrumSepolia,
+        maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+        gas: 600_000n,
+      });
+      const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
+      if (r.status !== "success") throw new Error("collateral transfer failed");
+      await new Promise(res => setTimeout(res, 8000));
+
+      // Step 2 — supply with ONE encAmt for FHE collateral accounting
+      const enc2 = await encryptAmount(amount);
+      const fees2 = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "supplyCollateral",
-        args: [amount, inputs1[0], inputs2[0]], account: address, chain: arbitrumSepolia,
-        maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+        args: [amount, enc2[0]], account: address, chain: arbitrumSepolia,
+        maxFeePerGas: fees2.maxFeePerGas, maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.supplyCollateral,
       });
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
-    [publicClient, walletClient, market, address, writeContractAsync, fhe, op]
+    [publicClient, walletClient, market, address, writeContractAsync, fhe]
   );
 
+  // ── withdrawCollateral: market IS holder, FHE LLTV check via encAmt from user ──
   const withdrawCollateral = useCallback(
     async (amount: bigint) => {
       if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
@@ -254,15 +281,13 @@ export function useCreditMarket(market?: `0x${string}`) {
     [publicClient, walletClient, market, address, writeContractAsync, fhe]
   );
 
+  // ── borrow: market IS holder, FHE check via encAmt + encDest from user ──
   const borrow = useCallback(
     async (amount: bigint, destination: `0x${string}`) => {
       if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
-      // batch encrypt amount + dest
       const inputs = await encryptAddressAndAmount(destination, amount);
-      // inputs[0] = encrypted address; inputs[1] = encrypted amount.
-      // Market.borrow expects (uint64 amtPlain, InEuint64 encAmt, InEaddress encDest).
       fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
@@ -278,27 +303,41 @@ export function useCreditMarket(market?: `0x${string}`) {
     [publicClient, walletClient, market, address, writeContractAsync, fhe]
   );
 
+  // ── Two-step repay: cUSDC.confidentialTransfer(market) → market.repay(amt, encAmt) ──
   const repay = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
+      if (!publicClient || !walletClient || !market || !address || !REINEIRA_CUSDC_ADDRESS) throw new Error("not ready");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
-      // TWO separate ciphertexts: one for cUSDC.confidentialTransferFrom pull, one for FHE borrow tracking.
-      const inputs1 = await encryptAmount(amount);
-      const inputs2 = await encryptAmount(amount);
-      await op.ensure();
+
+      // Step 1 — direct cUSDC transfer to market
+      const enc1 = await encryptAmount(amount);
       fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
+      const txTransfer = await writeContractAsync({
+        address: REINEIRA_CUSDC_ADDRESS, abi: REINEIRA_CUSDC_ABI,
+        functionName: "confidentialTransfer", args: [market, enc1[0]],
+        account: address, chain: arbitrumSepolia,
+        maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+        gas: 600_000n,
+      });
+      const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
+      if (r.status !== "success") throw new Error("cUSDC transfer failed");
+      await new Promise(res => setTimeout(res, 8000));
+
+      // Step 2 — repay with ONE encAmt for FHE borrow accounting
+      const enc2 = await encryptAmount(amount);
+      const fees2 = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "repay",
-        args: [amount, inputs1[0], inputs2[0]], account: address, chain: arbitrumSepolia,
-        maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+        args: [amount, enc2[0]], account: address, chain: arbitrumSepolia,
+        maxFeePerGas: fees2.maxFeePerGas, maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.repay,
       });
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
-    [publicClient, walletClient, market, address, writeContractAsync, fhe, op]
+    [publicClient, walletClient, market, address, writeContractAsync, fhe]
   );
 
   const accrue = useCallback(async () => {
@@ -317,6 +356,10 @@ export function useCreditMarket(market?: `0x${string}`) {
 
 // ─────────────────────────────────────────────────────────────────────────
 // 5. useCreditVault — deposit / withdraw / curator reallocation.
+//
+// Deposit: two-step (cUSDC.confidentialTransfer → vault.deposit).
+// Withdraw: one-step (vault.withdraw uses internal FHE.asEuint64).
+// Reallocate: one-step (vault does all FHE internally, no client InEuint64).
 // ─────────────────────────────────────────────────────────────────────────
 export function useCreditVault(vault?: `0x${string}`) {
   const publicClient = usePublicClient();
@@ -324,87 +367,88 @@ export function useCreditVault(vault?: `0x${string}`) {
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const fhe = useFHEStatus();
-  const op = useEnsureOperator(vault);
 
+  // ── Two-step deposit: cUSDC.confidentialTransfer(vault) → vault.deposit(amt) ──
   const deposit = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !walletClient || !vault || !address) throw new Error("not ready");
+      if (!publicClient || !walletClient || !vault || !address || !REINEIRA_CUSDC_ADDRESS) throw new Error("not ready");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
-      const inputs = await encryptAmount(amount);
-      await op.ensure();
+      const enc = await encryptAmount(amount);
       fhe.setStep(FHEStepStatus.COMPUTING);
+
+      // Step 1 — direct cUSDC transfer to vault (user is immediate CoFHE caller)
       const fees = await estimateCappedFees(publicClient);
+      const txTransfer = await writeContractAsync({
+        address: REINEIRA_CUSDC_ADDRESS, abi: REINEIRA_CUSDC_ABI,
+        functionName: "confidentialTransfer", args: [vault, enc[0]],
+        account: address, chain: arbitrumSepolia,
+        maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+        gas: 600_000n,
+      });
+      const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
+      if (r.status !== "success") throw new Error("cUSDC transfer to vault failed");
+      await new Promise(res => setTimeout(res, 8000)); // CoFHE settle
+
+      // Step 2 — record shares in vault (no FHE forwarding)
+      const fees2 = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
         address: vault, abi: CREDIT_VAULT_ABI, functionName: "deposit",
-        args: [amount, inputs[0]], account: address, chain: arbitrumSepolia,
-        maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+        args: [amount], account: address, chain: arbitrumSepolia,
+        maxFeePerGas: fees2.maxFeePerGas, maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.vaultDeposit,
       });
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
-    [publicClient, walletClient, vault, address, writeContractAsync, fhe, op]
+    [publicClient, walletClient, vault, address, writeContractAsync, fhe]
   );
 
+  // ── Withdraw: vault IS holder, uses FHE.asEuint64 internally ──
   const withdraw = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !walletClient || !vault || !address) throw new Error("not ready");
-      fhe.setStep(FHEStepStatus.ENCRYPTING);
-      await initFHEClient(publicClient, walletClient);
-      const inputs = await encryptAmount(amount);
-      fhe.setStep(FHEStepStatus.COMPUTING);
+      if (!publicClient || !vault || !address) throw new Error("not ready");
       const fees = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
         address: vault, abi: CREDIT_VAULT_ABI, functionName: "withdraw",
-        args: [amount, inputs[0]], account: address, chain: arbitrumSepolia,
+        args: [amount], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.vaultWithdraw,
       });
-      fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
-    [publicClient, walletClient, vault, address, writeContractAsync, fhe]
+    [publicClient, vault, address, writeContractAsync]
   );
 
+  // ── Reallocate supply: vault does FHE.asEuint64 + confidentialTransfer internally ──
   const reallocateSupply = useCallback(
     async (market: `0x${string}`, amount: bigint) => {
-      if (!publicClient || !walletClient || !vault || !address) throw new Error("not ready");
-      fhe.setStep(FHEStepStatus.ENCRYPTING);
-      await initFHEClient(publicClient, walletClient);
-      const inputs = await encryptAmount(amount);
-      fhe.setStep(FHEStepStatus.COMPUTING);
+      if (!publicClient || !vault || !address) throw new Error("not ready");
       const fees = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
         address: vault, abi: CREDIT_VAULT_ABI, functionName: "reallocateSupply",
-        args: [market, amount, inputs[0]], account: address, chain: arbitrumSepolia,
+        args: [market, amount], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.vaultReallocate,
       });
-      fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
-    [publicClient, walletClient, vault, address, writeContractAsync, fhe]
+    [publicClient, vault, address, writeContractAsync]
   );
 
   const reallocateWithdraw = useCallback(
     async (market: `0x${string}`, amount: bigint) => {
-      if (!publicClient || !walletClient || !vault || !address) throw new Error("not ready");
-      fhe.setStep(FHEStepStatus.ENCRYPTING);
-      await initFHEClient(publicClient, walletClient);
-      const inputs = await encryptAmount(amount);
-      fhe.setStep(FHEStepStatus.COMPUTING);
+      if (!publicClient || !vault || !address) throw new Error("not ready");
       const fees = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
         address: vault, abi: CREDIT_VAULT_ABI, functionName: "reallocateWithdraw",
-        args: [market, amount, inputs[0]], account: address, chain: arbitrumSepolia,
+        args: [market, amount], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.vaultReallocate,
       });
-      fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
-    [publicClient, walletClient, vault, address, writeContractAsync, fhe]
+    [publicClient, vault, address, writeContractAsync]
   );
 
   return { deposit, withdraw, reallocateSupply, reallocateWithdraw };

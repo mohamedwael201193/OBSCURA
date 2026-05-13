@@ -44,10 +44,10 @@
   "ObscuraCreditOracle": "0x02E085502311732DB9aD13889CC36A6C2D807189",
   "ObscuraCreditIRM": "0x29A43Ec8379200286f5A05d8ef24d46e088903a7",
   "ObscuraCreditFactory": "0x52eBaBfF7c73037C967678bBCd2BC6B30b6a327b",
-  "ObscuraCreditMarket_77": "0xD28b6746cF3F067Bad7ccDe1604C3772bA284072",
-  "ObscuraCreditMarket_86": "0x05263264B6fdA7707311f841D72264397aeF355a",
-  "ObscuraCreditVault_Conservative": "0x2D5349D8dCf4f8e7bF4b6659D648FF4597e171B6",
-  "ObscuraCreditVault_Aggressive": "0x010ab589A45966228E98EEa5cEF08878103A1Ab5",
+  "ObscuraCreditMarket_77": "0xE67dC10270FAB932b1FD6e3BD436615f019827aa",
+  "ObscuraCreditMarket_86": "0x1c9cFb7Fb776741543C75C6A0af68EF22fEa93D5",
+  "ObscuraCreditVault_Conservative": "0x839C4AB6e67aD9efc0D7627277097Efa1608B93b",
+  "ObscuraCreditVault_Aggressive": "0x4fE28A6A444686a7DeffF37b5A02b3CD844f05F9",
   "ObscuraCreditAuction": "0x6BEf772AF8cDfdAc1b21d4672ab08123CACd5878",
   "ObscuraCreditScore": "0x7edA3611E357C47253Fc45707c7e0c841366a100",
   "ObscuraCreditStreamHook": "0x6c4fAF7c45267Eab497b816cF769cF6eC9F22f69",
@@ -58,8 +58,8 @@
   "ObscuraConfidentialWETH": "0xA377AF2b307C2219B66D83963c9c800305aE5518",
   "ObscuraCreditFeedOBS": "0x74B927192bdE64A18c25D635486B6868C76E4872",
   "ObscuraCreditFeedWETH": "0x19D0066fB06F83623e3a9037E91840e674A17724",
-  "ObscuraCreditMarket_cOBS_cUSDC": "0x30a90db673bF59073F62Ad190fA17dfD635387b1",
-  "ObscuraCreditMarket_cWETH_cUSDC": "0x71aeF1AAE3edeF7347Fc619DAFDed3c898B81E71",
+  "ObscuraCreditMarket_cOBS_cUSDC": "0x4feB5E362F43e23F71113Ee6f03461ACd8E7ACf0",
+  "ObscuraCreditMarket_cWETH_cUSDC": "0x0a8a0bB98384fE2496DDAEeDb94b66F94031AFE2",
   "creditTokensDeployedAt": "2026-05-13T20:11:49.949Z",
-  "creditCoreRedeployedAt": "2026-05-13T22:49:56.192Z"
+  "creditCoreRedeployedAt": "2026-05-13T23:22:59.725Z"
 }

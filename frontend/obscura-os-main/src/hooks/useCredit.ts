@@ -193,16 +193,22 @@ export function useCreditMarket(market?: `0x${string}`) {
 
   const withdraw = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !market || !address) throw new Error("not ready");
+      if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
+      fhe.setStep(FHEStepStatus.ENCRYPTING);
+      await initFHEClient(publicClient, walletClient);
+      const inputs = await encryptAmount(amount);
+      fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
-      return writeContractAsync({
+      const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "withdraw",
-        args: [amount], account: address, chain: arbitrumSepolia,
+        args: [amount, inputs[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.withdraw,
       });
+      fhe.setStep(FHEStepStatus.READY);
+      return hash;
     },
-    [publicClient, market, address, writeContractAsync]
+    [publicClient, walletClient, market, address, writeContractAsync, fhe]
   );
 
   const supplyCollateral = useCallback(
@@ -210,13 +216,15 @@ export function useCreditMarket(market?: `0x${string}`) {
       if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
-      const inputs = await encryptAmount(amount);
+      // TWO separate ciphertexts: one for cUSDC.confidentialTransferFrom, one for FHE accounting.
+      const inputs1 = await encryptAmount(amount);
+      const inputs2 = await encryptAmount(amount);
       await op.ensure();
       fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "supplyCollateral",
-        args: [amount, inputs[0]], account: address, chain: arbitrumSepolia,
+        args: [amount, inputs1[0], inputs2[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.supplyCollateral,
       });
@@ -228,16 +236,22 @@ export function useCreditMarket(market?: `0x${string}`) {
 
   const withdrawCollateral = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !market || !address) throw new Error("not ready");
+      if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
+      fhe.setStep(FHEStepStatus.ENCRYPTING);
+      await initFHEClient(publicClient, walletClient);
+      const inputs = await encryptAmount(amount);
+      fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
-      return writeContractAsync({
+      const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "withdrawCollateral",
-        args: [amount], account: address, chain: arbitrumSepolia,
+        args: [amount, inputs[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.withdrawCollateral,
       });
+      fhe.setStep(FHEStepStatus.READY);
+      return hash;
     },
-    [publicClient, market, address, writeContractAsync]
+    [publicClient, walletClient, market, address, writeContractAsync, fhe]
   );
 
   const borrow = useCallback(
@@ -269,13 +283,15 @@ export function useCreditMarket(market?: `0x${string}`) {
       if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
-      const inputs = await encryptAmount(amount);
+      // TWO separate ciphertexts: one for cUSDC.confidentialTransferFrom pull, one for FHE borrow tracking.
+      const inputs1 = await encryptAmount(amount);
+      const inputs2 = await encryptAmount(amount);
       await op.ensure();
       fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "repay",
-        args: [amount, inputs[0]], account: address, chain: arbitrumSepolia,
+        args: [amount, inputs1[0], inputs2[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.repay,
       });
@@ -333,16 +349,22 @@ export function useCreditVault(vault?: `0x${string}`) {
 
   const withdraw = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !vault || !address) throw new Error("not ready");
+      if (!publicClient || !walletClient || !vault || !address) throw new Error("not ready");
+      fhe.setStep(FHEStepStatus.ENCRYPTING);
+      await initFHEClient(publicClient, walletClient);
+      const inputs = await encryptAmount(amount);
+      fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
-      return writeContractAsync({
+      const hash = await writeContractAsync({
         address: vault, abi: CREDIT_VAULT_ABI, functionName: "withdraw",
-        args: [amount], account: address, chain: arbitrumSepolia,
+        args: [amount, inputs[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.vaultWithdraw,
       });
+      fhe.setStep(FHEStepStatus.READY);
+      return hash;
     },
-    [publicClient, vault, address, writeContractAsync]
+    [publicClient, walletClient, vault, address, writeContractAsync, fhe]
   );
 
   const reallocateSupply = useCallback(
@@ -367,16 +389,22 @@ export function useCreditVault(vault?: `0x${string}`) {
 
   const reallocateWithdraw = useCallback(
     async (market: `0x${string}`, amount: bigint) => {
-      if (!publicClient || !vault || !address) throw new Error("not ready");
+      if (!publicClient || !walletClient || !vault || !address) throw new Error("not ready");
+      fhe.setStep(FHEStepStatus.ENCRYPTING);
+      await initFHEClient(publicClient, walletClient);
+      const inputs = await encryptAmount(amount);
+      fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
-      return writeContractAsync({
+      const hash = await writeContractAsync({
         address: vault, abi: CREDIT_VAULT_ABI, functionName: "reallocateWithdraw",
-        args: [market, amount], account: address, chain: arbitrumSepolia,
+        args: [market, amount, inputs[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.vaultReallocate,
       });
+      fhe.setStep(FHEStepStatus.READY);
+      return hash;
     },
-    [publicClient, vault, address, writeContractAsync]
+    [publicClient, walletClient, vault, address, writeContractAsync, fhe]
   );
 
   return { deposit, withdraw, reallocateSupply, reallocateWithdraw };

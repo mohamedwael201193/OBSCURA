@@ -14,6 +14,7 @@ import DocsPage from "./pages/DocsPage.tsx";
 import PrivacyPage from "./pages/PrivacyPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import VotePage from "./pages/VotePage.tsx";
+import CreditPage from "./pages/CreditPage.tsx";
 import PMFPage from "./pages/PMFPage.tsx";
 import ContactsPage from "./pages/ContactsPage.tsx";
 import SettingsPage from "./pages/SettingsPage.tsx";
@@ -22,7 +23,7 @@ import { PreferencesProvider } from "@/contexts/PreferencesContext";
 const queryClient = new QueryClient();
 
 /** Dashboard paths have a sidebar — hide the logo from the top nav there to avoid duplication. */
-const DASHBOARD_PATHS = new Set(["/pay", "/pay/contacts", "/pay/settings", "/vote"]);
+const DASHBOARD_PATHS = new Set(["/pay", "/pay/contacts", "/pay/settings", "/vote", "/credit"]);
 
 const AnimatedRoutes = () => {
   const location = useLocation();
@@ -47,6 +48,7 @@ const AnimatedRoutes = () => {
             <Route path="/pay/contacts" element={<ContactsPage />} />
             <Route path="/pay/settings" element={<SettingsPage />} />
             <Route path="/vote" element={<VotePage />} />
+            <Route path="/credit" element={<CreditPage />} />
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/pmf" element={<PMFPage />} />

@@ -369,6 +369,9 @@ function StepIcon({ step }: { step: TxStep }) {
     case "subscribe":   return <SubscribeIcon active={active} done={done} error={error} />;
     case "fund":        return <VaultIcon active={active} done={done} error={error} type="fund" />;
     case "redeem":      return <VaultIcon active={active} done={done} error={error} type="redeem" />;
+    case "borrow":      return <TransferIcon active={active} done={done} error={error} />;
+    case "bid":         return <SubscribeIcon active={active} done={done} error={error} />;
+    case "accrue":      return <RecordIcon active={active} done={done} error={error} />;
     default:            return <CreateIcon active={active} done={done} error={error} />;
   }
 }
@@ -384,6 +387,9 @@ function stepColor(type: TxStepType): string {
     case "create":      return "cyan";
     case "fund":        return "cyan";
     case "redeem":      return "violet";
+    case "borrow":      return "violet";
+    case "bid":         return "amber";
+    case "accrue":      return "cyan";
     default:            return "cyan";
   }
 }

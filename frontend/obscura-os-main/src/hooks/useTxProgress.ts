@@ -19,7 +19,10 @@ export type TxStepType =
   | "fund"          // escrow.fund
   | "redeem"        // escrow.redeem
   | "approve"       // token approval
-  | "subscribe";    // insurance / subscription
+  | "subscribe"     // insurance / subscription
+  | "borrow"        // credit market borrow
+  | "bid"           // liquidation auction bid
+  | "accrue";       // interest accrual
 
 export type TxStepStatus = "idle" | "active" | "done" | "error";
 
@@ -92,6 +95,39 @@ export const SUBSCRIPTION_STEPS: Omit<TxStep, "status">[] = [
   { id: "transfer", type: "transfer",    label: "Cycle 1 Payment",  sublabel: "cUSDC → stealth address" },
   { id: "wait1",    type: "wait",        label: "Rate-limit pause",  sublabel: "12 s cooldown", countdownSec: 12 },
   { id: "announce", type: "announce",    label: "Stealth Announce",  sublabel: "First payment announced" },
+];
+
+/** Credit market: supply liquidity (1 encrypt + 1 transfer) */
+export const CREDIT_SUPPLY_STEPS: Omit<TxStep, "status">[] = [
+  { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing supply amount" },
+  { id: "transfer", type: "transfer",    label: "Supply cUSDC",     sublabel: "Pulled into market reserves" },
+  { id: "accrue",   type: "accrue",      label: "Accrue Interest",   sublabel: "Updating utilization" },
+];
+
+/** Credit market: borrow path (1 encrypt addr + 1 encrypt amt + 1 borrow) */
+export const CREDIT_BORROW_STEPS: Omit<TxStep, "status">[] = [
+  { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing borrow amount" },
+  { id: "enc2",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing destination address" },
+  { id: "borrow",   type: "borrow",      label: "Borrow cUSDC",      sublabel: "Health-factor checked silently" },
+  { id: "accrue",   type: "accrue",      label: "Accrue Interest",   sublabel: "Updating utilization" },
+];
+
+/** Credit market: repay (1 encrypt + 1 transfer) */
+export const CREDIT_REPAY_STEPS: Omit<TxStep, "status">[] = [
+  { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing repay amount" },
+  { id: "transfer", type: "transfer",    label: "Repay cUSDC",       sublabel: "Reducing your debt" },
+];
+
+/** Vault deposit (1 encrypt + 1 deposit) */
+export const CREDIT_VAULT_DEPOSIT_STEPS: Omit<TxStep, "status">[] = [
+  { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing deposit amount" },
+  { id: "transfer", type: "transfer",    label: "Vault Deposit",    sublabel: "Encrypted shares minted" },
+];
+
+/** Auction bid (1 encrypt + 1 bid) */
+export const CREDIT_BID_STEPS: Omit<TxStep, "status">[] = [
+  { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing bid amount" },
+  { id: "bid",      type: "bid",         label: "Submit Bid",        sublabel: "Stealth-address sealed bid" },
 ];
 
 // ── Hook ─────────────────────────────────────────────────────────────────────

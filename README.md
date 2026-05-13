@@ -343,6 +343,37 @@ Additional: quorum progress bars in ProposalList, FHE banner + Vote Power stat c
 
 ---
 
+## Wave 4 — ObscuraCredit (LIVE)
+
+Confidential lending on Fhenix CoFHE — Morpho-inspired 2-layer model. **11 Solidity contracts. 12 deployed addresses on Arbitrum Sepolia. 9-tab CreditPage at `/credit`.**
+
+| Layer | Contract | Address |
+|---|---|---|
+| Oracle (cUSDC/USD) | `MockChainlinkFeed` | `0x9ad3fB91…17BF` |
+| Oracle | `ObscuraCreditOracle` | `0x02E08550…7189` |
+| Rates (kink IRM) | `ObscuraCreditIRM` | `0x29A43Ec8…03a7` |
+| Factory (CREATE2) | `ObscuraCreditFactory` | `0x52eBaBfF…327b` |
+| Market (LLTV 77%) | `ObscuraCreditMarket` | `0x6b2a7846…76c3` |
+| Market (LLTV 86%) | `ObscuraCreditMarket` | `0x254C2503…dFEa` |
+| Vault — Conservative | `ObscuraCreditVault` | `0xaC29f37a…98f9` |
+| Vault — Aggressive | `ObscuraCreditVault` | `0x4224BC24…3370` |
+| Sealed-bid auctions | `ObscuraCreditAuction` | `0x6BEf772A…5878` |
+| Cross-app score | `ObscuraCreditScore` | `0x7edA3611…a100` |
+| PayStream → repay | `ObscuraCreditStreamHook` | `0x6c4fAF7c…2f69` |
+| Insurance → top collateral | `ObscuraCreditInsuranceHook` | `0xC5c01916…f05f` |
+| Treasury → Factory | `ObscuraCreditGovernanceProxy` | `0x05bb9dcA…a4d0` |
+
+Highlights:
+- **Encrypted positions** — per-user collateral, debt, vault shares are all `euint64`. Aggregate market totals are public so the IRM can compute rates.
+- **Stealth borrows** — borrow form encrypts both the amount and the destination address (`eaddress`). Receiver identity is hidden.
+- **Two-step pull hooks** — invented to work around `InEuint64.signature` binding to the immediate caller. Lets PayStream and InsuranceSubscription repay/top-collateral on a user's behalf without breaking the FHE invariant.
+- **Sealed-bid liquidations** — bids are encrypted until deadline; max-bid settlement publishes only the winning amount.
+- **Governance via existing Treasury** — no new admin keys. Deployer EOA permanently removed at end of deploy.
+
+Full docs: [`docs/credit/`](docs/credit/README.md). Phase progress: [`WAVE4-CREDIT-PROGRESS.md`](WAVE4-CREDIT-PROGRESS.md).
+
+---
+
 ## Deployed Contracts
 
 **Network:** Arbitrum Sepolia (Chain ID 421614) | **Deployer:** `0xD208aC8327e6479967693Af2F2216e1612D0171A`
@@ -478,9 +509,8 @@ const result = await decryptForView(ctHash, FheTypes.Uint64)
 | **1** | **ObscuraPay** | ✅ Live | 4 contracts — encrypted payroll, escrows, conditions, $OBS FHERC-20 token |
 | **2** | **ObscuraPay v4 + ObscuraVote** | ✅ Live | 11 new contracts — stealth payments, recurring streams, cUSDC, insurance, cross-chain bridge, encrypted governance |
 | **3** | **ObscuraPay Hardening + ObscuraVote DAO** | ✅ Live | 10 new contracts — invoice stealth privacy, encrypted contacts, social resolver, stealth rotation, FHE-encrypted treasury, voter rewards, delegation, animated TxProgressPanel |
-| **4** | ObscuraVault | 🔒 Planned | MEV-protected sealed-bid auctions, encrypted yield vaults, private liquidity pools |
-| **5** | ObscuraTrust | 🔒 Planned | Selective disclosure, time-scoped auditor permits, ZK+FHE compliance attestations |
-| **6** | ObscuraMind | 🔒 Planned | Privacy-preserving AI inference, ML on encrypted data, cross-module credit scoring |
+| **4** | **ObscuraVault + ObscuraTrust** | 🔒 Planned | MEV-protected sealed-bid auctions, encrypted yield vaults, private liquidity pools · Selective disclosure, time-scoped auditor permits, ZK+FHE compliance attestations |
+| **5** | **ObscuraMind** | 🔒 Planned | Privacy-preserving AI inference, ML on encrypted data, cross-module credit scoring |
 
 ---
 

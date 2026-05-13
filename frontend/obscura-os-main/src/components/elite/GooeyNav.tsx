@@ -43,6 +43,7 @@ interface BlobRect { left: number; width: number }
 export const NAV_ITEMS: NavItem[] = [
   { key: "pay",   label: "Pay",   href: "/pay" },
   { key: "vote",  label: "Vote",  href: "/vote" },
+  { key: "credit",label: "Credit",href: "/credit" },
   { key: "vault", label: "Vault", soon: true },
   { key: "trust", label: "Trust", soon: true },
   { key: "mind",  label: "Mind",  soon: true },
@@ -53,6 +54,7 @@ export const NAV_ITEMS: NavItem[] = [
 const pathToKey: Record<string, string> = {
   "/pay":  "pay",
   "/vote": "vote",
+  "/credit": "credit",
   "/docs": "docs",
 };
 

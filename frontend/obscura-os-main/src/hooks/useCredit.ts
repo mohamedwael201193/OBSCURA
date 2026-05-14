@@ -8,7 +8,7 @@
  * (estimateCappedFees) and per-call gas caps from CREDIT_GAS_CAPS so
  * dashboards can pre-warn on out-of-gas before the user signs.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount, usePublicClient, useReadContract, useWalletClient, useWriteContract } from "wagmi";
 import { arbitrumSepolia } from "viem/chains";
 import {
@@ -110,6 +110,45 @@ export function useCreditVaults() {
   }, [publicClient]);
 
   return { vaults: snapshots, refresh };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 2b. useVaultPosition — user's share balance + TVL for a single vault.
+//     Call refresh() after deposit/withdraw to update the UI immediately.
+// ─────────────────────────────────────────────────────────────────────────
+export function useVaultPosition(vault?: `0x${string}`) {
+  const publicClient = usePublicClient();
+  const { address } = useAccount();
+  const [myShares, setMyShares] = useState<bigint | null>(null);
+  const [tvl, setTvl] = useState<bigint | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!publicClient || !vault) return;
+    setLoading(true);
+    try {
+      const reads: Promise<bigint>[] = [
+        publicClient.readContract({ address: vault, abi: CREDIT_VAULT_ABI, functionName: "publicTotalDeposited" }) as Promise<bigint>,
+      ];
+      if (address) {
+        reads.push(
+          publicClient.readContract({ address: vault, abi: CREDIT_VAULT_ABI, functionName: "getShares", args: [address] }) as Promise<bigint>
+        );
+      }
+      const [td, sh] = await Promise.all(reads);
+      setTvl(td);
+      if (sh !== undefined) setMyShares(sh);
+    } catch {
+      // ignore read errors
+    } finally {
+      setLoading(false);
+    }
+  }, [publicClient, vault, address]);
+
+  // fetch on mount and whenever vault/address changes
+  useEffect(() => { refresh(); }, [refresh]);
+
+  return { myShares, tvl, loading, refresh };
 }
 
 // ─────────────────────────────────────────────────────────────────────────

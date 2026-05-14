@@ -12,7 +12,7 @@ interface Props {
 }
 
 const VaultCard = ({ vault, onAction, active, compact }: Props) => {
-  const tvl = vault.publicTotalDeposited
+  const tvl = vault.publicTotalDeposited !== undefined
     ? `$${(Number(vault.publicTotalDeposited) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
     : "—";
   const fee = vault.feeBps !== undefined ? `${(vault.feeBps / 100).toFixed(2)}%` : "—";

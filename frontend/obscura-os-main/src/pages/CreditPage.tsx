@@ -7,9 +7,9 @@
  * All on-chain actions use hooks from `@/hooks/useCredit` which already
  * handle FHE encryption + capped EIP-1559 fees + per-call gas caps.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAccount } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import {
   LayoutDashboard,
   PiggyBank,
@@ -55,6 +55,7 @@ import {
   useGovernanceProxy,
   useUtilizationApr,
   useHealthFactor,
+  useVaultPosition,
 } from "@/hooks/useCredit";
 import {
   CREDIT_HEALTH_FACTOR_FORMULA,
@@ -202,7 +203,7 @@ const CreditPage = () => {
           <VaultCard key={v.address} vault={v} onAction={() => setActiveVault(v)} active={activeVault?.address === v.address} />
         ))}
       </div>
-      {activeVault && <VaultActionsCard vault={activeVault} />}
+      {activeVault && <VaultActionsCard vault={activeVault} onRefresh={refreshVaults} />}
     </div>
   );
 
@@ -359,8 +360,9 @@ const CreditPage = () => {
 // ─────────────────────────────────────────────────────────────────────────
 import { useState as useStateVault } from "react";
 
-const VaultActionsCard = ({ vault }: { vault: CreditVaultMeta }) => {
+const VaultActionsCard = ({ vault, onRefresh }: { vault: CreditVaultMeta; onRefresh?: () => void }) => {
   const v = useCreditVault(vault.address);
+  const pos = useVaultPosition(vault.address);
   const [amt, setAmt] = useStateVault("");
   const [busy, setBusy] = useStateVault<"deposit" | "withdraw" | null>(null);
   const [msg, setMsg] = useStateVault<string | null>(null);
@@ -374,6 +376,9 @@ const VaultActionsCard = ({ vault }: { vault: CreditVaultMeta }) => {
       else await v.withdraw(u);
       setMsg(`${kind === "deposit" ? "Deposited" : "Withdrew"} ${amt} cUSDC`);
       setAmt("");
+      // refresh both local position and the parent vault list TVL
+      await pos.refresh();
+      onRefresh?.();
     } catch (e: any) {
       setMsg(e?.shortMessage ?? e?.message ?? "Failed");
     } finally {
@@ -381,8 +386,26 @@ const VaultActionsCard = ({ vault }: { vault: CreditVaultMeta }) => {
     }
   };
 
+  const mySharesDisplay = pos.myShares !== null
+    ? `${(Number(pos.myShares) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 6 })} cUSDC`
+    : pos.loading ? "loading…" : "—";
+  const tvlDisplay = pos.tvl !== null
+    ? `$${(Number(pos.tvl) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+    : pos.loading ? "loading…" : "—";
+
   return (
     <Section title={`Manage ${vault.name}`} hint="Encrypted deposit & withdraw">
+      {/* Position row */}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="rounded-md bg-black/20 px-2.5 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-white/40">Your deposit</div>
+          <div className="text-[13px] font-mono text-emerald-200">{mySharesDisplay}</div>
+        </div>
+        <div className="rounded-md bg-black/20 px-2.5 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-white/40">Vault TVL</div>
+          <div className="text-[13px] font-mono text-emerald-200">{tvlDisplay}</div>
+        </div>
+      </div>
       <div className="flex flex-col sm:flex-row gap-2">
         <input
           inputMode="decimal"

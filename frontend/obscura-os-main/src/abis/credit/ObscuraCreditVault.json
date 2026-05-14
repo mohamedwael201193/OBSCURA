@@ -93,12 +93,6 @@
         "internalType": "address",
         "name": "user",
         "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint128",
-        "name": "amount",
-        "type": "uint128"
       }
     ],
     "name": "Deposited",
@@ -175,12 +169,6 @@
         "internalType": "address",
         "name": "user",
         "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint128",
-        "name": "amount",
-        "type": "uint128"
       }
     ],
     "name": "Withdrew",
@@ -291,12 +279,12 @@
         "type": "address"
       }
     ],
-    "name": "getShares",
+    "name": "getEncryptedShares",
     "outputs": [
       {
-        "internalType": "uint128",
+        "internalType": "euint64",
         "name": "",
-        "type": "uint128"
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",
@@ -507,25 +495,6 @@
     "name": "setOperatorOn",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "shares",
-    "outputs": [
-      {
-        "internalType": "uint128",
-        "name": "",
-        "type": "uint128"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {

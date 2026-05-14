@@ -37,7 +37,7 @@ import {
   type CreditVaultMeta,
 } from "@/config/credit";
 import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, REINEIRA_CUSDC_ABI, REINEIRA_CUSDC_ADDRESS } from "@/config/pay";
-import { encryptAddressAndAmount, encryptAmount, initFHEClient } from "@/lib/fhe";
+import { decryptBalance, encryptAddressAndAmount, encryptAmount, initFHEClient } from "@/lib/fhe";
 import { estimateCappedFees } from "@/lib/gas";
 import { useFHEStatus } from "./useFHEStatus";
 import { FHEStepStatus } from "@/lib/constants";
@@ -113,11 +113,16 @@ export function useCreditVaults() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// 2b. useVaultPosition — user's share balance + TVL for a single vault.
-//     Call refresh() after deposit/withdraw to update the UI immediately.
+// 2b. useVaultPosition — user's encrypted share balance + TVL for one vault.
+//
+// FHE privacy: shares are stored as euint64 on-chain. Only the depositor
+// can decrypt them. This hook reads the encrypted handle then calls
+// decryptBalance (cofhe.decryptForView) — which may prompt a permit signature
+// in the wallet on first use (normal CoFHE "view decrypt" flow).
 // ─────────────────────────────────────────────────────────────────────────
 export function useVaultPosition(vault?: `0x${string}`) {
   const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
   const { address } = useAccount();
   const [myShares, setMyShares] = useState<bigint | null>(null);
   const [tvl, setTvl] = useState<bigint | null>(null);
@@ -127,23 +132,38 @@ export function useVaultPosition(vault?: `0x${string}`) {
     if (!publicClient || !vault) return;
     setLoading(true);
     try {
-      const reads: Promise<bigint>[] = [
-        publicClient.readContract({ address: vault, abi: CREDIT_VAULT_ABI, functionName: "publicTotalDeposited" }) as Promise<bigint>,
-      ];
-      if (address) {
-        reads.push(
-          publicClient.readContract({ address: vault, abi: CREDIT_VAULT_ABI, functionName: "getShares", args: [address] }) as Promise<bigint>
-        );
-      }
-      const [td, sh] = await Promise.all(reads);
+      // 1. Always read the public TVL aggregate
+      const td = await publicClient.readContract({
+        address: vault, abi: CREDIT_VAULT_ABI,
+        functionName: "publicTotalDeposited",
+      }) as bigint;
       setTvl(td);
-      if (sh !== undefined) setMyShares(sh);
+
+      // 2. Decrypt personal position if wallet is connected
+      if (address && walletClient) {
+        // Read the encrypted handle (bytes32 / euint64 on-chain)
+        const handle = await publicClient.readContract({
+          address: vault, abi: CREDIT_VAULT_ABI,
+          functionName: "getEncryptedShares", args: [address],
+        }) as `0x${string}`;
+
+        // All-zero handle = no position yet (uninitialized)
+        const handleBn = BigInt(handle);
+        if (handleBn === 0n) {
+          setMyShares(0n);
+        } else {
+          // Init CoFHE client and decrypt — may prompt EIP-712 permit in wallet
+          await initFHEClient(publicClient, walletClient);
+          const decrypted = await decryptBalance(handleBn);
+          setMyShares(decrypted);
+        }
+      }
     } catch {
-      // ignore read errors
+      // ignore read / decrypt errors silently
     } finally {
       setLoading(false);
     }
-  }, [publicClient, vault, address]);
+  }, [publicClient, walletClient, vault, address]);
 
   // fetch on mount and whenever vault/address changes
   useEffect(() => { refresh(); }, [refresh]);

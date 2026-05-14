@@ -10,13 +10,12 @@ import "./IObscuraCreditIRM.sol";
 /// @notice Isolated FHE money-market (Morpho-Blue shaped).
 ///
 /// Privacy model:
-///   PUBLIC    : supplyShares, totalSupplyAssets, totalBorrowAssets
-///   ENCRYPTED : borrowShares, collateral, disburseTo (eaddress)
+///   PUBLIC    : totalSupplyAssets, totalBorrowAssets (aggregate, needed for IRM)
+///   ENCRYPTED : supplyShares, borrowShares, collateral, disburseTo (eaddress)
 ///
-/// Supply shares are PLAINTEXT (same as Morpho) so the supply side works
-/// without FHE.asEuint64(plaintext), which is gas-prohibitive on the
-/// Fhenix CoFHE testnet. Borrow positions and collateral remain encrypted
-/// — those are the sensitive amounts.
+/// ALL per-user positions are now encrypted. Supply shares use FHE.add/sub
+/// identical to borrowShares. A private plaintext shadow (_plainSupplyShares)
+/// is kept only for revert guards and is never exposed externally.
 ///
 /// Pre-computed FHE constants (_zero, _lltv, _basis) are created ONCE in
 /// the constructor so every borrow/collateral call avoids runtime
@@ -57,8 +56,10 @@ contract ObscuraCreditMarket {
 
     // ─── Per-user positions ───────────────────────────────────────────────
 
-    // Supply shares are plaintext (no FHE.asEuint64 needed for supply/withdraw).
-    mapping(address => uint128) public supplyShares;
+    // Supply shares encrypted — only the lender can decrypt their own position.
+    mapping(address => euint64) private _encSupplyShares;
+    // Private plaintext shadow for revert guards (never exposed externally).
+    mapping(address => uint128) private _plainSupplyShares;
 
     struct Position {
         euint64  borrowShares; // encrypted outstanding debt
@@ -141,6 +142,15 @@ contract ObscuraCreditMarket {
         }
     }
 
+    /// @dev Ensure a user's encrypted supply-share handle is initialised before FHE.add.
+    function _ensureEncSupply(address u) internal {
+        if (euint64.unwrap(_encSupplyShares[u]) == bytes32(0)) {
+            _encSupplyShares[u] = _zero;
+            FHE.allowThis(_encSupplyShares[u]);
+            FHE.allow(_encSupplyShares[u], u);
+        }
+    }
+
     function utilizationBps() public view returns (uint256) {
         if (totalSupplyAssets == 0) return 0;
         uint256 u = (uint256(totalBorrowAssets) * 10000) / uint256(totalSupplyAssets);
@@ -179,8 +189,16 @@ contract ObscuraCreditMarket {
         euint64 eAmt = FHE.asEuint64(encAmt); // settle pending CoFHE task
         FHE.allow(eAmt, msg.sender);           // allow user to verify receipt
         accrueInterest();
-        supplyShares[msg.sender] += amtPlain;
-        totalSupplyAssets        += amtPlain;
+
+        // Encrypted supply share accounting — private per-user position.
+        _ensureEncSupply(msg.sender);
+        euint64 newSupply = FHE.add(_encSupplyShares[msg.sender], eAmt);
+        FHE.allowThis(newSupply);
+        FHE.allow(newSupply, msg.sender);
+        _encSupplyShares[msg.sender] = newSupply;
+        _plainSupplyShares[msg.sender] += amtPlain; // shadow: revert guard only
+
+        totalSupplyAssets += amtPlain;
         emit Supplied(msg.sender);
     }
 
@@ -189,8 +207,17 @@ contract ObscuraCreditMarket {
     ///         Called by vault.reallocateSupply() after the direct cUSDC push.
     function notifySupply(uint64 amtPlain) external {
         accrueInterest();
-        supplyShares[msg.sender] += amtPlain;
-        totalSupplyAssets        += amtPlain;
+        // Vault-internal: FHE.asEuint64(plaintext) is acceptable here —
+        // this is a curator-only, infrequent operation (vault reallocation).
+        euint64 eAmt = FHE.asEuint64(amtPlain);
+        _ensureEncSupply(msg.sender);
+        euint64 newSupply = FHE.add(_encSupplyShares[msg.sender], eAmt);
+        FHE.allowThis(newSupply);
+        FHE.allow(newSupply, msg.sender); // vault retains decrypt access to its own shares
+        _encSupplyShares[msg.sender] = newSupply;
+        _plainSupplyShares[msg.sender] += amtPlain;
+
+        totalSupplyAssets += amtPlain;
         emit Supplied(msg.sender);
     }
 
@@ -198,15 +225,22 @@ contract ObscuraCreditMarket {
     ///         needed. Uses FHE.asEuint64(amtPlain) + FHE.allowTransient push.
     function withdraw(uint64 amtPlain) external {
         accrueInterest();
-        require(supplyShares[msg.sender] >= amtPlain, "InsufficientSupply");
-        supplyShares[msg.sender] -= amtPlain;
+        require(_plainSupplyShares[msg.sender] >= amtPlain, "InsufficientSupply");
+
+        // Encrypted supply deduction.
+        euint64 eAmt = FHE.asEuint64(amtPlain);
+        euint64 newSupply = FHE.sub(_encSupplyShares[msg.sender], eAmt);
+        FHE.allowThis(newSupply);
+        FHE.allow(newSupply, msg.sender);
+        _encSupplyShares[msg.sender] = newSupply;
+        _plainSupplyShares[msg.sender] -= amtPlain;
+
         if (amtPlain <= totalSupplyAssets - totalBorrowAssets) {
             totalSupplyAssets -= amtPlain;
         }
-        euint64 handle = FHE.asEuint64(amtPlain);
-        FHE.allowTransient(handle, loanAsset);
+        FHE.allowTransient(eAmt, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
-            msg.sender, uint256(euint64.unwrap(handle))
+            msg.sender, uint256(euint64.unwrap(eAmt))
         );
         emit Withdrew(msg.sender);
     }
@@ -216,20 +250,24 @@ contract ObscuraCreditMarket {
     ///         Called by vault.reallocateWithdraw().
     function withdrawToVault(uint64 amtPlain) external {
         accrueInterest();
-        require(supplyShares[msg.sender] >= amtPlain, "InsufficientSupply");
-        supplyShares[msg.sender] -= amtPlain;
+        require(_plainSupplyShares[msg.sender] >= amtPlain, "InsufficientSupply");
+
+        euint64 eAmt = FHE.asEuint64(amtPlain);
+        euint64 newSupply = FHE.sub(_encSupplyShares[msg.sender], eAmt);
+        FHE.allowThis(newSupply);
+        FHE.allow(newSupply, msg.sender);
+        _encSupplyShares[msg.sender] = newSupply;
+        _plainSupplyShares[msg.sender] -= amtPlain;
+
         if (amtPlain <= totalSupplyAssets - totalBorrowAssets) {
             totalSupplyAssets -= amtPlain;
         }
-        euint64 handle = FHE.asEuint64(amtPlain);
-        FHE.allowTransient(handle, loanAsset);
+        FHE.allowTransient(eAmt, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
-            msg.sender, uint256(euint64.unwrap(handle))
+            msg.sender, uint256(euint64.unwrap(eAmt))
         );
         emit Withdrew(msg.sender);
     }
-
-    // ─── Borrower side ───────────────────────────────────────────────────
 
     /// @notice Supply collateral.
     /// @dev    Caller MUST first call:
@@ -399,10 +437,16 @@ contract ObscuraCreditMarket {
 
     function getPosition(address user)
         external view
-        returns (uint128 supplyAmt, euint64 borrowShares, euint64 collateral, eaddress disburseTo)
+        returns (euint64 encSupplyShares, euint64 borrowShares, euint64 collateral, eaddress disburseTo)
     {
         Position storage p = _pos[user];
-        return (supplyShares[user], p.borrowShares, p.collateral, p.disburseTo);
+        return (_encSupplyShares[user], p.borrowShares, p.collateral, p.disburseTo);
+    }
+
+    /// @notice Returns the encrypted supply-share handle for `u`.
+    ///         Only `u` can decrypt it client-side via the FHE coprocessor.
+    function getEncryptedSupplyShares(address u) external view returns (euint64) {
+        return _encSupplyShares[u];
     }
 
     function borrowersLength() external view returns (uint256) { return _borrowers.length; }

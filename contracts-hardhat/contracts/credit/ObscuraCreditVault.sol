@@ -5,23 +5,23 @@ import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import "../interfaces/IConfidentialUSDCv2.sol";
 import "./ObscuraCreditMarket.sol";
 
-/// @title ObscuraCreditVault v1.2
-/// @notice Curator-routed confidential vault (MetaMorpho-shaped).
+/// @title ObscuraCreditVault v1.4
+/// @notice Curator-routed confidential vault (MetaMorpho-shaped) — full FHE privacy.
 ///
-/// Share accounting is plaintext uint128. Privacy comes from cUSDC.
+/// Privacy model:
+///   ENCRYPTED  : per-user shares (euint64) — only the depositor can decrypt
+///   PLAINTEXT  : aggregate TVL mirror, totalShares (protocol-level, needed for IRM/UI)
+///   PRIVATE    : _plainShares shadow (never exposed externally, only for revert guard)
 ///
 /// CoFHE pattern (critical): InEuint64 proofs cannot be forwarded through
 /// intermediary contracts — the proof's recovered signer must match the
-/// immediate caller of verifyInput (msg.sender in FHE.sol = the contract
-/// calling FHE functions, which equals the tx sender for direct calls).
+/// immediate caller of verifyInput.
 ///
-/// Incoming transfers (deposit): caller must pre-call
-///   cUSDC.confidentialTransfer(vaultAddress, encAmt)   ← direct, no proxy
-/// then call vault.deposit(amtPlain) to record shares.
+/// Deposit two-step:
+///   Step 1: cUSDC.confidentialTransfer(vaultAddress, encAmt)   ← user direct
+///   Step 2: vault.deposit(amtPlain, encAmt2)  — FHE.add to encrypted shares
 ///
-/// Outgoing transfers (withdraw): vault IS the holder. Uses
-///   FHE.asEuint64(amtPlain) + FHE.allowTransient + confidentialTransfer(handle)
-/// so no client-provided InEuint64 is needed.
+/// Withdraw: vault IS the cUSDC holder; FHE.sub from encrypted shares + FHE push.
 contract ObscuraCreditVault {
     error NotCurator();
     error NotOwner();
@@ -40,8 +40,15 @@ contract ObscuraCreditVault {
     mapping(address => uint128) public marketCap;
     address[] public marketsList;
 
-    // Plaintext share accounting (1 share = 1 cUSDC base unit at MVP 1:1 rate).
-    mapping(address => uint128) public shares;
+    // Pre-computed FHE zero constant — initialises encrypted share handles cheaply.
+    euint64 private _zero;
+
+    // Encrypted per-user share positions — only the depositor can decrypt.
+    mapping(address => euint64) private _encShares;
+    // Private plaintext shadow — used ONLY as a revert guard, never exposed.
+    mapping(address => uint128) private _plainShares;
+
+    // Aggregate plaintext counters (intentionally public — protocol-level TVL only).
     uint128 public totalShares;
 
     // Public scalar mirror for frontend TVL display.
@@ -50,8 +57,8 @@ contract ObscuraCreditVault {
     event CuratorSet(address indexed curator);
     event FeeSet(uint16 bps, address indexed recipient);
     event MarketApproved(address indexed market, uint128 cap);
-    event Deposited(address indexed user, uint128 amount);
-    event Withdrew(address indexed user, uint128 amount);
+    event Deposited(address indexed user);   // amount omitted — FHE privacy
+    event Withdrew(address indexed user);    // amount omitted — FHE privacy
     event Reallocated(address indexed market, uint128 amount, bool isSupply);
 
     modifier onlyOwner()   { if (msg.sender != owner)   revert NotOwner();   _; }
@@ -63,6 +70,21 @@ contract ObscuraCreditVault {
         curator      = _curator;
         feeRecipient = _feeRecipient;
         feeBps       = 1000; // 10%
+        // Pre-compute encrypted zero for share initialisation (avoids per-user
+        // FHE.asEuint64(0) calls which are expensive on the CoFHE coprocessor).
+        _zero = FHE.asEuint64(uint64(0));
+        FHE.allowThis(_zero);
+    }
+
+    // ─── Internal helpers ─────────────────────────────────────────────────
+
+    /// @dev Ensure a user's encrypted share handle is initialised before FHE.add.
+    function _ensureEncShares(address u) internal {
+        if (euint64.unwrap(_encShares[u]) == bytes32(0)) {
+            _encShares[u] = _zero;
+            FHE.allowThis(_encShares[u]);
+            FHE.allow(_encShares[u], u);
+        }
     }
 
     function setCurator(address _new) external onlyOwner {
@@ -103,10 +125,20 @@ contract ObscuraCreditVault {
     function deposit(uint64 amtPlain, InEuint64 calldata encAmt) external {
         euint64 eAmt = FHE.asEuint64(encAmt); // settle pending CoFHE task
         FHE.allow(eAmt, msg.sender);           // allow user to verify receipt
-        shares[msg.sender]    += amtPlain;
-        totalShares           += amtPlain;
-        publicTotalDeposited  += amtPlain;
-        emit Deposited(msg.sender, amtPlain);
+
+        // ── Encrypted share accounting ──────────────────────────────────
+        // Per-user position stored encrypted — nobody else can read it.
+        _ensureEncShares(msg.sender);
+        euint64 newShares = FHE.add(_encShares[msg.sender], eAmt);
+        FHE.allowThis(newShares);
+        FHE.allow(newShares, msg.sender);
+        _encShares[msg.sender] = newShares;
+        _plainShares[msg.sender] += amtPlain; // shadow: revert guard only
+
+        // Aggregate plaintext counters (TVL mirror — intentionally public).
+        totalShares          += amtPlain;
+        publicTotalDeposited += amtPlain;
+        emit Deposited(msg.sender);
     }
 
     /// @notice Withdraw cUSDC from the vault.
@@ -115,18 +147,27 @@ contract ObscuraCreditVault {
     ///         overload of confidentialTransfer. No client-side InEuint64 needed.
     /// @param amtPlain Plaintext amount to withdraw (checked against shares).
     function withdraw(uint64 amtPlain) external {
-        if (shares[msg.sender] < amtPlain) revert InsufficientShares();
+        // Revert guard uses private plaintext shadow — never exposed externally.
+        if (_plainShares[msg.sender] < amtPlain) revert InsufficientShares();
 
-        shares[msg.sender]   -= amtPlain;
-        totalShares          -= amtPlain;
+        // ── Encrypted share deduction ────────────────────────────────────
+        euint64 eAmt = FHE.asEuint64(amtPlain);
+        euint64 newShares = FHE.sub(_encShares[msg.sender], eAmt);
+        FHE.allowThis(newShares);
+        FHE.allow(newShares, msg.sender);
+        _encShares[msg.sender] = newShares;
+        _plainShares[msg.sender] -= amtPlain; // shadow: keep in sync
+
+        // Aggregate counters (TVL mirror).
+        totalShares -= amtPlain;
         if (publicTotalDeposited >= amtPlain) publicTotalDeposited -= amtPlain;
 
-        euint64 handle = FHE.asEuint64(amtPlain);
-        FHE.allowTransient(handle, loanAsset);
+        // Push cUSDC to user — vault IS the holder.
+        FHE.allowTransient(eAmt, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
-            msg.sender, uint256(euint64.unwrap(handle))
+            msg.sender, uint256(euint64.unwrap(eAmt))
         );
-        emit Withdrew(msg.sender, amtPlain);
+        emit Withdrew(msg.sender);
     }
 
     // ─── Curator-only reallocation ────────────────────────────────────────
@@ -166,6 +207,13 @@ contract ObscuraCreditVault {
     // ─── Views ────────────────────────────────────────────────────────────
 
     function marketsLength() external view returns (uint256) { return marketsList.length; }
-    function getShares(address u) external view returns (uint128) { return shares[u]; }
+
+    /// @notice Returns the encrypted share handle for `u`.
+    ///         Only `u` (or a contract `u` has FHE.allow'd) can decrypt it
+    ///         client-side via the FHE coprocessor.
+    function getEncryptedShares(address u) external view returns (euint64) {
+        return _encShares[u];
+    }
+
     function getTotalShares() external view returns (uint128) { return totalShares; }
 }

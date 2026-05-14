@@ -157,15 +157,15 @@ export const CREDIT_HEALTH_FACTOR_FORMULA =
 export const CREDIT_DEFAULT_AUCTION_WINDOW_SEC = 15 * 60;
 
 export const CREDIT_GAS_CAPS = {
-  supply: 1_200_000n,
-  withdraw: 900_000n,
+  supply: 2_000_000n,       // +FHE.add encrypted supply shares
+  withdraw: 1_800_000n,     // +FHE.sub encrypted supply shares
   supplyCollateral: 1_200_000n,
   withdrawCollateral: 1_400_000n,
   borrow: 1_400_000n,
   repay: 1_100_000n,
-  vaultDeposit: 1_400_000n,
-  vaultWithdraw: 1_200_000n,
-  vaultReallocate: 1_400_000n,
+  vaultDeposit: 2_200_000n, // +FHE.add encrypted vault shares
+  vaultWithdraw: 2_000_000n, // +FHE.sub encrypted vault shares
+  vaultReallocate: 1_800_000n, // notifySupply now has FHE.add too
   bid: 700_000n,
   settle: 2_500_000n,
   liquidationOpen: 1_400_000n,

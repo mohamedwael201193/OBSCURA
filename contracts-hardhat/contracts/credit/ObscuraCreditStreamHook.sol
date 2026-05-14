@@ -57,22 +57,30 @@ contract ObscuraCreditStreamHook {
     }
 
     /// @notice Pull one cycle. Anyone (typically the ticker) can call.
-    /// @dev Caller (the consumer/ticker) supplies the encrypted amount they
-    ///      sign; cUSDC operator approval was granted by borrower to this
-    ///      hook at enable time. Mirrors InsuranceSubscription.consume.
-    function pull(uint256 hookId, InEuint64 calldata encAmt) external {
+    /// @dev Two-step CoFHE pattern:
+    ///      - `encPull` is consumed by cUSDC.confidentialTransferFrom (borrower → hook).
+    ///      - `encPush` is a SEPARATE encryption of the SAME plaintext amount; used
+    ///        by this hook to forward cUSDC (hook → market) and to update encrypted
+    ///        borrow accounting via repayFromHook.
+    ///      Both proofs must be generated client-side by the ticker/keeper.
+    function pull(uint256 hookId, InEuint64 calldata encPull, InEuint64 calldata encPush) external {
         Hook storage h = _hooks[hookId];
         if (!h.exists || !h.active) revert NotEnabled();
         if (h.lastPullAt != 0 && block.timestamp < h.lastPullAt + h.periodSeconds) return;
         h.lastPullAt = uint64(block.timestamp);
 
-        // Pull encrypted amount from borrower into this hook.
-        euint64 handle = FHE.asEuint64(encAmt);
+        // Step 1: Operator-pull encrypted cUSDC from borrower into this hook.
+        // encPull is consumed by cUSDC's internal verifyInput here.
+        IConfidentialUSDCv2(cUSDC).confidentialTransferFrom(h.borrower, address(this), encPull);
+
+        // Step 2: Forward cUSDC from hook → market so market reserves are replenished.
+        // encPush is a second independent proof for the same amount (CoFHE two-step).
+        euint64 handle = FHE.asEuint64(encPush);
         FHE.allowThis(handle);
-        FHE.allow(handle, cUSDC);
-        IConfidentialUSDCv2(cUSDC).confidentialTransferFrom(h.borrower, address(this), encAmt);
-        // Notify market of external repay (no second cUSDC pull — funds already in hook;
-        // market trusts hook because it was registered as a known repay router.)
+        FHE.allowTransient(handle, cUSDC);
+        IConfidentialUSDCv2(cUSDC).confidentialTransfer(h.market, uint256(euint64.unwrap(handle)));
+
+        // Step 3: Notify market to decrement encrypted borrow shares.
         ObscuraCreditMarket(h.market).repayFromHook(h.borrower, h.perCycle, handle);
         emit Pulled(hookId, h.perCycle);
     }

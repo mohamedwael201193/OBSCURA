@@ -871,3 +871,109 @@ export function useUtilizationApr(utilizationBps?: bigint) {
   }, [utilizationBps, irm.base, irm.slope1, irm.slope2, irm.kink]);
   return { aprBps: apr, irm };
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// 16. useMarketPosition — decrypt the connected user's supply + borrow +
+//     collateral shares on a specific market via CoFHE view decrypt.
+//
+// FHE privacy: supply shares are stored as euint64 in _encSupplyShares;
+// borrow and collateral are in the Position struct. Only the depositor /
+// borrower can decrypt their own handles. The hook initialises the CoFHE
+// client, reads the raw bytes32 handles, then calls decryptBalance once
+// per handle (may prompt an EIP-712 view-decrypt permit in the wallet).
+// ─────────────────────────────────────────────────────────────────────────
+export function useMarketPosition(market?: `0x${string}`) {
+  const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
+  const { address } = useAccount();
+  const [mySupply, setMySupply] = useState<bigint | null>(null);
+  const [myBorrow, setMyBorrow] = useState<bigint | null>(null);
+  const [myCollateral, setMyCollateral] = useState<bigint | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!publicClient || !market || !address) return;
+    setLoading(true);
+    try {
+      // Read encrypted handles from chain (bytes32 values returned as `0x${string}`)
+      const [supplyHandle, position] = await Promise.all([
+        publicClient.readContract({
+          address: market, abi: CREDIT_MARKET_ABI,
+          functionName: "getEncryptedSupplyShares", args: [address],
+        }) as Promise<`0x${string}`>,
+        publicClient.readContract({
+          address: market, abi: CREDIT_MARKET_ABI,
+          functionName: "getPosition", args: [address],
+        }) as Promise<readonly [`0x${string}`, `0x${string}`, `0x${string}`, `0x${string}`]>,
+      ]);
+
+      const borrowHandle = position[1];
+      const collHandle = position[2];
+
+      const decryptHandle = async (h: `0x${string}`): Promise<bigint> => {
+        const bn = BigInt(h);
+        if (bn === 0n) return 0n;
+        // Init CoFHE once; safe to call repeatedly — only reconnects if wallet changed
+        if (walletClient) await initFHEClient(publicClient, walletClient);
+        return decryptBalance(bn);
+      };
+
+      const [s, b, c] = await Promise.all([
+        decryptHandle(supplyHandle),
+        decryptHandle(borrowHandle),
+        decryptHandle(collHandle),
+      ]);
+      setMySupply(s);
+      setMyBorrow(b);
+      setMyCollateral(c);
+    } catch {
+      // Ignore decrypt errors (e.g. wallet not connected, no position yet)
+    } finally {
+      setLoading(false);
+    }
+  }, [publicClient, walletClient, market, address]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  return { mySupply, myBorrow, myCollateral, loading, refresh };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 17. useCreditScoreValue — decrypt the connected user's FHE credit score.
+//
+// Score is stored as euint64 (0–1000 scale) in ObscuraCreditScore. Only
+// the user whose score it is can decrypt it. Returns null until decrypted.
+// ─────────────────────────────────────────────────────────────────────────
+export function useCreditScoreValue() {
+  const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
+  const { address } = useAccount();
+  const [score, setScore] = useState<bigint | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!publicClient || !CREDIT_SCORE_ADDRESS || !address) return;
+    setLoading(true);
+    try {
+      const handle = await publicClient.readContract({
+        address: CREDIT_SCORE_ADDRESS, abi: CREDIT_SCORE_ABI,
+        functionName: "getScore", args: [address],
+      }) as `0x${string}`;
+      const bn = BigInt(handle);
+      if (bn === 0n) {
+        setScore(null);
+        return;
+      }
+      if (walletClient) await initFHEClient(publicClient, walletClient);
+      setScore(await decryptBalance(bn));
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [publicClient, walletClient, address]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  return { score, loading, refresh };
+}

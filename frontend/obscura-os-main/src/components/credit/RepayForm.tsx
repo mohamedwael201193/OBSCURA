@@ -1,22 +1,28 @@
 /**
  * RepayForm — encrypted repay using cUSDC operator approval.
+ * Shows user's current borrow debt (decrypted via FHE).
  */
 import { useState } from "react";
-import { Loader2, ArrowUpFromLine } from "lucide-react";
-import { useCreditMarket } from "@/hooks/useCredit";
+import { Loader2, ArrowUpFromLine, Lock } from "lucide-react";
+import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
 import type { CreditMarketMeta } from "@/config/credit";
 
 interface Props {
   market: CreditMarketMeta;
   markets: CreditMarketMeta[];
   onSelect: (m: CreditMarketMeta) => void;
+  onRefresh?: () => void;
 }
 
-const RepayForm = ({ market, markets, onSelect }: Props) => {
+const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
   const { repay, accrue } = useCreditMarket(market.address);
+  const pos = useMarketPosition(market.address);
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState<"repay" | "accrue" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+
+  const fmt = (v: bigint | null) =>
+    v === null ? "…" : (Number(v) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 4 });
 
   const submit = async () => {
     if (!amount) return;
@@ -27,6 +33,8 @@ const RepayForm = ({ market, markets, onSelect }: Props) => {
       await repay(u);
       setMsg(`Repaid ${amount} cUSDC.`);
       setAmount("");
+      await pos.refresh();
+      onRefresh?.();
     } catch (e: any) {
       setMsg(e?.shortMessage ?? e?.message ?? "Repay failed");
     } finally {
@@ -40,6 +48,7 @@ const RepayForm = ({ market, markets, onSelect }: Props) => {
     try {
       await accrue();
       setMsg("Accrued interest tick complete.");
+      onRefresh?.();
     } catch (e: any) {
       setMsg(e?.shortMessage ?? e?.message ?? "Accrue failed");
     } finally {
@@ -49,6 +58,16 @@ const RepayForm = ({ market, markets, onSelect }: Props) => {
 
   return (
     <div className="grid gap-3">
+      {/* Current debt tile — decrypted via FHE */}
+      <div className="rounded-md bg-black/20 px-3 py-2 mb-1">
+        <div className="text-[10px] uppercase tracking-wider text-white/40 flex items-center gap-1">
+          <Lock className="w-2.5 h-2.5" /> Outstanding borrow
+        </div>
+        <div className="font-mono text-sm text-violet-200 mt-0.5">
+          {pos.loading ? <Loader2 className="w-3 h-3 animate-spin inline" /> : `${fmt(pos.myBorrow)} cUSDC`}
+        </div>
+      </div>
+
       <label className="text-[11px] uppercase tracking-wider text-white/50">Market</label>
       <select
         value={market.address ?? ""}

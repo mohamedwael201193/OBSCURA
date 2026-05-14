@@ -1,21 +1,24 @@
 /**
  * BorrowForm — encrypted borrow with optional stealth destination.
+ * Shows user's current collateral + borrow position (decrypted via FHE).
  */
 import { useMemo, useState } from "react";
 import { Loader2, Lock, ArrowDownToLine } from "lucide-react";
 import { useAccount } from "wagmi";
-import { useCreditMarket } from "@/hooks/useCredit";
+import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
 import type { CreditMarketMeta } from "@/config/credit";
 
 interface Props {
   market: CreditMarketMeta;
   markets: CreditMarketMeta[];
   onSelect: (m: CreditMarketMeta) => void;
+  onRefresh?: () => void;
 }
 
-const BorrowForm = ({ market, markets, onSelect }: Props) => {
+const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
   const { address } = useAccount();
   const { borrow } = useCreditMarket(market.address);
+  const pos = useMarketPosition(market.address);
   const [amount, setAmount] = useState("");
   const [dest, setDest] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,6 +35,8 @@ const BorrowForm = ({ market, markets, onSelect }: Props) => {
       await borrow(u, destResolved as `0x${string}`);
       setMsg(`Borrowed ${amount} cUSDC under stealth.`);
       setAmount("");
+      await pos.refresh();
+      onRefresh?.();
     } catch (e: any) {
       setMsg(e?.shortMessage ?? e?.message ?? "Borrow failed");
     } finally {
@@ -39,8 +44,31 @@ const BorrowForm = ({ market, markets, onSelect }: Props) => {
     }
   };
 
+  const fmt = (v: bigint | null) =>
+    v === null ? "…" : (Number(v) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 4 });
+
   return (
     <div className="grid gap-3">
+      {/* Position tiles — decrypted via FHE */}
+      <div className="grid grid-cols-2 gap-2 mb-1">
+        <div className="rounded-md bg-black/20 px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-white/40 flex items-center gap-1">
+            <Lock className="w-2.5 h-2.5" /> Your collateral
+          </div>
+          <div className="font-mono text-sm text-emerald-200 mt-0.5">
+            {pos.loading ? <Loader2 className="w-3 h-3 animate-spin inline" /> : `${fmt(pos.myCollateral)} cUSDC`}
+          </div>
+        </div>
+        <div className="rounded-md bg-black/20 px-3 py-2">
+          <div className="text-[10px] uppercase tracking-wider text-white/40 flex items-center gap-1">
+            <Lock className="w-2.5 h-2.5" /> Your borrow
+          </div>
+          <div className="font-mono text-sm text-violet-200 mt-0.5">
+            {pos.loading ? <Loader2 className="w-3 h-3 animate-spin inline" /> : `${fmt(pos.myBorrow)} cUSDC`}
+          </div>
+        </div>
+      </div>
+
       <label className="text-[11px] uppercase tracking-wider text-white/50">Market</label>
       <select
         value={market.address ?? ""}

@@ -232,7 +232,7 @@ const CreditPage = () => {
     <div className="grid gap-4">
       <Section title="Borrow" hint="Stealth — recipient & amount encrypted.">
         {activeMarket ? (
-          <BorrowForm market={activeMarket} markets={markets} onSelect={setActiveMarket} />
+          <BorrowForm market={activeMarket} markets={markets} onSelect={setActiveMarket} onRefresh={refreshMarkets} />
         ) : <p className="text-xs text-white/50">Select a market on the Markets tab.</p>}
       </Section>
     </div>
@@ -242,7 +242,7 @@ const CreditPage = () => {
     <div className="grid gap-4">
       <Section title="Repay" hint="Burns encrypted debt against your position.">
         {activeMarket ? (
-          <RepayForm market={activeMarket} markets={markets} onSelect={setActiveMarket} />
+          <RepayForm market={activeMarket} markets={markets} onSelect={setActiveMarket} onRefresh={refreshMarkets} />
         ) : <p className="text-xs text-white/50">Select a market on the Markets tab.</p>}
       </Section>
     </div>

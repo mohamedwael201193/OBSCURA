@@ -72,7 +72,10 @@ const AuctionCard = ({ auction, onBid, onSettle }: Props) => {
       <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
         <div className="rounded-md bg-black/20 px-2.5 py-2">
           <div className="text-[10px] uppercase tracking-wider text-white/40">Best bid</div>
-          <div className="font-mono text-amber-200">${(Number(auction.bestBid) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+          {auction.settled && auction.bestBid > 0n
+            ? <div className="font-mono text-amber-200">${(Number(auction.bestBid) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+            : <div className="font-mono text-white/35 flex items-center gap-1">🔒 Sealed</div>
+          }
         </div>
         <div className="rounded-md bg-black/20 px-2.5 py-2">
           <div className="text-[10px] uppercase tracking-wider text-white/40">Bids</div>

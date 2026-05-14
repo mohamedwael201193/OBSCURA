@@ -290,18 +290,19 @@ contract ObscuraCreditMarket {
         emit CollateralSupplied(msg.sender);
     }
 
-    /// @notice Hook-only: credit collateral without a pull (hook already moved funds).
-    ///         NOTE: uses FHE.asEuint64(plaintext) — only valid when called by
-    ///         an approved repay-router hook, not by end-users.
-    function supplyCollateralFromHook(address borrower, uint64 amtPlain) external {
+    /// @notice Hook-only: credit collateral (hook forwarded cUSDC to market beforehand).
+    ///         Uses the verified encrypted handle from the hook — no plaintext leak.
+    function supplyCollateralFromHook(address borrower, uint64 amtPlain, euint64 handle) external {
         require(isRepayRouter[msg.sender], "not router");
         accrueInterest();
         _ensurePos(borrower);
-        euint64 add = FHE.asEuint64(amtPlain);
+        // Allow this contract to use the handle (granted transiently by the hook).
+        FHE.allowThis(handle);
         Position storage p = _pos[borrower];
-        p.collateral = FHE.add(p.collateral, add);
+        p.collateral = FHE.add(p.collateral, handle);
         FHE.allowThis(p.collateral);
         FHE.allow(p.collateral, borrower);
+        totalSupplyAssets += amtPlain; // reserves replenished by hook's forward transfer
         emit CollateralSupplied(borrower);
     }
 
@@ -393,15 +394,17 @@ contract ObscuraCreditMarket {
         emit Repaid(msg.sender);
     }
 
-    /// @notice Hook-only repay path (funds already in market).
-    function repayFromHook(address borrower, uint64 amtPlain, euint64 /*handle*/) external {
+    /// @notice Hook-only repay path (hook forwarded cUSDC to market beforehand).
+    ///         Uses the verified encrypted handle from the hook — no plaintext leak.
+    function repayFromHook(address borrower, uint64 amtPlain, euint64 handle) external {
         require(isRepayRouter[msg.sender], "not router");
         accrueInterest();
         _ensurePos(borrower);
-        euint64 add = FHE.asEuint64(amtPlain); // hook path uses plaintext
+        // Allow this contract to use the handle (granted transiently by the hook).
+        FHE.allowThis(handle);
         Position storage p = _pos[borrower];
-        ebool   full   = FHE.gte(add, p.borrowShares);
-        euint64 actual = FHE.select(full, p.borrowShares, add);
+        ebool   full   = FHE.gte(handle, p.borrowShares);
+        euint64 actual = FHE.select(full, p.borrowShares, handle);
         p.borrowShares = FHE.sub(p.borrowShares, actual);
         FHE.allowThis(p.borrowShares); FHE.allow(p.borrowShares, borrower);
         if (amtPlain >= totalBorrowAssets) totalBorrowAssets = 0;

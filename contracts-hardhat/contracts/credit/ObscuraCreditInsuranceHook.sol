@@ -53,15 +53,28 @@ contract ObscuraCreditInsuranceHook {
     }
 
     /// @notice Anyone can call to top-up. Operator approval grants auth.
-    function topUp(uint256 subId, InEuint64 calldata encAmt) external {
+    /// @dev Two-step CoFHE pattern:
+    ///      - `encPull` is consumed by cUSDC.confidentialTransferFrom (borrower → hook).
+    ///      - `encPush` is a SEPARATE encryption of the SAME plaintext amount; used
+    ///        by this hook to forward cUSDC (hook → market) and to update encrypted
+    ///        collateral via supplyCollateralFromHook.
+    function topUp(uint256 subId, InEuint64 calldata encPull, InEuint64 calldata encPush) external {
         Sub storage s = _subs[subId];
         if (!s.exists || !s.active) revert NotActive();
         if (s.lastTopUpAt != 0 && block.timestamp < s.lastTopUpAt + s.periodSeconds) return;
         s.lastTopUpAt = uint64(block.timestamp);
 
-        // Pull from borrower into hook, then supplyCollateral to market on borrower's behalf.
-        IConfidentialUSDCv2(cUSDC).confidentialTransferFrom(s.borrower, address(this), encAmt);
-        ObscuraCreditMarket(s.market).supplyCollateralFromHook(s.borrower, s.perCycle);
+        // Step 1: Operator-pull encrypted cUSDC from borrower into this hook.
+        IConfidentialUSDCv2(cUSDC).confidentialTransferFrom(s.borrower, address(this), encPull);
+
+        // Step 2: Forward cUSDC from hook → market (collateral asset).
+        euint64 handle = FHE.asEuint64(encPush);
+        FHE.allowThis(handle);
+        FHE.allowTransient(handle, cUSDC);
+        IConfidentialUSDCv2(cUSDC).confidentialTransfer(s.market, uint256(euint64.unwrap(handle)));
+
+        // Step 3: Notify market to credit encrypted collateral.
+        ObscuraCreditMarket(s.market).supplyCollateralFromHook(s.borrower, s.perCycle, handle);
         emit ToppedUp(subId, s.perCycle);
     }
 

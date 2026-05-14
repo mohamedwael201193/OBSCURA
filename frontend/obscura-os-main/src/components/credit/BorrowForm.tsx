@@ -5,11 +5,13 @@
  * pre-check warnings before the user signs any transaction.
  */
 import { useMemo, useState } from "react";
-import { Loader2, Lock, ArrowDownToLine, ShieldAlert, AlertTriangle } from "lucide-react";
+import { Lock, ArrowDownToLine, ShieldAlert, AlertTriangle, Activity } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
 import type { CreditMarketMeta } from "@/config/credit";
-import EncryptedValue from "./EncryptedValue";
+import EncryptedValue from "@/components/shared/EncryptedValue";
+import FHEStepper from "@/components/shared/FHEStepper";
+import PercentChips from "@/components/shared/PercentChips";
 
 interface Props {
   market: CreditMarketMeta;
@@ -20,7 +22,7 @@ interface Props {
 
 const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
   const { address } = useAccount();
-  const { borrow } = useCreditMarket(market.address);
+  const { borrow, fheStatus } = useCreditMarket(market.address);
   const pos = useMarketPosition(market.address);
   const [amount, setAmount] = useState("");
   const [dest, setDest] = useState("");
@@ -35,10 +37,21 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
   const amtBig          = amount ? BigInt(Math.round(parseFloat(amount) * 1e6)) : 0n;
   const noCollateral    = plainColl === 0n;
   const wouldBreakLLTV  = amtBig > 0n && amtBig > maxBorrowable;
+  const plainBorrow  = pos.plainBorrow ?? 0n;
+
+  // Health Factor: collateral value / borrow (simplified; 0 if no borrow)
+  const healthFactor = useMemo(() => {
+    if (plainBorrow === 0n) return null;
+    const hf = Number(plainColl) * market.lltvBps / 10000 / Number(plainBorrow);
+    return hf;
+  }, [plainColl, plainBorrow, market.lltvBps]);
+
   const noLiquidity     = false; // checked on-chain — the contract will revert with "InsufficientLiquidity"
 
   const fmt6 = (v: bigint) =>
     (Number(v) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 4 });
+
+  const hfColor = healthFactor === null ? "text-white/40" : healthFactor >= 1.5 ? "text-emerald-400" : healthFactor >= 1.1 ? "text-amber-400" : "text-red-400";
 
   const submit = async () => {
     if (!amount || !destResolved) return;
@@ -60,7 +73,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
 
   return (
     <div className="grid gap-3">
-      {/* Position tiles — plaintext shadows (fast reads, no FHE decrypt needed) */}
+      {/* Position tiles */}
       <div className="grid grid-cols-2 gap-2 mb-1">
         <EncryptedValue
           label="Your Collateral"
@@ -78,6 +91,15 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
           accent="amber"
           onReveal={pos.refresh}
         />
+      </div>
+
+      {/* Health Factor tile */}
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20 border border-white/[0.05]">
+        <Activity className="w-3.5 h-3.5 text-white/40" />
+        <span className="text-[10px] text-white/40 uppercase tracking-wider">Health Factor</span>
+        <span className={`ml-auto font-mono text-[13px] font-semibold ${hfColor}`}>
+          {healthFactor === null ? "—" : healthFactor.toFixed(2)}
+        </span>
       </div>
 
       <label className="text-[11px] uppercase tracking-wider text-white/50">Market</label>
@@ -103,6 +125,12 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
         onChange={(e) => setAmount(e.target.value)}
         placeholder="0.0"
         className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+      />
+      <PercentChips
+        max={maxBorrowable}
+        decimals={6}
+        onPick={(v) => setAmount(v === 0n ? "" : (Number(v) / 1e6).toString())}
+        accent="violet"
       />
 
       <label className="text-[11px] uppercase tracking-wider text-white/50 flex items-center gap-1.5">
@@ -143,9 +171,10 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
         onClick={submit}
         className="mt-2 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm bg-violet-500/15 border border-violet-500/40 text-violet-100 hover:bg-violet-500/25 disabled:opacity-50"
       >
-        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowDownToLine className="w-4 h-4" />}
-        Borrow encrypted
+        <ArrowDownToLine className="w-4 h-4" />
+        Borrow under stealth
       </button>
+      <FHEStepper status={fheStatus.status} error={fheStatus.error} />
       {msg && <p className="text-xs text-white/60">{msg}</p>}
     </div>
   );

@@ -1,8 +1,9 @@
 /**
- * AuctionCard — view + bid + settle.
+ * AuctionCard — sealed-bid liquidation auction (no MEV frontrun).
+ * Bids are encrypted on-chain; best bid reveals only after settlement.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Gavel, Clock, Loader2, Award } from "lucide-react";
+import { Gavel, Clock, Loader2, Award, Lock } from "lucide-react";
 import type { AuctionView } from "@/hooks/useCredit";
 
 interface Props {
@@ -55,14 +56,18 @@ const AuctionCard = ({ auction, onBid, onSettle }: Props) => {
   };
 
   return (
-    <div className="p-4 rounded-xl border border-white/[0.06] bg-white/[0.015]">
+    <div className="p-4 rounded-xl border border-amber-500/10 bg-white/[0.015]">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Gavel className="w-4 h-4 text-amber-400/80" />
-            <span className="text-[13px] font-medium text-white/90">Auction #{auction.id.toString()}</span>
+            <span className="text-[13px] font-medium text-white/90">Sealed Auction #{auction.id.toString()}</span>
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] tracking-widest uppercase font-mono border border-amber-500/20 bg-amber-500/10 text-amber-400">
+              <Lock className="w-2 h-2" /> No MEV
+            </span>
           </div>
           <p className="text-[11px] font-mono text-white/45 mt-1 truncate">borrower {auction.borrower.slice(0, 10)}…</p>
+          <p className="text-[10px] text-white/30 mt-0.5">Encrypted bids — best bid hidden until settlement</p>
         </div>
         <span className={`inline-flex items-center gap-1 text-[10px] tracking-[0.18em] uppercase font-mono ${auction.settled ? "text-white/40" : expired ? "text-rose-300" : "text-amber-300"}`}>
           <Clock className="w-3 h-3" /> {auction.settled ? "settled" : expired ? "expired" : `${Math.floor(remaining / 60)}m ${remaining % 60}s`}
@@ -98,7 +103,7 @@ const AuctionCard = ({ auction, onBid, onSettle }: Props) => {
             className="px-3 py-2 rounded-md text-sm bg-amber-500/15 border border-amber-500/40 text-amber-100 hover:bg-amber-500/25 disabled:opacity-50 inline-flex items-center gap-1.5"
           >
             {busy === "bid" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Gavel className="w-3.5 h-3.5" />}
-            Bid
+            Submit Sealed Bid
           </button>
         </div>
       )}

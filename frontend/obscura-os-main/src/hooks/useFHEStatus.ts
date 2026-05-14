@@ -10,9 +10,10 @@ export interface FHEStepState {
 
 const STEP_LABELS: Record<FHEStepStatus, string> = {
   [FHEStepStatus.IDLE]: 'Ready',
-  [FHEStepStatus.ENCRYPTING]: 'Encrypting...',
-  [FHEStepStatus.SENDING]: 'Sending transaction...',
-  [FHEStepStatus.COMPUTING]: 'Computing on-chain...',
+  [FHEStepStatus.ENCRYPTING]: 'Encrypting…',
+  [FHEStepStatus.SENDING]: 'Sending transaction…',
+  [FHEStepStatus.COMPUTING]: 'Computing on-chain…',
+  [FHEStepStatus.SETTLING]: 'Awaiting CoFHE settle…',
   [FHEStepStatus.READY]: 'Complete',
   [FHEStepStatus.ERROR]: 'Error',
 };
@@ -22,7 +23,8 @@ const STEP_INDEX: Record<FHEStepStatus, number> = {
   [FHEStepStatus.ENCRYPTING]: 0,
   [FHEStepStatus.SENDING]: 1,
   [FHEStepStatus.COMPUTING]: 2,
-  [FHEStepStatus.READY]: 3,
+  [FHEStepStatus.SETTLING]: 3,
+  [FHEStepStatus.READY]: 4,
   [FHEStepStatus.ERROR]: -1,
 };
 

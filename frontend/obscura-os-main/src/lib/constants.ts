@@ -17,6 +17,7 @@ export enum FHEStepStatus {
   ENCRYPTING = "encrypting",
   SENDING = "sending",
   COMPUTING = "computing",
+  SETTLING = "settling",
   READY = "ready",
   ERROR = "error",
 }

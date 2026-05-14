@@ -13,12 +13,14 @@
  * instant pre-check warnings — no FHE decrypt required for these.
  */
 import { useState } from "react";
-import { Loader2, Lock, ShieldCheck, ShieldAlert, ArrowUpToLine, ArrowDownToLine } from "lucide-react";
+import { Lock, ShieldCheck, ShieldAlert, ArrowUpToLine, ArrowDownToLine } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
 import { CREDIT_TOKENS } from "@/config/credit";
 import type { CreditMarketMeta } from "@/config/credit";
-import EncryptedValue from "./EncryptedValue";
+import EncryptedValue from "@/components/shared/EncryptedValue";
+import FHEStepper from "@/components/shared/FHEStepper";
+import PercentChips from "@/components/shared/PercentChips";
 
 interface Props {
   market: CreditMarketMeta;
@@ -31,7 +33,7 @@ type Tab = "supply" | "withdraw";
 
 const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) => {
   const { address } = useAccount();
-  const { supplyCollateral, withdrawCollateral } = useCreditMarket(market.address);
+  const { supplyCollateral, withdrawCollateral, fheStatus } = useCreditMarket(market.address);
   const pos = useMarketPosition(market.address);
 
   const [tab, setTab]     = useState<Tab>("supply");
@@ -166,6 +168,12 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
         placeholder="0.0"
         className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
       />
+      <PercentChips
+        max={tab === "supply" ? 0n : plainColl}
+        decimals={6}
+        onPick={(v) => setAmount(v === 0n ? "" : (Number(v) / 1e6).toString())}
+        accent="violet"
+      />
 
       {/* Warnings */}
       {tab === "supply" && plainColl === 0n && (
@@ -207,15 +215,15 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
         onClick={submit}
         className="mt-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-50"
       >
-        {busy ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : tab === "supply" ? (
+        {tab === "supply" ? (
           <ArrowUpToLine className="w-4 h-4" />
         ) : (
           <ArrowDownToLine className="w-4 h-4" />
         )}
         {tab === "supply" ? "Supply collateral" : "Withdraw collateral"}
       </button>
+
+      <FHEStepper status={fheStatus.status} error={fheStatus.error} />
 
       {msg && (
         <p className={`text-xs ${msg.toLowerCase().includes("fail") || msg.toLowerCase().includes("error") ? "text-red-300/70" : "text-emerald-300/70"}`}>

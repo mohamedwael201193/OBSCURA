@@ -39,6 +39,7 @@ import {
 import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, REINEIRA_CUSDC_ABI, REINEIRA_CUSDC_ADDRESS } from "@/config/pay";
 import { decryptBalance, encryptAddressAndAmount, encryptAmount, initFHEClient } from "@/lib/fhe";
 import { estimateCappedFees } from "@/lib/gas";
+import { awaitCoFHESettle } from "@/lib/cofheSettle";
 import { useFHEStatus } from "./useFHEStatus";
 import { FHEStepStatus } from "@/lib/constants";
 
@@ -250,7 +251,8 @@ export function useCreditMarket(market?: `0x${string}`) {
       });
       const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
       if (r.status !== "success") throw new Error("cUSDC transfer to market failed");
-      await new Promise(res => setTimeout(res, 8000)); // CoFHE settle
+      fhe.setStep(FHEStepStatus.SETTLING);
+      await awaitCoFHESettle(publicClient, txTransfer);
 
       // Step 2 — record supply shares + FHE trigger to settle pending CoFHE task
       const enc2 = await encryptAmount(amount);
@@ -303,7 +305,8 @@ export function useCreditMarket(market?: `0x${string}`) {
       });
       const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
       if (r.status !== "success") throw new Error("collateral transfer failed");
-      await new Promise(res => setTimeout(res, 8000));
+      fhe.setStep(FHEStepStatus.SETTLING);
+      await awaitCoFHESettle(publicClient, txTransfer);
 
       // Step 2 — supply with ONE encAmt for FHE collateral accounting
       const enc2 = await encryptAmount(amount);
@@ -383,7 +386,8 @@ export function useCreditMarket(market?: `0x${string}`) {
       });
       const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
       if (r.status !== "success") throw new Error("cUSDC transfer failed");
-      await new Promise(res => setTimeout(res, 8000));
+      fhe.setStep(FHEStepStatus.SETTLING);
+      await awaitCoFHESettle(publicClient, txTransfer);
 
       // Step 2 — repay with ONE encAmt for FHE borrow accounting
       const enc2 = await encryptAmount(amount);
@@ -411,7 +415,7 @@ export function useCreditMarket(market?: `0x${string}`) {
     });
   }, [publicClient, market, address, writeContractAsync]);
 
-  return { supply, withdraw, supplyCollateral, withdrawCollateral, borrow, repay, accrue };
+  return { supply, withdraw, supplyCollateral, withdrawCollateral, borrow, repay, accrue, fheStatus: fhe };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -448,7 +452,8 @@ export function useCreditVault(vault?: `0x${string}`) {
       });
       const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
       if (r.status !== "success") throw new Error("cUSDC transfer to vault failed");
-      await new Promise(res => setTimeout(res, 8000)); // CoFHE settle
+      fhe.setStep(FHEStepStatus.SETTLING);
+      await awaitCoFHESettle(publicClient, txTransfer);
 
       // Step 2 — record shares + FHE trigger to settle pending CoFHE task
       const enc2 = await encryptAmount(amount);
@@ -512,7 +517,7 @@ export function useCreditVault(vault?: `0x${string}`) {
     [publicClient, vault, address, writeContractAsync]
   );
 
-  return { deposit, withdraw, reallocateSupply, reallocateWithdraw };
+  return { deposit, withdraw, reallocateSupply, reallocateWithdraw, fheStatus: fhe };
 }
 
 // ─────────────────────────────────────────────────────────────────────────

@@ -31,11 +31,14 @@ import {
 import AmbientBackground from "@/components/elite/AmbientBackground";
 import DashboardSidebar, { SidebarSection } from "@/components/elite/DashboardSidebar";
 import { PageHeader, Card, CardHeader, FeatureStrip } from "@/components/elite/Layout";
+import EncryptedText from "@/components/shared/EncryptedText";
 
-// Local helper: card with title + helper text + body. Matches CardHeader
-// signature (title + eyebrow) plus a small description line.
-const Section = ({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) => (
+// Local helper: card with overline + title + helper text + body.
+const Section = ({ title, overline, hint, children }: { title: string; overline?: string; hint?: string; children: React.ReactNode }) => (
   <Card>
+    {overline && (
+      <div className="px-5 pt-4 text-[9px] tracking-[0.22em] uppercase text-violet-400/60 font-mono">{overline}</div>
+    )}
     <CardHeader title={title} />
     {hint && <p className="px-5 pt-2 text-[11px] text-white/55">{hint}</p>}
     <div className="px-5 py-4">{children}</div>
@@ -112,7 +115,7 @@ const sidebarSections: SidebarSection[] = [
   {
     heading: "Risk",
     items: [
-      { key: "auctions", label: "Auctions", icon: Gavel },
+      { key: "auctions", label: "Sealed Auctions", icon: Gavel },
       { key: "score", label: "Credit Score", icon: Award },
     ],
   },
@@ -126,9 +129,9 @@ const sidebarSections: SidebarSection[] = [
 ];
 
 const featureItems = [
-  { icon: Lock, title: "Fully encrypted", body: "Borrow amounts, collateral and recipients are all CoFHE handles." },
+  { icon: Lock, title: "Fully encrypted", body: "Borrow amounts, collateral and recipients are all CoFHE handles — zero plaintext leakage." },
   { icon: ShieldCheck, title: "Curated risk", body: "Vaults route deposits across approved markets with hard LLTV ceilings." },
-  { icon: Sparkles, title: "Cross-app native", body: "Auto-repay with PayStream, top-up via Insurance, attest from Vote/Inbox." },
+  { icon: Sparkles, title: "Sealed bidding", body: "Liquidation auctions use encrypted bids — no MEV frontrun or last-second sniping." },
 ];
 
 const CreditPage = () => {
@@ -293,7 +296,7 @@ const CreditPage = () => {
   const renderAuctions = () => (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg text-white/90">Liquidation auctions</h2>
+        <h2 className="text-lg text-white/90">Sealed Auctions</h2>
         <button onClick={refreshAuctions} className="text-xs text-white/60 hover:text-white inline-flex items-center gap-1.5">
           <RefreshCcw className="w-3 h-3" /> Refresh
         </button>
@@ -361,8 +364,8 @@ const CreditPage = () => {
         <main className="flex-1 min-w-0 px-6 lg:px-8 py-7 max-w-5xl w-full mx-auto">
           <PageHeader
             breadcrumb={["Dashboard", "Credit"]}
-            title={<>Obscura<span className="text-violet-400">Credit</span></>}
-            lede={<>Encrypted lending — supply to vaults, borrow under stealth, settle with private auctions.</>}
+            title={<><EncryptedText duration={1100}>ObscuraCredit</EncryptedText></>}
+            lede={<>Encrypted lending — supply to vaults, borrow under stealth, settle via sealed auctions. All amounts are CoFHE handles on-chain.</>}
             badge={
               isConnected ? (
                 <span className="hidden md:inline-flex items-center gap-1.5 text-[10.5px] tracking-[0.05em] text-violet-300/80 px-2.5 py-1 rounded-md border border-violet-500/20 bg-violet-500/[0.04]">

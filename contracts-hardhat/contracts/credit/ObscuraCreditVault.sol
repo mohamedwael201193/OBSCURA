@@ -91,13 +91,18 @@ contract ObscuraCreditVault {
     // ─── User-facing deposit / withdraw ──────────────────────────────────
 
     /// @notice Record a deposit after the caller has directly transferred cUSDC.
-    /// @dev    Caller MUST first call:
-    ///           cUSDC.confidentialTransfer(address(this), encAmt)
-    ///         directly (user → cUSDC, no proxy). CoFHE rejects InEuint64
-    ///         proofs forwarded through intermediary contracts. After the
-    ///         transfer confirm, call this function to record shares.
+    /// @dev    Two-step pattern (mirrors proven ObscuraEscrow.fund pattern):
+    ///           Step 1: cUSDC.confidentialTransfer(address(this), encAmt)  ← user direct
+    ///           Step 2: vault.deposit(amtPlain, encAmt2)                   ← this call
+    ///         encAmt is consumed by FHE.asEuint64 here to settle the CoFHE
+    ///         pending task from step 1. Without an FHE call in step 2, the
+    ///         CoFHE task manager rate-limits same-sender follow-up txs.
+    ///         Both encAmt and encAmt2 should encrypt the same value.
     /// @param amtPlain Plaintext deposit amount (base units, 6 dec for cUSDC).
-    function deposit(uint64 amtPlain) external {
+    /// @param encAmt   Encrypted amount — consumed only to settle CoFHE state.
+    function deposit(uint64 amtPlain, InEuint64 calldata encAmt) external {
+        euint64 eAmt = FHE.asEuint64(encAmt); // settle pending CoFHE task
+        FHE.allow(eAmt, msg.sender);           // allow user to verify receipt
         shares[msg.sender]    += amtPlain;
         totalShares           += amtPlain;
         publicTotalDeposited  += amtPlain;

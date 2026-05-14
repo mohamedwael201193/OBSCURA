@@ -193,11 +193,12 @@ export function useCreditMarket(market?: `0x${string}`) {
       if (r.status !== "success") throw new Error("cUSDC transfer to market failed");
       await new Promise(res => setTimeout(res, 8000)); // CoFHE settle
 
-      // Step 2 — record supply shares (no FHE forwarding)
+      // Step 2 — record supply shares + FHE trigger to settle pending CoFHE task
+      const enc2 = await encryptAmount(amount);
       const fees2 = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "supply",
-        args: [amount], account: address, chain: arbitrumSepolia,
+        args: [amount, enc2[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees2.maxFeePerGas, maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.supply,
       });
@@ -390,11 +391,12 @@ export function useCreditVault(vault?: `0x${string}`) {
       if (r.status !== "success") throw new Error("cUSDC transfer to vault failed");
       await new Promise(res => setTimeout(res, 8000)); // CoFHE settle
 
-      // Step 2 — record shares in vault (no FHE forwarding)
+      // Step 2 — record shares + FHE trigger to settle pending CoFHE task
+      const enc2 = await encryptAmount(amount);
       const fees2 = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
         address: vault, abi: CREDIT_VAULT_ABI, functionName: "deposit",
-        args: [amount], account: address, chain: arbitrumSepolia,
+        args: [amount, enc2[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees2.maxFeePerGas, maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.vaultDeposit,
       });

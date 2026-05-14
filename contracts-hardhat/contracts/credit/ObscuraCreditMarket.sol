@@ -167,11 +167,17 @@ contract ObscuraCreditMarket {
     // ─── Lender side ─────────────────────────────────────────────────────
 
     /// @notice Supply loanAsset to the market.
-    /// @dev    Caller MUST first call:
-    ///           cUSDC.confidentialTransfer(address(this), encAmt)
-    ///         directly before calling this. CoFHE rejects InEuint64 proofs
-    ///         forwarded through intermediaries. Supply shares are plaintext.
-    function supply(uint64 amtPlain) external {
+    /// @dev    Two-step pattern (mirrors proven ObscuraEscrow.fund pattern):
+    ///           Step 1: cUSDC.confidentialTransfer(address(this), encAmt)  ← user direct
+    ///           Step 2: market.supply(amtPlain, encAmt2)                   ← this call
+    ///         encAmt is consumed by FHE.asEuint64 here to settle the CoFHE
+    ///         pending task from step 1 — required to avoid rate-limit revert.
+    ///         Both encAmt and encAmt2 should encrypt the same value.
+    /// @param amtPlain Plaintext supply amount (base units).
+    /// @param encAmt   Encrypted amount — consumed only to settle CoFHE state.
+    function supply(uint64 amtPlain, InEuint64 calldata encAmt) external {
+        euint64 eAmt = FHE.asEuint64(encAmt); // settle pending CoFHE task
+        FHE.allow(eAmt, msg.sender);           // allow user to verify receipt
         accrueInterest();
         supplyShares[msg.sender] += amtPlain;
         totalSupplyAssets        += amtPlain;

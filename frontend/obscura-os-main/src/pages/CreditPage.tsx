@@ -73,11 +73,15 @@ import AuctionCard from "@/components/credit/AuctionCard";
 import CreditScoreCard from "@/components/credit/CreditScoreCard";
 import SettingsPanel from "@/components/credit/SettingsPanel";
 import HistoryFeed from "@/components/credit/HistoryFeed";
+import SupplyCollateralForm from "@/components/credit/SupplyCollateralForm";
+import SupplyForm from "@/components/credit/SupplyForm";
 
 type CreditTab =
   | "home"
   | "vaults"
   | "markets"
+  | "collateral"
+  | "supply"
   | "borrow"
   | "repay"
   | "health"
@@ -93,11 +97,13 @@ const sidebarSections: SidebarSection[] = [
     items: [
       { key: "vaults", label: "Vaults", icon: PiggyBank },
       { key: "markets", label: "Markets", icon: Layers },
+      { key: "supply", label: "Supply", icon: ArrowUpFromLine },
     ],
   },
   {
     heading: "Borrow",
     items: [
+      { key: "collateral", label: "Collateral", icon: ShieldCheck },
       { key: "borrow", label: "Borrow", icon: ArrowDownToLine },
       { key: "repay", label: "Repay", icon: ArrowUpFromLine },
       { key: "health", label: "Health", icon: Activity },
@@ -230,9 +236,35 @@ const CreditPage = () => {
 
   const renderBorrow = () => (
     <div className="grid gap-4">
-      <Section title="Borrow" hint="Stealth — recipient & amount encrypted.">
+      <Section title="Borrow" hint="Stealth — recipient & amount encrypted. Supply collateral first.">
         {activeMarket ? (
           <BorrowForm market={activeMarket} markets={markets} onSelect={setActiveMarket} onRefresh={refreshMarkets} />
+        ) : <p className="text-xs text-white/50">Select a market on the Markets tab.</p>}
+      </Section>
+    </div>
+  );
+
+  const renderCollateral = () => (
+    <div className="grid gap-4">
+      <Section
+        title="Supply / Withdraw Collateral"
+        hint="Required before borrowing. Two-step FHE: collateral amount is private on-chain."
+      >
+        {activeMarket ? (
+          <SupplyCollateralForm market={activeMarket} markets={markets} onSelect={setActiveMarket} onRefresh={refreshMarkets} />
+        ) : <p className="text-xs text-white/50">Select a market on the Markets tab.</p>}
+      </Section>
+    </div>
+  );
+
+  const renderSupply = () => (
+    <div className="grid gap-4">
+      <Section
+        title="Supply to Market"
+        hint="Earn interest from borrowers. Supply positions are FHE-encrypted."
+      >
+        {activeMarket ? (
+          <SupplyForm market={activeMarket} markets={markets} onSelect={setActiveMarket} onRefresh={refreshMarkets} />
         ) : <p className="text-xs text-white/50">Select a market on the Markets tab.</p>}
       </Section>
     </div>
@@ -300,16 +332,18 @@ const CreditPage = () => {
 
   const renderActive = () => {
     switch (tab) {
-      case "home":     return renderHome();
-      case "vaults":   return renderVaults();
-      case "markets":  return renderMarkets();
-      case "borrow":   return renderBorrow();
-      case "repay":    return renderRepay();
-      case "health":   return renderHealth();
-      case "auctions": return renderAuctions();
-      case "score":    return renderScore();
-      case "history":  return renderHistory();
-      case "settings": return renderSettings();
+      case "home":       return renderHome();
+      case "vaults":     return renderVaults();
+      case "markets":    return renderMarkets();
+      case "collateral": return renderCollateral();
+      case "supply":     return renderSupply();
+      case "borrow":     return renderBorrow();
+      case "repay":      return renderRepay();
+      case "health":     return renderHealth();
+      case "auctions":   return renderAuctions();
+      case "score":      return renderScore();
+      case "history":    return renderHistory();
+      case "settings":   return renderSettings();
     }
   };
 

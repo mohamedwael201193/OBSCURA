@@ -886,17 +886,21 @@ export function useMarketPosition(market?: `0x${string}`) {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { address } = useAccount();
-  const [mySupply, setMySupply] = useState<bigint | null>(null);
-  const [myBorrow, setMyBorrow] = useState<bigint | null>(null);
+  const [mySupply,     setMySupply]     = useState<bigint | null>(null);
+  const [myBorrow,     setMyBorrow]     = useState<bigint | null>(null);
   const [myCollateral, setMyCollateral] = useState<bigint | null>(null);
+  // Plaintext shadows — fast reads for pre-checks and UI warnings (no FHE decrypt needed)
+  const [plainCollateral, setPlainCollateral] = useState<bigint | null>(null);
+  const [plainBorrow,     setPlainBorrow]     = useState<bigint | null>(null);
+  const [maxBorrowableAmt, setMaxBorrowableAmt] = useState<bigint | null>(null);
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!publicClient || !market || !address) return;
     setLoading(true);
     try {
-      // Read encrypted handles from chain (bytes32 values returned as `0x${string}`)
-      const [supplyHandle, position] = await Promise.all([
+      // Read encrypted handles + plaintext shadows in one batch
+      const [supplyHandle, position, pc, pb, mb] = await Promise.all([
         publicClient.readContract({
           address: market, abi: CREDIT_MARKET_ABI,
           functionName: "getEncryptedSupplyShares", args: [address],
@@ -905,15 +909,30 @@ export function useMarketPosition(market?: `0x${string}`) {
           address: market, abi: CREDIT_MARKET_ABI,
           functionName: "getPosition", args: [address],
         }) as Promise<readonly [`0x${string}`, `0x${string}`, `0x${string}`, `0x${string}`]>,
+        publicClient.readContract({
+          address: market, abi: CREDIT_MARKET_ABI,
+          functionName: "getPlainCollateral", args: [address],
+        }) as Promise<bigint>,
+        publicClient.readContract({
+          address: market, abi: CREDIT_MARKET_ABI,
+          functionName: "getPlainBorrow", args: [address],
+        }) as Promise<bigint>,
+        publicClient.readContract({
+          address: market, abi: CREDIT_MARKET_ABI,
+          functionName: "maxBorrowable", args: [address],
+        }) as Promise<bigint>,
       ]);
 
+      setPlainCollateral(pc);
+      setPlainBorrow(pb);
+      setMaxBorrowableAmt(mb);
+
       const borrowHandle = position[1];
-      const collHandle = position[2];
+      const collHandle   = position[2];
 
       const decryptHandle = async (h: `0x${string}`): Promise<bigint> => {
         const bn = BigInt(h);
         if (bn === 0n) return 0n;
-        // Init CoFHE once; safe to call repeatedly — only reconnects if wallet changed
         if (walletClient) await initFHEClient(publicClient, walletClient);
         return decryptBalance(bn);
       };
@@ -935,7 +954,7 @@ export function useMarketPosition(market?: `0x${string}`) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { mySupply, myBorrow, myCollateral, loading, refresh };
+  return { mySupply, myBorrow, myCollateral, plainCollateral, plainBorrow, maxBorrowableAmt, loading, refresh };
 }
 
 // ─────────────────────────────────────────────────────────────────────────

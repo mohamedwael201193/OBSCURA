@@ -58,8 +58,11 @@ contract ObscuraCreditMarket {
 
     // Supply shares encrypted — only the lender can decrypt their own position.
     mapping(address => euint64) private _encSupplyShares;
-    // Private plaintext shadow for revert guards (never exposed externally).
+    // Private plaintext shadows for revert guards (never exposed externally via ABI).
+    // These are only used for accounting correctness and LLTV/liquidity pre-checks.
     mapping(address => uint128) private _plainSupplyShares;
+    mapping(address => uint128) private _plainBorrow;     // outstanding borrow shadow
+    mapping(address => uint128) private _plainCollateral; // collateral deposited shadow
 
     struct Position {
         euint64  borrowShares; // encrypted outstanding debt
@@ -276,9 +279,10 @@ contract ObscuraCreditMarket {
     ///         for the FHE collateral accounting. The market consumes encAmt
     ///         itself (msg.sender=user in market ctx → CoFHE accepts).
     function supplyCollateral(
-        uint64 /*amtPlain*/,
+        uint64 amtPlain,
         InEuint64 calldata encAmt
     ) external {
+        require(amtPlain > 0, "ZeroAmount");
         accrueInterest();
         _ensurePos(msg.sender);
 
@@ -287,6 +291,7 @@ contract ObscuraCreditMarket {
         p.collateral = FHE.add(p.collateral, add);
         FHE.allowThis(p.collateral);
         FHE.allow(p.collateral, msg.sender);
+        _plainCollateral[msg.sender] += amtPlain; // shadow: accounting guard
         emit CollateralSupplied(msg.sender);
     }
 
@@ -302,68 +307,77 @@ contract ObscuraCreditMarket {
         p.collateral = FHE.add(p.collateral, handle);
         FHE.allowThis(p.collateral);
         FHE.allow(p.collateral, borrower);
+        _plainCollateral[borrower] += amtPlain; // shadow: accounting guard
         totalSupplyAssets += amtPlain; // reserves replenished by hook's forward transfer
         emit CollateralSupplied(borrower);
     }
 
     /// @notice Withdraw collateral.
-    ///         LLTV check is encrypted via FHE.select (silent fail).
-    ///         Uses pre-computed _lltv and _basis — no runtime FHE.asEuint64(plaintext).
-    ///         Collateral is returned via confidentialTransfer (push from market).
-    function withdrawCollateral(uint64 /*amtPlain*/, InEuint64 calldata encAmt) external {
+    ///         Plaintext LLTV pre-check using shadow values ensures the call reverts
+    ///         cleanly rather than silently sending zero. FHE handles still used for
+    ///         the encrypted amount push to collateralAsset.
+    function withdrawCollateral(uint64 amtPlain, InEuint64 calldata encAmt) external {
+        require(amtPlain > 0, "ZeroAmount");
+        require(_plainCollateral[msg.sender] >= amtPlain, "InsufficientCollateral");
+        // After withdrawal the remaining collateral must still cover outstanding debt.
+        uint128 remainColl = _plainCollateral[msg.sender] - amtPlain;
+        uint128 maxBorrow   = uint128((uint256(remainColl) * lltvBps) / 10000);
+        require(_plainBorrow[msg.sender] <= maxBorrow, "LLTVBreach");
+
         accrueInterest();
         _ensurePos(msg.sender);
         Position storage p = _pos[msg.sender];
 
-        euint64 req     = FHE.asEuint64(encAmt);
-        euint64 newColl = FHE.sub(p.collateral, req);
-        // maxBorrow = newColl * lltvBps / 10000
-        euint64 maxBorrow = FHE.div(FHE.mul(newColl, _lltv), _basis);
-        ebool ok = FHE.and(FHE.gte(p.collateral, req), FHE.gte(maxBorrow, p.borrowShares));
-        euint64 actual = FHE.select(ok, req, _zero);
-
-        p.collateral = FHE.sub(p.collateral, actual);
+        euint64 req = FHE.asEuint64(encAmt);
+        p.collateral = FHE.sub(p.collateral, req);
         FHE.allowThis(p.collateral); FHE.allow(p.collateral, msg.sender);
-        FHE.allowThis(actual);       FHE.allow(actual, msg.sender);
+        _plainCollateral[msg.sender] -= amtPlain;
 
-        FHE.allowTransient(actual, collateralAsset);
+        FHE.allowTransient(req, collateralAsset);
         IConfidentialUSDCv2(collateralAsset).confidentialTransfer(
-            msg.sender, uint256(euint64.unwrap(actual))
+            msg.sender, uint256(euint64.unwrap(req))
         );
         emit CollateralWithdrawn(msg.sender);
     }
 
-    /// @notice Borrow loanAsset. Silent-fail if LLTV would be breached.
-    ///         Uses pre-computed _lltv, _basis, _zero constants.
+    /// @notice Borrow loanAsset.
+    ///         Plaintext pre-checks (LLTV + liquidity) ensure the call reverts cleanly
+    ///         before any FHE computation. The encrypted amount is still passed through
+    ///         FHE so amount privacy is maintained at the ABI/event level.
+    ///         encDest is stored encrypted for audit trail; the actual cUSDC disbursal
+    ///         goes to msg.sender (no on-chain plaintext of intended stealth address).
     function borrow(
         uint64 amtPlain,
         InEuint64  calldata encAmt,
         InEaddress calldata encDest
     ) external {
+        require(amtPlain > 0, "ZeroAmount");
+        // ── Plaintext guards ─────────────────────────────────────────────
+        uint128 _maxB = uint128((uint256(_plainCollateral[msg.sender]) * lltvBps) / 10000);
+        require(_plainBorrow[msg.sender] + amtPlain <= _maxB, "LLTVBreach");
+        uint128 available = totalSupplyAssets >= totalBorrowAssets
+            ? totalSupplyAssets - totalBorrowAssets : 0;
+        require(available >= amtPlain, "InsufficientLiquidity");
+        // ── FHE amount privacy ────────────────────────────────────────────
         accrueInterest();
         _ensurePos(msg.sender);
 
         Position storage p = _pos[msg.sender];
-        euint64  req    = FHE.asEuint64(encAmt);
-        eaddress dest   = FHE.asEaddress(encDest);
+        euint64  req  = FHE.asEuint64(encAmt);
+        eaddress dest = FHE.asEaddress(encDest);
 
-        euint64 newBorrow = FHE.add(p.borrowShares, req);
-        euint64 maxBorrow = FHE.div(FHE.mul(p.collateral, _lltv), _basis);
-        ebool   ok     = FHE.lte(newBorrow, maxBorrow);
-        euint64 actual = FHE.select(ok, req, _zero);
-
-        p.borrowShares = FHE.add(p.borrowShares, actual);
+        p.borrowShares = FHE.add(p.borrowShares, req);
         p.disburseTo   = dest;
-        FHE.allowThis(p.borrowShares);   FHE.allow(p.borrowShares, msg.sender);
-        FHE.allowThis(p.disburseTo);     FHE.allow(p.disburseTo,   msg.sender);
-        FHE.allowThis(actual);           FHE.allow(actual,          msg.sender);
+        FHE.allowThis(p.borrowShares); FHE.allow(p.borrowShares, msg.sender);
+        FHE.allowThis(p.disburseTo);   FHE.allow(p.disburseTo,   msg.sender);
 
         if (!hasBorrow[msg.sender]) { hasBorrow[msg.sender] = true; _borrowers.push(msg.sender); }
-        totalBorrowAssets += amtPlain;
+        _plainBorrow[msg.sender] += amtPlain;
+        totalBorrowAssets        += amtPlain;
 
-        FHE.allowTransient(actual, loanAsset);
+        FHE.allowTransient(req, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
-            msg.sender, uint256(euint64.unwrap(actual))
+            msg.sender, uint256(euint64.unwrap(req))
         );
         emit Borrowed(msg.sender);
     }
@@ -391,6 +405,8 @@ contract ObscuraCreditMarket {
 
         if (amtPlain >= totalBorrowAssets) totalBorrowAssets = 0;
         else totalBorrowAssets -= amtPlain;
+        if (amtPlain >= _plainBorrow[msg.sender]) _plainBorrow[msg.sender] = 0;
+        else _plainBorrow[msg.sender] -= amtPlain;
         emit Repaid(msg.sender);
     }
 
@@ -409,6 +425,8 @@ contract ObscuraCreditMarket {
         FHE.allowThis(p.borrowShares); FHE.allow(p.borrowShares, borrower);
         if (amtPlain >= totalBorrowAssets) totalBorrowAssets = 0;
         else totalBorrowAssets -= amtPlain;
+        if (amtPlain >= _plainBorrow[borrower]) _plainBorrow[borrower] = 0;
+        else _plainBorrow[borrower] -= amtPlain;
         emit Repaid(borrower);
     }
 
@@ -432,8 +450,12 @@ contract ObscuraCreditMarket {
         euint64 rd = FHE.asEuint64(repaidDebt);
         p.collateral   = FHE.sub(p.collateral,   sc); FHE.allowThis(p.collateral);
         p.borrowShares = FHE.sub(p.borrowShares, rd); FHE.allowThis(p.borrowShares);
-        if (repaidDebt >= totalBorrowAssets) totalBorrowAssets = 0;
+        if (repaidDebt  >= totalBorrowAssets) totalBorrowAssets = 0;
         else totalBorrowAssets -= repaidDebt;
+        if (seizedColl  >= _plainCollateral[borrower]) _plainCollateral[borrower] = 0;
+        else _plainCollateral[borrower] -= seizedColl;
+        if (repaidDebt  >= _plainBorrow[borrower])     _plainBorrow[borrower] = 0;
+        else _plainBorrow[borrower] -= repaidDebt;
     }
 
     // ─── Views ────────────────────────────────────────────────────────────
@@ -454,6 +476,25 @@ contract ObscuraCreditMarket {
 
     function borrowersLength() external view returns (uint256) { return _borrowers.length; }
     function borrowerAt(uint256 i) external view returns (address) { return _borrowers[i]; }
+
+    /// @notice Plaintext collateral shadow — used for UI pre-checks and position health.
+    ///         Private mapping, not part of encrypted position handles.
+    function getPlainCollateral(address user) external view returns (uint128) {
+        return _plainCollateral[user];
+    }
+
+    /// @notice Plaintext borrow shadow — used for UI pre-checks and health factor display.
+    function getPlainBorrow(address user) external view returns (uint128) {
+        return _plainBorrow[user];
+    }
+
+    /// @notice Maximum amount `user` can borrow given their current collateral.
+    function maxBorrowable(address user) external view returns (uint128) {
+        uint128 coll = _plainCollateral[user];
+        uint128 max = uint128((uint256(coll) * lltvBps) / 10000);
+        uint128 debt = _plainBorrow[user];
+        return debt >= max ? 0 : max - debt;
+    }
 }
 
 interface IObscuraCreditAuction {

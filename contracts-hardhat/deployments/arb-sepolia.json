@@ -44,8 +44,8 @@
   "ObscuraCreditOracle": "0x5F00910533AB6fc12a35a87BaFe856EF2cb323c3",
   "ObscuraCreditIRM": "0xA072c038cE98dEC8F5350D451145fB98F5EA57Bc",
   "ObscuraCreditFactory": "0x5aDC1965D155f4b18119222CBA7a7A4be4F45680",
-  "ObscuraCreditMarket_77": "0xd2b103f7544a78dfC638071da3b98A03b6df5354",
-  "ObscuraCreditMarket_86": "0x82a9b00b0918d3A50A296e55a06688FFF1187F58",
+  "ObscuraCreditMarket_77": "0x0Cd8B6Ca4da8685F706bacDa004D0226dC097230",
+  "ObscuraCreditMarket_86": "0xd0E5bc9a492C0F969eFC84DACAccCaBFec6D58aD",
   "ObscuraCreditVault_Conservative": "0xd96d57929FBad49803bF1526Ac576Be467eeAcD7",
   "ObscuraCreditVault_Aggressive": "0x9df302055384735451b53e27FE9056C401A8CC3b",
   "ObscuraCreditAuction": "0x205FfC0A3b8207B645c1a6B1b4805eb3FfC828F0",
@@ -58,9 +58,10 @@
   "ObscuraConfidentialWETH": "0xA377AF2b307C2219B66D83963c9c800305aE5518",
   "ObscuraCreditFeedOBS": "0x74B927192bdE64A18c25D635486B6868C76E4872",
   "ObscuraCreditFeedWETH": "0x19D0066fB06F83623e3a9037E91840e674A17724",
-  "ObscuraCreditMarket_cOBS_cUSDC": "0x6Bd4ab853841F3C10806397734A9682Bc4c405C3",
-  "ObscuraCreditMarket_cWETH_cUSDC": "0x9E64f10fEB9e7a3c9a408caDe1a930C485bF7649",
+  "ObscuraCreditMarket_cOBS_cUSDC": "0x79C2b601278a2073522B4aee719d5CF51Fe3B872",
+  "ObscuraCreditMarket_cWETH_cUSDC": "0x6f31690e768210b6502B8270A1bfF0C6A9F7Df1F",
   "creditTokensDeployedAt": "2026-05-13T20:11:49.949Z",
   "creditCoreRedeployedAt": "2026-05-14T00:05:56.474Z",
-  "wave4v15DeployedAt": "2026-05-14T01:11:39.872Z"
+  "wave4v15DeployedAt": "2026-05-14T01:11:39.872Z",
+  "wave4v16DeployedAt": "2026-05-14T01:43:54.189Z"
 }

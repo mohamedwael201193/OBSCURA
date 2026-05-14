@@ -16,6 +16,7 @@ import { Loader2, ArrowUpToLine, ArrowDownToLine, TrendingUp, AlertTriangle } fr
 import { useAccount } from "wagmi";
 import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
 import type { CreditMarketMeta } from "@/config/credit";
+import EncryptedValue from "./EncryptedValue";
 
 interface Props {
   market: CreditMarketMeta;
@@ -43,10 +44,6 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
   };
 
   const amtBig = parsedAmt();
-  const mySupplyFmt =
-    pos.mySupply === null
-      ? "…"
-      : (Number(pos.mySupply) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 4 });
 
   const submit = async () => {
     if (!amtBig || !address) return;
@@ -74,19 +71,17 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
     <div className="grid gap-3">
       {/* Position summary */}
       <div className="grid grid-cols-2 gap-2 mb-1">
-        <div className="rounded-md bg-black/20 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-white/40 flex items-center gap-1">
-            <TrendingUp className="w-2.5 h-2.5" /> Your supply
-          </div>
-          <div className="font-mono text-sm text-cyan-200 mt-0.5">
-            {pos.loading
-              ? <Loader2 className="w-3 h-3 animate-spin inline" />
-              : `${mySupplyFmt} cUSDC`}
-          </div>
-        </div>
-        <div className="rounded-md bg-black/20 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-white/40">Risk tier</div>
-          <div className={`text-sm font-medium mt-0.5 ${
+        <EncryptedValue
+          label="Your Supply"
+          value={pos.mySupply}
+          loading={pos.loading}
+          symbol="cUSDC"
+          accent="cyan"
+          onReveal={pos.refresh}
+        />
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 space-y-2">
+          <div className="text-[9px] tracking-[0.18em] uppercase text-white/35">Risk tier</div>
+          <div className={`text-sm font-semibold ${
             market.riskTier === "Conservative"
               ? "text-emerald-300"
               : market.riskTier === "Aggressive"

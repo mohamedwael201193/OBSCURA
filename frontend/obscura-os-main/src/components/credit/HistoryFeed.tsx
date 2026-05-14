@@ -8,7 +8,6 @@ import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { ScrollText, RefreshCcw, Loader2, ArrowDownToLine, ArrowUpFromLine, Activity } from "lucide-react";
 import { Card, CardHeader } from "@/components/elite/Layout";
-import type { Log } from "viem";
 import { CREDIT_MARKET_ABI, type CreditMarketMeta } from "@/config/credit";
 
 interface Event {
@@ -59,36 +58,24 @@ const HistoryFeed = ({ markets }: Props) => {
       for (const m of markets) {
         if (!m.address) continue;
         try {
-          const logs = (await publicClient.getLogs({
+          const evs = (await publicClient.getContractEvents({
             address: m.address,
+            abi: CREDIT_MARKET_ABI as any,
             fromBlock,
             toBlock: "latest",
-          })) as Log[];
-          for (const log of logs) {
-            try {
-              // Decode using market ABI
-              const ev = (await publicClient.getContractEvents({
-                address: m.address,
-                abi: CREDIT_MARKET_ABI as any,
-                fromBlock: log.blockNumber!,
-                toBlock: log.blockNumber!,
-              })) as any[];
-              for (const e of ev) {
-                if (!["Supplied", "Borrowed", "Repaid", "WithdrawnCollateral", "SuppliedCollateral", "Withdrawn"].includes(e.eventName)) continue;
-                all.push({
-                  type: e.eventName,
-                  market: m.address,
-                  user: e.args?.user,
-                  amount: e.args?.amount,
-                  blockNumber: e.blockNumber,
-                  txHash: e.transactionHash,
-                });
-              }
-              // single decode pass per block is enough; break after first log of block
-              break;
-            } catch { /* skip undecoded */ }
+          })) as any[];
+          for (const e of evs) {
+            if (!["Supplied", "Borrowed", "Repaid", "WithdrawnCollateral", "SuppliedCollateral", "Withdrawn"].includes(e.eventName)) continue;
+            all.push({
+              type: e.eventName,
+              market: m.address,
+              user: e.args?.user,
+              amount: e.args?.amount,
+              blockNumber: e.blockNumber,
+              txHash: e.transactionHash,
+            });
           }
-        } catch { /* market unreachable */ }
+        } catch { /* market unreachable or no events */ }
       }
 
       // dedupe by txHash+type

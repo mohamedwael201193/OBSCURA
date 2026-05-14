@@ -9,6 +9,7 @@ import { Loader2, Lock, ArrowDownToLine, ShieldAlert, AlertTriangle } from "luci
 import { useAccount } from "wagmi";
 import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
 import type { CreditMarketMeta } from "@/config/credit";
+import EncryptedValue from "./EncryptedValue";
 
 interface Props {
   market: CreditMarketMeta;
@@ -59,28 +60,24 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
 
   return (
     <div className="grid gap-3">
-      {/* Position tiles — plaintext shadows (fast) + FHE decrypted values */}
+      {/* Position tiles — plaintext shadows (fast reads, no FHE decrypt needed) */}
       <div className="grid grid-cols-2 gap-2 mb-1">
-        <div className="rounded-md bg-black/20 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-white/40 flex items-center gap-1">
-            <Lock className="w-2.5 h-2.5" /> Your collateral
-          </div>
-          <div className="font-mono text-sm text-emerald-200 mt-0.5">
-            {pos.loading
-              ? <Loader2 className="w-3 h-3 animate-spin inline" />
-              : `${fmt6(plainColl)} cUSDC`}
-          </div>
-        </div>
-        <div className="rounded-md bg-black/20 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-white/40 flex items-center gap-1">
-            <Lock className="w-2.5 h-2.5" /> Max borrowable
-          </div>
-          <div className="font-mono text-sm text-amber-200 mt-0.5">
-            {pos.loading
-              ? <Loader2 className="w-3 h-3 animate-spin inline" />
-              : `${fmt6(maxBorrowable)} cUSDC`}
-          </div>
-        </div>
+        <EncryptedValue
+          label="Your Collateral"
+          value={pos.loading ? null : plainColl}
+          loading={pos.loading}
+          symbol="cUSDC"
+          accent="emerald"
+          onReveal={pos.refresh}
+        />
+        <EncryptedValue
+          label="Max Borrowable"
+          value={pos.loading ? null : maxBorrowable}
+          loading={pos.loading}
+          symbol="cUSDC"
+          accent="amber"
+          onReveal={pos.refresh}
+        />
       </div>
 
       <label className="text-[11px] uppercase tracking-wider text-white/50">Market</label>

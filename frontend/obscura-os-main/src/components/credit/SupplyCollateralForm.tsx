@@ -18,6 +18,7 @@ import { useAccount } from "wagmi";
 import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
 import { CREDIT_TOKENS } from "@/config/credit";
 import type { CreditMarketMeta } from "@/config/credit";
+import EncryptedValue from "./EncryptedValue";
 
 interface Props {
   market: CreditMarketMeta;
@@ -96,34 +97,30 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
     <div className="grid gap-3">
       {/* Position summary */}
       <div className="grid grid-cols-3 gap-2 mb-1">
-        <div className="rounded-md bg-black/20 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-white/40 flex items-center gap-1">
-            <Lock className="w-2.5 h-2.5" /> Collateral
-          </div>
-          <div className="font-mono text-sm text-emerald-200 mt-0.5">
-            {pos.loading
-              ? <Loader2 className="w-3 h-3 animate-spin inline" />
-              : `${fmt6(plainColl)} ${market.collateralSymbol}`}
-          </div>
-        </div>
-        <div className="rounded-md bg-black/20 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-white/40 flex items-center gap-1">
-            <Lock className="w-2.5 h-2.5" /> Outstanding
-          </div>
-          <div className="font-mono text-sm text-violet-200 mt-0.5">
-            {pos.loading
-              ? <Loader2 className="w-3 h-3 animate-spin inline" />
-              : `${fmt6(plainBorrow)} cUSDC`}
-          </div>
-        </div>
-        <div className="rounded-md bg-black/20 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-white/40">Max borrow</div>
-          <div className="font-mono text-sm text-amber-200 mt-0.5">
-            {pos.loading
-              ? <Loader2 className="w-3 h-3 animate-spin inline" />
-              : `${fmt6(maxB)} cUSDC`}
-          </div>
-        </div>
+        <EncryptedValue
+          label="Collateral"
+          value={pos.loading ? null : plainColl}
+          loading={pos.loading}
+          symbol={market.collateralSymbol}
+          accent="emerald"
+          onReveal={pos.refresh}
+        />
+        <EncryptedValue
+          label="Outstanding"
+          value={pos.loading ? null : plainBorrow}
+          loading={pos.loading}
+          symbol="cUSDC"
+          accent="violet"
+          onReveal={pos.refresh}
+        />
+        <EncryptedValue
+          label="Max Borrow"
+          value={pos.loading ? null : maxB}
+          loading={pos.loading}
+          symbol="cUSDC"
+          accent="amber"
+          onReveal={pos.refresh}
+        />
       </div>
 
       {/* Supply / Withdraw tabs */}

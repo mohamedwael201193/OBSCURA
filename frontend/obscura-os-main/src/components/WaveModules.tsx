@@ -35,17 +35,17 @@ const products = [
   },
   {
     icon: Landmark,
-    name: "ObscuraVault",
-    tagline: "MEV-Protected DeFi",
-    path: undefined,
-    status: "upcoming",
+    name: "ObscuraCredit",
+    tagline: "Confidential DeFi Lending",
+    path: "/credit",
+    status: "live",
     features: [
-      "Sealed-bid auctions — FHE.gt() selects winner privately",
-      "MEV-protected yield vaults with encrypted positions",
-      "Hidden deposit/withdrawal amounts on-chain",
-      "FHE.select() routes tokens without revealing bids",
-      "Vault positions feed governance weight",
-      "Zero front-running, zero MEV extraction",
+      "Encrypted positions — per-user euint64 collateral + debt, zero plaintext on Arbiscan",
+      "Borrow under stealth — eaddress destination; receiver identity hidden in calldata",
+      "Sealed-bid auctions — FHE bids until deadline; no MEV frontrunning possible",
+      "Credit score — Pay/Vote/AddressBook activity → euint64 on-chain score",
+      "Auto-hooks — PayStream auto-repay + Insurance auto-collateral, set-and-forget",
+      "No admin keys — Treasury→GovernanceProxy→Factory; deployer EOA removed at deploy",
     ],
   },
   {
@@ -94,13 +94,13 @@ const WaveModules = () => {
           className="mb-16"
         >
           <span className="text-xs tracking-[0.2em] uppercase text-primary text-glow-sm">
-            Five Encrypted Modules — Three Waves Live
+            Five Encrypted Modules — Four Waves Live
           </span>
           <h2 className="font-display text-3xl md:text-4xl mt-3 text-foreground tracking-tight">
             What We <span className="text-primary text-glow">Build</span>
           </h2>
           <p className="text-base text-muted-foreground mt-4 max-w-xl">
-            A complete privacy operating system — 25 contracts live across 3 waves. Encrypted payments, DAO governance with FHE treasury, DeFi, compliance, and AI — all powered by Fully Homomorphic Encryption on Arbitrum.
+            A complete privacy operating system — 43 contracts live across 4 waves. Encrypted payments, DAO governance with FHE treasury, confidential DeFi lending, and AI inference — all powered by Fully Homomorphic Encryption on Arbitrum.
           </p>
         </motion.div>
 

@@ -1,6 +1,7 @@
 import HeroSection from "@/components/HeroSection";
 import FeaturesGrid from "@/components/FeaturesGrid";
 import WaveModules from "@/components/WaveModules";
+import CreditSection from "@/components/CreditSection";
 import ArchitectureDiagram from "@/components/ArchitectureDiagram";
 import PrivacyPanel from "@/components/PrivacyPanel";
 import TechStack from "@/components/TechStack";
@@ -13,6 +14,7 @@ const Index = () => {
       <HeroSection />
       <FeaturesGrid />
       <WaveModules />
+      <CreditSection />
       <ArchitectureDiagram />
       <PrivacyPanel />
       <TechStack />

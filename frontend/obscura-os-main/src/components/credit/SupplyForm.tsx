@@ -74,6 +74,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
         setMsg(`Withdrew ${amount} cUSDC from market.`);
       }
       setAmount("");
+      pos.resetDecrypted(); // clear stale tile so user re-reveals fresh value
       await pos.refresh();
       onRefresh?.();
     } catch (e: any) {

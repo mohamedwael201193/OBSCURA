@@ -151,8 +151,8 @@ const featureItems = [
 const CreditPage = () => {
   const { isConnected, address } = useAccount();
   const [tab, setTab] = useState<CreditTab>("home");
-  const [activeMarket, setActiveMarket] = useState<CreditMarketMeta | undefined>(undefined);
-  const [activeVault, setActiveVault] = useState<CreditVaultMeta | undefined>(undefined);
+  const [activeMarketAddress, setActiveMarketAddress] = useState<`0x${string}` | undefined>(undefined);
+  const [activeVaultAddress, setActiveVaultAddress] = useState<`0x${string}` | undefined>(undefined);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const onboarding = useCreditOnboarding();
   const { unreadCount } = useCreditAlerts();
@@ -162,11 +162,17 @@ const CreditPage = () => {
   const { auctions, refresh: refreshAuctions, submitBid, settle } = useCreditAuctions();
   const approved = useApprovedSets();
 
-  // initial select
-  useEffect(() => {
-    if (!activeMarket && markets[0]) setActiveMarket(markets[0]);
-    if (!activeVault && vaults[0]) setActiveVault(vaults[0]);
-  }, [markets, vaults, activeMarket, activeVault]);
+  // Derived: always reads from the latest markets/vaults state so post-refresh
+  // updates (e.g. new totalSupplyAssets after a supply tx) are immediately visible
+  // in all forms without needing a page refresh.
+  const activeMarket = useMemo(
+    () => activeMarketAddress ? markets.find(m => m.address === activeMarketAddress) ?? markets[0] : markets[0],
+    [markets, activeMarketAddress]
+  );
+  const activeVault = useMemo(
+    () => activeVaultAddress ? vaults.find(v => v.address === activeVaultAddress) ?? vaults[0] : vaults[0],
+    [vaults, activeVaultAddress]
+  );
 
   // refresh on mount
   useEffect(() => {
@@ -202,12 +208,12 @@ const CreditPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Section title="Top vault" hint="Curated supply destination">
           {vaults[0] ? (
-            <VaultCard vault={vaults[0]} compact onAction={() => { setActiveVault(vaults[0]); setTab("vaults"); }} />
+            <VaultCard vault={vaults[0]} compact onAction={() => { setActiveVaultAddress(vaults[0]?.address); setTab("vaults"); }} />
           ) : <p className="text-xs text-white/50">No vaults yet</p>}
         </Section>
         <Section title="Top market" hint="Most utilization right now">
           {markets[0] ? (
-            <MarketCard market={markets[0]} compact onAction={() => { setActiveMarket(markets[0]); setTab("borrow"); }} />
+            <MarketCard market={markets[0]} compact onAction={() => { setActiveMarketAddress(markets[0]?.address); setTab("borrow"); }} />
           ) : <p className="text-xs text-white/50">No markets yet</p>}
         </Section>
       </div>
@@ -230,7 +236,7 @@ const CreditPage = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {vaults.map((v) => (
-          <VaultCard key={v.address} vault={v} onAction={() => setActiveVault(v)} active={activeVault?.address === v.address} />
+          <VaultCard key={v.address} vault={v} onAction={() => setActiveVaultAddress(v.address)} active={activeVault?.address === v.address} />
         ))}
       </div>
       {activeVault && (
@@ -256,7 +262,7 @@ const CreditPage = () => {
             <MarketStatStrip market={m} />
             <MarketCard
               market={m}
-              onAction={() => { setActiveMarket(m); setTab("borrow"); }}
+              onAction={() => { setActiveMarketAddress(m.address); setTab("borrow"); }}
               active={activeMarket?.address === m.address}
             />
           </div>
@@ -272,7 +278,7 @@ const CreditPage = () => {
           <BorrowForm
             market={activeMarket}
             markets={markets}
-            onSelect={setActiveMarket}
+            onSelect={(m) => setActiveMarketAddress(m.address)}
             onRefresh={refreshMarkets}
             onGoToCollateral={() => setTab("collateral")}
           />
@@ -288,7 +294,7 @@ const CreditPage = () => {
         hint="Required before borrowing. Two-step FHE: collateral amount is private on-chain."
       >
         {activeMarket ? (
-          <SupplyCollateralForm market={activeMarket} markets={markets} onSelect={setActiveMarket} onRefresh={refreshMarkets} />
+          <SupplyCollateralForm market={activeMarket} markets={markets} onSelect={(m) => setActiveMarketAddress(m.address)} onRefresh={refreshMarkets} />
         ) : <p className="text-xs text-white/50">Select a market on the Markets tab.</p>}
       </Section>
     </div>
@@ -301,7 +307,7 @@ const CreditPage = () => {
         hint="Earn interest from borrowers. Supply positions are FHE-encrypted."
       >
         {activeMarket ? (
-          <SupplyForm market={activeMarket} markets={markets} onSelect={setActiveMarket} onRefresh={refreshMarkets} />
+          <SupplyForm market={activeMarket} markets={markets} onSelect={(m) => setActiveMarketAddress(m.address)} onRefresh={refreshMarkets} />
         ) : <p className="text-xs text-white/50">Select a market on the Markets tab.</p>}
       </Section>
     </div>
@@ -311,7 +317,7 @@ const CreditPage = () => {
     <div className="grid gap-4">
       <Section title="Repay" hint="Burns encrypted debt against your position.">
         {activeMarket ? (
-          <RepayForm market={activeMarket} markets={markets} onSelect={setActiveMarket} onRefresh={refreshMarkets} />
+          <RepayForm market={activeMarket} markets={markets} onSelect={(m) => setActiveMarketAddress(m.address)} onRefresh={refreshMarkets} />
         ) : <p className="text-xs text-white/50">Select a market on the Markets tab.</p>}
       </Section>
     </div>
@@ -418,8 +424,8 @@ const CreditPage = () => {
           {isConnected && (
             <div className="mt-3 sticky top-3 z-30">
               <HealthRibbon
-                onRepay={(w) => { setActiveMarket(w.market); setTab("repay"); }}
-                onAddCollateral={(w) => { setActiveMarket(w.market); setTab("collateral"); }}
+                onRepay={(w) => { setActiveMarketAddress(w.market.address); setTab("repay"); }}
+                onAddCollateral={(w) => { setActiveMarketAddress(w.market.address); setTab("collateral"); }}
               />
             </div>
           )}

@@ -99,33 +99,32 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
 
   return (
     <div className="grid gap-3">
-      {/* Position summary */}
-      <div className="grid grid-cols-3 gap-2 mb-1">
+      {/* Position summary — FHE encrypted, explicit reveal */}
+      <div className="grid grid-cols-2 gap-2 mb-1">
         <EncryptedValue
           label="Collateral"
-          value={pos.loading ? null : plainColl}
-          loading={pos.loading}
+          value={pos.myCollateral}
+          loading={pos.sharesLoading}
           symbol={market.collateralSymbol}
           accent="emerald"
-          onReveal={pos.refresh}
+          onReveal={pos.decryptShares}
         />
         <EncryptedValue
-          label="Outstanding"
-          value={pos.loading ? null : plainBorrow}
-          loading={pos.loading}
+          label="Debt"
+          value={pos.myBorrow}
+          loading={pos.sharesLoading}
           symbol="cUSDC"
           accent="violet"
-          onReveal={pos.refresh}
-        />
-        <EncryptedValue
-          label="Max Borrow"
-          value={pos.loading ? null : maxB}
-          loading={pos.loading}
-          symbol="cUSDC"
-          accent="amber"
-          onReveal={pos.refresh}
+          onReveal={pos.decryptShares}
         />
       </div>
+      {/* Max borrow — plaintext computed, not private */}
+      {maxB > 0n && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20 border border-white/[0.05]">
+          <span className="text-[10px] text-white/40 uppercase tracking-wider">Max Borrow</span>
+          <span className="ml-auto font-mono text-[13px] text-amber-300">{fmt6(maxB)} cUSDC</span>
+        </div>
+      )}
 
       {/* Supply / Withdraw tabs */}
       <div className="flex gap-1 rounded-md bg-white/5 p-0.5 text-xs">
@@ -150,10 +149,10 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
           const next = markets.find((m) => m.address === (e.target.value as `0x${string}`));
           if (next) onSelect(next);
         }}
-        className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+        className="bg-[#0d0d14] text-white border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
       >
         {markets.map((m) => (
-          <option key={m.address} value={m.address}>
+          <option key={m.address} value={m.address} className="bg-[#0d0d14] text-white">
             {m.label}
           </option>
         ))}

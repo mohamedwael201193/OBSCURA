@@ -188,8 +188,8 @@ const SettingsPanel = ({ markets, approved }: Props) => {
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="text-[10px] uppercase tracking-wider text-white/45">Market</label>
-              <select value={marketAddr} onChange={(e) => setMarketAddr(e.target.value)} className="w-full bg-white/[0.03] border border-white/10 rounded-md px-2 py-1.5 text-xs">
-                {markets.map((m) => (<option key={m.address} value={m.address ?? ""}>{m.label}</option>))}
+              <select value={marketAddr} onChange={(e) => setMarketAddr(e.target.value)} className="w-full bg-[#0d0d14] text-white border border-white/10 rounded-md px-2 py-1.5 text-xs">
+                {markets.map((m) => (<option key={m.address} value={m.address ?? ""} className="bg-[#0d0d14] text-white">{m.label}</option>))}
               </select>
             </div>
             <div>

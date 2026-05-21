@@ -84,25 +84,32 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
 
   return (
     <div className="grid gap-3">
-      {/* Position tiles */}
+      {/* Position tiles — FHE encrypted, explicit reveal */}
       <div className="grid grid-cols-2 gap-2 mb-1">
         <EncryptedValue
           label="Your Collateral"
-          value={pos.loading ? null : plainColl}
-          loading={pos.loading}
+          value={pos.myCollateral}
+          loading={pos.sharesLoading}
           symbol="cUSDC"
           accent="emerald"
-          onReveal={pos.refresh}
+          onReveal={pos.decryptShares}
         />
         <EncryptedValue
-          label="Max Borrowable"
-          value={pos.loading ? null : maxBorrowable}
-          loading={pos.loading}
+          label="Borrow Debt"
+          value={pos.myBorrow}
+          loading={pos.sharesLoading}
           symbol="cUSDC"
           accent="amber"
-          onReveal={pos.refresh}
+          onReveal={pos.decryptShares}
         />
       </div>
+      {/* Max borrowable — plaintext computed, not private */}
+      {maxBorrowable > 0n && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20 border border-white/[0.05]">
+          <span className="text-[10px] text-white/40 uppercase tracking-wider">Max Borrowable</span>
+          <span className="ml-auto font-mono text-[13px] text-violet-300">{fmt6(maxBorrowable)} cUSDC</span>
+        </div>
+      )}
 
       {/* Health Factor tile */}
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20 border border-white/[0.05]">
@@ -120,11 +127,11 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
           const next = markets.find((m) => m.address === (e.target.value as `0x${string}`));
           if (next) onSelect(next);
         }}
-        className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+        className="bg-[#0d0d14] text-white border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
       >
         {markets.map((m) => (
-          <option key={m.address} value={m.address}>
-            {m.label} · LLTV {(m.lltvBps / 100).toFixed(0)}%
+          <option key={m.address} value={m.address} className="bg-[#0d0d14] text-white">
+            {m.label}
           </option>
         ))}
       </select>

@@ -77,10 +77,10 @@ const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
           const next = markets.find((m) => m.address === (e.target.value as `0x${string}`));
           if (next) onSelect(next);
         }}
-        className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/40"
+        className="bg-[#0d0d14] text-white border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/40"
       >
         {markets.map((m) => (
-          <option key={m.address} value={m.address}>{m.label}</option>
+          <option key={m.address} value={m.address} className="bg-[#0d0d14] text-white">{m.label}</option>
         ))}
       </select>
 

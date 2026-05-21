@@ -207,11 +207,11 @@ export default function PrivateExplorer({ markets }: Props) {
         <select
           value={marketFilter}
           onChange={(e) => setMarketFilter(e.target.value)}
-          className="ml-auto text-[10.5px] bg-black/40 border border-white/10 rounded px-2 py-1 text-white/70"
+          className="ml-auto text-[10.5px] bg-[#0d0d14] border border-white/10 rounded px-2 py-1 text-white/70"
         >
-          <option value="__all__">All markets</option>
+          <option value="__all__" className="bg-[#0d0d14] text-white">All markets</option>
           {markets.map((m) => (
-            <option key={m.address} value={m.address}>{m.label}</option>
+            <option key={m.address} value={m.address} className="bg-[#0d0d14] text-white">{m.label}</option>
           ))}
         </select>
       </div>

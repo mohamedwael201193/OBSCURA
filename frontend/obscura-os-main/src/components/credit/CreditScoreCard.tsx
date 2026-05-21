@@ -103,10 +103,10 @@ const CreditScoreCard = () => {
           <select
             value={marketAddr}
             onChange={(e) => setMarketAddr(e.target.value)}
-            className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm"
+            className="bg-[#0d0d14] text-white border border-white/10 rounded-md px-3 py-2 text-sm"
           >
             {CREDIT_MARKETS.map((m) => (
-              <option key={m.address} value={m.address ?? ""}>{m.label}</option>
+              <option key={m.address} value={m.address ?? ""} className="bg-[#0d0d14] text-white">{m.label}</option>
             ))}
           </select>
           <button

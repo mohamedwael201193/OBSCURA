@@ -1,14 +1,66 @@
 # Wave 4 — ObscuraCredit Progress Report
 
-**Status: ✅ Live on Arbitrum Sepolia (v3.4 — Two-Step RPC Cool-Down)**
-Tag: `wave4-credit-v3.4`
+**Status: ✅ Live on Arbitrum Sepolia (v3.5 — Credit UI Fixes)**
+Tag: `wave4-credit-v3.5`
 Network: Arbitrum Sepolia (chainId 421614)
 Frontend route: `/credit`
 Last updated: May 21, 2026
 
 ---
 
-## v3.4 — Two-Step RPC Cool-Down (Current)
+## v3.5 — Credit UI Fixes (commit `f3dc4de`)
+
+### Fixes Applied (commit `f3dc4de`)
+
+Four UI issues reported from screenshots:
+
+#### 1. `EncryptedValue.tsx` — Hide button after decrypt
+
+**Root cause:** Component had no local hidden state — once `value !== null` (decrypted), tile
+was permanently revealed with no way to hide it.
+
+**Fix:** Added `const [hidden, setHidden] = useState(false)` inside the component.
+- Derived `revealed = value !== null && !loading && !pending && !hidden`
+- Footer now shows **Hide** button (`EyeOff` icon) when revealed, **Reveal** when hidden
+- Re-clicking Reveal when `hidden=true` and `value !== null` just calls `setHidden(false)` —
+  no re-decrypt, no MetaMask popup, instant toggle
+- `useEffect(() => { if (value !== null) setHidden(false); }, [value])` auto-reveals on fresh decrypt
+
+#### 2. `useCredit.ts` — `resetDecrypted()` in useMarketPosition
+
+**Root cause:** After a successful transaction, `pos.refresh()` updates public shadow values
+but `myBorrow`/`myCollateral`/`mySupply` (FHE-decrypted) stayed at their stale pre-tx values
+(e.g. 0.00 for a just-borrowed position).
+
+**Fix:** Added `resetDecrypted` to the `useMarketPosition` return:
+
+```ts
+const resetDecrypted = useCallback(() => {
+  setMySupply(null);
+  setMyBorrow(null);
+  setMyCollateral(null);
+}, []);
+```
+
+Tiles reset to ▓▓▓▓ (locked state) after a tx, prompting user to re-reveal the updated value.
+
+#### 3. `BorrowForm.tsx` + `SupplyCollateralForm.tsx` + `RepayForm.tsx` — Call resetDecrypted
+
+Each form's submit handler now calls `pos.resetDecrypted()` before `pos.refresh()` after a
+successful transaction, so stale 0.00 values don't persist.
+
+#### 4. `SupplyCollateralForm.tsx` + `BorrowForm.tsx` — "(public)" label on Max Borrow
+
+**Root cause:** Max Borrow / Max Borrowable displayed as a number with no indication it came
+from a public shadow value (`_plainCollateral[msg.sender] * lltvBps / 10000`), not the private
+FHE-encrypted collateral handle.
+
+**Fix:** Added `(public)` sub-label next to the Max Borrow/Borrowable heading and added
+`(shadow values — encrypted amount is private)` note in the post-supply success message.
+
+---
+
+## v3.4 — Two-Step RPC Cool-Down (commit `5e9d66c`)
 
 ### Fixes Applied (commit `5e9d66c`)
 

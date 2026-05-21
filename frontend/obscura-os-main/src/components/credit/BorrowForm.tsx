@@ -71,6 +71,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
       await borrow(u, destResolved as `0x${string}`);
       setMsg(`Borrowed ${amount} cUSDC under stealth.`);
       setAmount("");
+      pos.resetDecrypted(); // clear stale 0.00 tile — user re-reveals fresh value
       await pos.refresh();
       onRefresh?.();
     } catch (e: any) {
@@ -105,10 +106,11 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
           onReveal={pos.decryptShares}
         />
       </div>
-      {/* Max borrowable — plaintext computed, not private */}
+      {/* Max borrowable — plaintext computed from public shadow + LLTV config */}
       {maxBorrowable > 0n && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20 border border-white/[0.05]">
           <span className="text-[10px] text-white/40 uppercase tracking-wider">Max Borrowable</span>
+          <span className="text-[9px] text-white/20 ml-1">(public)</span>
           <span className="ml-auto font-mono text-[13px] text-violet-300">{fmt6(maxBorrowable)} cUSDC</span>
         </div>
       )}

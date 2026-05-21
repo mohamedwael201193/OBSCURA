@@ -35,6 +35,7 @@ const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
       await repay(u);
       setMsg(`Repaid ${amount} cUSDC.`);
       setAmount("");
+      pos.resetDecrypted(); // clear stale tile — user re-reveals updated debt
       await pos.refresh();
       onRefresh?.();
     } catch (e: any) {

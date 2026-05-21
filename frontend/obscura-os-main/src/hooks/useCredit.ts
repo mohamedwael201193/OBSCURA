@@ -1020,7 +1020,16 @@ export function useMarketPosition(market?: `0x${string}`) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { mySupply, myBorrow, myCollateral, plainCollateral, plainBorrow, maxBorrowableAmt, loading, sharesLoading, refresh, decryptShares };
+  // resetDecrypted — clears stale FHE-decrypted values after a tx mutates
+  // on-chain state. Forces EncryptedValue tiles back to ▓▓▓▓ so user
+  // re-reveals fresh values instead of seeing stale ones.
+  const resetDecrypted = useCallback(() => {
+    setMySupply(null);
+    setMyBorrow(null);
+    setMyCollateral(null);
+  }, []);
+
+  return { mySupply, myBorrow, myCollateral, plainCollateral, plainBorrow, maxBorrowableAmt, loading, sharesLoading, refresh, decryptShares, resetDecrypted };
 }
 
 // ─────────────────────────────────────────────────────────────────────────

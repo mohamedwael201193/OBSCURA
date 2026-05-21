@@ -9,7 +9,8 @@
  *  • revealed        → green shield + formatted value + "on-chain decrypted" caption
  */
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldCheck, Eye, Loader2, Lock, Hourglass } from "lucide-react";
+import { ShieldCheck, Eye, EyeOff, Loader2, Lock, Hourglass } from "lucide-react";
+import { useState, useEffect } from "react";
 
 export type EncryptedValueAccent = "cyan" | "emerald" | "violet" | "amber";
 
@@ -53,7 +54,20 @@ export default function EncryptedValue({
   accent = "cyan",
 }: Props) {
   const a = ACCENT[accent];
-  const revealed = value !== null && !loading && !pending;
+
+  // Local hide/show toggle — user can hide a revealed value without losing it.
+  // Resets to false whenever parent passes a fresh non-null value (new decrypt).
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => { if (value !== null) setHidden(false); }, [value]);
+
+  const revealed = value !== null && !loading && !pending && !hidden;
+
+  // When value is cached (non-null) and user is in hidden state, re-showing is
+  // instant (no re-decrypt). Only call onReveal when there's nothing cached yet.
+  const handleReveal = () => {
+    if (value !== null && hidden) { setHidden(false); return; }
+    onReveal?.();
+  };
 
   return (
     <div className={`relative rounded-xl overflow-hidden border ${a.border} ${a.bg} p-3 space-y-2 ${className}`}>
@@ -152,7 +166,7 @@ export default function EncryptedValue({
         </AnimatePresence>
       </div>
 
-      {/* Caption + Reveal button */}
+      {/* Caption + Reveal / Hide button */}
       <div className="relative flex items-center justify-between gap-2">
         <p className="text-[9px] text-white/25">
           {revealed
@@ -161,10 +175,22 @@ export default function EncryptedValue({
             ? "CoFHE task in queue"
             : "encrypted on FHENix · tap reveal"}
         </p>
-        {onReveal && !revealed && !pending && (
+        {/* Hide button — only when value is shown */}
+        {revealed && (
           <motion.button
             whileTap={{ scale: 0.95 }}
-            onClick={onReveal}
+            onClick={() => setHidden(true)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[9px] font-semibold tracking-wide uppercase transition-colors ${a.badge} hover:opacity-80`}
+          >
+            <EyeOff className="w-2.5 h-2.5" />
+            Hide
+          </motion.button>
+        )}
+        {/* Reveal button — only when hidden / not yet decrypted */}
+        {(onReveal || (value !== null && hidden)) && !revealed && !pending && (
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={handleReveal}
             disabled={loading}
             className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[9px] font-semibold tracking-wide uppercase transition-colors ${a.badge} hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed`}
           >

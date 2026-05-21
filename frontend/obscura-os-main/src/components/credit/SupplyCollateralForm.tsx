@@ -85,6 +85,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
         setMsg(`Withdrew ${amount} ${market.collateralSymbol} collateral.`);
       }
       setAmount("");
+      pos.resetDecrypted(); // clear stale tiles after on-chain state change
       await pos.refresh();
       onRefresh?.();
     } catch (e: any) {
@@ -122,10 +123,11 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
           onReveal={pos.decryptShares}
         />
       </div>
-      {/* Max borrow — plaintext computed, not private */}
+      {/* Max borrow — plaintext computed from public shadow + LLTV config */}
       {maxB > 0n && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20 border border-white/[0.05]">
           <span className="text-[10px] text-white/40 uppercase tracking-wider">Max Borrow</span>
+          <span className="text-[9px] text-white/20 ml-1">(public)</span>
           <span className="ml-auto font-mono text-[13px] text-amber-300">{fmt6(maxB)} cUSDC</span>
         </div>
       )}
@@ -193,6 +195,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
           <ShieldCheck className="w-3 h-3 flex-shrink-0" />
           Collateral deposited: {fmt6(plainColl)} {market.collateralSymbol}.
           Max borrowable: {fmt6(maxB)} cUSDC.
+          <span className="text-[9px] text-white/25 ml-1">(shadow values — encrypted amount is private)</span>
         </p>
       )}
       {tab === "withdraw" && lltvBreach && (

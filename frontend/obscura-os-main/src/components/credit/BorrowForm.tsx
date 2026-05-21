@@ -5,7 +5,7 @@
  * pre-check warnings before the user signs any transaction.
  */
 import { useMemo, useState } from "react";
-import { Lock, ArrowDownToLine, ShieldAlert, AlertTriangle, Activity } from "lucide-react";
+import { Lock, ArrowDownToLine, ShieldAlert, AlertTriangle, Activity, ArrowRight } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
 import type { CreditMarketMeta } from "@/config/credit";
@@ -20,9 +20,11 @@ interface Props {
   markets: CreditMarketMeta[];
   onSelect: (m: CreditMarketMeta) => void;
   onRefresh?: () => void;
+  /** Navigate to the Collateral tab (passed from CreditPage) */
+  onGoToCollateral?: () => void;
 }
 
-const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
+const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: Props) => {
   const preWarm = usePreWarmFHE();
   const { address } = useAccount();
   const { borrow, fheStatus } = useCreditMarket(market.address);
@@ -167,10 +169,24 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
 
       {/* Pre-flight warnings — shown before user signs, no FHE needed */}
       {noCollateral && (
-        <p className="text-[11px] text-amber-300/80 flex items-center gap-1.5">
-          <ShieldAlert className="w-3 h-3 flex-shrink-0" />
-          You have no collateral. Go to the Collateral tab to supply collateral first.
-        </p>
+        <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-3 grid gap-2">
+          <p className="text-[11px] text-amber-300/90 flex items-start gap-1.5">
+            <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            <span>
+              <span className="font-semibold">No collateral deposited.</span>{" "}
+              Supplying to earn interest (Supply tab) is separate from depositing collateral to borrow against.
+              You need to supply <span className="text-amber-200 font-mono">{market.collateralSymbol}</span> as collateral first.
+            </span>
+          </p>
+          {onGoToCollateral && (
+            <button
+              onClick={onGoToCollateral}
+              className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] bg-amber-500/15 border border-amber-500/30 text-amber-200 hover:bg-amber-500/25 transition-colors"
+            >
+              Supply Collateral <ArrowRight className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       )}
       {!noCollateral && wouldBreakLLTV && (
         <p className="text-[11px] text-red-300/80 flex items-center gap-1.5">

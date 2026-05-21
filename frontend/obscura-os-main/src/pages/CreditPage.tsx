@@ -269,7 +269,13 @@ const CreditPage = () => {
     <div className="grid gap-4">
       <Section title="Borrow" hint="Stealth — recipient & amount encrypted. Supply collateral first.">
         {activeMarket ? (
-          <BorrowForm market={activeMarket} markets={markets} onSelect={setActiveMarket} onRefresh={refreshMarkets} />
+          <BorrowForm
+            market={activeMarket}
+            markets={markets}
+            onSelect={setActiveMarket}
+            onRefresh={refreshMarkets}
+            onGoToCollateral={() => setTab("collateral")}
+          />
         ) : <p className="text-xs text-white/50">Select a market on the Markets tab.</p>}
       </Section>
     </div>

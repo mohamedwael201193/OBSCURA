@@ -333,13 +333,20 @@ export function useCreditMarket(market?: `0x${string}`) {
       fhe.setStep(FHEStepStatus.SETTLING);
       await awaitCoFHESettle(publicClient, txTransfer);
 
+      // 10-second cool-down: the awaitCoFHESettle polling burst + MetaMask's own
+      // periodic RPC syncing exhausts the Tenderly free-tier rate-limit window.
+      // This pause lets MetaMask's configured endpoint recover before step 2.
+      await new Promise((resolve) => setTimeout(resolve, 10_000));
+
       // Step 2 — supply with ONE encAmt for FHE collateral accounting
       const enc2 = await encryptAmount(amount);
+      // Re-fetch fees with retry (matches supply pattern; also adds ~1s recovery buffer)
+      const fees2 = await withRateLimitRetry(() => estimateCappedFees(publicClient));
       fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "supplyCollateral",
         args: [amount, enc2[0]], account: address, chain: arbitrumSepolia,
-        maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+        maxFeePerGas: fees2.maxFeePerGas, maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.supplyCollateral,
       });
       const r2 = await publicClient.waitForTransactionReceipt({ hash });
@@ -420,9 +427,12 @@ export function useCreditMarket(market?: `0x${string}`) {
       fhe.setStep(FHEStepStatus.SETTLING);
       await awaitCoFHESettle(publicClient, txTransfer);
 
+      // 10-second RPC cool-down — same reason as supplyCollateral step 2.
+      await new Promise((resolve) => setTimeout(resolve, 10_000));
+
       // Step 2 — repay with ONE encAmt for FHE borrow accounting
       const enc2 = await encryptAmount(amount);
-      const fees2 = await estimateCappedFees(publicClient);
+      const fees2 = await withRateLimitRetry(() => estimateCappedFees(publicClient));
       fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "repay",

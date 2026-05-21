@@ -41,20 +41,21 @@ export const CONFIDENTIAL_OBS_ADDRESS   = import.meta.env.VITE_OBSCURA_CONFIDENT
 export const CONFIDENTIAL_WETH_ADDRESS  = import.meta.env.VITE_OBSCURA_CONFIDENTIAL_WETH_ADDRESS  as `0x${string}` | undefined;
 
 // ─── ABIs (re-exported for hooks/components) ─────────────────────────────
-// NOTE: JSON files are Hardhat artifacts ({ abi, bytecode, … }).
-// Extract .abi so viem receives a plain array — required for abi.filter().
-export const CREDIT_FACTORY_ABI          = (ObscuraCreditFactoryAbi          as any).abi;
-export const CREDIT_MARKET_ABI           = (ObscuraCreditMarketAbi           as any).abi;
-export const CREDIT_VAULT_ABI            = (ObscuraCreditVaultAbi            as any).abi;
-export const CREDIT_AUCTION_ABI          = (ObscuraCreditAuctionAbi          as any).abi;
-export const CREDIT_ORACLE_ABI           = (ObscuraCreditOracleAbi           as any).abi;
-export const CREDIT_IRM_ABI              = (ObscuraCreditIRMAbi              as any).abi;
-export const CREDIT_SCORE_ABI            = (ObscuraCreditScoreAbi            as any).abi;
-export const CREDIT_STREAM_HOOK_ABI      = (ObscuraCreditStreamHookAbi       as any).abi;
-export const CREDIT_INSURANCE_HOOK_ABI   = (ObscuraCreditInsuranceHookAbi    as any).abi;
-export const CREDIT_GOVERNANCE_PROXY_ABI = (ObscuraCreditGovernanceProxyAbi  as any).abi;
-export const MOCK_CHAINLINK_FEED_ABI     = (MockChainlinkFeedAbi             as any).abi;
-export const CONFIDENTIAL_TOKEN_ABI      = (ObscuraConfidentialTokenAbi      as any).abi;
+// NOTE: ObscuraCreditMarket.json is a Hardhat artifact ({ abi, bytecode, … }) —
+// extract .abi so viem receives a plain array. All other credit ABI files are
+// already plain arrays (extracted during deployment); use them directly.
+export const CREDIT_FACTORY_ABI          = ObscuraCreditFactoryAbi          as any;
+export const CREDIT_MARKET_ABI           = (ObscuraCreditMarketAbi          as any).abi;
+export const CREDIT_VAULT_ABI            = ObscuraCreditVaultAbi            as any;
+export const CREDIT_AUCTION_ABI          = ObscuraCreditAuctionAbi          as any;
+export const CREDIT_ORACLE_ABI           = ObscuraCreditOracleAbi           as any;
+export const CREDIT_IRM_ABI              = ObscuraCreditIRMAbi              as any;
+export const CREDIT_SCORE_ABI            = ObscuraCreditScoreAbi            as any;
+export const CREDIT_STREAM_HOOK_ABI      = ObscuraCreditStreamHookAbi       as any;
+export const CREDIT_INSURANCE_HOOK_ABI   = ObscuraCreditInsuranceHookAbi    as any;
+export const CREDIT_GOVERNANCE_PROXY_ABI = ObscuraCreditGovernanceProxyAbi  as any;
+export const MOCK_CHAINLINK_FEED_ABI     = MockChainlinkFeedAbi             as any;
+export const CONFIDENTIAL_TOKEN_ABI      = ObscuraConfidentialTokenAbi      as any;
 
 // ─── Token registry (used by UI for symbol display + faucet UX) ──────────
 export interface CreditTokenMeta {

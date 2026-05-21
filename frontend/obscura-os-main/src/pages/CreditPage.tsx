@@ -33,6 +33,7 @@ import DashboardSidebar, { SidebarSection } from "@/components/elite/DashboardSi
 import { PageHeader, Card, CardHeader, FeatureStrip } from "@/components/elite/Layout";
 import EncryptedText from "@/components/shared/EncryptedText";
 import EncryptedValue from "@/components/shared/EncryptedValue";
+import FHEStepper from "@/components/shared/FHEStepper";
 
 // Local helper: card with overline + title + helper text + body.
 const Section = ({ title, overline, hint, children }: { title: string; overline?: string; hint?: string; children: React.ReactNode }) => (
@@ -479,6 +480,7 @@ const VaultActionsCard = ({ vault, onRefresh }: { vault: CreditVaultMeta; onRefr
           Withdraw
         </button>
       </div>
+      <FHEStepper status={v.fheStatus.status} error={v.fheStatus.error} className="mt-3" />
       {msg && <p className="mt-2 text-xs text-white/60">{msg}</p>}
     </Section>
   );

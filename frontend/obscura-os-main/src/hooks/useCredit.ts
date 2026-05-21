@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount, usePublicClient, useReadContract, useWalletClient, useWriteContract } from "wagmi";
+import { formatUnits } from "viem";
 import { arbitrumSepolia } from "viem/chains";
 import {
   CREDIT_AUCTION_ABI,
@@ -381,6 +382,36 @@ export function useCreditMarket(market?: `0x${string}`) {
       await initFHEClient(publicClient, walletClient);
       const inputs = await encryptAddressAndAmount(destination, amount);
       fhe.setStep(FHEStepStatus.COMPUTING);
+
+      // ── Pre-flight on-chain checks — surfaces actual revert reason before submitting tx ──
+      const [maxB, tsa, tba] = await Promise.all([
+        publicClient.readContract({
+          address: market, abi: CREDIT_MARKET_ABI, functionName: "maxBorrowable",
+          args: [address],
+        }) as Promise<bigint>,
+        publicClient.readContract({
+          address: market, abi: CREDIT_MARKET_ABI, functionName: "totalSupplyAssets",
+        }) as Promise<bigint>,
+        publicClient.readContract({
+          address: market, abi: CREDIT_MARKET_ABI, functionName: "totalBorrowAssets",
+        }) as Promise<bigint>,
+      ]);
+      const available = tsa >= tba ? tsa - tba : 0n;
+      if (amount > maxB) {
+        const maxFmt = formatUnits(maxB, 6);
+        throw new Error(
+          `LLTVBreach — max borrowable is ${maxFmt} cUSDC. ` +
+          `Supply more collateral or repay existing debt first.`
+        );
+      }
+      if (amount > available) {
+        const avFmt = formatUnits(available, 6);
+        throw new Error(
+          `InsufficientLiquidity — only ${avFmt} cUSDC available in pool. ` +
+          `Supply cUSDC as a lender first.`
+        );
+      }
+
       const fees = await estimateCappedFees(publicClient);
       fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
@@ -391,7 +422,12 @@ export function useCreditMarket(market?: `0x${string}`) {
         gas: CREDIT_GAS_CAPS.borrow,
       });
       const r = await publicClient.waitForTransactionReceipt({ hash });
-      if (r.status !== "success") throw new Error("Borrow reverted — likely insufficient pool liquidity. Supply cUSDC first.");
+      if (r.status !== "success") {
+        throw new Error(
+          `Borrow reverted on-chain. Pre-flight checks passed (maxBorrowable=${formatUnits(maxB, 6)}, ` +
+          `available=${formatUnits(available, 6)}) — likely an FHE compute or gas issue. Try again.`
+        );
+      }
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },

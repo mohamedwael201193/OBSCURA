@@ -168,8 +168,8 @@ export const CREDIT_GAS_CAPS = {
   supply: 2_000_000n,       // +FHE.add encrypted supply shares
   withdraw: 1_800_000n,     // +FHE.sub encrypted supply shares
   supplyCollateral: 1_200_000n,
-  withdrawCollateral: 1_400_000n,
-  borrow: 1_400_000n,
+  withdrawCollateral: 2_800_000n, // FHE.sub + outgoing confidentialTransfer (FHE-heavy)
+  borrow: 2_800_000n,             // FHE ops + outgoing confidentialTransfer (FHE-heavy)
   repay: 1_100_000n,
   vaultDeposit: 2_200_000n, // +FHE.add encrypted vault shares
   vaultWithdraw: 2_000_000n, // +FHE.sub encrypted vault shares

@@ -12,6 +12,8 @@ import type { CreditMarketMeta } from "@/config/credit";
 import EncryptedValue from "@/components/shared/EncryptedValue";
 import FHEStepper from "@/components/shared/FHEStepper";
 import PercentChips from "@/components/shared/PercentChips";
+import { useGasPreflight, GasPreflightError } from "@/hooks/useGasPreflight";
+import { usePreWarmFHE } from "@/hooks/usePreWarmFHE";
 
 interface Props {
   market: CreditMarketMeta;
@@ -21,9 +23,11 @@ interface Props {
 }
 
 const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
+  const preWarm = usePreWarmFHE();
   const { address } = useAccount();
   const { borrow, fheStatus } = useCreditMarket(market.address);
   const pos = useMarketPosition(market.address);
+  const { check: checkGas } = useGasPreflight();
   const [amount, setAmount] = useState("");
   const [dest, setDest] = useState("");
   const [busy, setBusy] = useState(false);
@@ -58,6 +62,9 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
     setBusy(true);
     setMsg(null);
     try {
+      // Pre-flight gas check — avoid MetaMask prompt + permit signature
+      // when the wallet can't even cover the two-step submit.
+      await checkGas();
       const u = BigInt(Math.round(parseFloat(amount) * 1e6));
       await borrow(u, destResolved as `0x${string}`);
       setMsg(`Borrowed ${amount} cUSDC under stealth.`);
@@ -65,7 +72,11 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
       await pos.refresh();
       onRefresh?.();
     } catch (e: any) {
-      setMsg(e?.shortMessage ?? e?.message ?? "Borrow failed");
+      if (e instanceof GasPreflightError) {
+        setMsg(e.message);
+      } else {
+        setMsg(e?.shortMessage ?? e?.message ?? "Borrow failed");
+      }
     } finally {
       setBusy(false);
     }
@@ -122,6 +133,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh }: Props) => {
       <input
         inputMode="decimal"
         value={amount}
+        onFocus={preWarm.onFocus}
         onChange={(e) => setAmount(e.target.value)}
         placeholder="0.0"
         className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"

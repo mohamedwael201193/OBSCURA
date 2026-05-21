@@ -69,8 +69,8 @@ export interface CreditTokenMeta {
 }
 
 export const CREDIT_TOKENS: Record<string, CreditTokenMeta> = {
-  cUSDC: { address: CONFIDENTIAL_USDC_ADDRESS, name: "Confidential USDC", symbol: "cUSDC", decimals: 8, hasFaucet: false,                              priceUsd: 1.0 },
-  cOBS:  { address: CONFIDENTIAL_OBS_ADDRESS,  name: "Confidential OBS",  symbol: "cOBS",  decimals: 8, hasFaucet: true,  faucetAmountLabel: "100 cOBS / 24h",   priceUsd: 0.10 },
+  cUSDC: { address: CONFIDENTIAL_USDC_ADDRESS, name: "Confidential USDC", symbol: "cUSDC", decimals: 8, hasFaucet: false,                             priceUsd: 1.0 },
+  OBS:   { address: CONFIDENTIAL_OBS_ADDRESS,  name: "OBS",              symbol: "OBS",   decimals: 8, hasFaucet: true,  faucetAmountLabel: "100 OBS / 24h",    priceUsd: 0.10 },
   cWETH: { address: CONFIDENTIAL_WETH_ADDRESS, name: "Confidential WETH", symbol: "cWETH", decimals: 8, hasFaucet: true,  faucetAmountLabel: "0.1 cWETH / 24h", priceUsd: 3000 },
 };
 
@@ -89,7 +89,7 @@ export interface CreditMarketMeta {
 export const CREDIT_MARKETS: CreditMarketMeta[] = [
   {
     address: CREDIT_MARKET_77_ADDRESS,
-    label: "cUSDC / cUSDC · 77% LLTV",
+    label: "cUSDC · 77% LLTV",
     loanSymbol: "cUSDC",
     collateralSymbol: "cUSDC",
     lltvBps: 7700,
@@ -99,7 +99,7 @@ export const CREDIT_MARKETS: CreditMarketMeta[] = [
   },
   {
     address: CREDIT_MARKET_86_ADDRESS,
-    label: "cUSDC / cUSDC · 86% LLTV",
+    label: "cUSDC · 86% LLTV",
     loanSymbol: "cUSDC",
     collateralSymbol: "cUSDC",
     lltvBps: 8600,
@@ -109,9 +109,9 @@ export const CREDIT_MARKETS: CreditMarketMeta[] = [
   },
   {
     address: CREDIT_MARKET_COBS_CUSDC_ADDRESS,
-    label: "cOBS → cUSDC · 77% LLTV",
+    label: "OBS → cUSDC · 77% LLTV",
     loanSymbol: "cUSDC",
-    collateralSymbol: "cOBS",
+    collateralSymbol: "OBS",
     lltvBps: 7700,
     liqBonusBps: 500,
     liqThresholdBps: 8500,

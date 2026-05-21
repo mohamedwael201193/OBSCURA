@@ -3,6 +3,7 @@
  * Shows user's current borrow debt (decrypted via FHE).
  */
 import { useState } from "react";
+import { usePreWarmFHE } from "@/hooks/usePreWarmFHE";
 import { ArrowUpFromLine } from "lucide-react";
 import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
 import type { CreditMarketMeta } from "@/config/credit";
@@ -18,6 +19,7 @@ interface Props {
 }
 
 const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
+  const preWarm = usePreWarmFHE();
   const { repay, accrue, fheStatus } = useCreditMarket(market.address);
   const pos = useMarketPosition(market.address);
   const [amount, setAmount] = useState("");
@@ -86,6 +88,7 @@ const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
       <input
         inputMode="decimal"
         value={amount}
+        onFocus={preWarm.onFocus}
         onChange={(e) => setAmount(e.target.value)}
         placeholder="0.0"
         className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/40"
@@ -110,10 +113,27 @@ const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
           <button
             type="button"
             disabled={!!busy}
-            onClick={() => setAmount((Number(pos.plainBorrow ?? 0n) / 1e6).toString())}
+            onClick={async () => {
+              setBusy("accrue");
+              setMsg("Accruing interest to compute current debt…");
+              try {
+                await accrue();
+                await pos.refresh();
+                const debt = pos.plainBorrow ?? 0n;
+                // pad +0.000001 cUSDC to cover any interest accrued between
+                // refresh() and the actual repay tx; chain will cap at debt.
+                const padded = debt + 1n;
+                setAmount((Number(padded) / 1e6).toString());
+                setMsg("Filled max repay amount. Click Repay to confirm.");
+              } catch (e: any) {
+                setMsg(e?.shortMessage ?? e?.message ?? "Accrue failed");
+              } finally {
+                setBusy(null);
+              }
+            }}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md text-sm bg-violet-500/10 border border-violet-500/30 text-violet-200 hover:bg-violet-500/20 disabled:opacity-50"
           >
-            Repay all
+            Repay max
           </button>
         )}
         <button

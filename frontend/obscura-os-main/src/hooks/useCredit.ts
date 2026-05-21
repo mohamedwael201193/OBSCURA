@@ -33,6 +33,7 @@ import {
   CREDIT_STREAM_HOOK_ADDRESS,
   CREDIT_VAULTS,
   CREDIT_VAULT_ABI,
+  CONFIDENTIAL_TOKEN_ABI,
   type CreditMarketMeta,
   type CreditVaultMeta,
 } from "@/config/credit";
@@ -40,6 +41,7 @@ import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, REINEIRA_CUSDC_ABI, REINEIRA_CUSDC
 import { decryptBalance, encryptAddressAndAmount, encryptAmount, initFHEClient } from "@/lib/fhe";
 import { estimateCappedFees } from "@/lib/gas";
 import { awaitCoFHESettle } from "@/lib/cofheSettle";
+import { batchRead } from "@/lib/multicall";
 import { useFHEStatus } from "./useFHEStatus";
 import { FHEStepStatus } from "@/lib/constants";
 
@@ -60,22 +62,27 @@ export function useCreditMarkets() {
 
   const refresh = useCallback(async () => {
     if (!publicClient) return;
-    const next = await Promise.all(
-      CREDIT_MARKETS.map(async (m) => {
-        if (!m.address) return m;
-        try {
-          const [tsa, tba, util, bl] = await Promise.all([
-            publicClient.readContract({ address: m.address, abi: CREDIT_MARKET_ABI, functionName: "totalSupplyAssets" }) as Promise<bigint>,
-            publicClient.readContract({ address: m.address, abi: CREDIT_MARKET_ABI, functionName: "totalBorrowAssets" }) as Promise<bigint>,
-            publicClient.readContract({ address: m.address, abi: CREDIT_MARKET_ABI, functionName: "utilizationBps" }) as Promise<bigint>,
-            publicClient.readContract({ address: m.address, abi: CREDIT_MARKET_ABI, functionName: "borrowersLength" }) as Promise<bigint>,
-          ]);
-          return { ...m, totalSupplyAssets: tsa, totalBorrowAssets: tba, utilizationBps: util, borrowersCount: bl };
-        } catch {
-          return m;
-        }
-      })
-    );
+    const FNS = ["totalSupplyAssets", "totalBorrowAssets", "utilizationBps", "borrowersLength"] as const;
+    const calls = CREDIT_MARKETS
+      .filter((m) => !!m.address)
+      .flatMap((m) =>
+        FNS.map((fn) => ({ address: m.address!, abi: CREDIT_MARKET_ABI, functionName: fn, fallback: 0n }))
+      );
+    const results = await batchRead<bigint>(publicClient, calls);
+    let i = 0;
+    const next = CREDIT_MARKETS.map((m) => {
+      if (!m.address) return m;
+      const [tsa, tba, util, bl] = [results[i], results[i + 1], results[i + 2], results[i + 3]];
+      i += 4;
+      if (tsa === null && tba === null && util === null && bl === null) return m;
+      return {
+        ...m,
+        totalSupplyAssets: tsa ?? 0n,
+        totalBorrowAssets: tba ?? 0n,
+        utilizationBps: util ?? 0n,
+        borrowersCount: bl ?? 0n,
+      };
+    });
     setSnapshots(next);
   }, [publicClient]);
 
@@ -93,20 +100,21 @@ export function useCreditVaults() {
 
   const refresh = useCallback(async () => {
     if (!publicClient) return;
-    const next = await Promise.all(
-      CREDIT_VAULTS.map(async (v) => {
-        if (!v.address) return v;
-        try {
-          const [td, fb] = await Promise.all([
-            publicClient.readContract({ address: v.address, abi: CREDIT_VAULT_ABI, functionName: "publicTotalDeposited" }) as Promise<bigint>,
-            publicClient.readContract({ address: v.address, abi: CREDIT_VAULT_ABI, functionName: "feeBps" }) as Promise<bigint | number>,
-          ]);
-          return { ...v, publicTotalDeposited: td, feeBps: Number(fb) };
-        } catch {
-          return v;
-        }
-      })
-    );
+    const calls = CREDIT_VAULTS
+      .filter((v) => !!v.address)
+      .flatMap((v) => [
+        { address: v.address!, abi: CREDIT_VAULT_ABI, functionName: "publicTotalDeposited", fallback: 0n },
+        { address: v.address!, abi: CREDIT_VAULT_ABI, functionName: "feeBps", fallback: 0n },
+      ]);
+    const results = await batchRead<bigint>(publicClient, calls);
+    let i = 0;
+    const next = CREDIT_VAULTS.map((v) => {
+      if (!v.address) return v;
+      const td = results[i]; const fb = results[i + 1];
+      i += 2;
+      if (td === null && fb === null) return v;
+      return { ...v, publicTotalDeposited: td ?? 0n, feeBps: Number(fb ?? 0n) };
+    });
     setSnapshots(next);
   }, [publicClient]);
 
@@ -307,8 +315,12 @@ export function useCreditMarket(market?: `0x${string}`) {
       const enc1 = await encryptAmount(amount);
       fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
+      // cUSDC (Reineira) uses REINEIRA_CUSDC_ABI; cOBS / cWETH use CONFIDENTIAL_TOKEN_ABI
+      const collAbi = collateralTokenAddress === REINEIRA_CUSDC_ADDRESS
+        ? REINEIRA_CUSDC_ABI
+        : CONFIDENTIAL_TOKEN_ABI;
       const txTransfer = await writeContractAsync({
-        address: collateralTokenAddress, abi: REINEIRA_CUSDC_ABI,
+        address: collateralTokenAddress, abi: collAbi,
         functionName: "confidentialTransfer", args: [market, enc1[0]],
         account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,

@@ -12,6 +12,7 @@
  * shadow (_plainSupplyShares) is used to show an approximate balance in the UI.
  */
 import { useState } from "react";
+import { usePreWarmFHE } from "@/hooks/usePreWarmFHE";
 import { ArrowUpToLine, ArrowDownToLine, AlertTriangle } from "lucide-react";
 import { useAccount, useReadContract } from "wagmi";
 import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
@@ -33,6 +34,7 @@ interface Props {
 type Tab = "supply" | "withdraw";
 
 const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
+  const preWarm = usePreWarmFHE();
   const { address } = useAccount();
   const { supply, withdraw, fheStatus } = useCreditMarket(market.address);
   const pos = useMarketPosition(market.address);
@@ -146,6 +148,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
       <input
         inputMode="decimal"
         value={amount}
+        onFocus={preWarm.onFocus}
         onChange={(e) => setAmount(e.target.value)}
         placeholder="0.0"
         className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-cyan-500/40"

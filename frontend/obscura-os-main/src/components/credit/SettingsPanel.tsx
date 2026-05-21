@@ -22,7 +22,7 @@ import {
 import { useIsOperator } from "@/hooks/useIsOperator";
 import { useEffect as useEffectOp, useState as useStateOp } from "react";
 
-function FaucetRow({ tokenKey }: { tokenKey: "cOBS" | "cWETH" }) {
+function FaucetRow({ tokenKey }: { tokenKey: "OBS" | "cWETH" }) {
   const meta = CREDIT_TOKENS[tokenKey];
   const { address } = useAccount();
   const publicClient = usePublicClient();
@@ -161,7 +161,7 @@ const SettingsPanel = ({ markets, approved }: Props) => {
       <Card>
         <CardHeader title="Token faucets" />
         <div className="px-5 py-3 divide-y divide-white/[0.04]">
-          <FaucetRow tokenKey="cOBS" />
+          <FaucetRow tokenKey="OBS" />
           <FaucetRow tokenKey="cWETH" />
           <p className="text-[10.5px] text-white/40 pt-2">Mint test collateral to your wallet. Balances stay encrypted on-chain.</p>
         </div>

@@ -74,3 +74,17 @@ WAVE4-CREDIT-PROGRESS.md
 .research/morpho-markets-snapshot.txt
 guidefhe.md
 wave4.md
+
+# ── AI Agent & Skill Folders (local dev context only) ──────────────────────────
+.ai/
+.cursor/
+.github/skills/
+.github/prompts/
+Fhenix-skills/
+AGENTS.md
+compile-output.txt
+fix-dups.ps1
+VOTE-APP-DOCS.md
+WAVE3-VOTE-PROGRESS.md
+WAVE4-CREDIT-PROGRESS.md
+docs/

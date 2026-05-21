@@ -1,5 +1,6 @@
 import { type PublicClient, type WalletClient } from 'viem';
 import { Encryptable, FheTypes } from '@cofhe/sdk';
+import { getCachedPermit, invalidatePermitCache } from './permitCache';
 
 let cofheClient: any = null;
 let isInitializing = false;
@@ -38,6 +39,11 @@ export async function initFHEClient(
   // Only reconnect if wallet changed — avoids slow redundant connect() calls
   const currentAccount = walletClient.account?.address ?? null;
   if (currentAccount !== lastConnectedAccount) {
+    // Wallet identity changed → previous permit is no longer valid
+    if (lastConnectedAccount) {
+      const cid = cofheClient.chainId ?? 421614;
+      invalidatePermitCache(cid, lastConnectedAccount);
+    }
     await cofheClient.connect(publicClient, walletClient);
     lastConnectedAccount = currentAccount;
   }
@@ -122,8 +128,16 @@ export async function decryptBalance(
   if (!cofheClient) throw new Error('FHE client not initialized');
 
   const handle = typeof ctHash === 'string' ? BigInt(ctHash) : ctHash;
+  const chainId = cofheClient.chainId ?? 421614;
+  const acc = lastConnectedAccount;
 
-  // Attempt 1: use existing permit
+  // Ensure we have a cached permit BEFORE decrypt — eliminates the implicit
+  // signature prompt the SDK fires when the active permit is missing.
+  if (acc) {
+    try { await getCachedPermit(cofheClient, chainId, acc); } catch { /* fall through */ }
+  }
+
+  // Attempt 1: use cached permit
   onStep?.('Decrypting');
   try {
     const result = (await cofheClient
@@ -134,15 +148,15 @@ export async function decryptBalance(
     console.error('[fhe] sealOutput attempt 1 failed:', err?.message);
   }
 
-  // Attempt 2: remove stale permit, create fresh one, retry
+  // Attempt 2: invalidate cached permit, sign fresh, retry — this is the
+  // ONLY path that pops MetaMask for a signature.
   onStep?.('Refreshing permit');
   try {
-    const chainId = cofheClient.chainId ?? 421614;
-    const acc = lastConnectedAccount;
     if (acc) {
-      await cofheClient.permits.removeActivePermit(chainId, acc);
+      invalidatePermitCache(chainId, acc);
+      try { await cofheClient.permits.removeActivePermit(chainId, acc); } catch { /* */ }
+      await getCachedPermit(cofheClient, chainId, acc);
     }
-    await cofheClient.permits.getOrCreateSelfPermit();
     onStep?.('Decrypting (retry)');
     const result = (await cofheClient
       .decryptForView(handle, FheTypes.Uint64)
@@ -163,11 +177,14 @@ export function resetFHEAccount(): void {
 }
 
 /**
- * Get or create a self-permit (EIP-712 signature).
+ * Get or create a self-permit (EIP-712 signature) — routes through the cache.
  */
 export async function getOrCreatePermit(): Promise<any> {
   if (!cofheClient) throw new Error('FHE client not initialized');
-  return cofheClient.permits.getOrCreateSelfPermit();
+  const chainId = cofheClient.chainId ?? 421614;
+  const acc = lastConnectedAccount;
+  if (!acc) return cofheClient.permits.getOrCreateSelfPermit();
+  return getCachedPermit(cofheClient, chainId, acc);
 }
 
 /**

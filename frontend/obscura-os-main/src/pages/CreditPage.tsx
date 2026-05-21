@@ -74,12 +74,24 @@ import MarketCard from "@/components/credit/MarketCard";
 import BorrowForm from "@/components/credit/BorrowForm";
 import RepayForm from "@/components/credit/RepayForm";
 import HealthBadge from "@/components/credit/HealthBadge";
-import AuctionCard from "@/components/credit/AuctionCard";
-import CreditScoreCard from "@/components/credit/CreditScoreCard";
+import SealedAuctionCard from "@/components/credit/SealedAuctionCard";
+import CreditScoreRing from "@/components/credit/CreditScoreRing";
 import SettingsPanel from "@/components/credit/SettingsPanel";
-import HistoryFeed from "@/components/credit/HistoryFeed";
+import PrivateExplorer from "@/components/credit/PrivateExplorer";
 import SupplyCollateralForm from "@/components/credit/SupplyCollateralForm";
 import SupplyForm from "@/components/credit/SupplyForm";
+import HealthRibbon from "@/components/credit/HealthRibbon";
+import CreditTabBar, { type CreditTabKey } from "@/components/credit/CreditTabBar";
+import CreditDrawer from "@/components/credit/CreditDrawer";
+import CreditAlertDrawer from "@/components/credit/CreditAlertDrawer";
+import LiquidationAlertCenter from "@/components/credit/LiquidationAlertCenter";
+import CreditOnboarding from "@/components/credit/CreditOnboarding";
+import RiskMonitorCard from "@/components/credit/RiskMonitorCard";
+import VaultPerformanceChart from "@/components/credit/VaultPerformanceChart";
+import MarketStatStrip from "@/components/credit/MarketStatStrip";
+import PrivatePortfolio from "@/components/credit/PrivatePortfolio";
+import { useCreditOnboarding } from "@/hooks/useCreditOnboarding";
+import { useCreditAlerts } from "@/hooks/useCreditAlerts";
 
 type CreditTab =
   | "home"
@@ -141,6 +153,9 @@ const CreditPage = () => {
   const [tab, setTab] = useState<CreditTab>("home");
   const [activeMarket, setActiveMarket] = useState<CreditMarketMeta | undefined>(undefined);
   const [activeVault, setActiveVault] = useState<CreditVaultMeta | undefined>(undefined);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const onboarding = useCreditOnboarding();
+  const { unreadCount } = useCreditAlerts();
 
   const { markets, refresh: refreshMarkets } = useCreditMarkets();
   const { vaults, refresh: refreshVaults } = useCreditVaults();
@@ -197,6 +212,10 @@ const CreditPage = () => {
         </Section>
       </div>
 
+      {isConnected && (
+        <PrivatePortfolio markets={markets} />
+      )}
+
       <FeatureStrip items={featureItems} />
     </div>
   );
@@ -214,7 +233,12 @@ const CreditPage = () => {
           <VaultCard key={v.address} vault={v} onAction={() => setActiveVault(v)} active={activeVault?.address === v.address} />
         ))}
       </div>
-      {activeVault && <VaultActionsCard vault={activeVault} onRefresh={refreshVaults} />}
+      {activeVault && (
+        <>
+          <VaultPerformanceChart address={activeVault.address} kind="vault" title={`${activeVault.name} TVL`} />
+          <VaultActionsCard vault={activeVault} onRefresh={refreshVaults} />
+        </>
+      )}
     </div>
   );
 
@@ -228,12 +252,14 @@ const CreditPage = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {markets.map((m) => (
-          <MarketCard
-            key={m.address}
-            market={m}
-            onAction={() => { setActiveMarket(m); setTab("borrow"); }}
-            active={activeMarket?.address === m.address}
-          />
+          <div key={m.address} className="grid gap-2">
+            <MarketStatStrip market={m} />
+            <MarketCard
+              market={m}
+              onAction={() => { setActiveMarket(m); setTab("borrow"); }}
+              active={activeMarket?.address === m.address}
+            />
+          </div>
         ))}
       </div>
     </div>
@@ -287,6 +313,7 @@ const CreditPage = () => {
 
   const renderHealth = () => (
     <div className="grid gap-4">
+      <RiskMonitorCard />
       <Section title="Position health" hint={CREDIT_HEALTH_FACTOR_FORMULA}>
         {activeMarket && address ? (
           <HealthBadge market={activeMarket} user={address} />
@@ -310,7 +337,7 @@ const CreditPage = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {auctions.map((a) => (
-            <AuctionCard key={a.id.toString()} auction={a} onBid={submitBid} onSettle={settle} />
+            <SealedAuctionCard key={a.id.toString()} auction={a} windowSec={CREDIT_DEFAULT_AUCTION_WINDOW_SEC} onBid={submitBid} onSettle={settle} />
           ))}
         </div>
       )}
@@ -319,13 +346,13 @@ const CreditPage = () => {
 
   const renderScore = () => (
     <div className="grid gap-4">
-      <CreditScoreCard />
+      <CreditScoreRing />
     </div>
   );
 
   const renderHistory = () => (
     <div className="grid gap-4">
-      <HistoryFeed markets={markets} />
+      <PrivateExplorer markets={markets} />
     </div>
   );
 
@@ -363,19 +390,33 @@ const CreditPage = () => {
       />
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <main className="flex-1 min-w-0 px-6 lg:px-8 py-7 max-w-5xl w-full mx-auto">
+        <main className="flex-1 min-w-0 px-6 lg:px-8 py-7 pb-24 lg:pb-7 max-w-5xl w-full mx-auto">
           <PageHeader
             breadcrumb={["Dashboard", "Credit"]}
             title={<><EncryptedText duration={1100}>ObscuraCredit</EncryptedText></>}
             lede={<>Encrypted lending — supply to vaults, borrow under stealth, settle via sealed auctions. All amounts are CoFHE handles on-chain.</>}
             badge={
-              isConnected ? (
-                <span className="hidden md:inline-flex items-center gap-1.5 text-[10.5px] tracking-[0.05em] text-violet-300/80 px-2.5 py-1 rounded-md border border-violet-500/20 bg-violet-500/[0.04]">
-                  Live on Arbitrum Sepolia
-                </span>
-              ) : null
+              <div className="flex items-center gap-2">
+                {isConnected && (
+                  <span className="hidden md:inline-flex items-center gap-1.5 text-[10.5px] tracking-[0.05em] text-violet-300/80 px-2.5 py-1 rounded-md border border-violet-500/20 bg-violet-500/[0.04]">
+                    Live on Arbitrum Sepolia
+                  </span>
+                )}
+                <CreditAlertDrawer />
+              </div>
             }
           />
+
+          {/* Realtime risk banner — only renders when user has debt + non-safe HF.
+              Privacy-safe: reads only public plaintext shadows. */}
+          {isConnected && (
+            <div className="mt-3 sticky top-3 z-30">
+              <HealthRibbon
+                onRepay={(w) => { setActiveMarket(w.market); setTab("repay"); }}
+                onAddCollateral={(w) => { setActiveMarket(w.market); setTab("collateral"); }}
+              />
+            </div>
+          )}
 
           <AnimatePresence mode="wait">
             <motion.div
@@ -390,6 +431,29 @@ const CreditPage = () => {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Mobile bottom nav + drawer */}
+      <CreditTabBar
+        active={tab as CreditTabKey}
+        onSelect={(k) => setTab(k as CreditTab)}
+        onMore={() => setDrawerOpen(true)}
+        moreBadge={unreadCount}
+      />
+      <CreditDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        sections={sidebarSections}
+        active={tab as CreditTabKey}
+        onSelect={(k) => { setTab(k as CreditTab); setDrawerOpen(false); }}
+      />
+
+      {/* Side-effect mounts — invisible */}
+      {isConnected && <LiquidationAlertCenter />}
+      <CreditOnboarding
+        open={onboarding.open}
+        onComplete={onboarding.complete}
+        onDismiss={onboarding.dismiss}
+      />
     </div>
   );
 };

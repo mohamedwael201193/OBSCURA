@@ -274,7 +274,7 @@ const CreditSection = () => {
               <div className="text-xs tracking-widest uppercase text-violet-400 font-mono mb-3">Layer 1 — Markets</div>
               <p className="text-sm text-white/60 mb-3">Isolated lending pairs. Each market is one (collateral, loan) asset combo with its own LLTV, IRM, and oracle. Positions are <code className="text-violet-300 text-xs">euint64</code> end-to-end.</p>
               <div className="space-y-1.5">
-                {["cUSDC↔cUSDC · 77% LLTV","cUSDC↔cUSDC · 86% LLTV","cOBS↔cUSDC","cWETH↔cUSDC"].map(m => (
+                {["cUSDC · 77% LLTV","cUSDC · 86% LLTV","OBS → cUSDC","cWETH → cUSDC"].map(m => (
                   <div key={m} className="flex items-center gap-2 text-xs text-white/50 font-mono">
                     <span className="w-1.5 h-1.5 rounded-full bg-violet-400/60 shrink-0" />
                     {m}

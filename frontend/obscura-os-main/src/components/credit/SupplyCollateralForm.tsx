@@ -88,7 +88,11 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
       await pos.refresh();
       onRefresh?.();
     } catch (e: any) {
-      setMsg(e?.shortMessage ?? e?.message ?? "Transaction failed");
+      const raw: string = e?.shortMessage ?? e?.message ?? "Transaction failed";
+      const isRateLimit = raw.toLowerCase().includes("rate limit") || raw.includes("429") || raw.toLowerCase().includes("too many requests");
+      setMsg(isRateLimit
+        ? "RPC rate limited — wait 15–30 s and try again."
+        : raw);
     } finally {
       setBusy(false);
     }

@@ -40,6 +40,7 @@ import {
 import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, REINEIRA_CUSDC_ABI, REINEIRA_CUSDC_ADDRESS } from "@/config/pay";
 import { decryptBalance, encryptAddressAndAmount, encryptAmount, initFHEClient } from "@/lib/fhe";
 import { estimateCappedFees } from "@/lib/gas";
+import { withRateLimitRetry } from "@/lib/rateLimit";
 import { awaitCoFHESettle } from "@/lib/cofheSettle";
 import { batchRead } from "@/lib/multicall";
 import { useFHEStatus } from "./useFHEStatus";
@@ -314,7 +315,8 @@ export function useCreditMarket(market?: `0x${string}`) {
       // Step 1 — transfer collateral directly to market
       const enc1 = await encryptAmount(amount);
       fhe.setStep(FHEStepStatus.COMPUTING);
-      const fees = await estimateCappedFees(publicClient);
+      // Fetch fees once with retry — reused for both steps (Arb Sepolia fees stable over 30 s)
+      const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
       // cUSDC (Reineira) uses REINEIRA_CUSDC_ABI; cOBS / cWETH use CONFIDENTIAL_TOKEN_ABI
       const collAbi = collateralTokenAddress === REINEIRA_CUSDC_ADDRESS
         ? REINEIRA_CUSDC_ABI
@@ -333,12 +335,11 @@ export function useCreditMarket(market?: `0x${string}`) {
 
       // Step 2 — supply with ONE encAmt for FHE collateral accounting
       const enc2 = await encryptAmount(amount);
-      const fees2 = await estimateCappedFees(publicClient);
       fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "supplyCollateral",
         args: [amount, enc2[0]], account: address, chain: arbitrumSepolia,
-        maxFeePerGas: fees2.maxFeePerGas, maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
+        maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.supplyCollateral,
       });
       const r2 = await publicClient.waitForTransactionReceipt({ hash });

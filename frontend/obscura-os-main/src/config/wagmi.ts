@@ -9,16 +9,20 @@ import { injected, walletConnect } from 'wagmi/connectors';
  * per-IP rate limit and frequently 429s under load. We rank a pool of public
  * RPCs and fail over automatically; viem will retry the next provider on
  * 429 / network errors. Custom URL via VITE_ARBITRUM_SEPOLIA_RPC takes priority.
+ *
+ * Tenderly is intentionally placed LAST — its free tier aggressively rate-limits
+ * FHE operations (multiple `getTransactionReceipt` polls + `estimateFeesPerGas`
+ * bursts in a single two-step tx). publicnode and drpc have higher burst limits.
  */
 const customArbRpc = (import.meta as { env?: Record<string, string> }).env?.VITE_ARBITRUM_SEPOLIA_RPC;
 
 const arbSepoliaTransports = [
   ...(customArbRpc ? [http(customArbRpc, { batch: true, retryCount: 3, timeout: 15_000 })] : []),
-  http('https://arbitrum-sepolia.gateway.tenderly.co', { batch: true, retryCount: 2, timeout: 15_000 }),
   http('https://arbitrum-sepolia-rpc.publicnode.com', { batch: true, retryCount: 2, timeout: 15_000 }),
   http('https://arbitrum-sepolia.drpc.org', { batch: true, retryCount: 2, timeout: 15_000 }),
   http('https://endpoints.omniatech.io/v1/arbitrum/sepolia/public', { batch: true, retryCount: 2, timeout: 15_000 }),
   http('https://sepolia-rollup.arbitrum.io/rpc', { batch: true, retryCount: 2, timeout: 15_000 }),
+  http('https://arbitrum-sepolia.gateway.tenderly.co', { batch: true, retryCount: 1, timeout: 15_000 }),
 ];
 
 export const config = createConfig({

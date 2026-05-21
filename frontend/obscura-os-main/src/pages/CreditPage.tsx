@@ -32,6 +32,7 @@ import AmbientBackground from "@/components/elite/AmbientBackground";
 import DashboardSidebar, { SidebarSection } from "@/components/elite/DashboardSidebar";
 import { PageHeader, Card, CardHeader, FeatureStrip } from "@/components/elite/Layout";
 import EncryptedText from "@/components/shared/EncryptedText";
+import EncryptedValue from "@/components/shared/EncryptedValue";
 
 // Local helper: card with overline + title + helper text + body.
 const Section = ({ title, overline, hint, children }: { title: string; overline?: string; hint?: string; children: React.ReactNode }) => (
@@ -423,9 +424,6 @@ const VaultActionsCard = ({ vault, onRefresh }: { vault: CreditVaultMeta; onRefr
     }
   };
 
-  const mySharesDisplay = pos.myShares !== null
-    ? `${(Number(pos.myShares) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 6 })} cUSDC`
-    : pos.loading ? "loading…" : "—";
   const tvlDisplay = pos.tvl !== null
     ? `$${(Number(pos.tvl) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
     : pos.loading ? "loading…" : "—";
@@ -434,13 +432,26 @@ const VaultActionsCard = ({ vault, onRefresh }: { vault: CreditVaultMeta; onRefr
     <Section title={`Manage ${vault.name}`} hint="Encrypted deposit & withdraw">
       {/* Position row */}
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <div className="rounded-md bg-black/20 px-2.5 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-white/40">Your deposit</div>
-          <div className="text-[13px] font-mono text-emerald-200">{mySharesDisplay}</div>
-        </div>
-        <div className="rounded-md bg-black/20 px-2.5 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-white/40">Vault TVL</div>
-          <div className="text-[13px] font-mono text-emerald-200">{tvlDisplay}</div>
+        {/* Your deposit — FHE encrypted, reveal on click */}
+        <EncryptedValue
+          value={pos.myShares}
+          loading={pos.sharesLoading}
+          onReveal={() => void pos.decryptShares()}
+          label="Your deposit"
+          symbol="cUSDC"
+          decimals={6}
+          accent="emerald"
+        />
+        {/* Vault TVL — public scalar */}
+        <div className="rounded-xl border border-violet-500/20 bg-violet-950/20 p-3 space-y-2">
+          <div className="text-[9px] tracking-[0.18em] uppercase text-white/35 flex items-center gap-1.5">
+            <ShieldCheck className="w-2.5 h-2.5 text-violet-400" />
+            Vault TVL
+          </div>
+          <div className="text-[15px] font-mono font-semibold text-violet-300">
+            {pos.loading ? <span className="text-[11px] text-white/30">loading…</span> : tvlDisplay}
+          </div>
+          <p className="text-[9px] text-white/25">public aggregate · cUSDC</p>
         </div>
       </div>
       <div className="flex flex-col sm:flex-row gap-2">

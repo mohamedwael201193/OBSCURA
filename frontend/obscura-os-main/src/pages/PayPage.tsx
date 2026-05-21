@@ -151,32 +151,28 @@ const NotConnected = ({ message }: { message: string }) => (
 /** Compact wallet balance pill shown in the page header. */
 const WalletPill = () => {
   const { isConnected } = useAccount();
-  const { decrypted, reveal, busy, trackedCusdc } = useCUSDCBalance();
+  const { decrypted, reveal, busy } = useCUSDCBalance();
 
   if (!isConnected) return null;
 
   const isRevealed = decrypted !== null && decrypted !== undefined;
   const display = isRevealed
     ? (Number(decrypted) / 1_000_000).toFixed(2)
-    : trackedCusdc
-      ? parseFloat(trackedCusdc).toFixed(2)
-      : "•••";
-  const isApprox = !isRevealed && trackedCusdc !== null && trackedCusdc !== undefined;
+    : "•••";
 
   return (
     <button
       onClick={() => void reveal()}
       disabled={busy}
-      title={isRevealed ? "On-chain decrypted balance" : "Click to decrypt your balance"}
+      title={isRevealed ? "On-chain decrypted balance" : "Click to decrypt your cUSDC balance"}
       className="group inline-flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.04] px-3 py-1.5 hover:border-emerald-500/40 transition-colors disabled:opacity-60"
     >
       <Lock className="w-3.5 h-3.5 text-emerald-400" />
       <span className="text-[10px] uppercase tracking-[0.18em] text-emerald-300/70 font-mono">cUSDC</span>
       <span className="font-mono text-[13px] font-semibold text-emerald-200 tabular-nums">
-        {isApprox && <span className="text-emerald-300/50 mr-0.5">≈</span>}
         {busy ? "…" : display}
       </span>
-      <Eye className="w-3.5 h-3.5 text-emerald-300/60 group-hover:text-emerald-300 transition-colors" />
+      {!isRevealed && <Eye className="w-3.5 h-3.5 text-emerald-300/60 group-hover:text-emerald-300 transition-colors" />}
     </button>
   );
 };
@@ -438,12 +434,9 @@ const ContactsPanel = () => {
 /** Compact info bar at top of Send tab — shows USDC balance + quick actions. */
 const SendCUSDCBar = ({ onGetCUSDC }: { onGetCUSDC: () => void }) => {
   const usdcBalance = useUSDCBalance();
-  const { decrypted, trackedCusdc } = useCUSDCBalance();
-  const cusdc = decrypted !== null
-    ? (Number(decrypted) / 1_000_000).toFixed(2)
-    : trackedCusdc
-      ? parseFloat(trackedCusdc).toFixed(2)
-      : null;
+  const { decrypted, reveal, busy } = useCUSDCBalance();
+  const isRevealed = decrypted !== null && decrypted !== undefined;
+  const cusdc = isRevealed ? (Number(decrypted) / 1_000_000).toFixed(2) : null;
 
   return (
     <div className="rounded-xl border border-[#3e73c4]/20 bg-[#3e73c4]/[0.06] px-4 py-3 flex flex-wrap items-center gap-3">
@@ -454,7 +447,10 @@ const SendCUSDCBar = ({ onGetCUSDC }: { onGetCUSDC: () => void }) => {
         </div>
         <div className="text-[11px] text-white/40 mt-0.5">
           You need cUSDC to send privately. Plain USDC: <span className="text-white/60 font-mono">{usdcBalance ?? "—"}</span>
-          {cusdc && <> · cUSDC: <span className="text-emerald-400/80 font-mono">{cusdc}</span></>}
+          {isRevealed
+            ? <> · cUSDC: <span className="text-emerald-400/80 font-mono">{cusdc}</span></>
+            : <> · cUSDC: <button onClick={() => void reveal()} disabled={busy} className="text-emerald-400/60 hover:text-emerald-400 underline underline-offset-2 transition-colors disabled:opacity-50">{busy ? "…" : "🔒 click to reveal"}</button></>
+          }
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">

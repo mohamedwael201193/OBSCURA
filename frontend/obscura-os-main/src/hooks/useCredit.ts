@@ -114,12 +114,12 @@ export function useCreditVaults() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// 2b. useVaultPosition — user's encrypted share balance + TVL for one vault.
+// 2b. useVaultPosition — user's encrypted share balance + public TVL.
 //
-// FHE privacy: shares are stored as euint64 on-chain. Only the depositor
-// can decrypt them. This hook reads the encrypted handle then calls
-// decryptBalance (cofhe.decryptForView) — which may prompt a permit signature
-// in the wallet on first use (normal CoFHE "view decrypt" flow).
+// FHE privacy: vault shares are euint64 on-chain. This hook intentionally
+// does NOT auto-decrypt on mount — only `decryptShares()` (called by the
+// user clicking "Reveal") triggers FHE decryption + EIP-712 permit.
+// TVL (publicTotalDeposited) IS auto-fetched because it is a public scalar.
 // ─────────────────────────────────────────────────────────────────────────
 export function useVaultPosition(vault?: `0x${string}`) {
   const publicClient = usePublicClient();
@@ -128,48 +128,53 @@ export function useVaultPosition(vault?: `0x${string}`) {
   const [myShares, setMyShares] = useState<bigint | null>(null);
   const [tvl, setTvl] = useState<bigint | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sharesLoading, setSharesLoading] = useState(false);
 
+  // Fetch only the public TVL — never auto-decrypts personal position.
   const refresh = useCallback(async () => {
     if (!publicClient || !vault) return;
     setLoading(true);
     try {
-      // 1. Always read the public TVL aggregate
       const td = await publicClient.readContract({
         address: vault, abi: CREDIT_VAULT_ABI,
         functionName: "publicTotalDeposited",
       }) as bigint;
       setTvl(td);
-
-      // 2. Decrypt personal position if wallet is connected
-      if (address && walletClient) {
-        // Read the encrypted handle (bytes32 / euint64 on-chain)
-        const handle = await publicClient.readContract({
-          address: vault, abi: CREDIT_VAULT_ABI,
-          functionName: "getEncryptedShares", args: [address],
-        }) as `0x${string}`;
-
-        // All-zero handle = no position yet (uninitialized)
-        const handleBn = BigInt(handle);
-        if (handleBn === 0n) {
-          setMyShares(0n);
-        } else {
-          // Init CoFHE client and decrypt — may prompt EIP-712 permit in wallet
-          await initFHEClient(publicClient, walletClient);
-          const decrypted = await decryptBalance(handleBn);
-          setMyShares(decrypted);
-        }
-      }
     } catch {
-      // ignore read / decrypt errors silently
+      // ignore RPC errors silently
     } finally {
       setLoading(false);
     }
+  }, [publicClient, vault]);
+
+  // Manual reveal: decrypt the user's share balance on demand.
+  const decryptShares = useCallback(async () => {
+    if (!publicClient || !vault || !address || !walletClient) return;
+    setSharesLoading(true);
+    try {
+      const handle = await publicClient.readContract({
+        address: vault, abi: CREDIT_VAULT_ABI,
+        functionName: "getEncryptedShares", args: [address],
+      }) as `0x${string}`;
+      const handleBn = BigInt(handle);
+      if (handleBn === 0n) {
+        setMyShares(0n);
+      } else {
+        await initFHEClient(publicClient, walletClient);
+        const decrypted = await decryptBalance(handleBn);
+        setMyShares(decrypted);
+      }
+    } catch {
+      // ignore decrypt errors silently
+    } finally {
+      setSharesLoading(false);
+    }
   }, [publicClient, walletClient, vault, address]);
 
-  // fetch on mount and whenever vault/address changes
+  // Auto-fetch public TVL on mount / vault change (no FHE needed).
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { myShares, tvl, loading, refresh };
+  return { myShares, tvl, loading, sharesLoading, refresh, decryptShares };
 }
 
 // ─────────────────────────────────────────────────────────────────────────

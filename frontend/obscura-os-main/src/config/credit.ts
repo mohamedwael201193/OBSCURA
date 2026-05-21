@@ -84,6 +84,11 @@ export interface CreditMarketMeta {
   liqBonusBps: number;
   liqThresholdBps: number;
   riskTier: "Conservative" | "Balanced" | "Aggressive";
+  // Live stats — populated by useMarkets, optional until first poll
+  totalSupplyAssets?: bigint;
+  totalBorrowAssets?: bigint;
+  utilizationBps?: bigint;
+  borrowersCount?: bigint;
 }
 
 export const CREDIT_MARKETS: CreditMarketMeta[] = [

@@ -52,7 +52,14 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
     return hf;
   }, [plainColl, plainBorrow, market.lltvBps]);
 
-  const noLiquidity     = false; // checked on-chain — the contract will revert with "InsufficientLiquidity"
+  // Available liquidity = totalSupplyAssets - totalBorrowAssets (public on-chain)
+  const availableLiquidity = useMemo(() => {
+    const tsa = market.totalSupplyAssets ?? 0n;
+    const tba = market.totalBorrowAssets ?? 0n;
+    return tsa >= tba ? tsa - tba : 0n;
+  }, [market.totalSupplyAssets, market.totalBorrowAssets]);
+
+  const noLiquidity = amtBig > 0n && amtBig > availableLiquidity;
 
   const fmt6 = (v: bigint) =>
     (Number(v) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 4 });
@@ -202,9 +209,16 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
           Max borrowable is 0 — your collateral is fully utilized. Repay debt or add collateral.
         </p>
       )}
+      {!noCollateral && noLiquidity && (
+        <p className="text-[11px] text-orange-300/80 flex items-center gap-1.5">
+          <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+          Insufficient pool liquidity — only {fmt6(availableLiquidity)} cUSDC available to borrow.
+          Supply cUSDC to the pool first to create lending liquidity.
+        </p>
+      )}
 
       <button
-        disabled={!amount || !destResolved || busy || noCollateral || wouldBreakLLTV}
+        disabled={!amount || !destResolved || busy || noCollateral || wouldBreakLLTV || noLiquidity}
         onClick={submit}
         className="mt-2 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm bg-violet-500/15 border border-violet-500/40 text-violet-100 hover:bg-violet-500/25 disabled:opacity-50"
       >

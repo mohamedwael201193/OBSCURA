@@ -52,14 +52,7 @@ import { FHEStepStatus } from "@/lib/constants";
 export function useCreditMarkets() {
   const publicClient = usePublicClient();
 
-  const [snapshots, setSnapshots] = useState<
-    Array<CreditMarketMeta & {
-      totalSupplyAssets?: bigint;
-      totalBorrowAssets?: bigint;
-      utilizationBps?: bigint;
-      borrowersCount?: bigint;
-    }>
-  >(CREDIT_MARKETS);
+  const [snapshots, setSnapshots] = useState<CreditMarketMeta[]>(CREDIT_MARKETS);
 
   const refresh = useCallback(async () => {
     if (!publicClient) return;
@@ -397,7 +390,8 @@ export function useCreditMarket(market?: `0x${string}`) {
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.borrow,
       });
-      await publicClient.waitForTransactionReceipt({ hash });
+      const r = await publicClient.waitForTransactionReceipt({ hash });
+      if (r.status !== "success") throw new Error("Borrow reverted — likely insufficient pool liquidity. Supply cUSDC first.");
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },

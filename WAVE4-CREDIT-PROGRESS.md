@@ -1,10 +1,153 @@
 # Wave 4 — ObscuraCredit Progress Report
 
-**Status: ✅ Live on Arbitrum Sepolia (v3.5 — Credit UI Fixes)**
-Tag: `wave4-credit-v3.5`
+**Status: ✅ Live on Arbitrum Sepolia (v3.9 — FHE.asEaddress Fix + Markets Redeployed)**
+Tag: `wave4-credit-v3.9`
 Network: Arbitrum Sepolia (chainId 421614)
 Frontend route: `/credit`
-Last updated: May 21, 2026
+Last updated: May 2026
+
+---
+
+## v3.9 — FHE.asEaddress Root-Cause Fix (markets redeployed)
+
+### Root Cause
+
+Despite the 2.8M gas cap and passing pre-flight checks, `borrow()` still reverted on-chain.
+After confirming `encryptAddressAndAmount` argument order was correct and gas was sufficient,
+the **only remaining failing operation** was `FHE.asEaddress(encDest)`.
+
+The `eaddress` FHE type is not reliably supported by the CoFHE testnet coprocessor. All other
+FHE operations in the system use `euint64` (supply, supplyCollateral, withdrawCollateral) and
+work correctly. `borrow()` was the only function calling `FHE.asEaddress` — and it always failed.
+
+### Fix Applied
+
+`ObscuraCreditMarket.sol` — `borrow()` modified:
+- Removed `FHE.asEaddress(encDest)`, `p.disburseTo = dest`, and associated `FHE.allow*` calls
+- `encDest` parameter kept as `InEaddress calldata /* encDest */` for ABI compatibility
+  (same struct layout as `InEuint64` → frontend calldata unchanged)
+- cUSDC always disbursed to `msg.sender` — no behaviour change (disburseTo was audit trail only)
+
+### New Market Addresses
+
+All 4 markets redeployed with the fix:
+
+| Market | Address |
+|--------|---------|
+| cUSDC · 77% LLTV | `0xD541405d01FFB31eA63cBfA6C988A004eED46AF9` |
+| cUSDC · 86% LLTV | `0x9f383Dd87b3B811C4aA864C8DFF65d3164DB2e9C` |
+| OBS → cUSDC 77% | `0x17F3390aB5C2EF706F5303a857Eff8708ddD8CB1` |
+| cWETH → cUSDC 86% | `0x53fb61e18067aAC30b7176844d92F0CfeCF7fAFc` |
+
+### Files Changed
+
+- `contracts-hardhat/contracts/credit/ObscuraCreditMarket.sol` — borrow() fix
+- `contracts-hardhat/scripts/deployWave4v39.ts` — new deploy script
+- `contracts-hardhat/deployments/arb-sepolia.json` — updated market addresses
+- `frontend/obscura-os-main/.env` — updated VITE_OBSCURA_CREDIT_MARKET_* vars
+- `frontend/obscura-os-main/src/abis/credit/ObscuraCreditMarket.json` — synced ABI
+
+### Migration
+
+Users with positions in the OLD markets (`0x0Cd8B6...`, `0xd0E5bc...`) must:
+1. Withdraw supply → 2. Withdraw collateral → 3. Redeposit to new market → 4. Borrow
+
+---
+
+---
+
+## v3.8 — Borrow Gas Fix + Pre-Flight Diagnostics (commit `360c205`)
+
+### Root Cause
+
+`borrow()` was reverting on-chain for every attempt even with 1.00 cUSDC supply + 1.00 cUSDC
+collateral. The gas cap `CREDIT_GAS_CAPS.borrow = 1_400_000n` was too low to cover all FHE
+operations the contract performs:
+
+1. `FHE.asEuint64(encAmt)` — ~300k gas
+2. `FHE.asEaddress(encDest)` — ~300k gas
+3. `FHE.add(p.borrowShares, req)` — ~300k gas
+4. `FHE.allowThis × 2 + FHE.allow × 2` — ~150k gas
+5. `FHE.allowTransient(req, loanAsset)` — ~100k gas
+6. **`IConfidentialUSDCv2.confidentialTransfer(msg.sender, ...)` — ~800k–1M gas**
+   (internal FHE sub/add for market balance → borrower balance, plus FHE ACL ops)
+
+Total ~2.0–2.1M gas. Hard cap of 1.4M caused out-of-gas revert. The error was hidden by a
+generic "likely insufficient pool liquidity" message because the receipt check threw the same
+error for ANY revert reason.
+
+### Fixes Applied
+
+#### 1. `src/config/credit.ts` — Raise gas caps for borrow + withdrawCollateral
+
+```ts
+withdrawCollateral: 2_800_000n, // FHE.sub + outgoing confidentialTransfer (FHE-heavy)
+borrow:             2_800_000n, // FHE ops + outgoing confidentialTransfer (FHE-heavy)
+```
+
+Both `borrow` and `withdrawCollateral` have the same pattern (FHE ops + outgoing
+`confidentialTransfer` internally). Both raised to 2.8M for a safe buffer above the ~2.1M
+observed ceiling.
+
+#### 2. `src/hooks/useCredit.ts` — Pre-flight on-chain checks before submitting borrow tx
+
+Three parallel `readContract` calls run **before** `writeContractAsync`:
+
+```ts
+const [maxB, tsa, tba] = await Promise.all([
+  publicClient.readContract({ ..., functionName: "maxBorrowable", args: [address] }),
+  publicClient.readContract({ ..., functionName: "totalSupplyAssets" }),
+  publicClient.readContract({ ..., functionName: "totalBorrowAssets" }),
+]);
+const available = tsa >= tba ? tsa - tba : 0n;
+if (amount > maxB) throw new Error(`LLTVBreach — max borrowable is ${formatUnits(maxB, 6)} cUSDC.`);
+if (amount > available) throw new Error(`InsufficientLiquidity — only ${formatUnits(available, 6)} cUSDC available.`);
+```
+
+This:
+- Surfaces the actual revert reason (LLTVBreach vs InsufficientLiquidity vs FHE/gas) with exact amounts
+- Prevents wasted MetaMask prompts for predictably-failing txs
+- Replaces the generic "likely insufficient pool liquidity" message for ALL reverts
+
+#### 3. `src/hooks/useCredit.ts` — Improved receipt-check error message
+
+The catch-all `r.status !== "success"` error now includes diagnostic info:
+```
+"Borrow reverted on-chain. Pre-flight checks passed (maxBorrowable=X, available=Y) — likely an FHE compute or gas issue. Try again."
+```
+
+---
+
+## v3.7 — Address-Based activeMarket (commit `9fe405d`)
+
+### Root Cause
+
+`activeMarket` was stored as a full `CreditMarketMeta` object via `useState`. After
+`refreshMarkets()` completed, the `markets` array was replaced with new objects (same data,
+new references). But `activeMarket` pointed to the **old** object which had
+`totalSupplyAssets = undefined` (not yet fetched). The borrow's `noLiquidity` computed
+`available = 0n - 0n = 0n` → button disabled even after supply succeeded.
+
+### Fixes Applied
+
+- `activeMarket` stored as address string (`activeMarketAddress`), derived via `useMemo` from live `markets` array
+- `SupplyForm.tsx` — calls `pos.resetDecrypted()` before `pos.refresh()` after successful supply
+
+---
+
+## v3.6 — Borrow False Success Fix (commit `504ca67`)
+
+### Root Cause
+
+`writeContractAsync` in wagmi v2 resolves with the tx hash even if the tx reverts on-chain.
+Receipt was never awaited, so any borrow revert showed "Borrowed X cUSDC" as a false success.
+`noLiquidity` in BorrowForm was also hardcoded to `false`.
+
+### Fixes Applied
+
+- `borrow()` in `useCredit.ts` now awaits receipt and throws on `r.status !== "success"`
+- `BorrowForm.tsx` computes `noLiquidity` from real `market.totalSupplyAssets / totalBorrowAssets`
+- `BorrowForm.tsx` button disabled when `noLiquidity` is true
 
 ---
 

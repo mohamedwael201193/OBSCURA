@@ -342,14 +342,18 @@ contract ObscuraCreditMarket {
 
     /// @notice Borrow loanAsset.
     ///         Plaintext pre-checks (LLTV + liquidity) ensure the call reverts cleanly
-    ///         before any FHE computation. The encrypted amount is still passed through
-    ///         FHE so amount privacy is maintained at the ABI/event level.
-    ///         encDest is stored encrypted for audit trail; the actual cUSDC disbursal
-    ///         goes to msg.sender (no on-chain plaintext of intended stealth address).
+    ///         before any FHE computation. The encrypted amount is passed through FHE
+    ///         so amount privacy is maintained at the ABI/event level.
+    ///
+    ///         NOTE: encDest (InEaddress) is accepted for ABI compatibility but NOT
+    ///         processed via FHE.asEaddress. The eaddress CoFHE type is not reliably
+    ///         supported on the current testnet coprocessor — FHE.asEaddress causes
+    ///         silent reverts. Funds disburse to msg.sender directly (same behaviour
+    ///         as before since disbursal was always msg.sender anyway).
     function borrow(
         uint64 amtPlain,
         InEuint64  calldata encAmt,
-        InEaddress calldata encDest
+        InEaddress calldata /* encDest */
     ) external {
         require(amtPlain > 0, "ZeroAmount");
         // ── Plaintext guards ─────────────────────────────────────────────
@@ -363,13 +367,13 @@ contract ObscuraCreditMarket {
         _ensurePos(msg.sender);
 
         Position storage p = _pos[msg.sender];
-        euint64  req  = FHE.asEuint64(encAmt);
-        eaddress dest = FHE.asEaddress(encDest);
+        euint64 req = FHE.asEuint64(encAmt);
+        // FHE.asEaddress(encDest) intentionally skipped — eaddress type not
+        // supported on current CoFHE testnet coprocessor (causes tx revert).
+        // p.disburseTo is not updated; borrowShares-only tracking is sufficient.
 
         p.borrowShares = FHE.add(p.borrowShares, req);
-        p.disburseTo   = dest;
         FHE.allowThis(p.borrowShares); FHE.allow(p.borrowShares, msg.sender);
-        FHE.allowThis(p.disburseTo);   FHE.allow(p.disburseTo,   msg.sender);
 
         if (!hasBorrow[msg.sender]) { hasBorrow[msg.sender] = true; _borrowers.push(msg.sender); }
         _plainBorrow[msg.sender] += amtPlain;

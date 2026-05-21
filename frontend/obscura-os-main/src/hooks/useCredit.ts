@@ -262,12 +262,15 @@ export function useCreditMarket(market?: `0x${string}`) {
       // Step 2 — record supply shares + FHE trigger to settle pending CoFHE task
       const enc2 = await encryptAmount(amount);
       const fees2 = await estimateCappedFees(publicClient);
+      fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "supply",
         args: [amount, enc2[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees2.maxFeePerGas, maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.supply,
       });
+      const r2 = await publicClient.waitForTransactionReceipt({ hash });
+      if (r2.status !== "success") throw new Error("market supply step 2 failed");
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
@@ -278,6 +281,7 @@ export function useCreditMarket(market?: `0x${string}`) {
   const withdraw = useCallback(
     async (amount: bigint) => {
       if (!publicClient || !market || !address) throw new Error("not ready");
+      fhe.setStep(FHEStepStatus.SENDING);
       const fees = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "withdraw",
@@ -285,9 +289,11 @@ export function useCreditMarket(market?: `0x${string}`) {
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.withdraw,
       });
+      await publicClient.waitForTransactionReceipt({ hash });
+      fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
-    [publicClient, market, address, writeContractAsync]
+    [publicClient, market, address, writeContractAsync, fhe]
   );
 
   // ── Two-step supplyCollateral: cToken.confidentialTransfer → market.supplyCollateral ──
@@ -316,12 +322,15 @@ export function useCreditMarket(market?: `0x${string}`) {
       // Step 2 — supply with ONE encAmt for FHE collateral accounting
       const enc2 = await encryptAmount(amount);
       const fees2 = await estimateCappedFees(publicClient);
+      fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "supplyCollateral",
         args: [amount, enc2[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees2.maxFeePerGas, maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.supplyCollateral,
       });
+      const r2 = await publicClient.waitForTransactionReceipt({ hash });
+      if (r2.status !== "success") throw new Error("supply collateral step 2 failed");
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
@@ -337,12 +346,14 @@ export function useCreditMarket(market?: `0x${string}`) {
       const inputs = await encryptAmount(amount);
       fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
+      fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "withdrawCollateral",
         args: [amount, inputs[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.withdrawCollateral,
       });
+      await publicClient.waitForTransactionReceipt({ hash });
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
@@ -358,6 +369,7 @@ export function useCreditMarket(market?: `0x${string}`) {
       const inputs = await encryptAddressAndAmount(destination, amount);
       fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
+      fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "borrow",
         args: [amount, inputs[1], inputs[0]],
@@ -365,6 +377,7 @@ export function useCreditMarket(market?: `0x${string}`) {
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.borrow,
       });
+      await publicClient.waitForTransactionReceipt({ hash });
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
@@ -397,12 +410,15 @@ export function useCreditMarket(market?: `0x${string}`) {
       // Step 2 — repay with ONE encAmt for FHE borrow accounting
       const enc2 = await encryptAmount(amount);
       const fees2 = await estimateCappedFees(publicClient);
+      fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "repay",
         args: [amount, enc2[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees2.maxFeePerGas, maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.repay,
       });
+      const r2 = await publicClient.waitForTransactionReceipt({ hash });
+      if (r2.status !== "success") throw new Error("repay step 2 failed");
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
@@ -463,12 +479,15 @@ export function useCreditVault(vault?: `0x${string}`) {
       // Step 2 — record shares + FHE trigger to settle pending CoFHE task
       const enc2 = await encryptAmount(amount);
       const fees2 = await estimateCappedFees(publicClient);
+      fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
         address: vault, abi: CREDIT_VAULT_ABI, functionName: "deposit",
         args: [amount, enc2[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees2.maxFeePerGas, maxPriorityFeePerGas: fees2.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.vaultDeposit,
       });
+      const r2 = await publicClient.waitForTransactionReceipt({ hash });
+      if (r2.status !== "success") throw new Error("vault deposit step 2 failed");
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
@@ -479,6 +498,7 @@ export function useCreditVault(vault?: `0x${string}`) {
   const withdraw = useCallback(
     async (amount: bigint) => {
       if (!publicClient || !vault || !address) throw new Error("not ready");
+      fhe.setStep(FHEStepStatus.SENDING);
       const fees = await estimateCappedFees(publicClient);
       const hash = await writeContractAsync({
         address: vault, abi: CREDIT_VAULT_ABI, functionName: "withdraw",
@@ -486,9 +506,11 @@ export function useCreditVault(vault?: `0x${string}`) {
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.vaultWithdraw,
       });
+      await publicClient.waitForTransactionReceipt({ hash });
+      fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
-    [publicClient, vault, address, writeContractAsync]
+    [publicClient, vault, address, writeContractAsync, fhe]
   );
 
   // ── Reallocate supply: vault does FHE.asEuint64 + confidentialTransfer internally ──
@@ -904,21 +926,14 @@ export function useMarketPosition(market?: `0x${string}`) {
   const [plainBorrow,     setPlainBorrow]     = useState<bigint | null>(null);
   const [maxBorrowableAmt, setMaxBorrowableAmt] = useState<bigint | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sharesLoading, setSharesLoading] = useState(false);
 
+  // refresh — public plaintext shadow reads only (no FHE, auto on mount)
   const refresh = useCallback(async () => {
     if (!publicClient || !market || !address) return;
     setLoading(true);
     try {
-      // Read encrypted handles + plaintext shadows in one batch
-      const [supplyHandle, position, pc, pb, mb] = await Promise.all([
-        publicClient.readContract({
-          address: market, abi: CREDIT_MARKET_ABI,
-          functionName: "getEncryptedSupplyShares", args: [address],
-        }) as Promise<`0x${string}`>,
-        publicClient.readContract({
-          address: market, abi: CREDIT_MARKET_ABI,
-          functionName: "getPosition", args: [address],
-        }) as Promise<readonly [`0x${string}`, `0x${string}`, `0x${string}`, `0x${string}`]>,
+      const [pc, pb, mb] = await Promise.all([
         publicClient.readContract({
           address: market, abi: CREDIT_MARKET_ABI,
           functionName: "getPlainCollateral", args: [address],
@@ -932,21 +947,39 @@ export function useMarketPosition(market?: `0x${string}`) {
           functionName: "maxBorrowable", args: [address],
         }) as Promise<bigint>,
       ]);
-
       setPlainCollateral(pc);
       setPlainBorrow(pb);
       setMaxBorrowableAmt(mb);
+    } catch {
+      // ignore RPC errors silently
+    } finally {
+      setLoading(false);
+    }
+  }, [publicClient, market, address]);
 
+  // decryptShares — FHE decrypt of supply/borrow/collateral handles (manual, user-triggered)
+  const decryptShares = useCallback(async () => {
+    if (!publicClient || !walletClient || !market || !address) return;
+    setSharesLoading(true);
+    try {
+      const [supplyHandle, position] = await Promise.all([
+        publicClient.readContract({
+          address: market, abi: CREDIT_MARKET_ABI,
+          functionName: "getEncryptedSupplyShares", args: [address],
+        }) as Promise<`0x${string}`>,
+        publicClient.readContract({
+          address: market, abi: CREDIT_MARKET_ABI,
+          functionName: "getPosition", args: [address],
+        }) as Promise<readonly [`0x${string}`, `0x${string}`, `0x${string}`, `0x${string}`]>,
+      ]);
       const borrowHandle = position[1];
       const collHandle   = position[2];
-
+      await initFHEClient(publicClient, walletClient);
       const decryptHandle = async (h: `0x${string}`): Promise<bigint> => {
         const bn = BigInt(h);
         if (bn === 0n) return 0n;
-        if (walletClient) await initFHEClient(publicClient, walletClient);
         return decryptBalance(bn);
       };
-
       const [s, b, c] = await Promise.all([
         decryptHandle(supplyHandle),
         decryptHandle(borrowHandle),
@@ -956,15 +989,15 @@ export function useMarketPosition(market?: `0x${string}`) {
       setMyBorrow(b);
       setMyCollateral(c);
     } catch {
-      // Ignore decrypt errors (e.g. wallet not connected, no position yet)
+      // ignore decrypt errors (e.g. wallet not connected, no position yet)
     } finally {
-      setLoading(false);
+      setSharesLoading(false);
     }
   }, [publicClient, walletClient, market, address]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { mySupply, myBorrow, myCollateral, plainCollateral, plainBorrow, maxBorrowableAmt, loading, refresh };
+  return { mySupply, myBorrow, myCollateral, plainCollateral, plainBorrow, maxBorrowableAmt, loading, sharesLoading, refresh, decryptShares };
 }
 
 // ─────────────────────────────────────────────────────────────────────────

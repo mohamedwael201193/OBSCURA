@@ -88,10 +88,10 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
         <EncryptedValue
           label="Your Supply"
           value={pos.mySupply}
-          loading={pos.loading}
+          loading={pos.sharesLoading}
           symbol="cUSDC"
           accent="cyan"
-          onReveal={pos.refresh}
+          onReveal={pos.decryptShares}
         />
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 space-y-2">
           <div className="text-[9px] tracking-[0.18em] uppercase text-white/35">Risk tier</div>

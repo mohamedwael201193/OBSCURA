@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { FHEStepStatus } from '@/lib/constants';
 
 export interface FHEStepState {
@@ -51,6 +51,19 @@ export function useFHEStatus() {
       stepIndex: -1,
     });
   }, []);
+
+  // Auto-reset READY → IDLE after 4 seconds so the stepper clears automatically.
+  useEffect(() => {
+    if (state.status !== FHEStepStatus.READY) return;
+    const t = setTimeout(() => {
+      setState({
+        status: FHEStepStatus.IDLE,
+        stepLabel: STEP_LABELS[FHEStepStatus.IDLE],
+        stepIndex: -1,
+      });
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [state.status]);
 
   return { ...state, setStep, reset };
 }

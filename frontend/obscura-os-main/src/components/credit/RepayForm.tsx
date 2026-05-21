@@ -62,10 +62,10 @@ const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
       <EncryptedValue
         label="Outstanding borrow"
         value={pos.myBorrow}
-        loading={pos.loading}
+        loading={pos.sharesLoading}
         symbol="cUSDC"
         accent="violet"
-        onReveal={pos.refresh}
+        onReveal={pos.decryptShares}
       />
 
       <label className="text-[11px] uppercase tracking-wider text-white/50">Market</label>

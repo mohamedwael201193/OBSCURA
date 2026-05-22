@@ -378,13 +378,16 @@ export function useCreditMarket(market?: `0x${string}`) {
     [publicClient, walletClient, market, address, writeContractAsync, fhe]
   );
 
-  // ── borrow: market IS holder, FHE check via encAmt + encDest from user ──
+  // ── borrow: encrypt amount only — InEaddress removed from contract signature
+  //    (CoFHE coprocessor validates all FHE-typed inputs in calldata; eaddress
+  //     utype=12 is unsupported and caused every tx to revert at input validation)
   const borrow = useCallback(
     async (amount: bigint, destination: `0x${string}`) => {
       if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
-      const inputs = await encryptAddressAndAmount(destination, amount);
+      const enc = await encryptAmount(amount);
+      void destination; // kept in signature for UI compat; not sent to contract
       fhe.setStep(FHEStepStatus.COMPUTING);
 
       // ── Pre-flight on-chain checks — surfaces actual revert reason before submitting tx ──
@@ -420,7 +423,7 @@ export function useCreditMarket(market?: `0x${string}`) {
       fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "borrow",
-        args: [amount, inputs[1], inputs[0]],
+        args: [amount, enc[0]],
         account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.borrow,

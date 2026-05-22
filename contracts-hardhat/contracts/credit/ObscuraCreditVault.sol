@@ -163,6 +163,7 @@ contract ObscuraCreditVault {
         if (publicTotalDeposited >= amtPlain) publicTotalDeposited -= amtPlain;
 
         // Push cUSDC to user — vault IS the holder.
+        FHE.allowThis(eAmt);           // cUSDC isAllowed(handle, vault) check
         FHE.allowTransient(eAmt, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
             msg.sender, uint256(euint64.unwrap(eAmt))
@@ -182,6 +183,7 @@ contract ObscuraCreditVault {
         if (!isApprovedMarket[market]) revert MarketNotApproved();
         if (uint128(amtPlain) > marketCap[market]) revert CapExceeded();
         euint64 handle = FHE.asEuint64(amtPlain);
+        FHE.allowThis(handle);         // cUSDC isAllowed(handle, vault) check
         FHE.allowTransient(handle, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
             market, uint256(euint64.unwrap(handle))

@@ -241,6 +241,7 @@ contract ObscuraCreditMarket {
         if (amtPlain <= totalSupplyAssets - totalBorrowAssets) {
             totalSupplyAssets -= amtPlain;
         }
+        FHE.allowThis(eAmt);           // cUSDC isAllowed(handle, market) check
         FHE.allowTransient(eAmt, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
             msg.sender, uint256(euint64.unwrap(eAmt))
@@ -265,6 +266,7 @@ contract ObscuraCreditMarket {
         if (amtPlain <= totalSupplyAssets - totalBorrowAssets) {
             totalSupplyAssets -= amtPlain;
         }
+        FHE.allowThis(eAmt);           // cUSDC isAllowed(handle, market) check
         FHE.allowTransient(eAmt, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
             msg.sender, uint256(euint64.unwrap(eAmt))
@@ -333,6 +335,7 @@ contract ObscuraCreditMarket {
         FHE.allowThis(p.collateral); FHE.allow(p.collateral, msg.sender);
         _plainCollateral[msg.sender] -= amtPlain;
 
+        FHE.allowThis(req);               // cUSDC isAllowed(handle, market) check
         FHE.allowTransient(req, collateralAsset);
         IConfidentialUSDCv2(collateralAsset).confidentialTransfer(
             msg.sender, uint256(euint64.unwrap(req))
@@ -381,6 +384,7 @@ contract ObscuraCreditMarket {
         // internal FHE.sub — causing cUSDC to revert. FHE.asEuint64(plaintext)
         // produces a trivially-encrypted, immediately-usable handle.
         euint64 disburse = FHE.asEuint64(amtPlain);
+        FHE.allowThis(disburse);           // cUSDC isAllowed(handle, market) check
         FHE.allowTransient(disburse, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
             msg.sender, uint256(euint64.unwrap(disburse))

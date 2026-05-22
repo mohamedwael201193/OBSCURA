@@ -366,7 +366,7 @@ contract ObscuraCreditMarket {
         _ensurePos(msg.sender);
 
         Position storage p = _pos[msg.sender];
-        euint64 req = FHE.asEuint64(encAmt);
+        euint64 req = FHE.asEuint64(encAmt); // privacy: tracks encrypted debt
 
         p.borrowShares = FHE.add(p.borrowShares, req);
         FHE.allowThis(p.borrowShares); FHE.allow(p.borrowShares, msg.sender);
@@ -375,9 +375,15 @@ contract ObscuraCreditMarket {
         _plainBorrow[msg.sender] += amtPlain;
         totalBorrowAssets        += amtPlain;
 
-        FHE.allowTransient(req, loanAsset);
+        // Disburse via a SEPARATE plaintext-derived handle (same pattern as withdraw()).
+        // Reason: freshly-created InEuint64-derived handles (req) may not yet be
+        // settled by the CoFHE coprocessor when cUSDC tries to use them in its
+        // internal FHE.sub — causing cUSDC to revert. FHE.asEuint64(plaintext)
+        // produces a trivially-encrypted, immediately-usable handle.
+        euint64 disburse = FHE.asEuint64(amtPlain);
+        FHE.allowTransient(disburse, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
-            msg.sender, uint256(euint64.unwrap(req))
+            msg.sender, uint256(euint64.unwrap(disburse))
         );
         emit Borrowed(msg.sender);
     }

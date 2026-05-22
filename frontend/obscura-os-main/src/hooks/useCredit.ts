@@ -262,9 +262,13 @@ export function useCreditMarket(market?: `0x${string}`) {
       fhe.setStep(FHEStepStatus.SETTLING);
       await awaitCoFHESettle(publicClient, txTransfer);
 
+      // 10-second cool-down: awaitCoFHESettle polling bursts exhaust the
+      // Tenderly free-tier rate-limit window. Let the endpoint recover.
+      await new Promise((resolve) => setTimeout(resolve, 10_000));
+
       // Step 2 — record supply shares + FHE trigger to settle pending CoFHE task
       const enc2 = await encryptAmount(amount);
-      const fees2 = await estimateCappedFees(publicClient);
+      const fees2 = await withRateLimitRetry(() => estimateCappedFees(publicClient));
       fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "supply",

@@ -171,7 +171,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
 
   const expired = expiryInfo && expiryInfo.block > 0n && expiryInfo.current >= expiryInfo.block;
   const daysLeft = expiryInfo && expiryInfo.block > 0n && expiryInfo.current < expiryInfo.block
-    ? Math.max(1, Number((expiryInfo.block - expiryInfo.current) / 7200n))
+    ? Math.max(1, Math.round((Number(expiryInfo.block - expiryInfo.current) * 0.25) / 86400))
     : null;
 
   return (
@@ -187,7 +187,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
         <div className="min-w-0 flex-1">
           <div className="text-[10px] tracking-[0.2em] uppercase text-emerald-400/80 font-bold mb-1">Confidential Payment for You</div>
           <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground leading-tight">
-            You've been sent a private cUSDC payment
+            You've been sent a private ocUSDC payment
           </h2>
           <p className="text-[13px] text-muted-foreground/65 leading-relaxed mt-2">
             Escrow <span className="font-mono font-bold text-foreground/85">#{claimId}</span> is waiting to be claimed.
@@ -265,7 +265,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
                 : <>Claim ocUSDC privately</>}
             </motion.button>
             <p className="mt-3 text-[10px] text-muted-foreground/45 leading-relaxed text-center">
-              Silent-failure design: if this wallet is not the encrypted recipient, the transaction succeeds but transfers 0 cUSDC.
+              Silent-failure design: if this wallet is not the encrypted recipient, the transaction succeeds but transfers 0 ocUSDC.
               No funds lost, no information leaked. Anyone safely can click — only the right wallet receives the payment.
             </p>
           </motion.div>

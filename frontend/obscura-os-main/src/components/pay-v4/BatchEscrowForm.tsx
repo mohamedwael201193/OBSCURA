@@ -246,7 +246,7 @@ export default function BatchEscrowForm() {
           if (fundingResults.length > 0 && failN === 0) {
             return (
               <p className="text-[12px] text-emerald-300/85 leading-relaxed">
-                ✓ All {okN} escrows funded. Share each claim link with its recipient — they call Redeem to receive the cUSDC. Recipients are encrypted on-chain.
+                ✓ All {okN} escrows funded. Share each claim link with its recipient — they call Redeem to receive the ocUSDC. Recipients are encrypted on-chain.
               </p>
             );
           }

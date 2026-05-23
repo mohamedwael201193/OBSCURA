@@ -178,7 +178,7 @@ export default function InvoicePayCard({
           <div className="px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.07]">
             <div className="text-[9px] tracking-[0.15em] uppercase text-muted-foreground/45 mb-0.5">Your balance</div>
             <div className="font-mono text-[12px] font-semibold text-emerald-200">
-              {trackedUnits > 0n ? `≈ ${formatUSDC(trackedUnits)}` : trackedCusdc ?? "—"}
+              {trackedUnits > 0n ? `≈ ${formatUSDC(trackedUnits)} ocUSDC` : trackedCusdc ? `${trackedCusdc} ocUSDC` : "—"}
             </div>
           </div>
         </div>
@@ -276,9 +276,13 @@ export default function InvoicePayCard({
                   )}
                 </div>
                 <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
-                  Invoice #{invoiceId} settled. Funds are now in the creator's encrypted balance — they can decrypt to confirm.
-                  Your tracked balance has been decremented locally.
+                  Invoice #{invoiceId} settled. Funds were sent to the creator’s stealth address — your balance has been decremented locally.
                 </p>
+                <div className="mt-2 flex items-start gap-2 px-3 py-2 rounded-lg bg-cyan-500/[0.06] border border-cyan-500/20">
+                  <span className="text-[11px] text-cyan-300/80 leading-relaxed">
+                    The creator should check <strong className="text-cyan-200">Receive → Stealth Inbox</strong> and click <strong className="text-cyan-200">Claim all</strong> to receive the funds.
+                  </span>
+                </div>
               </div>
             </div>
             {paidHash && (

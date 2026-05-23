@@ -167,8 +167,13 @@ export default function InvoiceForm() {
             Invoice #{created.id} published
           </div>
           <p className="text-[11px] text-muted-foreground/65">
-            Share this link with the payer. They click, connect, pay — funds settle directly to your encrypted balance.
+            Share this link with the payer. They click, connect, and pay — ocUSDC is sent privately to your stealth address.
           </p>
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-cyan-500/[0.06] border border-cyan-500/20">
+            <span className="text-[11px] text-cyan-300 leading-relaxed">
+              ⚠️ After payment, go to <strong className="text-cyan-200">Receive → Stealth Inbox</strong> and click <strong className="text-cyan-200">Claim all</strong> to sweep the funds into your wallet.
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <code className="flex-1 truncate text-[11px] font-mono px-2 py-1.5 rounded bg-black/20 text-emerald-200/80">
               {created.link}

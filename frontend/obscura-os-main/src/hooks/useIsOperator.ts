@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
-import { REINEIRA_CUSDC_ADDRESS, REINEIRA_CUSDC_ABI } from "@/config/pay";
+import { CREDIT_OCUSDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
 
 /**
  * useIsOperator — checks whether a spender is already an authorized operator
- * on the Reineira cUSDC contract for the connected wallet.
+ * on the ocUSDC contract for the connected wallet.
  * Avoids unnecessary setOperator txs if already approved.
  */
 export function useIsOperator() {
@@ -14,15 +14,15 @@ export function useIsOperator() {
 
   const checkOperator = useCallback(
     async (spender: `0x${string}`): Promise<boolean> => {
-      if (!publicClient || !address || !REINEIRA_CUSDC_ADDRESS) return false;
+      if (!publicClient || !address || !CREDIT_OCUSDC_ADDRESS) return false;
 
       const key = `${address}_${spender}`;
       if (cache[key] !== undefined) return cache[key];
 
       try {
         const result = await publicClient.readContract({
-          address: REINEIRA_CUSDC_ADDRESS,
-          abi: REINEIRA_CUSDC_ABI,
+          address: CREDIT_OCUSDC_ADDRESS,
+          abi: CONFIDENTIAL_TOKEN_ABI,
           functionName: "isOperator",
           args: [address, spender],
         });

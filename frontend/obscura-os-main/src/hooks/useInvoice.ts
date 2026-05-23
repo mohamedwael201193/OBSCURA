@@ -21,11 +21,10 @@ import { keccak256, toBytes, encodeAbiParameters } from "viem";
 import {
   OBSCURA_INVOICE_ADDRESS,
   OBSCURA_INVOICE_ABI,
-  REINEIRA_CUSDC_ADDRESS,
-  REINEIRA_CUSDC_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
   OBSCURA_STEALTH_REGISTRY_ABI,
 } from "@/config/pay";
+import { CONFIDENTIAL_USDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
 import { deriveStealthPayment, type MetaAddress } from "@/lib/stealth";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
 import { withRateLimitRetry } from "@/lib/rateLimit";
@@ -149,7 +148,7 @@ export function useInvoice() {
       onProgress?: (id: string, status: "active" | "done" | "error", extra?: { txHash?: `0x${string}`; errorMsg?: string; countdownSec?: number }) => void,
     ) => {
       const emit = onProgress ?? (() => {});
-      if (!publicClient || !walletClient || !address || !OBSCURA_INVOICE_ADDRESS || !REINEIRA_CUSDC_ADDRESS) {
+      if (!publicClient || !walletClient || !address || !OBSCURA_INVOICE_ADDRESS || !CONFIDENTIAL_USDC_ADDRESS) {
         throw new Error("Wallet not connected or contracts not configured");
       }
       await initFHEClient(publicClient, walletClient);
@@ -192,14 +191,14 @@ export function useInvoice() {
 
       // ── Tx 1: FHE encrypt + cUSDC.confidentialTransfer ───────────
       emit("enc1", "active");
-      const transferEnc = await encryptAmount(amount, (s) => { if (import.meta.env.DEV) console.log("[Invoice pay encrypt #1 cUSDC]", s); });
+      const transferEnc = await encryptAmount(amount, (s) => { if (import.meta.env.DEV) console.log("[Invoice pay encrypt #1 ocUSDC]", s); });
       emit("enc1", "done");
 
       emit("transfer", "active");
       const tFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
       const transferHash = await withRateLimitRetry(() => writeContractAsync({
-        address: REINEIRA_CUSDC_ADDRESS,
-        abi: REINEIRA_CUSDC_ABI,
+        address: CONFIDENTIAL_USDC_ADDRESS,
+        abi: CONFIDENTIAL_TOKEN_ABI,
         functionName: "confidentialTransfer",
         args: [actualRecipient, transferEnc[0]],
         account: address,
@@ -212,8 +211,8 @@ export function useInvoice() {
         publicClient.waitForTransactionReceipt({ hash: transferHash })
       );
       if (transferReceipt.status !== "success") {
-        emit("transfer", "error", { errorMsg: `cUSDC transfer reverted (tx: ${transferHash})` });
-        throw new Error(`cUSDC transfer reverted (tx: ${transferHash})`);
+        emit("transfer", "error", { errorMsg: `ocUSDC transfer reverted (tx: ${transferHash})` });
+        throw new Error(`ocUSDC transfer reverted (tx: ${transferHash})`);
       }
       emit("transfer", "done", { txHash: transferHash });
 

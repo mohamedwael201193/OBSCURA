@@ -1,25 +1,15 @@
-import { useCallback, useState } from "react";
-import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
-import { arbitrumSepolia } from "viem/chains";
-import {
-  OBSCURA_PAY_STREAM_ABI,
-  OBSCURA_PAY_STREAM_ADDRESS,
-} from "@/config/pay";
-import { estimateCappedFees } from "@/lib/gas";
+import { useCallback } from "react";
+import { usePayStreamV2 } from "@/hooks/usePayStreamV2";
 
 /**
- * useCreateStream — schedules a new recurring payroll stream.
- * Note: employer must SEPARATELY approve cUSDC spend to the stream
- * contract before the first tick. The UI should walk through that step.
+ * useCreateStream — thin wrapper around usePayStreamV2.createStream.
+ * Kept for backward-compat with CreateStreamForm (which passes recipientHint).
+ * V1 stream (OBSCURA_PAY_STREAM_ADDRESS) was broken (selector mismatch) and
+ * has been replaced by ObscuraPayStreamV2.
  */
 export function useCreateStream() {
-  const { address } = useAccount();
-  const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
-  const { writeContractAsync } = useWriteContract();
-  const [isPending, setIsPending] = useState(false);
-  const [txHash, setTxHash] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { createStream, isPending, error } = usePayStreamV2();
+  const txHashRef = { current: null as string | null };
 
   const create = useCallback(
     async (params: {
@@ -28,42 +18,17 @@ export function useCreateStream() {
       startTime: number;
       endTime: number;
     }) => {
-      if (!publicClient || !walletClient || !OBSCURA_PAY_STREAM_ADDRESS) {
-        throw new Error("Wallet or contract not configured");
-      }
-      setIsPending(true);
-      setError(null);
-      try {
-        const fees = await estimateCappedFees(publicClient);
-
-        const hash = await writeContractAsync({
-          address: OBSCURA_PAY_STREAM_ADDRESS,
-          abi: OBSCURA_PAY_STREAM_ABI,
-          functionName: "createStream",
-          args: [
-            params.recipientHint,
-            BigInt(params.periodSeconds),
-            BigInt(params.startTime),
-            BigInt(params.endTime),
-          ],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas: fees.maxFeePerGas,
-          maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
-          gas: 300_000n,
-        });
-        setTxHash(hash);
-        await publicClient.waitForTransactionReceipt({ hash });
-        return hash;
-      } catch (e) {
-        setError((e as Error).message);
-        throw e;
-      } finally {
-        setIsPending(false);
-      }
+      const result = await createStream({
+        recipientAddress: params.recipientHint,
+        periodSeconds: params.periodSeconds,
+        startTime: params.startTime,
+        endTime: params.endTime,
+      });
+      txHashRef.current = result.hash;
+      return result.hash;
     },
-    [publicClient, walletClient, writeContractAsync, address]
+    [createStream]
   );
 
-  return { create, isPending, txHash, error };
+  return { create, isPending, txHash: txHashRef.current, error };
 }

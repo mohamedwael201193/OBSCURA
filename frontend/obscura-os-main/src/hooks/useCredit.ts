@@ -28,8 +28,8 @@ import {
   CREDIT_MARKET_ABI,
   CREDIT_ORACLE_ABI,
   CREDIT_ORACLE_ADDRESS,
-  CREDIT_SCORE_ABI,
-  CREDIT_SCORE_ADDRESS,
+  CREDIT_SCORE_V2_ABI,
+  CREDIT_SCORE_V2_ADDRESS,
   CREDIT_STREAM_HOOK_ABI,
   CREDIT_STREAM_HOOK_ADDRESS,
   CREDIT_VAULTS,
@@ -38,7 +38,18 @@ import {
   type CreditMarketMeta,
   type CreditVaultMeta,
 } from "@/config/credit";
-import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, REINEIRA_CUSDC_ABI, REINEIRA_CUSDC_ADDRESS } from "@/config/pay";
+import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, REINEIRA_CUSDC_ABI as _LEGACY_CUSDC_ABI } from "@/config/pay";
+// v3.14 — credit-side switched from Reineira cUSDC (contract-hostile: rejected
+// all contract-context confidentialTransfer calls, causing every borrow to
+// revert) to in-repo ObscuraConfidentialToken (ocUSDC). Pay / Vote still use
+// REINEIRA_CUSDC_ADDRESS via @/config/pay.
+import { CREDIT_OCUSDC_ADDRESS } from "@/config/credit";
+const REINEIRA_CUSDC_ADDRESS = CREDIT_OCUSDC_ADDRESS; // alias for minimal-diff — credit market v316 uses v314_ocUSDC
+// The new ocUSDC token exposes confidentialTransfer(address,InEuint64) +
+// setOperator/isOperator with the same selectors as Reineira cUSDC, so the
+// REINEIRA_CUSDC_ABI keeps working for the credit flow.
+const REINEIRA_CUSDC_ABI = _LEGACY_CUSDC_ABI;
+void OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS;
 import { decryptBalance, encryptAddressAndAmount, encryptAmount, initFHEClient } from "@/lib/fhe";
 import { estimateCappedFees } from "@/lib/gas";
 import { withRateLimitRetry } from "@/lib/rateLimit";
@@ -258,7 +269,7 @@ export function useCreditMarket(market?: `0x${string}`) {
         gas: 600_000n,
       });
       const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
-      if (r.status !== "success") throw new Error("cUSDC transfer to market failed");
+      if (r.status !== "success") throw new Error("ocUSDC transfer to market failed");
       fhe.setStep(FHEStepStatus.SETTLING);
       await awaitCoFHESettle(publicClient, txTransfer);
 
@@ -284,23 +295,31 @@ export function useCreditMarket(market?: `0x${string}`) {
     [publicClient, walletClient, market, address, writeContractAsync, fhe]
   );
 
-  // ── Withdraw: market IS holder, uses FHE.asEuint64 internally ──
+  // ── Withdraw: passes encAmt (real ciphertext). Market guards via FHE.eq ──
+  //    Reineira cUSDC rejects trivially-encrypted handles in confidentialTransfer
+  //    so the market must derive its outbound handle from a user-supplied
+  //    InEuint64. amtPlain is still required for plaintext accounting.
   const withdraw = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !market || !address) throw new Error("not ready");
-      fhe.setStep(FHEStepStatus.SENDING);
+      if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
+      fhe.setStep(FHEStepStatus.ENCRYPTING);
+      await initFHEClient(publicClient, walletClient);
+      const inputs = await encryptAmount(amount);
+      fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
+      fhe.setStep(FHEStepStatus.SENDING);
       const hash = await writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "withdraw",
-        args: [amount], account: address, chain: arbitrumSepolia,
+        args: [amount, inputs[0]], account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.withdraw,
       });
-      await publicClient.waitForTransactionReceipt({ hash });
+      const r = await publicClient.waitForTransactionReceipt({ hash });
+      if (r.status !== "success") throw new Error("withdraw reverted on-chain");
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
-    [publicClient, market, address, writeContractAsync, fhe]
+    [publicClient, walletClient, market, address, writeContractAsync, fhe]
   );
 
   // ── Two-step supplyCollateral: cToken.confidentialTransfer → market.supplyCollateral ──
@@ -407,15 +426,15 @@ export function useCreditMarket(market?: `0x${string}`) {
       if (amount > maxB) {
         const maxFmt = formatUnits(maxB, 6);
         throw new Error(
-          `LLTVBreach — max borrowable is ${maxFmt} cUSDC. ` +
+          `LLTVBreach — max borrowable is ${maxFmt} ocUSDC. ` +
           `Supply more collateral or repay existing debt first.`
         );
       }
       if (amount > available) {
         const avFmt = formatUnits(available, 6);
         throw new Error(
-          `InsufficientLiquidity — only ${avFmt} cUSDC available in pool. ` +
-          `Supply cUSDC as a lender first.`
+          `InsufficientLiquidity — only ${avFmt} ocUSDC available in pool. ` +
+          `Supply ocUSDC as a lender first.`
         );
       }
 
@@ -431,8 +450,9 @@ export function useCreditMarket(market?: `0x${string}`) {
       const r = await publicClient.waitForTransactionReceipt({ hash });
       if (r.status !== "success") {
         throw new Error(
-          `Borrow reverted on-chain. Pre-flight checks passed (maxBorrowable=${formatUnits(maxB, 6)}, ` +
-          `available=${formatUnits(available, 6)}) — likely an FHE compute or gas issue. Try again.`
+          `Borrow reverted on-chain (pre-flight OK: max=${formatUnits(maxB, 6)}, avail=${formatUnits(available, 6)}). ` +
+          `Most likely the FHE.eq guard mismatched (encrypted amount ≠ plaintext amount). ` +
+          `Retry the transaction; if it persists, refresh the page to reset the FHE client.`
         );
       }
       fhe.setStep(FHEStepStatus.READY);
@@ -460,7 +480,7 @@ export function useCreditMarket(market?: `0x${string}`) {
         gas: 600_000n,
       });
       const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
-      if (r.status !== "success") throw new Error("cUSDC transfer failed");
+      if (r.status !== "success") throw new Error("ocUSDC transfer failed");
       fhe.setStep(FHEStepStatus.SETTLING);
       await awaitCoFHESettle(publicClient, txTransfer);
 
@@ -532,7 +552,7 @@ export function useCreditVault(vault?: `0x${string}`) {
         gas: 600_000n,
       });
       const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
-      if (r.status !== "success") throw new Error("cUSDC transfer to vault failed");
+      if (r.status !== "success") throw new Error("ocUSDC transfer to vault failed");
       fhe.setStep(FHEStepStatus.SETTLING);
       await awaitCoFHESettle(publicClient, txTransfer);
 
@@ -701,10 +721,10 @@ export function useCreditScore() {
   const update = useCallback(
     async (user?: `0x${string}`) => {
       const target = user ?? address;
-      if (!publicClient || !CREDIT_SCORE_ADDRESS || !target) throw new Error("not ready");
+      if (!publicClient || !CREDIT_SCORE_V2_ADDRESS || !target) throw new Error("not ready");
       const fees = await estimateCappedFees(publicClient);
       return writeContractAsync({
-        address: CREDIT_SCORE_ADDRESS, abi: CREDIT_SCORE_ABI,
+        address: CREDIT_SCORE_V2_ADDRESS, abi: CREDIT_SCORE_V2_ABI,
         functionName: "updateScore", args: [target],
         account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
@@ -716,10 +736,10 @@ export function useCreditScore() {
 
   const attest = useCallback(
     async (market: `0x${string}`) => {
-      if (!publicClient || !CREDIT_SCORE_ADDRESS || !address) throw new Error("not ready");
+      if (!publicClient || !CREDIT_SCORE_V2_ADDRESS || !address) throw new Error("not ready");
       const fees = await estimateCappedFees(publicClient);
       return writeContractAsync({
-        address: CREDIT_SCORE_ADDRESS, abi: CREDIT_SCORE_ABI,
+        address: CREDIT_SCORE_V2_ADDRESS, abi: CREDIT_SCORE_V2_ABI,
         functionName: "attestForMarket", args: [market],
         account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
@@ -1083,12 +1103,12 @@ export function useCreditScoreValue() {
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!publicClient || !CREDIT_SCORE_ADDRESS || !address) return;
+    if (!publicClient || !CREDIT_SCORE_V2_ADDRESS || !address) return;
     setLoading(true);
     try {
       const handle = await publicClient.readContract({
-        address: CREDIT_SCORE_ADDRESS, abi: CREDIT_SCORE_ABI,
-        functionName: "getScore", args: [address],
+        address: CREDIT_SCORE_V2_ADDRESS, abi: CREDIT_SCORE_V2_ABI,
+        functionName: "scoreOf", args: [address],
       }) as `0x${string}`;
       const bn = BigInt(handle);
       if (bn === 0n) {

@@ -1,9 +1,9 @@
 /**
  * UnifiedSendForm — single-form-three-modes sender.
  *
- *   1. Direct  — `cUSDC.confidentialTransfer(to, encAmount)` to a known address.
+ *   1. Direct  — `ocUSDC.confidentialTransfer(to, encAmount)` to a known address.
  *   2. Stealth — resolve recipient meta (handle / address+meta lookup), derive
- *      a fresh ERC-5564 stealth payment, transfer cUSDC there, then publish an
+ *      a fresh ERC-5564 stealth payment, transfer ocUSDC there, then publish an
  *      `announce()` event so the recipient can find it via `useStealthScan`.
  *   3. Bridge  — link out to the existing CrossChainFund form.
  *
@@ -45,8 +45,7 @@ import {
 import { estimateCappedFees } from "@/lib/gas";
 import { deriveStealthPayment } from "@/lib/stealth";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
-import { ensureOperator } from "@/lib/operators";
-import { REINEIRA_CUSDC_ADDRESS, REINEIRA_CUSDC_ABI } from "@/config/pay";
+import { CONFIDENTIAL_USDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
 
 interface ModeOption {
   key: SendMode;
@@ -156,7 +155,6 @@ export default function UnifiedSendForm() {
       if (mode === "direct") {
         if (!resolved.address) throw new Error("Recipient address missing");
         beginProgress([
-          "Authorize cUSDC operator (if needed)",
           "Initialize FHE encryption client",
           "Encrypt amount in browser",
           "Submit confidentialTransfer",
@@ -164,19 +162,16 @@ export default function UnifiedSendForm() {
         ]);
         try {
           advanceProgress(0, "active");
-          await ensureOperator(publicClient, walletClient, address, REINEIRA_CUSDC_ADDRESS!);
+          await initFHEClient(publicClient, walletClient);
           advanceProgress(0, "done");
           advanceProgress(1, "active");
-          await initFHEClient(publicClient, walletClient);
-          advanceProgress(1, "done");
-          advanceProgress(2, "active");
           // useCUSDCTransfer encrypts + submits + waits internally; we surface
           // its three remaining steps as a single progress bracket.
-          advanceProgress(2, "done");
-          advanceProgress(3, "active");
+          advanceProgress(1, "done");
+          advanceProgress(2, "active");
           hash = await transfer.transfer(resolved.address, amountWei);
-          advanceProgress(3, "done", `${hash.slice(0, 10)}…`);
-          advanceProgress(4, "done");
+          advanceProgress(2, "done", `${hash.slice(0, 10)}…`);
+          advanceProgress(3, "done");
         } catch (e) {
           const idx = progress.findIndex((s) => s.status === "active");
           if (idx >= 0) advanceProgress(idx, "error", (e as Error).message);
@@ -192,15 +187,14 @@ export default function UnifiedSendForm() {
         });
       } else if (mode === "stealth") {
         if (!resolved.meta) throw new Error("Recipient meta-address missing");
-        if (!REINEIRA_CUSDC_ADDRESS || !OBSCURA_STEALTH_REGISTRY_ADDRESS) {
-          throw new Error("Stealth registry / cUSDC not configured");
+        if (!CONFIDENTIAL_USDC_ADDRESS || !OBSCURA_STEALTH_REGISTRY_ADDRESS) {
+          throw new Error("Stealth registry / ocUSDC not configured");
         }
         beginProgress([
           "Derive fresh stealth address",
-          "Authorize cUSDC operator (if needed)",
           "Initialize FHE encryption client",
           "Encrypt amount in browser",
-          "Transfer cUSDC to stealth address",
+          "Transfer ocUSDC to stealth address",
           "Publish announcement on-chain",
         ]);
         let stealth: ReturnType<typeof deriveStealthPayment>;
@@ -210,22 +204,18 @@ export default function UnifiedSendForm() {
           advanceProgress(0, "done", `${stealth.stealthAddress.slice(0, 10)}…`);
 
           advanceProgress(1, "active");
-          await ensureOperator(publicClient, walletClient, address, REINEIRA_CUSDC_ADDRESS);
+          await initFHEClient(publicClient, walletClient);
           advanceProgress(1, "done");
 
           advanceProgress(2, "active");
-          await initFHEClient(publicClient, walletClient);
+          const enc = await encryptAmount(amountWei);
           advanceProgress(2, "done");
 
           advanceProgress(3, "active");
-          const enc = await encryptAmount(amountWei);
-          advanceProgress(3, "done");
-
-          advanceProgress(4, "active");
           const fees = await estimateCappedFees(publicClient);
           hash = await writeContractAsync({
-            address: REINEIRA_CUSDC_ADDRESS,
-            abi: REINEIRA_CUSDC_ABI,
+            address: CONFIDENTIAL_USDC_ADDRESS,
+            abi: CONFIDENTIAL_TOKEN_ABI,
             functionName: "confidentialTransfer",
             args: [stealth.stealthAddress, enc[0]],
             account: address,
@@ -235,9 +225,9 @@ export default function UnifiedSendForm() {
             gas: 500_000n,
           });
           await publicClient.waitForTransactionReceipt({ hash });
-          advanceProgress(4, "done", `${hash.slice(0, 10)}…`);
+          advanceProgress(3, "done", `${hash.slice(0, 10)}…`);
 
-          advanceProgress(5, "active");
+          advanceProgress(4, "active");
           const metadata = encodeAbiParameters(
             [{ type: "uint256" }, { type: "uint256" }, { type: "uint256" }],
             [0n, 0n, amountWei]
@@ -255,7 +245,7 @@ export default function UnifiedSendForm() {
             gas: 250_000n,
           });
           await publicClient.waitForTransactionReceipt({ hash: annHash });
-          advanceProgress(5, "done", `${annHash.slice(0, 10)}…`);
+          advanceProgress(4, "done", `${annHash.slice(0, 10)}…`);
 
           receipts.add({
             kind: "stealth-sweep",
@@ -305,7 +295,7 @@ export default function UnifiedSendForm() {
           <Send className="w-4 h-4 text-emerald-400" />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Send cUSDC</h3>
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Send ocUSDC</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted · Private</p>
         </div>
         {/* cUSDC balance */}
@@ -314,7 +304,7 @@ export default function UnifiedSendForm() {
           <span className="font-mono text-[12px] text-emerald-300 font-medium">
             {cusdc ?? "•••"}
           </span>
-          <span className="text-[9px] text-emerald-400/50 uppercase">cUSDC</span>
+          <span className="text-[9px] text-emerald-400/50 uppercase">ocUSDC</span>
         </div>
         {/* step dots */}
         <div className="flex items-center gap-1 shrink-0">

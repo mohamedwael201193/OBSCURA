@@ -37,7 +37,7 @@ export function ReceiptRow({ r, onRemove }: { r: Receipt; onRemove: (id: string)
             <span className="text-muted-foreground/70"> · {r.recipientLabel}</span>
           )}
           {r.amount && (
-            <span className="text-emerald-300/80 font-mono"> · {r.amount} cUSDC</span>
+            <span className="text-emerald-300/80 font-mono"> · {r.amount} ocUSDC</span>
           )}
         </div>
         <div className="text-[10px] text-muted-foreground/55 font-mono truncate">
@@ -100,7 +100,7 @@ export function ReceiptList({ limit }: { limit?: number }) {
                 [
                   { key: "date", label: "Date (UTC)" },
                   { key: "kind", label: "Kind" },
-                  { key: "amount", label: "Amount (cUSDC)" },
+                  { key: "amount", label: "Amount (ocUSDC)" },
                   { key: "recipient", label: "Recipient label" },
                   { key: "note", label: "Note" },
                   { key: "txHash", label: "Tx hash" },

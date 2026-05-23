@@ -54,6 +54,22 @@ contract ObscuraCreditVault {
     // Public scalar mirror for frontend TVL display.
     uint128 public publicTotalDeposited;
 
+    // ─── Withdraw queue (v3.16) ───────────────────────────────────────────
+    // Two paths:
+    //   requestWithdraw(amt)  → claimable after WITHDRAW_DELAY (free).
+    //   instantWithdraw(amt)  → immediate, charges INSTANT_FEE_BPS (0.2%).
+    struct PendingWithdraw {
+        uint128 amt;
+        uint64  claimableAt;
+    }
+    mapping(address => PendingWithdraw) public pendingWithdraw;
+    uint64 public constant WITHDRAW_DELAY  = 24 hours;
+    uint16 public constant INSTANT_FEE_BPS = 20; // 0.2%
+
+    event WithdrawRequested(address indexed user, uint128 amt, uint64 claimableAt);
+    event WithdrawCancelled(address indexed user, uint128 amt);
+    event InstantWithdrawn(address indexed user, uint128 amt, uint128 fee);
+
     event CuratorSet(address indexed curator);
     event FeeSet(uint16 bps, address indexed recipient);
     event MarketApproved(address indexed market, uint128 cap);
@@ -177,26 +193,32 @@ contract ObscuraCreditVault {
     /// @dev    Vault trivially encrypts amtPlain, transfers cUSDC to market
     ///         via confidentialTransfer(handle), then notifies market to
     ///         record supply shares. No InEuint64 forwarding (CoFHE safe).
-    function reallocateSupply(address market, uint64 amtPlain)
+    function reallocateSupply(address market, uint64 amtPlain, InEuint64 calldata encAmt)
         external onlyCurator
     {
         if (!isApprovedMarket[market]) revert MarketNotApproved();
         if (uint128(amtPlain) > marketCap[market]) revert CapExceeded();
-        euint64 handle = FHE.asEuint64(amtPlain);
-        FHE.allowThis(handle);         // cUSDC isAllowed(handle, vault) check
-        FHE.allowTransient(handle, loanAsset);
+
+        // Real-ciphertext-derived handle. Reineira cUSDC rejects trivially-
+        // encrypted handles in confidentialTransfer.
+        euint64 req      = FHE.asEuint64(encAmt);
+        euint64 expected = FHE.asEuint64(amtPlain);
+        ebool   matches  = FHE.eq(req, expected);
+        euint64 safe     = FHE.select(matches, req, _zero);
+        FHE.allowThis(safe);
+        FHE.allowTransient(safe, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
-            market, uint256(euint64.unwrap(handle))
+            market, uint256(euint64.unwrap(safe))
         );
         ObscuraCreditMarket(market).notifySupply(amtPlain);
         emit Reallocated(market, amtPlain, true);
     }
 
-    function reallocateWithdraw(address market, uint64 amtPlain)
+    function reallocateWithdraw(address market, uint64 amtPlain, InEuint64 calldata encAmt)
         external onlyCurator
     {
         if (!isApprovedMarket[market]) revert MarketNotApproved();
-        ObscuraCreditMarket(market).withdrawToVault(amtPlain);
+        ObscuraCreditMarket(market).withdrawToVault(amtPlain, encAmt);
         emit Reallocated(market, amtPlain, false);
     }
 
@@ -218,4 +240,97 @@ contract ObscuraCreditVault {
     }
 
     function getTotalShares() external view returns (uint128) { return totalShares; }
+
+    // ─── Withdraw-queue (v3.16) ────────────────────────────────────────────
+
+    /// @notice Queue a withdrawal, claimable after WITHDRAW_DELAY at zero fee.
+    ///         Locks the requested amount from the user's share shadow.
+    function requestWithdraw(uint64 amtPlain) external {
+        if (_plainShares[msg.sender] < amtPlain) revert InsufficientShares();
+        // Add to any existing pending (extend timer).
+        PendingWithdraw storage q = pendingWithdraw[msg.sender];
+        q.amt        += uint128(amtPlain);
+        q.claimableAt = uint64(block.timestamp + WITHDRAW_DELAY);
+        // Reserve shares: deduct shadow now, encrypted balance moves at claim.
+        _plainShares[msg.sender] -= uint128(amtPlain);
+        emit WithdrawRequested(msg.sender, uint128(amtPlain), q.claimableAt);
+    }
+
+    /// @notice Cancel a pending withdrawal; shares return to user shadow.
+    function cancelWithdraw() external {
+        PendingWithdraw storage q = pendingWithdraw[msg.sender];
+        uint128 amt = q.amt;
+        require(amt > 0, "no-pending");
+        _plainShares[msg.sender] += amt;
+        delete pendingWithdraw[msg.sender];
+        emit WithdrawCancelled(msg.sender, amt);
+    }
+
+    /// @notice Claim a matured queued withdrawal.
+    function claimWithdraw() external {
+        PendingWithdraw storage q = pendingWithdraw[msg.sender];
+        uint128 amt = q.amt;
+        require(amt > 0, "no-pending");
+        require(block.timestamp >= q.claimableAt, "not-ready");
+        require(amt <= type(uint64).max, "too-large");
+
+        // Encrypted share deduction.
+        euint64 eAmt = FHE.asEuint64(uint64(amt));
+        euint64 newShares = FHE.sub(_encShares[msg.sender], eAmt);
+        FHE.allowThis(newShares); FHE.allow(newShares, msg.sender);
+        _encShares[msg.sender] = newShares;
+
+        if (totalShares >= amt) totalShares -= amt;
+        if (publicTotalDeposited >= amt) publicTotalDeposited -= amt;
+
+        delete pendingWithdraw[msg.sender];
+
+        FHE.allowThis(eAmt);
+        FHE.allowTransient(eAmt, loanAsset);
+        IConfidentialUSDCv2(loanAsset).confidentialTransfer(
+            msg.sender, uint256(euint64.unwrap(eAmt))
+        );
+        emit Withdrew(msg.sender);
+    }
+
+    /// @notice Instant withdraw — INSTANT_FEE_BPS (0.2%) sent to feeRecipient.
+    function instantWithdraw(uint64 amtPlain) external {
+        if (_plainShares[msg.sender] < amtPlain) revert InsufficientShares();
+
+        uint128 fee = uint128((uint256(amtPlain) * INSTANT_FEE_BPS) / 10000);
+        uint128 net = uint128(amtPlain) - fee;
+
+        // Encrypted share deduction.
+        euint64 eAmt = FHE.asEuint64(amtPlain);
+        euint64 newShares = FHE.sub(_encShares[msg.sender], eAmt);
+        FHE.allowThis(newShares); FHE.allow(newShares, msg.sender);
+        _encShares[msg.sender] = newShares;
+        _plainShares[msg.sender] -= uint128(amtPlain);
+
+        if (totalShares >= amtPlain) totalShares -= amtPlain;
+        if (publicTotalDeposited >= amtPlain) publicTotalDeposited -= amtPlain;
+
+        // Push net to user.
+        euint64 eNet = FHE.asEuint64(uint64(net));
+        FHE.allowThis(eNet);
+        FHE.allowTransient(eNet, loanAsset);
+        IConfidentialUSDCv2(loanAsset).confidentialTransfer(
+            msg.sender, uint256(euint64.unwrap(eNet))
+        );
+
+        if (fee > 0 && feeRecipient != address(0)) {
+            euint64 eFee = FHE.asEuint64(uint64(fee));
+            FHE.allowThis(eFee);
+            FHE.allowTransient(eFee, loanAsset);
+            IConfidentialUSDCv2(loanAsset).confidentialTransfer(
+                feeRecipient, uint256(euint64.unwrap(eFee))
+            );
+        }
+        emit InstantWithdrawn(msg.sender, uint128(amtPlain), fee);
+    }
+
+    function getPendingWithdraw(address u) external view returns (uint128 amt, uint64 claimableAt) {
+        PendingWithdraw storage q = pendingWithdraw[u];
+        return (q.amt, q.claimableAt);
+    }
 }

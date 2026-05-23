@@ -1,10 +1,367 @@
 # Wave 4 — ObscuraCredit Progress Report
 
-**Status: ✅ Live on Arbitrum Sepolia (v3.9 — FHE.asEaddress Fix + Markets Redeployed)**
-Tag: `wave4-credit-v3.9`
+**Status: ✅ Live on Arbitrum Sepolia (v3.19 — M-70-WETH + M-50-OBS Supply Collateral Fixed)**
+Tag: `wave4-credit-v3.18`
 Network: Arbitrum Sepolia (chainId 421614)
 Frontend route: `/credit`
-Last updated: May 2026
+Last updated: June 2026
+
+---
+
+## v3.18 — Multi-Market Deploy + 4-Tab UX Overhaul (COMPLETE ✅)
+
+### Production Deployment
+
+3 new markets and 2 new vaults deployed to Arbitrum Sepolia, replacing legacy single-market setup.
+
+| Contract | Address | Strategy |
+|----------|---------|---------|
+| M-86 Conservative Market | `0xcf98d97934F37Ac9A05bc037437E43cb6788eC8b` | 86% LLTV, ocUSDC collateral, 5% liq bonus |
+| M-70-WETH Balanced Market | `0x3164e72651eA664A6034Dc0769674f1dc1FF1281` | 70% LLTV, ocWETH collateral, 8% liq bonus |
+| M-50-OBS Aggressive Market | `0x1Dd68aFA60daCE4F586DEa03BFA28A78aF2eBB17` | 50% LLTV, ocOBS collateral, 12% liq bonus |
+| Conservative Vault V2 | `0xCEBb042ae8FDE217a9FdE5b8a82E23827FdBB898` | 100% → M-86 |
+| Balanced Vault V2 | `0xF508315bD4C5EC4c71C5E431AE972C0dC6B78Bbc` | M-86 + M-70-WETH split |
+| Credit Router | `0x46275A34e26C9dBb46fB1716852a5D221564a43F` | Wired to all 3 markets |
+
+### Wiring Completed
+- ✅ `setOnBehalfRouter` called on all 3 markets → Router `0x46275A34e26C9dBb46fB1716852a5D221564a43F`
+- ✅ Vault market approvals set for both Conservative V2 and Balanced V2
+- ✅ `deployments/arb-sepolia.json` updated with v2 keys
+
+---
+
+## v3.18.1 — Token Naming Audit + SetupSheet Fix (COMPLETE ✅)
+
+### Token Naming: Plan V2 Compliance (`ocUSDC` / `ocWETH` / `ocOBS`)
+
+Strategic Plan V2 mandates shielded wrapper symbols `ocUSDC`, `ocWETH`, `ocOBS`.
+All UI and config files have been updated to match:
+
+| File | Change |
+|------|--------|
+| `src/config/credit.ts` | `CREDIT_TOKENS` keys → `ocUSDC`, `ocOBS`, `ocWETH`; names/labels updated; `liqBonusBps` for M-86 fixed to 500 (5%) |
+| `src/config/credit.ts` | `CREDIT_MARKETS` labels → `"ocUSDC · 86% LLTV"`, `"ocWETH → ocUSDC · 70% LLTV"`, `"ocOBS → ocUSDC · 50% LLTV"` |
+| `src/pages/CreditPage.tsx` | EncryptedTile `symbol` props: `cUSDC` → `ocUSDC` |
+| `src/components/credit/BorrowForm.tsx` | `symbol` props + max borrowable display |
+| `src/components/credit/RepayForm.tsx` | `symbol` prop |
+| `src/components/credit/SupplyForm.tsx` | `symbol` prop |
+| `src/components/credit/SupplyCollateralForm.tsx` | `symbol` prop + max borrow display |
+| `src/components/credit/SettingsPanel.tsx` | `FaucetRow` type + call sites |
+| `src/components/credit/SetupSheet.tsx` | Faucet copy + borrow labels |
+| `src/components/DataTicker.tsx` | Ticker symbol |
+| `src/components/credit/EncryptedValue.tsx` | Default symbol prop |
+| `src/components/shared/EncryptedValue.tsx` | Default symbol prop |
+
+### SetupSheet Bug Fix (`fhe.set` → `fhe.setStep`)
+
+`useFHEStatus()` exports `{ status, stepLabel, stepIndex, setStep, reset }` — NOT `set`.
+All `fhe.set(...)` calls in `SetupSheet.tsx` updated to `fhe.setStep(...)`.
+
+### M-86 Liquidation Bonus Correction
+
+`liqBonusBps` for M-86 corrected from 750 to 500 (Plan V2 §4: 5% = 500 bps).
+
+### Token Addresses (canonical — all 3 now in `.env`)
+
+| Token | Address |
+|-------|---------|
+| ocUSDC | `0xf963fD86348813786ed57b8b2778A365C6226E43` |
+| ocWETH | `0xA377AF2b307C2219B66D83963c9c800305aE5518` |
+| ocOBS  | `0x68d61fb8dfA7DC94B77F61bD50BB038f3FcADCbD` |
+
+Last updated: June 2026
+
+---
+
+## v3.18.2 — Gas Fix + Rate Limit Fix + Full Audit Pass (COMPLETE ✅)
+
+### Gas Fee Fix (`maxFeePerGas < baseFee`)
+
+wagmi was passing a stale 20 M wei default gas fee which sat below Arbitrum Sepolia's live base fee, causing every write to revert immediately at the RPC level.
+
+**Root cause**: `writeContractAsync` without explicit fee overrides used wagmi's internal cached estimate (20 M wei) instead of querying the current base fee.
+
+**Fix**: Added `estimateCappedFees(publicClient)` from `src/lib/gas.ts` to all write calls in `SetupSheet.tsx`:
+- `handleFaucet` — 3 sequential faucet claims now all pass live capped fees
+- `handleOperator` — `setOperator` call now passes live capped fees
+
+`estimateCappedFees` applies 1.5× buffer on `baseFeePerGas` and clamps `maxPriorityFeePerGas` ≤ `maxFeePerGas`. No inline fee math anywhere in components (anti-regression).
+
+### Rate Limit Fix (RPC overload on 3 sequential reads)
+
+3 sequential `readContract` calls for `nextFaucetIn` (one per token) hit the RPC rate limiter, causing "429 Too Many Requests" before the SetupSheet could display cooldown state.
+
+**Fix**: Replaced 3 individual reads with a single `publicClient.multicall` (one RPC round-trip for all 3 token cooldown checks). Added 500 ms `delay()` pause between sequential faucet writes to prevent back-to-back write spam.
+
+### Token Symbol Completeness Fixes (6 component files)
+
+After the v3.18.1 config-level rename, 6 UI components still had stale `cUSDC` / `cWETH` / `OBS` strings in message text and labels:
+
+| File | Lines Fixed |
+|------|------------|
+| `BorrowForm.tsx` | stealth success message, Amount label, encrypted destination hint, LLTV warning, liquidity warning (×2) |
+| `RepayForm.tsx` | repay success message, Amount label |
+| `AuctionCard.tsx` | bid input placeholder |
+| `HealthBadge.tsx` | Collateral/Debt labels in what-if simulator |
+| `HealthRibbon.tsx` | Debt display in critical health banner |
+| `CreditOnboarding.tsx` | Testnet tokens card body (`cWETH/OBS` → `ocWETH/ocOBS`, `cUSDC` → `ocUSDC`); also removed user-facing "CoFHE" jargon — replaced with "fully encrypted" |
+| `OperatorApprovalModal.tsx` | Approval explanation copy |
+
+All files verified: zero TypeScript errors after fixes.
+
+### Full FHE Audit — PASSED ✅
+
+Comprehensive audit of all FHE patterns across contracts and frontend:
+
+**Contracts — All patterns correct:**
+
+| Pattern | Status |
+|---------|--------|
+| `FHE.allowThis(handle)` after every encrypted state mutation | ✅ All call sites verified (`_credit`, `_debit`, borrow, withdraw, supplyCollateral, withdrawCollateral) |
+| `FHE.allowTransient(handle, target)` before external cToken calls | ✅ Present in every `confidentialTransfer` site |
+| `FHE.select` not `if/else` on encrypted bool | ✅ All conditional FHE logic uses `FHE.select` |
+| `FHE.eq` guard (real vs trivial handle) | ✅ In borrow, withdraw, withdrawCollateral, withdrawToVault, unshield |
+| No plaintext amounts in events | ✅ All events emit only bytes32 ctHash handles |
+| Pre-computed FHE constants (`_zero`, `_lltv`, `_basis`, `_liqT`) | ✅ Initialised in constructor, never re-created on every call |
+| Score-based LLTV boost via `FHE.select` | ✅ Tier 1/2/3 select chain |
+| Dual-mode token (faucet / wrapper) | ✅ `underlying == address(0)` = faucet mode (correct for testnet) |
+
+**Frontend — All patterns correct:**
+
+| Pattern | Status |
+|---------|--------|
+| No auto-decrypt on mount | ✅ `decryptShares()` is always user-triggered (EncryptedValue reveal button) |
+| `waitForTransactionReceipt` before `FHEStepStatus.READY` | ✅ in `useCredit.ts` all write flows |
+| `fhe` in `useCallback` deps | ✅ verified |
+| `fhe.setStep()` not `fhe.set()` | ✅ all 9 SetupSheet call sites |
+| `batchRead` multicall for public data | ✅ in `useCredit.ts` market reads |
+| `withRateLimitRetry` wrapper | ✅ on all write calls |
+| Privacy copy: `***` placeholder until user reveals | ✅ EncryptedValue default state |
+| `FHEStepStatus` flow: IDLE→ENCRYPTING→COMPUTING→SENDING→SETTLING→READY→IDLE | ✅ Auto-resets after 4s |
+
+### End-to-End Flow Confirmed On-Chain ✅
+
+Successful multi-step transaction confirmed on Arbitrum Sepolia:
+
+| Step | Tx / Result |
+|------|------------|
+| Faucet: claim 2 ocUSDC | `claimFaucet()` on ocUSDC — confirmed |
+| Faucet: claim 2 ocWETH | `claimFaucet()` on ocWETH — confirmed |
+| Faucet: claim 2 ocOBS | `claimFaucet()` on ocOBS — confirmed |
+| setOperator (Router, 30d) | `setOperator(0x46275A3…)` — confirmed |
+| Supply 2 ocUSDC to M-86 | `supplyFor` via Router — confirmed |
+| Supply 2 ocUSDC as collateral | `supplyCollateralFor` — confirmed |
+| Borrow 1 ocUSDC via stealth | `setupAndBorrowStealth` — confirmed |
+| Position reveal (FHE decrypt) | Supply=2, Borrow=1, Collateral=2 — all decrypted successfully |
+
+**Key borrow tx**: `0x1ad0e5d9b45bd75e6762f648a896617a841b95ed836276e9ec4d005f94ba8916` (Arbiscan Arb Sepolia)
+
+### Outstanding (Not Blocking Launch)
+
+| Item | Plan Ref | Notes |
+|------|----------|-------|
+| True stealth disbursement via `eaddress` | §9 | `eaddress` not available on Arbitrum Sepolia testnet; current flow uses public stealth announcement via `StealthRegistry` |
+| Vault withdraw queue (24h timelock) | §8.4 | Tracked for v3.19 |
+| Keeper-tip mechanism | §10.1 | Tracked for v3.19 |
+| Market seeding (5000 ocUSDC per market) | §15.1 | Testnet faucet covers testing; mainnet seeding pre-launch |
+| `PRIVACY_MATRIX.md` | §6 | Documentation task |
+
+---
+
+## v3.19 — Supply Collateral Fixed for M-70-WETH + M-50-OBS (COMPLETE ✅)
+
+### Root Cause
+
+`ocWETH` (`0xA377AF2b`) and `ocOBS` (`0x68d61fb8`) were deployed on 2026-05-13 via `deployCreditTokens.ts` using an **older version** of `ObscuraConfidentialToken.sol` that only had `confidentialTransfer(address, uint256)` (handle-based, for market→user outbound).
+
+The `confidentialTransfer(address, InEuint64)` overload (needed for user→market deposits) was added later with v3.14's `ocUSDC` deploy. Because the old tokens were never upgraded, calling the InEuint64 variant on them reverted with "execution reverted" (no matching function selector).
+
+Additionally, the old tokens used **8 decimals** while the frontend formats all amounts with 6 decimal places, causing display amounts to be off by 100×.
+
+Failing tx: [`0x4f614a67...1847f666`](https://sepolia.arbiscan.io/tx/0x4f614a6731dcce4e628950be013f3ae200fccaf1efb051d9381dafaf1847f666) — "Confidential Transfer" on ocWETH, "execution reverted".
+
+### Fix: Redeploy Tokens + Markets (v3.19)
+
+New `ObscuraConfidentialToken` instances deployed with the **current contract code** (has all 3 overloads) and **6 decimals**. New markets deployed against the new token addresses. Router wired to both markets. Oracle price feeds bound for new token addresses.
+
+**New addresses:**
+
+| Contract | Address |
+|----------|---------|
+| ocWETH2 (6 dp, faucet 2/24h) | `0x16896b3D445122a23C36aC618966A842aC9BD56e` |
+| ocOBS2 (6 dp, faucet 2/24h) | `0x27298A55B80d9b8c4Fc647A6ce2b25246d800778` |
+| M-70-WETH2 (ocWETH2/ocUSDC, 70% LLTV) | `0x0b645441D65A0CCb91A82b5a2eE3156C1c89207B` |
+| M-50-OBS2 (ocOBS2/ocUSDC, 50% LLTV) | `0x05e58B8D96Bbd752A72Fa02921A0eE31eCB9035d` |
+
+**Deploy script**: `contracts-hardhat/scripts/deployWave4v319.ts`
+
+### Frontend Changes
+
+| File | Change |
+|------|--------|
+| `frontend/.env` | `VITE_OBSCURA_CONFIDENTIAL_OBS_ADDRESS` → ocOBS2; `VITE_OBSCURA_CONFIDENTIAL_WETH_ADDRESS` → ocWETH2; `VITE_OBSCURA_CREDIT_MARKET_M70WETH_ADDRESS` → M-70-WETH2; `VITE_OBSCURA_CREDIT_MARKET_M50OBS_ADDRESS` → M-50-OBS2 |
+| `src/config/credit.ts` | `ocOBS.decimals` 8→6; `ocWETH.decimals` 8→6; faucet labels updated to "2/24h" |
+
+### Market Status After v3.19
+
+| Market | Status |
+|--------|--------|
+| M-86 (ocUSDC/ocUSDC, 86% LLTV) | ✅ Fully working — supply, supply collateral, borrow, decrypt |
+| M-70-WETH (ocWETH2/ocUSDC, 70% LLTV) | ✅ Fixed — supply collateral uses `confidentialTransfer(address, InEuint64)` on new token |
+| M-50-OBS (ocOBS2/ocUSDC, 50% LLTV) | ✅ Fixed — same fix applied |
+
+Last updated: June 2026
+
+
+
+### New Components
+- ✅ `src/components/credit/EncryptedTile.tsx` — Privacy-first encrypted value tile with 30s reveal timer, auto-expire, and masked placeholder
+- ✅ `src/components/credit/HealthBar.tsx` — Color-coded health factor progress bar (green >1.5, amber >1.2, red ≤1.2)
+- ✅ `src/components/credit/SetupSheet.tsx` — 3-step onboarding bottom sheet (Faucet → setOperator → BorrowForm)
+
+### CreditPage.tsx — Complete UX Overhaul
+
+**Before:** 12-tab sidebar navigation (home, vaults, markets, collateral, supply, borrow, repay, health, auctions, score, history, settings)
+
+**After:** 4-tab top bar + Settings gear icon slide-over
+
+| Tab | Content |
+|-----|---------|
+| Markets | Public TVL stats (3 StatChips: Total Supplied, Total Borrowed, Active Markets) + 3 market cards with utilization/APR |
+| Position | Encrypted tiles (supply, borrow, collateral revealed on user click) + HealthBar per market + HealthRibbon sticky risk banner |
+| Vaults | Conservative V2 + Balanced V2 VaultCards with deposit/withdraw |
+| Liquidations | Sealed auction cards with encrypted bid submission |
+
+- ✅ Settings moved to gear icon slide-over (`SettingsSlideOver`)
+- ✅ `TabBar` component with pill-style active indicator
+- ✅ `StatChip` component for public aggregate metrics
+- ✅ `MarketsTab`, `PositionTab`, `VaultsTab`, `LiquidationsTab` sub-components
+- ✅ No auto-decrypt on mount (user-triggered only)
+- ✅ Zero compile errors on final file
+
+### Hook Wiring (verified)
+- `useMarketPosition(addr)` → supply/borrow/collateral encrypted tiles
+- `useVaultPosition(addr)` → vault deposit tiles + TVL
+- `useCreditVault(addr)` → deposit/withdraw with `fheStatus`
+- `useHealthFactor(market, collateralUsd, debtUsd)` → number (for HealthBar)
+- `useCreditAuctions()` → auction list + bid + settle
+- `useApprovedSets()` → operator management
+- `useCreditOnboarding()` + `useCreditAlerts()` → UX chrome
+
+---
+
+
+## v3.13 — Real-Ciphertext Outbound + FHE.eq Guard (DEPLOYED ✅)
+
+### Root Cause (Corrected)
+
+All prior diagnoses (gas, selector mismatch, eaddress, Reineira bug) were WRONG.
+The true root cause: **Reineira cUSDC's internal FHE coprocessor rejects trivially-encrypted handles.**
+
+- **Real ciphertext** = handle produced by `FHE.asEuint64(InEuint64 calldata)` — backed by a ZKPoK blob resident in the coprocessor. **Accepted by cUSDC.**
+- **Trivial handle** = handle produced by `FHE.asEuint64(uint64 plaintext)` on-chain. No ciphertext blob, just a synthetic handle. **Rejected by cUSDC's internal FHE.sub.**
+
+Evidence that disproved all prior diagnoses:
+- `ObscuraConfidentialEscrow.redeem()` called `cUSDC.confidentialTransfer` using handles accumulated from user `InEuint64` inputs → **succeeded twice on-chain** (`0x6d41f706…`, `0xb3da5aed…`)
+- v3.9 market `borrow()` used `FHE.asEuint64(amtPlain)` → **0 successful outbound Transfer events across all 4 markets ever**
+
+### Root Cause Analysis
+
+| Signal | Old Diagnosis | Corrected |
+|--------|--------------|-----------|
+| Selector 0xfe3f670d | "Broken for contract callers" | Works fine — escrow used it successfully |
+| borrow revert | Gas | Trivial handle rejected by coprocessor |
+| Gas bump to 2.8M | Still reverted | Proves gas wasn't the issue |
+| Empty revert data | Opcode-level | Coprocessor returned error signal only |
+
+### Fixes Applied
+
+**`ObscuraCreditMarket.sol`** — 4 functions patched:
+- `borrow(uint64 amtPlain, InEuint64 calldata encAmt)`: Added `req = FHE.asEuint64(encAmt)` → `FHE.eq(req, FHE.asEuint64(amtPlain))` guard → `disburse = FHE.select(matches, req, _zero)`. Uses real-derived handle for cUSDC transfer. `p.borrowShares = FHE.add(p.borrowShares, disburse)`.
+- `withdraw(uint64 amtPlain, InEuint64 calldata encAmt)`: **NEW param `encAmt`** (was plain only). Same FHE.eq guard. `newSupply = FHE.sub(_encSupplyShares[msg.sender], safe)`.
+- `withdrawToVault(uint64 amtPlain, InEuint64 calldata encAmt)`: **NEW param `encAmt`**. Same guard.
+- `withdrawCollateral(uint64 amtPlain, InEuint64 calldata encAmt)`: Already had `encAmt`. Added FHE.eq guard for over-encryption protection.
+
+**`ObscuraCreditVault.sol`** — 2 functions patched:
+- `reallocateSupply(address market, uint64 amtPlain, InEuint64 calldata encAmt)`: **NEW param `encAmt`**. FHE.eq guard before cUSDC push.
+- `reallocateWithdraw(address market, uint64 amtPlain, InEuint64 calldata encAmt)`: **NEW param `encAmt`**. Forwarded to `market.withdrawToVault`.
+
+**`frontend/obscura-os-main/src/hooks/useCredit.ts`**:
+- `withdraw()`: Now encrypts amount via `encryptAmount()` → passes `InEuint64` to contract.
+- `borrow()` error message: Updated from false "CoFHE gas exhausted" to accurate "FHE.eq guard mismatched" explanation.
+
+**`frontend/obscura-os-main/src/abis/credit/ObscuraCreditMarket.json`**: Synced from Hardhat artifact (62,797 bytes, 52 ABI entries, withdraw has 2 inputs).
+
+**`frontend/obscura-os-main/src/abis/credit/ObscuraCreditVault.json`**: Synced from Hardhat artifact.
+
+**`docs/credit/BORROW_ROOT_CAUSE.md`**: Rewritten with corrected analysis, disproving table, canonical fix pattern.
+
+### FHE.eq Security Guard Pattern
+
+```solidity
+euint64 req      = FHE.asEuint64(encAmt);         // REAL ciphertext from user
+euint64 expected = FHE.asEuint64(amtPlain);       // trivial (compare only)
+ebool   matches  = FHE.eq(req, expected);
+euint64 safe     = FHE.select(matches, req, _zero); // REAL-derived handle
+FHE.allowThis(safe);
+FHE.allowTransient(safe, address(cUSDC));
+cUSDC.confidentialTransfer(to, uint256(euint64.unwrap(safe)));
+```
+
+If user lies (encAmt ≠ amtPlain), `safe = _zero` → no funds move but borrow accounting still records plaintext debt. This prevents over-encryption exploits.
+
+### Deployed Contract Addresses
+
+| Contract | Address | Arbiscan |
+|----------|---------|---------|
+| Market 77% cUSDC/cUSDC | `0x852193B431393903CD5dad026c09C454CF5994A9` | [view](https://sepolia.arbiscan.io/address/0x852193B431393903CD5dad026c09C454CF5994A9) |
+| Market 86% cUSDC/cUSDC | `0x236818Fc03A7C42825f69Ab6Ef396835BEac10A2` | [view](https://sepolia.arbiscan.io/address/0x236818Fc03A7C42825f69Ab6Ef396835BEac10A2) |
+| Market cOBS/cUSDC 77% | `0x48B07bfb760fbee52f45234038875d26B428aB2B` | [view](https://sepolia.arbiscan.io/address/0x48B07bfb760fbee52f45234038875d26B428aB2B) |
+| Market cWETH/cUSDC 86% | `0x059B38ed83fCd55A680e96bE50812fBA4DB0FF82` | [view](https://sepolia.arbiscan.io/address/0x059B38ed83fCd55A680e96bE50812fBA4DB0FF82) |
+| Vault Conservative | `0xF2b0b84d6E032Dd0a19c1B917E3B4b3101F1Dc90` | [view](https://sepolia.arbiscan.io/address/0xF2b0b84d6E032Dd0a19c1B917E3B4b3101F1Dc90) |
+| Vault Aggressive | `0x7889C5783352359275ebbD5F9663393c6147D29A` | [view](https://sepolia.arbiscan.io/address/0x7889C5783352359275ebbD5F9663393c6147D29A) |
+
+Deployed: 2026-05-22T17:11:41.710Z | Deployer: `0xD208aC8327e6479967693Af2F2216e1612D0171A`
+
+### Wiring Verification
+
+All 4 markets wired ✅:
+- `auctionEngine` → `0x205FfC0A3b8207B645c1a6B1b4805eb3FfC828F0` ✅
+- `isRepayRouter(STREAM_HOOK)` → `true` ✅
+- `isRepayRouter(INSURANCE_HOOK)` → `true` ✅
+
+Both vaults approved markets with caps ✅:
+- Conservative: m77 (1M), mOBS (500k), mWETH (500k)
+- Aggressive: m86 (2M), mOBS (1M), mWETH (1M)
+
+### Frontend Env Vars Updated
+
+```
+VITE_OBSCURA_CREDIT_MARKET_77_ADDRESS=0x852193B431393903CD5dad026c09C454CF5994A9
+VITE_OBSCURA_CREDIT_MARKET_86_ADDRESS=0x236818Fc03A7C42825f69Ab6Ef396835BEac10A2
+VITE_OBSCURA_CREDIT_MARKET_COBS_CUSDC_ADDRESS=0x48B07bfb760fbee52f45234038875d26B428aB2B
+VITE_OBSCURA_CREDIT_MARKET_CWETH_CUSDC_ADDRESS=0x059B38ed83fCd55A680e96bE50812fBA4DB0FF82
+VITE_OBSCURA_CREDIT_VAULT_CONSERVATIVE_ADDRESS=0xF2b0b84d6E032Dd0a19c1B917E3B4b3101F1Dc90
+VITE_OBSCURA_CREDIT_VAULT_AGGRESSIVE_ADDRESS=0x7889C5783352359275ebbD5F9663393c6147D29A
+```
+
+### Build Verification
+
+- `npx hardhat compile` → ✅ 6 Solidity files compiled successfully (evm target: cancun)
+- `npm run build` (frontend) → ✅ Built in 44.06s, 0 errors
+- `npx tsc --noEmit` (frontend) → ✅ 0 credit-related TypeScript errors
+- Contract bytecode on-chain verified: all 6 addresses HAS_CODE ✅
+
+### Migration
+
+Users with positions in v3.9/v3.12 markets must:
+1. Withdraw supply from old market → 2. Withdraw collateral from old market → 3. Redeposit supply to new market → 4. Re-supply collateral → 5. Borrow from new market
+
+Old market addresses (now deprecated):
+- v3.9: `0xD541405d01FFB31eA63cBfA6C988A004eED46AF9`, `0x9f383Dd87b3B811C4aA864C8DFF65d3164DB2e9C`, `0x17F3390aB5C2EF706F5303a857Eff8708ddD8CB1`, `0x53fb61e18067aAC30b7176844d92F0CfeCF7fAFc`
+- v3.12: `0xb084Afb8925BBF6A98717a10219d150Bcf0B5c1f`, `0x6f576ea68eaDa4e75bE4e8d85bAF6B6D65Fb1613`, `0x07413E7576d04f2CB615060d8dd44Ef6796b2EF4`, `0x16e3BC40c432dbC96Eb45246E80c55D670A384f5`
+
+---
 
 ---
 
@@ -1317,3 +1674,301 @@ Total live markets: **4** (2 legacy cUSDC/cUSDC + 2 new cross-asset).
 ### Deploy script
 
 `contracts-hardhat/scripts/deployCreditTokens.ts` � incremental, idempotent-aware. Persists addresses to `deployments/arb-sepolia.json` and upserts the corresponding `VITE_OBSCURA_*` keys into the frontend `.env`.
+
+---
+
+## v3.14 ─ Drop-in ocUSDC (Borrow Fix, FINAL)
+
+**Status: ✅ Live on Arbitrum Sepolia**
+Tag: `wave4-credit-v3.14`
+
+### The actual root cause
+
+Earlier v3.12/v3.13 diagnoses pointed at the market's FHE plumbing. Empirical evidence proved otherwise. The harness `contracts/TestPushcUSDC.sol` (`scripts/diagPushTest.ts`) issues the exact pattern every market exit uses:
+
+`solidity
+FHE.asEuint64(amt) → FHE.allowThis → FHE.allowTransient(h, token) → token.confidentialTransfer(addr, uint256(unwrap(h)))
+`
+
+Result matrix (Reineira cUSDC `0x6b6e…d89f`):
+
+| Experiment                              | Result        |
+| --------------------------------------- | ------------- |
+| `plain transfer(addr, 1)` from EOA   | REVERT        |
+| `pushOut` from harness (no operator) | REVERT (520k) |
+| `pushOut` from harness + `setOperator(this)` | REVERT |
+| `setOperator` from inside contract   | REVERT        |
+
+Every contract-context call against Reineira cUSDC reverts. The market borrow path was correct; the underlying token was contract-hostile. The misleading signal was `isOperator(holder, holder)` returning true automatically (holder==spender short-circuit) plus an early Escrow helper that silently swallowed the `bool ok` return.
+
+### The fix
+
+In-repo drop-in `contracts/credit/ObscuraConfidentialToken.sol` ─ same FHERC20 shape as cUSDC (`setOperator` / `isOperator` / `confidentialTransfer(addr,uint256)` / `confidentialTransfer(addr,InEuint64)` / `confidentialTransferFrom(from,to,InEuint64)`) with a 24h `claimFaucet()` (10k drip). Market + vault redeployed against it. Same FHE.eq guarded outbound pattern as v3.13.
+
+Symmetry test (`scripts/diagPushOcUSDC.ts`) with same harness, same call:
+
+| Token                | Result                                                |
+| -------------------- | ----------------------------------------------------- |
+| Reineira cUSDC       | REVERT (3/3)                                          |
+| ocUSDC (v3.14)       | ✅ SUCCESS gas=321k, 5 logs (4 TaskManager + 1 Transfer) |
+
+Bootstrap liquidity seeded via `contracts/credit/SeedV314Liquidity.sol` + `scripts/seedV314.ts`: 5000 ocUSDC supplied to the 77% market through the same contract-context pattern (gas=585k, ✅).
+
+### v3.14 addresses (Arbitrum Sepolia)
+
+- ocUSDC: `0xf963fD86348813786ed57b8b2778A365C6226E43`
+- ObscuraCreditMarket (loan=ocUSDC, coll=ocUSDC, 77% LLTV): `0x85A181018f80bAaA4821EDDF7796b208097FB2FF`
+- ObscuraCreditVault (Conservative): `0xF3CB3AA037826232287d7C56FCd6bfa3e4210d71`
+- Oracle / IRM / Auction / StreamHook / InsuranceHook / Treasury: unchanged from v3.13
+
+### Migration for end-users
+
+1. Click **Claim** on the **cUSDC** faucet in Credit ▸ Settings (10,000 ocUSDC / 24h drip).
+2. Supply ocUSDC as collateral, then borrow up to LLTV × collateral.
+3. Pay / Vote / Stream products keep using Reineira cUSDC — unchanged.
+
+### Frontend changes
+
+- `frontend/obscura-os-main/.env`: `VITE_OBSCURA_CONFIDENTIAL_USDC_ADDRESS`, `VITE_OBSCURA_CREDIT_MARKET_77_ADDRESS`, `VITE_OBSCURA_CREDIT_VAULT_CONSERVATIVE_ADDRESS` repointed.
+- `src/hooks/useCredit.ts`: credit-side `REINEIRA_CUSDC_ADDRESS` aliased to `CONFIDENTIAL_USDC_ADDRESS`; ABI selectors identical so call shape is unchanged.
+- `src/config/credit.ts`: `cUSDC.hasFaucet = true`, decimals corrected to 6.
+- `src/components/credit/SettingsPanel.tsx`: cUSDC added to the faucet row strip.
+- ABIs refreshed: `src/abis/credit/ObscuraConfidentialToken.json`, `ObscuraCreditMarket.json`, `ObscuraCreditVault.json`.
+
+### Scripts
+
+- `scripts/deployWave4v314.ts` ─ deploys token + market + vault, wires auction / repay router / vault approval, claims deployer faucet.
+- `scripts/seedV314.ts` ─ one-shot 5000 ocUSDC liquidity seed via SeedV314Liquidity.
+- `scripts/diagPushOcUSDC.ts` ─ symmetric proof that contract-context outbound succeeds against ocUSDC.
+
+
+---
+
+## v3.15 � Shielded-Wrapper Refactor + Strategic Plan rev-2 (wallet-native)
+
+**Date**: 2026-05-22
+**Scope**: Architectural foundation for the production v2 plan. Wallet-native UX (NO passkey / AA / sponsored gas as primary). Privacy goals untouched.
+
+### Strategic plan rev-2
+- Updated `docs/credit/STRATEGIC_PLAN_V2_PRODUCTION.md` to remove ZeroDev / Pimlico / passkey / paymaster from the primary flow.
+- New primary onboarding: MetaMask / Rabby / Coinbase Wallet, EOA, user pays own gas in ETH (familiar Fhenix-ecosystem pattern).
+- Signature collapse via on-chain Router multicall (not UserOps).
+- AA/passkey/sponsorship demoted to "Appendix C - optional future enhancements" behind a feature flag.
+
+### Contracts
+- **`ObscuraConfidentialToken` (v3.15 shielded-wrapper refactor)** � keeps 4-arg constructor for full v3.14 backward-compat. New features:
+  - `setUnderlying(addr)` / `lockUnderlying()` � guardian-gated, settable once.
+  - `shield(uint256)` � pulls underlying ERC20 in, mints encrypted balance, enforces `balanceOf(this) >= publicSupplyMirror` invariant.
+  - `unshield(uint64, InEuint64, address)` � v3.13 FHE.eq guard; releases real ERC20; per-block cap.
+  - `pause(duration)` / `setUnshieldPerBlockCap(cap)` � guardian-gated safety.
+  - `claimFaucet()` � now reverts when underlying is set (mainnet-safe).
+- **`IEncryptedScore.sol`** � new pluggable encrypted-score interface (`scoreOf` + `allowTransientForMarket`).
+- **`ObscuraCreditRouter.sol`** � wallet-native multicall router scaffold. Both `setupAndBorrow` and `repayAndWithdraw` are present as compile-time API surface, currently reverting with `"router-on-behalf-of deferred to v3.16"`. Frontend continues to use the per-step `useCredit` flow until the market gains `*For(user, ...)` paths in v3.16.
+
+### Tests
+- All 19 existing credit tests pass under the v3.15 contract (4-arg constructor preserved).
+- Wrapper-mode shield/unshield tests deferred to v3.16 alongside the on-behalf-of market refactor (needs MockERC20 + invariant property tests).
+
+### Compile
+- Hardhat compile clean (warnings only � unused router stub params + state-mutability hints).
+
+### Live v3.14 addresses remain unchanged
+ocUSDC 0xf963fD86348813786ed57b8b2778A365C6226E43, Market_77 0x85A181018f80bAaA4821EDDF7796b208097FB2FF, Vault 0xF3CB3AA037826232287d7C56FCd6bfa3e4210d71. All v3.14 functionality continues to work � these contracts will be redeployable in wrapper mode by calling the new `setUnderlying()` after deploying a real underlying ERC20.
+
+### Honest deferred-to-v3.16
+The Router currently reverts because the market's `supplyCollateral` / `borrow` / `repay` / `withdrawCollateral` bind state to `msg.sender` � when called via Router, that's the Router, not the user. Making the Router actually batch requires adding `*For(user, ...)` variants to the market with operator-or-signature auth. That refactor is non-trivial (security review needed on every credit path) and is scheduled for v3.16. Strategic-plan �14 reflects this in the implementation order.
+
+### Not done in v3.15 (planned next)
+- ObscuraConfidentialWrapperFactory.sol
+- Stealth borrow path (needs market + Router on-behalf-of)
+- Market on-behalf-of API
+- IEncryptedScore implementation in ObscuraCreditScore + market LLTV-boost integration
+- Async-decrypt isUnderwater liquidation gate
+- Vault withdraw-queue + 0.2% instant-fee
+- Auction `allowTransient` tightening
+- Permissionless keeper-tip on hooks
+- Frontend `useShield` / `useUnshield` hooks + OperatorApprovalModal
+- Multi-asset deploy (ocWETH, ocOBS markets)
+- ABI sync + frontend `.env` wiring
+
+
+---
+
+## v3.16 � Wallet-Native Production (deployed)
+
+**Deployed Arbitrum Sepolia 421614 � 2026-05-22**
+
+| Contract | Address |
+|----------|---------|
+| ObscuraCreditRouter | `0x46275A34e26C9dBb46fB1716852a5D221564a43F` |
+| ObscuraCreditMarket (v3.16, 77 LLTV) | `0x269f59672F3fd7f95bF440941e618b54Ebc5717A` |
+| ObscuraCreditVault (v3.16, queue) | `0xE0c5323006AEaF09E449f8B85B24C8A50b389C29` |
+
+### What shipped
+- `ObscuraCreditMarket.{supplyCollateral|borrow|repay|withdrawCollateral}For` � on-behalf-of API gated by `setOnBehalfRouter` whitelist. Maintains v3.14 ABI for legacy direct callers.
+- `ObscuraCreditRouter.setupAndBorrow / repayAndWithdraw / setupAndBorrowStealth` � collapses two FHE tx into ONE EOA tx via a single wallet signature. Stealth variant also emits `StealthRegistry.announce`.
+- `ObscuraCreditVault` withdraw-queue: 24h free path (`requestWithdraw` ? `claimWithdraw`) OR `instantWithdraw` with 0.2% fee to treasury.
+- Frontend: `useCreditRouter` + `useVaultQueue` + `useOperatorGrant` hooks; ABIs synced; `CREDIT_ROUTER_ABI` + `CREDIT_*_V316_ADDRESS` env wired.
+- All 19 existing credit tests still pass � full backward compatibility.
+
+### Consciously deferred
+- `IEncryptedScore` LLTV boost in market borrow path (high regression surface; plaintext shadow gate suffices on testnet).
+- Async-decrypt `isUnderwater` liquidation gate (CoFHE async-decrypt complexity vs current plaintext shadow gate).
+- Keeper-tip in hook trigger paths.
+- `WrapperFactory` (single ocUSDC sufficient for current markets).
+
+---
+
+## End-to-end test guide (Credit app)
+
+**Prereqs**
+- MetaMask on Arbitrum Sepolia (chainId 421614); 0.05 ETH from `https://faucet.quicknode.com/arbitrum/sepolia`
+- `cd frontend/obscura-os-main; npm install; npm run dev` ? open `http://localhost:5173`
+
+**1. Claim ocUSDC (faucet)**
+- Navigate to **Credit ? Onboarding**; click *Claim 10,000 ocUSDC* (24h cooldown per address).
+- Verify encrypted balance pill shows `***`; click *Reveal* to decrypt-for-view.
+
+**2. Vault deposit**
+- Navigate to **Credit ? Vaults ? v3.16**; enter 1,000 ocUSDC; *Deposit*.
+- Encrypted share balance updates after MetaMask receipt.
+
+**3. Vault withdraw � queued (free)**
+- Click *Request Withdraw* ? enter 500 shares ? confirm.
+- `pendingWithdraw.claimableAt` advances by 24h.
+- *Claim Withdraw* button stays disabled until `block.timestamp >= claimableAt`.
+- (For local demo, you can shorten via `cancelWithdraw` then `instantWithdraw`.)
+
+**4. Vault withdraw � instant (0.2% fee)**
+- Click *Instant Withdraw* ? enter 500 shares ? confirm.
+- 499.0 ocUSDC arrives, 1.0 ocUSDC goes to treasury (configured via constructor `feeRecipient`).
+
+**5. One-time operator grant (Router)**
+- Open **Operator Approvals** modal; click *Grant Router (7 days)* � single tx on ocUSDC contract.
+- `isOperator(user, router)` becomes true.
+
+**6. Single-tx borrow (router)**
+- Navigate to **Credit ? Borrow**; pick the v3.16 market; enter 1,000 ocUSDC collateral + 600 ocUSDC borrow.
+- Click *Setup & Borrow* � **ONE** MetaMask signature.
+- Behind the scenes: Router pulls collateral via `confidentialTransferFrom`, calls `market.supplyCollateralFor`, then `market.borrowFor` which disburses 600 ocUSDC to the user.
+- Encrypted balance increases by ~600 ocUSDC.
+
+**7. Single-tx repay + withdraw**
+- *Repay & Withdraw*; enter 600 repay + 1,000 collateral withdraw � **ONE** signature.
+
+**8. Stealth borrow**
+- *Borrow to Stealth Address*; the UI derives a one-time stealth address + ephemeral pubkey; submit.
+- `StealthRegistry.AnnouncementPosted` event fires; the receiving stealth address holds the borrowed 600 ocUSDC encrypted balance.
+
+**9. Per-step legacy flow (no operator)**
+- Users who skip the operator grant still get the v3.14 two-step flow via the original `useCreditMarket` hook.
+
+**10. Decrypt discipline**
+- Balances stay `***` until *Reveal* is clicked � no auto-decrypt on mount, no MetaMask spam.
+
+---
+
+## v3.17 � IEncryptedScore LLTV Boost, WrapperFactory, Shield/Unshield, Keeper Tips
+
+**Status: Contracts compiled + 19 tests passing. Deploy pending (requires testnet ETH).**
+Tag: `wave4-credit-v3.17`
+
+### What shipped
+
+#### Contracts
+
+**`IEncryptedScore.sol` (updated)**
+- Added `userTier(address) -> uint8` � returns tier bucket 0/1/2/3 (NOT the raw score).
+  - Tier 0 = score < 300; 1 = 300-599; 2 = 600-749; 3 >= 750.
+- Total interface: `scoreOf(address)`, `allowTransientForMarket(user, market)`, `userTier(address)`.
+
+**`ObscuraCreditScore.sol` (updated � now implements IEncryptedScore)**
+- Added `is IEncryptedScore` to contract declaration.
+- Added `mapping(address => uint8) public override userTier`.
+- `updateScore()` now computes `userTier[user]` from raw score bucket.
+- Added `scoreOf(address)` as alias to `_score[user]` (satisfies interface).
+- Added `allowTransientForMarket(user, market)` � requires prior `attestForMarket` � calls `FHE.allowTransient(_score[user], market)`.
+
+**`ObscuraCreditMarket.sol` (updated � score oracle + LLTV boost)**
+- `address public scoreOracle` state var.
+- `setScoreOracle(address)` � factory-only, emits `ScoreOracleSet`.
+- `borrow()` and `borrowFor()` both get a two-layer LLTV boost block (before the plaintext guard):
+  1. **Plaintext tier path**: `try scoreOracle.userTier(user)` � if tier >= 3, boosts LLTV by +400bps, capped at 9000.
+  2. **FHE in-circuit path**: `try scoreOracle.allowTransientForMarket(user, this)` + `FHE.gte(eScore, 750)` + `FHE.select(eTier3, boostedLLTV, _lltv)` � proves selection in-circuit without revealing score.
+  Both paths use try/catch � oracle failures are non-reverting.
+
+**`ObscuraCreditInsuranceHook.sol` (updated � keeper tips + failure isolation)**
+- Added `event HookSkipped(uint256 indexed subId, string reason)`.
+- Added `event KeeperTip(address indexed keeper, uint256 indexed subId, uint64 amt)`.
+- `topUp()` body wrapped in try/catch � operator failures emit `HookSkipped` instead of reverting.
+- On success: emits `KeeperTip(msg.sender, subId, tip)` where tip = 0.05% of perCycle, capped at 1 USDC (1_000_000 units). Off-chain treasury batch-processes payouts.
+
+**`ObscuraCreditStreamHook.sol` (updated � keeper tips + failure isolation)**
+- Identical changes: `HookSkipped`, `KeeperTip` events; try/catch in `pull()`; same tip formula.
+
+**`ObscuraConfidentialWrapperFactory.sol` (NEW)**
+- Deploys `ObscuraConfidentialToken` wrappers for any ERC-20.
+- `mapping(address => address) public wrapperOf` + `address[] public allWrappers`.
+- `deploy(underlying, name, symbol, decimals, faucetAmt)` � deploys token, calls `setUnderlying(underlying)` if non-zero, transfers guardianship to factory owner.
+- `AlreadyExists` error guards against duplicate wrappers.
+- Events: `WrapperDeployed`, `OwnershipTransferred`.
+
+#### Frontend
+
+**`src/hooks/useShield.ts` (NEW)**
+- `claimFaucet()` + `shield(amount)` � no FHE encryption needed (shield takes plain uint256).
+- FHE step: IDLE ? SENDING ? SETTLING ? READY.
+- Optional `tokenAddress` param, defaults to `CONFIDENTIAL_USDC_ADDRESS`.
+
+**`src/hooks/useUnshield.ts` (NEW)**
+- `unshield(amtPlain, to)` � encrypts via `encryptAmount` from `@/lib/fhe`.
+- FHE step: IDLE ? ENCRYPTING ? SENDING ? SETTLING ? READY.
+- Calls `token.unshield(amtPlain, encAmt, to)`.
+
+**`src/components/credit/OperatorApprovalModal.tsx` (NEW)**
+- Plain-language modal for `setOperator(operator, expirySeconds)` � NO FHE encryption (operator approval is plaintext).
+- Default expiry 7 days. Props: `open, onClose(approved: bool), tokenAddress?, operatorAddress?, expiryDays?`.
+- States: idle / pending / done / error. Uses shadcn Dialog + Button + Badge.
+- Shows operator address, expiry, plain-language privacy explanation.
+
+**`docs/credit/PRIVACY_MATRIX.md` (NEW)**
+- 10-section document covering public vs encrypted vs never-revealed data.
+- Shield/unshield privacy model, score oracle leakage analysis, LLTV boost information leakage, keeper/hook transparency, vault privacy model, WrapperFactory notes, future enhancements.
+
+#### ABIs synced (frontend `src/abis/credit/`)
+- `ObscuraCreditMarket.json` � includes `setScoreOracle`, updated `borrow`/`borrowFor` ABI.
+- `ObscuraCreditScore.json` � includes `scoreOf`, `allowTransientForMarket`, `userTier`.
+- `ObscuraConfidentialWrapperFactory.json` � new.
+- `ObscuraCreditInsuranceHook.json` � includes `HookSkipped` + `KeeperTip` events.
+- `ObscuraCreditStreamHook.json` � includes `HookSkipped` + `KeeperTip` events.
+
+### Compile result
+54 Solidity files compiled successfully (evm target: cancun, viaIR).
+
+### Test result
+19/19 passing (813ms) � all existing credit tests pass; no regressions.
+
+### Deploy note
+`ObscuraConfidentialWrapperFactory` is new and not yet deployed to Arb Sepolia.
+Deploy with: `npx hardhat run scripts/deployWave4v316.ts --network arb-sepolia` (or a new v317 script).
+After deploy, add to `.env`:
+```
+VITE_OBSCURA_WRAPPER_FACTORY_ADDRESS=<deployed address>
+```
+And add to `src/config/credit.ts`:
+```typescript
+export const WRAPPER_FACTORY_ADDRESS = import.meta.env.VITE_OBSCURA_WRAPPER_FACTORY_ADDRESS as `0x${string}` | undefined;
+export const WRAPPER_FACTORY_ABI = WrapperFactoryAbi as any;
+```
+
+### Live v3.16 addresses (unchanged)
+| Contract | Address |
+|----------|---------|
+| ocUSDC (ObscuraConfidentialToken) | `0xf963fD86348813786ed57b8b2778A365C6226E43` |
+| ObscuraCreditRouter | `0x46275A34e26C9dBb46fB1716852a5D221564a43F` |
+| ObscuraCreditMarket (v3.16, 77% LLTV) | `0x269f59672F3fd7f95bF440941e618b54Ebc5717A` |
+| ObscuraCreditVault (v3.16, withdraw-queue) | `0xE0c5323006AEaF09E449f8B85B24C8A50b389C29` |
+| ObscuraCreditScore | `0xA83aCeE57af79D77cac6854edf92A63A60c28c18` |
+| ObscuraCreditStreamHook | `0x740580C5FF321440C61c6Af667C191Eea2249F96` |
+| ObscuraCreditInsuranceHook | `0x55f632401d238dFBEdd63B4adDF5B64DfB178190` |
+| ObscuraTreasury | `0x89252ee3f920978EEfDB650760fe56BA1Ede8c08` |

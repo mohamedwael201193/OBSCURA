@@ -29,14 +29,14 @@ export default function CUSDCPanel() {
           <Coins className="w-4 h-4 text-emerald-400" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">cUSDC Wallet</h3>
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">ocUSDC Wallet</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted Stablecoin</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">FHERC-20</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
-        cUSDC is USDC encrypted on-chain with FHE — your balance is hidden from everyone, including block explorers. Encrypt USDC to get cUSDC; decrypt to get plain USDC back.
+        ocUSDC is USDC shielded on-chain with FHE — your balance is hidden from everyone, including block explorers. Shield USDC to get ocUSDC; unshield to get plain USDC back.
       </p>
 
       {/* ── Balance Grid ── */}
@@ -57,7 +57,7 @@ export default function CUSDCPanel() {
           </div>
         </div>
         <div className="rounded-lg bg-emerald-950/40 border border-emerald-500/18 p-3 space-y-1.5">
-          <div className="text-[9px] tracking-widest uppercase text-emerald-400/50">cUSDC (private)</div>
+          <div className="text-[9px] tracking-widest uppercase text-emerald-400/50">ocUSDC (private)</div>
           <div className="text-[13px] font-mono font-medium">
             {displayBalance
               ? <span className="text-emerald-300">{displayBalance}</span>
@@ -87,7 +87,7 @@ export default function CUSDCPanel() {
       >
         {busy
           ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Decrypting…</>
-          : <><Eye className="w-3.5 h-3.5" /> Reveal cUSDC Balance</>
+          : <><Eye className="w-3.5 h-3.5" /> Reveal ocUSDC Balance</>
         }
       </motion.button>
 
@@ -104,7 +104,7 @@ export default function CUSDCPanel() {
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
             <ArrowDownToLine className="w-3 h-3 text-emerald-400/60" />
-            Encrypt USDC → cUSDC
+            Shield USDC → ocUSDC
           </label>
           <div className="flex gap-2">
             <input
@@ -119,16 +119,16 @@ export default function CUSDCPanel() {
               onClick={async () => {
                 try {
                   toast.info("Step 1: Approving USDC spend…");
-                  const toastId = toast.loading("Encrypting… (rate-limit cooldown)");
+                  const toastId = toast.loading("Shielding…");
                   await wrap(wrapAmount);
                   toast.dismiss(toastId);
-                  toast.success("Encrypted! cUSDC balance updated.");
+                  toast.success("Shielded! ocUSDC balance updated.");
                   setWrapAmount("");
                 } catch (e) { toast.error((e as Error).message); }
               }}
               className="btn-pay btn-pay-emerald shrink-0"
             >
-              <ArrowDownToLine className="w-3.5 h-3.5" /> Encrypt
+              <ArrowDownToLine className="w-3.5 h-3.5" /> Shield
             </motion.button>
           </div>
           <p className="text-[11px] text-muted-foreground/40">
@@ -144,7 +144,7 @@ export default function CUSDCPanel() {
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
             <ArrowUpFromLine className="w-3 h-3 text-amber-400/60" />
-            Decrypt cUSDC → USDC
+            Unshield ocUSDC → USDC
           </label>
           <div className="flex gap-2">
             <input
@@ -154,24 +154,37 @@ export default function CUSDCPanel() {
               onChange={(e) => setUnwrapAmount(e.target.value)}
               className="pay-input flex-1"
             />
+            {decrypted !== null && (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setUnwrapAmount((Number(decrypted) / 1_000_000).toFixed(6))}
+                className="btn-pay shrink-0 text-[11px] px-2.5 py-1.5 border border-amber-500/30 text-amber-400/70 hover:text-amber-300 hover:border-amber-400/50 rounded-lg transition-colors"
+                title="Set to full revealed balance"
+              >
+                Max
+              </motion.button>
+            )}
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={async () => {
                 try {
-                  const toastId = toast.loading("Decrypting cUSDC → USDC…");
+                  const toastId = toast.loading("Unshielding ocUSDC → USDC…");
                   await unwrap(unwrapAmount);
                   toast.dismiss(toastId);
-                  toast.success("Decrypted! USDC balance updated.");
+                  toast.success("Unshielded! USDC balance updated.");
                   setUnwrapAmount("");
                 } catch (e) { toast.error((e as Error).message); }
               }}
               className="btn-pay btn-pay-emerald shrink-0"
             >
-              <ArrowUpFromLine className="w-3.5 h-3.5" /> Decrypt
+              <ArrowUpFromLine className="w-3.5 h-3.5" /> Unshield
             </motion.button>
           </div>
           <p className="text-[11px] text-muted-foreground/40">
-            Decrypts on-chain — converts cUSDC back to plain USDC in your wallet.
+            Unshields on-chain — converts ocUSDC back to plain USDC in your wallet.
+            {decrypted === null && (
+              <span className="text-amber-400/50"> Reveal your balance first to see how much you can unshield.</span>
+            )}
           </p>
         </div>
 
@@ -217,7 +230,7 @@ export default function CUSDCPanel() {
             </motion.button>
           </div>
           <p className="text-[11px] text-muted-foreground/40">
-            Lets PayStream transfer your cUSDC. Time-bounded — no amount limit.
+            Lets PayStream transfer your ocUSDC. Time-bounded — no amount limit.
           </p>
         </div>
       </div>

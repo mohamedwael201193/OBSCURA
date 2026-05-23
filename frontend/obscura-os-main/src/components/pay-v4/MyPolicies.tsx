@@ -83,7 +83,7 @@ export default function MyPolicies() {
             <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground/45 font-mono">
               <span>Stream {p.streamId}</span>
               <span>Escrow {p.escrowId}</span>
-              <span>{p.coverageAmount} cUSDC</span>
+              <span>{p.coverageAmount} ocUSDC</span>
               <span>{p.coverageDays}d</span>
             </div>
             {p.txHash && (

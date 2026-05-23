@@ -29,7 +29,7 @@ export default function CUSDCTransferForm() {
     try {
       const parsed = parseUnits(amount, 6);
       await transfer(recipient as `0x${string}`, parsed);
-      toast.success("Confidential cUSDC transfer submitted");
+      toast.success("Confidential ocUSDC transfer submitted");
       setRecipient("");
       setAmount("");
     } catch (err) {
@@ -46,7 +46,7 @@ export default function CUSDCTransferForm() {
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Confidential P2P Transfer</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">FHE Encrypted · cUSDC</p>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">FHE Encrypted · ocUSDC</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ENCRYPTED</span>
       </div>
@@ -62,7 +62,7 @@ export default function CUSDCTransferForm() {
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
-        Send cUSDC to any address. The transfer amount is fully encrypted — no one can see how much was sent, not even block explorers.
+        Send ocUSDC to any address. The transfer amount is fully encrypted — no one can see how much was sent, not even block explorers.
       </p>
 
       <div className="space-y-3">
@@ -84,7 +84,7 @@ export default function CUSDCTransferForm() {
 
         <div className="space-y-2">
           <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
-            Amount (cUSDC)
+            Amount (ocUSDC)
           </label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-400/40 pointer-events-none" />
@@ -114,7 +114,7 @@ export default function CUSDCTransferForm() {
       >
         {isProcessing
           ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</>
-          : <><Send className="w-3.5 h-3.5" /> Encrypt &amp; Send cUSDC</>
+          : <><Send className="w-3.5 h-3.5" /> Shield &amp; Send ocUSDC</>
         }
       </motion.button>
 

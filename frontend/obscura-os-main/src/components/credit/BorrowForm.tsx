@@ -76,7 +76,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
       await checkGas();
       const u = BigInt(Math.round(parseFloat(amount) * 1e6));
       await borrow(u, destResolved as `0x${string}`);
-      setMsg(`Borrowed ${amount} cUSDC under stealth.`);
+      setMsg(`Borrowed ${amount} ocUSDC under stealth.`);
       setAmount("");
       pos.resetDecrypted(); // clear stale 0.00 tile — user re-reveals fresh value
       await pos.refresh();
@@ -100,7 +100,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
           label="Your Collateral"
           value={pos.myCollateral}
           loading={pos.sharesLoading}
-          symbol="cUSDC"
+          symbol="ocUSDC"
           accent="emerald"
           onReveal={pos.decryptShares}
         />
@@ -108,7 +108,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
           label="Borrow Debt"
           value={pos.myBorrow}
           loading={pos.sharesLoading}
-          symbol="cUSDC"
+          symbol="ocUSDC"
           accent="amber"
           onReveal={pos.decryptShares}
         />
@@ -118,7 +118,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20 border border-white/[0.05]">
           <span className="text-[10px] text-white/40 uppercase tracking-wider">Max Borrowable</span>
           <span className="text-[9px] text-white/20 ml-1">(public)</span>
-          <span className="ml-auto font-mono text-[13px] text-violet-300">{fmt6(maxBorrowable)} cUSDC</span>
+          <span className="ml-auto font-mono text-[13px] text-violet-300">{fmt6(maxBorrowable)} ocUSDC</span>
         </div>
       )}
 
@@ -147,7 +147,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
         ))}
       </select>
 
-      <label className="text-[11px] uppercase tracking-wider text-white/50">Amount (cUSDC)</label>
+      <label className="text-[11px] uppercase tracking-wider text-white/50">Amount (ocUSDC)</label>
       <input
         inputMode="decimal"
         value={amount}
@@ -173,7 +173,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
         className="bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-violet-500/40"
       />
       <p className="text-[11px] text-white/45 -mt-1">
-        The recipient is encrypted into the cUSDC transfer; observers cannot link borrower to receiver.
+        The recipient is encrypted into the ocUSDC transfer; observers cannot link borrower to receiver.
       </p>
 
       {/* Pre-flight warnings — shown before user signs, no FHE needed */}
@@ -200,7 +200,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
       {!noCollateral && wouldBreakLLTV && (
         <p className="text-[11px] text-red-300/80 flex items-center gap-1.5">
           <ShieldAlert className="w-3 h-3 flex-shrink-0" />
-          Amount exceeds max borrowable ({fmt6(maxBorrowable)} cUSDC). Reduce amount or add more collateral.
+          Amount exceeds max borrowable ({fmt6(maxBorrowable)} ocUSDC). Reduce amount or add more collateral.
         </p>
       )}
       {!noCollateral && maxBorrowable === 0n && (
@@ -212,8 +212,8 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
       {!noCollateral && noLiquidity && (
         <p className="text-[11px] text-orange-300/80 flex items-center gap-1.5">
           <AlertTriangle className="w-3 h-3 flex-shrink-0" />
-          Insufficient pool liquidity — only {fmt6(availableLiquidity)} cUSDC available to borrow.
-          Supply cUSDC to the pool first to create lending liquidity.
+          Insufficient pool liquidity — only {fmt6(availableLiquidity)} ocUSDC available to borrow.
+          Supply ocUSDC to the pool first to create lending liquidity.
         </p>
       )}
 

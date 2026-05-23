@@ -2,12 +2,11 @@ import { useState, useCallback, useEffect } from 'react';
 import { useWriteContract, usePublicClient, useWalletClient, useAccount } from 'wagmi';
 import { parseEventLogs } from 'viem';
 import {
-  REINEIRA_CUSDC_ADDRESS,
-  REINEIRA_CUSDC_ABI,
   REINEIRA_ESCROW_ADDRESS,
   OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
   OBSCURA_CONFIDENTIAL_ESCROW_ABI,
 } from '@/config/pay';
+import { CONFIDENTIAL_USDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from '@/config/credit';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount, encryptAddressAndAmount } from '@/lib/fhe';
@@ -72,19 +71,19 @@ export function useCUSDCEscrow() {
 
   const { writeContractAsync, isPending: isTxPending } = useWriteContract();
 
-  // Authorize the new ObscuraConfidentialEscrow contract as cUSDC operator.
+  // Authorize the ObscuraConfidentialEscrow contract as ocUSDC operator.
   const ensureOperator = useCallback(async () => {
     if (
       !publicClient ||
       !address ||
-      !REINEIRA_CUSDC_ADDRESS ||
+      !CONFIDENTIAL_USDC_ADDRESS ||
       !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS
     ) return;
 
     try {
       const isOp = await publicClient.readContract({
-        address: REINEIRA_CUSDC_ADDRESS,
-        abi: REINEIRA_CUSDC_ABI,
+        address: CONFIDENTIAL_USDC_ADDRESS,
+        abi: CONFIDENTIAL_TOKEN_ABI,
         functionName: 'isOperator',
         args: [address, OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS],
       });
@@ -95,8 +94,8 @@ export function useCUSDCEscrow() {
     const fees = await estimateCappedFees(publicClient);
 
     const hash = await writeContractAsync({
-      address: REINEIRA_CUSDC_ADDRESS,
-      abi: REINEIRA_CUSDC_ABI,
+      address: CONFIDENTIAL_USDC_ADDRESS,
+      abi: CONFIDENTIAL_TOKEN_ABI,
       functionName: 'setOperator',
       args: [OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, expiry],
       account: address,
@@ -148,7 +147,7 @@ export function useCUSDCEscrow() {
       resolverData: `0x${string}` = '0x',
       expiryBlock: bigint = 0n
     ) => {
-      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS || !REINEIRA_CUSDC_ADDRESS) {
+      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS || !CONFIDENTIAL_USDC_ADDRESS) {
         throw new Error('Wallet not connected or escrow contract not configured');
       }
 
@@ -227,11 +226,11 @@ export function useCUSDCEscrow() {
           // Wait for the create tx's CoFHE state to settle before the
           // next encryption (the proof commit window).
           await new Promise((r) => setTimeout(r, 8000));
-          const transferEnc = await encryptAmount(amount, (step) => { if (import.meta.env.DEV) console.log('[FHE Escrow Encrypt #2 cUSDC transfer]', step); });
+          const transferEnc = await encryptAmount(amount, (step) => { if (import.meta.env.DEV) console.log('[FHE Escrow Encrypt #2 ocUSDC transfer]', step); });
           const transferFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
           const transferHash = await withRateLimitRetry(() => writeContractAsync({
-            address: REINEIRA_CUSDC_ADDRESS,
-            abi: REINEIRA_CUSDC_ABI,
+            address: CONFIDENTIAL_USDC_ADDRESS,
+            abi: CONFIDENTIAL_TOKEN_ABI,
             functionName: 'confidentialTransfer',
             args: [OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, transferEnc[0]],
             account: address,
@@ -244,9 +243,9 @@ export function useCUSDCEscrow() {
             publicClient.waitForTransactionReceipt({ hash: transferHash })
           );
           if (transferReceipt.status !== 'success') {
-            throw new Error(`cUSDC transfer to escrow reverted (hash: ${transferHash})`);
+            throw new Error(`ocUSDC transfer to escrow reverted (hash: ${transferHash})`);
           }
-          console.log('[Escrow] cUSDC transferred to escrow', escrowId, transferHash);
+          console.log('[Escrow] ocUSDC transferred to escrow', escrowId, transferHash);
 
           // ── 3. escrow.fund(escrowId, amount) ── (record only)
           await new Promise((r) => setTimeout(r, 8000));
@@ -297,20 +296,20 @@ export function useCUSDCEscrow() {
    */
   const fund = useCallback(
     async (escrowId: bigint, amount: bigint) => {
-      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS || !REINEIRA_CUSDC_ADDRESS) {
+      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS || !CONFIDENTIAL_USDC_ADDRESS) {
         throw new Error('Wallet not connected or escrow contract not configured');
       }
       try {
         fheStatus.setStep(FHEStepStatus.ENCRYPTING);
         await initFHEClient(publicClient, walletClient);
 
-        // ── 1. cUSDC transfer ──
-        const transferEnc = await encryptAmount(amount, (step) => { if (import.meta.env.DEV) console.log('[FHE Fund Encrypt #1 cUSDC]', step); });
+        // ── 1. ocUSDC transfer ──
+        const transferEnc = await encryptAmount(amount, (step) => { if (import.meta.env.DEV) console.log('[FHE Fund Encrypt #1 ocUSDC]', step); });
         fheStatus.setStep(FHEStepStatus.COMPUTING);
         const tFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
         const transferHash = await withRateLimitRetry(() => writeContractAsync({
-          address: REINEIRA_CUSDC_ADDRESS,
-          abi: REINEIRA_CUSDC_ABI,
+          address: CONFIDENTIAL_USDC_ADDRESS,
+          abi: CONFIDENTIAL_TOKEN_ABI,
           functionName: 'confidentialTransfer',
           args: [OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, transferEnc[0]],
           account: address,
@@ -323,7 +322,7 @@ export function useCUSDCEscrow() {
           publicClient.waitForTransactionReceipt({ hash: transferHash })
         );
         if (transferReceipt.status !== 'success') {
-          throw new Error(`cUSDC transfer to escrow reverted (hash: ${transferHash})`);
+          throw new Error(`ocUSDC transfer to escrow reverted (hash: ${transferHash})`);
         }
 
         // ── 2. escrow.fund record ──

@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 
 const handles = [
-  { id: "0x8f3a...c2d1", type: "euint64", owner: "cUSDC Balance", access: ["Contract", "Owner"] },
+  { id: "0x8f3a...c2d1", type: "euint64", owner: "ocUSDC Balance", access: ["Contract", "Owner"] },
   { id: "0xa1e7...9f4b", type: "euint64", owner: "Escrow Amount", access: ["Contract", "Depositor", "Recipient"] },
   { id: "0x3c82...d5e0", type: "euint8", owner: "Vote Choice", access: ["Contract"] },
   { id: "0x7b19...e3a2", type: "eaddress", owner: "Stealth Addr", access: ["Contract", "Recipient"] },

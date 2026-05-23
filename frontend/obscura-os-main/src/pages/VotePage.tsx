@@ -20,6 +20,7 @@ import {
   Users,
   Vault,
   Gift,
+  Gavel,
 } from "lucide-react";
 
 import SectionDiagram from "@/components/elite/SectionDiagram";
@@ -48,10 +49,11 @@ import { VoteSetupGuide } from "@/components/vote/VoteSetupGuide";
 import { DelegationPanel } from "@/components/vote/DelegationPanel";
 import { TreasuryPanel } from "@/components/vote/TreasuryPanel";
 import { RewardsPanel } from "@/components/vote/RewardsPanel";
+import { GovernorPanel } from "@/components/vote/GovernorPanel";
 import { useVoteOwner, useVoteRole } from "@/hooks/useProposals";
 import { Role } from "@/lib/constants";
 
-type Tab = "dashboard" | "voting" | "delegate" | "treasury" | "rewards";
+type Tab = "dashboard" | "voting" | "governor" | "delegate" | "treasury" | "rewards";
 type VotingSubTab = "create" | "proposals" | "cast" | "results";
 
 const sidebarSections: SidebarSection[] = [
@@ -59,7 +61,8 @@ const sidebarSections: SidebarSection[] = [
   {
     heading: "Modules",
     items: [
-      { key: "voting", label: "Proposals", icon: CheckSquare },
+      { key: "voting", label: "Encrypted Polls", icon: CheckSquare },
+      { key: "governor", label: "Executable Proposals", icon: Gavel },
       { key: "delegate", label: "Delegations", icon: Users },
       { key: "treasury", label: "Treasury", icon: Vault },
       { key: "rewards", label: "Participation", icon: Gift },
@@ -304,6 +307,21 @@ const VotePage = () => {
             <Card>
               <CardHeader title="Voter Participation" eyebrow="Participation" />
               <div className="p-5"><RewardsPanel /></div>
+            </Card>
+          </div>
+        );
+
+      case "governor":
+        return (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader
+                title="Executable Proposals"
+                eyebrow="OZ Governor · Timelock · 2-day delay"
+              />
+              <div className="p-5">
+                <GovernorPanel wrongNetwork={wrongNetwork} />
+              </div>
             </Card>
           </div>
         );

@@ -101,13 +101,13 @@ export default function StakePoolForm() {
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Stake to Insurance Pool</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Earn Yield · cUSDC</p>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Earn Yield · ocUSDC</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">LP YIELD</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
-        Deposit cUSDC into the insurance pool so dispute payouts can be funded.
+        Deposit ocUSDC into the insurance pool so dispute payouts can be funded.
         Anyone can stake — you earn a share of premiums paid by coverage buyers.
         The staked amount is fully encrypted.
       </p>

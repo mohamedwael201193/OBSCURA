@@ -118,7 +118,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
           label="Debt"
           value={pos.myBorrow}
           loading={pos.sharesLoading}
-          symbol="cUSDC"
+          symbol="ocUSDC"
           accent="violet"
           onReveal={pos.decryptShares}
         />
@@ -128,7 +128,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20 border border-white/[0.05]">
           <span className="text-[10px] text-white/40 uppercase tracking-wider">Max Borrow</span>
           <span className="text-[9px] text-white/20 ml-1">(public)</span>
-          <span className="ml-auto font-mono text-[13px] text-amber-300">{fmt6(maxB)} cUSDC</span>
+          <span className="ml-auto font-mono text-[13px] text-amber-300">{fmt6(maxB)} ocUSDC</span>
         </div>
       )}
 
@@ -194,7 +194,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
         <p className="text-[11px] text-emerald-300/70 flex items-center gap-1.5">
           <ShieldCheck className="w-3 h-3 flex-shrink-0" />
           Collateral deposited: {fmt6(plainColl)} {market.collateralSymbol}.
-          Max borrowable: {fmt6(maxB)} cUSDC.
+          Max borrowable: {fmt6(maxB)} ocUSDC.
           <span className="text-[9px] text-white/25 ml-1">(shadow values — encrypted amount is private)</span>
         </p>
       )}

@@ -153,7 +153,7 @@ export default function CrossChainFundForm() {
             <span className="font-semibold">{displayAmount} USDC</span> has been bridged and minted on Arbitrum Sepolia.
           </p>
           <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
-            Head to the <span className="text-primary">Pay</span> tab and wrap USDC → cUSDC to use it for encrypted payments.
+            Head to the <span className="text-primary">Pay</span> tab and shield USDC → ocUSDC to use it for encrypted payments.
           </p>
           {burnTxHash && (
             <a

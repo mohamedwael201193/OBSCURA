@@ -49,7 +49,7 @@ const FLOWS: Record<DiagramFlow, FlowSpec> = {
     nodes: [
       { x: 60,  y: 90, label: "Your wallet", sub: "Plaintext amount" },
       { x: 240, y: 90, label: "FHE encrypt", sub: "In-browser" },
-      { x: 420, y: 90, label: "cUSDC contract", sub: "FHE.add / .sub" },
+      { x: 420, y: 90, label: "ocUSDC contract", sub: "FHE.add / .sub" },
       { x: 600, y: 90, label: "Recipient", sub: "Sees own balance only" },
     ],
     edges: [[0, 1], [1, 2], [2, 3]],
@@ -69,7 +69,7 @@ const FLOWS: Record<DiagramFlow, FlowSpec> = {
     title: "How an encrypted Escrow settles",
     subtitle: "Funds and conditions are both encrypted. Resolver releases on a sealed verdict.",
     nodes: [
-      { x: 60,  y: 50,  label: "Payer",    sub: "Locks cUSDC" },
+      { x: 60,  y: 50,  label: "Payer",    sub: "Locks ocUSDC" },
       { x: 320, y: 50,  label: "Escrow",   sub: "Encrypted vault" },
       { x: 580, y: 50,  label: "Payee",    sub: "Receives on release" },
       { x: 320, y: 160, label: "Resolver", sub: "Encrypted verdict" },
@@ -88,13 +88,13 @@ const FLOWS: Record<DiagramFlow, FlowSpec> = {
     edges: [[0, 1], [1, 2], [2, 3]],
   },
   crosschain: {
-    title: "How USDC bridges into encrypted cUSDC",
-    subtitle: "Public USDC enters via CCTP, then wraps to cUSDC where it becomes private.",
+    title: "How USDC bridges into shielded ocUSDC",
+    subtitle: "Public USDC enters via CCTP, then wraps to ocUSDC where it becomes private.",
     nodes: [
       { x: 60,  y: 90, label: "Source chain", sub: "Public USDC" },
       { x: 240, y: 90, label: "CCTP burn",    sub: "Verified" },
       { x: 420, y: 90, label: "Mint USDC",    sub: "On Arbitrum" },
-      { x: 600, y: 90, label: "Wrap → cUSDC", sub: "Now encrypted" },
+      { x: 600, y: 90, label: "Wrap → ocUSDC", sub: "Now encrypted" },
     ],
     edges: [[0, 1], [1, 2], [2, 3]],
   },

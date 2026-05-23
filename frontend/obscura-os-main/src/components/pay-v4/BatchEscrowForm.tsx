@@ -228,7 +228,7 @@ export default function BatchEscrowForm() {
           </div>
           <div>
             <h3 className="font-display text-sm font-semibold text-emerald-300">{createdIds.length} Confidential Escrows Created</h3>
-            <p className="text-[10px] text-muted-foreground/40 tracking-widest uppercase">Encrypted Payroll · cUSDC</p>
+            <p className="text-[10px] text-muted-foreground/40 tracking-widest uppercase">Encrypted Payroll · ocUSDC</p>
           </div>
         </div>
 
@@ -239,7 +239,7 @@ export default function BatchEscrowForm() {
           if (stillFunding) {
             return (
               <p className="text-[12px] text-cyan-300/85 leading-relaxed">
-                Auto-funding row <strong>{(fundingIndex ?? 0) + 1}</strong> of {createdIds.length} — confirm 2 MetaMask popups per row (cUSDC transfer + on-chain record). Each row's amount and recipient remain encrypted.
+                Auto-funding row <strong>{(fundingIndex ?? 0) + 1}</strong> of {createdIds.length} — confirm 2 MetaMask popups per row (ocUSDC transfer + on-chain record). Each row's amount and recipient remain encrypted.
               </p>
             );
           }
@@ -283,7 +283,7 @@ export default function BatchEscrowForm() {
                 <span className="font-mono text-[11px] text-muted-foreground/55 truncate flex-1">
                   {filteredRows[i]?.recipient.slice(0, 8)}…{filteredRows[i]?.recipient.slice(-6)}
                 </span>
-                <span className="font-mono text-[11px] text-foreground/70">{filteredRows[i]?.amount} cUSDC</span>
+                <span className="font-mono text-[11px] text-foreground/70">{filteredRows[i]?.amount} ocUSDC</span>
                 {fundLabel && (
                   <span
                     className={`font-mono text-[10px] uppercase tracking-wider w-16 text-right ${fundColor}`}
@@ -327,7 +327,7 @@ export default function BatchEscrowForm() {
           <h3 className="font-display text-sm font-semibold text-foreground">Confidential Batch Payroll</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Up to 20 recipients · single tx</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">cUSDC</span>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ocUSDC</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
@@ -338,7 +338,7 @@ export default function BatchEscrowForm() {
 
       <div className="grid grid-cols-2 gap-2 text-[11px]">
         <div className="px-3 py-2 rounded-lg bg-white/[0.025] border border-white/[0.07]">
-          <div className="text-muted-foreground/40 uppercase tracking-wider text-[10px]">Total cUSDC</div>
+          <div className="text-muted-foreground/40 uppercase tracking-wider text-[10px]">Total ocUSDC</div>
           <div className="font-mono text-base text-emerald-300 font-semibold">{totalUsdc.toFixed(2)}</div>
         </div>
         <div className="px-3 py-2 rounded-lg bg-white/[0.025] border border-white/[0.07]">
@@ -392,7 +392,7 @@ export default function BatchEscrowForm() {
                 value={row.recipient}
                 onChange={(e) => updateRow(i, { recipient: e.target.value })}
                 className={`pay-input font-mono text-[12px] ${row.recipient && !validAddr ? "border-red-500/40" : ""}`} />
-              <input type="number" placeholder="cUSDC" value={row.amount}
+              <input type="number" placeholder="ocUSDC" value={row.amount}
                 onChange={(e) => updateRow(i, { amount: e.target.value })}
                 className={`pay-input font-mono text-[12px] text-right ${row.amount && !validAmt ? "border-red-500/40" : ""}`} />
               <button type="button" onClick={() => removeRow(i)}

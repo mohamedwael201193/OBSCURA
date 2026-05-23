@@ -43,12 +43,7 @@ export const OBSCURA_INVOICE_ADDRESS = import.meta.env
   .VITE_OBSCURA_INVOICE_ADDRESS as `0x${string}` | undefined;
 export const REINEIRA_COVERAGE_MANAGER_ADDRESS = import.meta.env
   .VITE_REINEIRA_COVERAGE_MANAGER_ADDRESS as `0x${string}` | undefined;
-export const REINEIRA_POOL_FACTORY_ADDRESS = import.meta.env
-  .VITE_REINEIRA_POOL_FACTORY_ADDRESS as `0x${string}` | undefined;
-export const REINEIRA_POLICY_REGISTRY_ADDRESS = import.meta.env
-  .VITE_REINEIRA_POLICY_REGISTRY_ADDRESS as `0x${string}` | undefined;
-export const REINEIRA_CCTP_RECEIVER_ADDRESS = import.meta.env
-  .VITE_REINEIRA_CCTP_RECEIVER_ADDRESS as `0x${string}` | undefined;
+
 
 // ─── ObscuraPayrollResolver ABI ───────────────────────────────────────────
 export const OBSCURA_PAYROLL_RESOLVER_ABI = [
@@ -818,54 +813,6 @@ export const ERC20_APPROVE_ABI = [
 // ─── Reineira Insurance auxiliary contracts (set by operator via setupReineiraPool.ts) ──
 export const REINEIRA_INSURANCE_POOL_ADDRESS = (import.meta.env
   .VITE_REINEIRA_INSURANCE_POOL_ADDRESS ?? "") as `0x${string}` | "";
-
-export const REINEIRA_POLICY_REGISTRY_ABI = [
-  {
-    type: "function",
-    name: "registerPolicy",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "policy", type: "address" }],
-    outputs: [{ name: "policyId", type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "isPolicy",
-    stateMutability: "view",
-    inputs: [{ name: "policy", type: "address" }],
-    outputs: [{ name: "", type: "bool" }],
-  },
-] as const;
-
-export const REINEIRA_POOL_FACTORY_ABI = [
-  {
-    type: "function",
-    name: "createPool",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "cUSDC", type: "address" }],
-    outputs: [
-      { name: "poolId", type: "uint256" },
-      { name: "pool", type: "address" },
-    ],
-  },
-  {
-    type: "function",
-    name: "isPool",
-    stateMutability: "view",
-    inputs: [{ name: "pool", type: "address" }],
-    outputs: [{ name: "", type: "bool" }],
-  },
-  {
-    type: "event",
-    name: "PoolCreated",
-    anonymous: false,
-    inputs: [
-      { indexed: true, name: "poolId", type: "uint256" },
-      { indexed: true, name: "pool", type: "address" },
-      { indexed: true, name: "underwriter", type: "address" },
-      { indexed: false, name: "cUSDC", type: "address" },
-    ],
-  },
-] as const;
 
 export const REINEIRA_INSURANCE_POOL_ABI = [
   {

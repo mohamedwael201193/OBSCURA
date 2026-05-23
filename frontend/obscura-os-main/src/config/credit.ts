@@ -12,50 +12,65 @@ import ObscuraCreditAuctionAbi from "@/abis/credit/ObscuraCreditAuction.json";
 import ObscuraCreditOracleAbi from "@/abis/credit/ObscuraCreditOracle.json";
 import ObscuraCreditIRMAbi from "@/abis/credit/ObscuraCreditIRM.json";
 import ObscuraCreditScoreAbi from "@/abis/credit/ObscuraCreditScore.json";
+import ObscuraCreditScoreV2Abi from "@/abis/credit/ObscuraCreditScoreV2.json";
 import ObscuraCreditStreamHookAbi from "@/abis/credit/ObscuraCreditStreamHook.json";
 import ObscuraCreditInsuranceHookAbi from "@/abis/credit/ObscuraCreditInsuranceHook.json";
 import ObscuraCreditGovernanceProxyAbi from "@/abis/credit/ObscuraCreditGovernanceProxy.json";
 import MockChainlinkFeedAbi from "@/abis/credit/MockChainlinkFeed.json";
 import ObscuraConfidentialTokenAbi from "@/abis/credit/ObscuraConfidentialToken.json";
+import ObscuraCreditRouterAbi from "@/abis/credit/ObscuraCreditRouter.json";
 
 // ─── Addresses (Arbitrum Sepolia 421614) ─────────────────────────────────
 export const CREDIT_FACTORY_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_FACTORY_ADDRESS as `0x${string}` | undefined;
 export const CREDIT_ORACLE_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_ORACLE_ADDRESS as `0x${string}` | undefined;
 export const CREDIT_IRM_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_IRM_ADDRESS as `0x${string}` | undefined;
 export const CREDIT_AUCTION_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_AUCTION_ADDRESS as `0x${string}` | undefined;
+/** @deprecated v1 — kept for reference only; use CREDIT_SCORE_V2_ADDRESS in all new code. */
 export const CREDIT_SCORE_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_SCORE_ADDRESS as `0x${string}` | undefined;
 export const CREDIT_STREAM_HOOK_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_STREAM_HOOK_ADDRESS as `0x${string}` | undefined;
 export const CREDIT_INSURANCE_HOOK_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_INSURANCE_HOOK_ADDRESS as `0x${string}` | undefined;
 export const CREDIT_GOVERNANCE_PROXY_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_GOVERNANCE_PROXY_ADDRESS as `0x${string}` | undefined;
 
-export const CREDIT_MARKET_77_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_MARKET_77_ADDRESS as `0x${string}` | undefined;
-export const CREDIT_MARKET_86_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_MARKET_86_ADDRESS as `0x${string}` | undefined;
-export const CREDIT_MARKET_COBS_CUSDC_ADDRESS  = import.meta.env.VITE_OBSCURA_CREDIT_MARKET_COBS_CUSDC_ADDRESS  as `0x${string}` | undefined;
-export const CREDIT_MARKET_CWETH_CUSDC_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_MARKET_CWETH_CUSDC_ADDRESS as `0x${string}` | undefined;
-export const CREDIT_VAULT_CONSERVATIVE_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_VAULT_CONSERVATIVE_ADDRESS as `0x${string}` | undefined;
-export const CREDIT_VAULT_AGGRESSIVE_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_VAULT_AGGRESSIVE_ADDRESS as `0x${string}` | undefined;
+// Wave-5 active credit score (ScoreV2).
+export const CREDIT_SCORE_V2_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_SCORE_V2_ADDRESS as `0x${string}` | undefined;
 
-// Confidential token addresses (cUSDC = Reineira; cOBS / cWETH = Obscura).
+// v3.16 — wallet-native production: Router + new market/vault.
+export const CREDIT_ROUTER_ADDRESS       = import.meta.env.VITE_OBSCURA_CREDIT_ROUTER_ADDRESS       as `0x${string}` | undefined;
+export const CREDIT_MARKET_V316_ADDRESS  = import.meta.env.VITE_OBSCURA_CREDIT_MARKET_V316_ADDRESS  as `0x${string}` | undefined;
+export const CREDIT_VAULT_V316_ADDRESS   = import.meta.env.VITE_OBSCURA_CREDIT_VAULT_V316_ADDRESS   as `0x${string}` | undefined;
+
+// v2 Production — M-86 / M-70-WETH / M-50-OBS markets + Conservative/Balanced vaults.
+export const CREDIT_MARKET_M86_ADDRESS              = import.meta.env.VITE_OBSCURA_CREDIT_MARKET_M86_ADDRESS              as `0x${string}` | undefined;
+export const CREDIT_MARKET_M70WETH_ADDRESS          = import.meta.env.VITE_OBSCURA_CREDIT_MARKET_M70WETH_ADDRESS          as `0x${string}` | undefined;
+export const CREDIT_MARKET_M50OBS_ADDRESS           = import.meta.env.VITE_OBSCURA_CREDIT_MARKET_M50OBS_ADDRESS           as `0x${string}` | undefined;
+export const CREDIT_VAULT_CONSERVATIVE_V2_ADDRESS   = import.meta.env.VITE_OBSCURA_CREDIT_VAULT_CONSERVATIVE_V2_ADDRESS   as `0x${string}` | undefined;
+export const CREDIT_VAULT_BALANCED_V2_ADDRESS       = import.meta.env.VITE_OBSCURA_CREDIT_VAULT_BALANCED_V2_ADDRESS       as `0x${string}` | undefined;
+
+// Confidential token addresses — Plan v2 shielded wrappers: ocUSDC / ocWETH / ocOBS.
 export const CONFIDENTIAL_USDC_ADDRESS  = import.meta.env.VITE_OBSCURA_CONFIDENTIAL_USDC_ADDRESS  as `0x${string}` | undefined;
 export const CONFIDENTIAL_OBS_ADDRESS   = import.meta.env.VITE_OBSCURA_CONFIDENTIAL_OBS_ADDRESS   as `0x${string}` | undefined;
 export const CONFIDENTIAL_WETH_ADDRESS  = import.meta.env.VITE_OBSCURA_CONFIDENTIAL_WETH_ADDRESS  as `0x${string}` | undefined;
+// CREDIT-ONLY ocUSDC — faucet mode (v3.14), used by the credit market (v316 deployed with this token).
+// Distinct from CONFIDENTIAL_USDC_ADDRESS which is the Pay-page wrapper backed by real USDC.
+export const CREDIT_OCUSDC_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_OCUSDC_ADDRESS as `0x${string}` | undefined;
 
 // ─── ABIs (re-exported for hooks/components) ─────────────────────────────
-// NOTE: ObscuraCreditMarket.json is a Hardhat artifact ({ abi, bytecode, … }) —
-// extract .abi so viem receives a plain array. All other credit ABI files are
-// already plain arrays (extracted during deployment); use them directly.
+// All credit ABI files are plain arrays (synced from artifacts via
+// scripts/deployWave4v316.ts + post-deploy ABI sync).
 export const CREDIT_FACTORY_ABI          = ObscuraCreditFactoryAbi          as any;
-export const CREDIT_MARKET_ABI           = (ObscuraCreditMarketAbi          as any).abi;
+export const CREDIT_MARKET_ABI           = ObscuraCreditMarketAbi           as any;
 export const CREDIT_VAULT_ABI            = ObscuraCreditVaultAbi            as any;
 export const CREDIT_AUCTION_ABI          = ObscuraCreditAuctionAbi          as any;
 export const CREDIT_ORACLE_ABI           = ObscuraCreditOracleAbi           as any;
 export const CREDIT_IRM_ABI              = ObscuraCreditIRMAbi              as any;
 export const CREDIT_SCORE_ABI            = ObscuraCreditScoreAbi            as any;
+export const CREDIT_SCORE_V2_ABI         = ObscuraCreditScoreV2Abi          as any;
 export const CREDIT_STREAM_HOOK_ABI      = ObscuraCreditStreamHookAbi       as any;
 export const CREDIT_INSURANCE_HOOK_ABI   = ObscuraCreditInsuranceHookAbi    as any;
 export const CREDIT_GOVERNANCE_PROXY_ABI = ObscuraCreditGovernanceProxyAbi  as any;
 export const MOCK_CHAINLINK_FEED_ABI     = MockChainlinkFeedAbi             as any;
 export const CONFIDENTIAL_TOKEN_ABI      = ObscuraConfidentialTokenAbi      as any;
+export const CREDIT_ROUTER_ABI           = ObscuraCreditRouterAbi           as any;
 
 // ─── Token registry (used by UI for symbol display + faucet UX) ──────────
 export interface CreditTokenMeta {
@@ -69,9 +84,11 @@ export interface CreditTokenMeta {
 }
 
 export const CREDIT_TOKENS: Record<string, CreditTokenMeta> = {
-  cUSDC: { address: CONFIDENTIAL_USDC_ADDRESS, name: "Confidential USDC", symbol: "cUSDC", decimals: 8, hasFaucet: false,                             priceUsd: 1.0 },
-  OBS:   { address: CONFIDENTIAL_OBS_ADDRESS,  name: "OBS",              symbol: "OBS",   decimals: 8, hasFaucet: true,  faucetAmountLabel: "100 OBS / 24h",    priceUsd: 0.10 },
-  cWETH: { address: CONFIDENTIAL_WETH_ADDRESS, name: "Confidential WETH", symbol: "cWETH", decimals: 8, hasFaucet: true,  faucetAmountLabel: "0.1 cWETH / 24h", priceUsd: 3000 },
+  // Plan v2 — shielded wrapper tokens: ocUSDC / ocWETH / ocOBS.
+  // Symbols match the factory deploy: symbol="ocUSDC", "ocWETH", "ocOBS".
+  ocUSDC: { address: CREDIT_OCUSDC_ADDRESS, name: "Obscura Confidential USDC", symbol: "ocUSDC", decimals: 6, hasFaucet: true,  faucetAmountLabel: "10,000 ocUSDC / 24h", priceUsd: 1.0 },
+  ocOBS:  { address: CONFIDENTIAL_OBS_ADDRESS,  name: "Obscura Confidential OBS",  symbol: "ocOBS",  decimals: 6, hasFaucet: true,  faucetAmountLabel: "2 ocOBS / 24h",    priceUsd: 0.10 },
+  ocWETH: { address: CONFIDENTIAL_WETH_ADDRESS, name: "Obscura Confidential WETH", symbol: "ocWETH", decimals: 6, hasFaucet: true,  faucetAmountLabel: "2 ocWETH / 24h",   priceUsd: 3000 },
 };
 
 // ─── Static market & vault metadata used by the UI ───────────────────────
@@ -93,43 +110,33 @@ export interface CreditMarketMeta {
 
 export const CREDIT_MARKETS: CreditMarketMeta[] = [
   {
-    address: CREDIT_MARKET_77_ADDRESS,
-    label: "cUSDC · 77% LLTV",
-    loanSymbol: "cUSDC",
-    collateralSymbol: "cUSDC",
-    lltvBps: 7700,
+    address: CREDIT_MARKET_M86_ADDRESS,
+    label: "ocUSDC · 86% LLTV",
+    loanSymbol: "ocUSDC",
+    collateralSymbol: "ocUSDC",
+    lltvBps: 8600,
     liqBonusBps: 500,
+    liqThresholdBps: 9000,
+    riskTier: "Conservative",
+  },
+  {
+    address: CREDIT_MARKET_M70WETH_ADDRESS,
+    label: "ocWETH → ocUSDC · 70% LLTV",
+    loanSymbol: "ocUSDC",
+    collateralSymbol: "ocWETH",
+    lltvBps: 7000,
+    liqBonusBps: 800,
     liqThresholdBps: 8500,
     riskTier: "Balanced",
   },
   {
-    address: CREDIT_MARKET_86_ADDRESS,
-    label: "cUSDC · 86% LLTV",
-    loanSymbol: "cUSDC",
-    collateralSymbol: "cUSDC",
-    lltvBps: 8600,
-    liqBonusBps: 750,
-    liqThresholdBps: 9000,
-    riskTier: "Aggressive",
-  },
-  {
-    address: CREDIT_MARKET_COBS_CUSDC_ADDRESS,
-    label: "OBS → cUSDC · 77% LLTV",
-    loanSymbol: "cUSDC",
-    collateralSymbol: "OBS",
-    lltvBps: 7700,
-    liqBonusBps: 500,
-    liqThresholdBps: 8500,
-    riskTier: "Balanced",
-  },
-  {
-    address: CREDIT_MARKET_CWETH_CUSDC_ADDRESS,
-    label: "cWETH → cUSDC · 86% LLTV",
-    loanSymbol: "cUSDC",
-    collateralSymbol: "cWETH",
-    lltvBps: 8600,
-    liqBonusBps: 750,
-    liqThresholdBps: 9000,
+    address: CREDIT_MARKET_M50OBS_ADDRESS,
+    label: "ocOBS → ocUSDC · 50% LLTV",
+    loanSymbol: "ocUSDC",
+    collateralSymbol: "ocOBS",
+    lltvBps: 5000,
+    liqBonusBps: 1200,
+    liqThresholdBps: 8000,
     riskTier: "Aggressive",
   },
 ];
@@ -144,18 +151,18 @@ export interface CreditVaultMeta {
 
 export const CREDIT_VAULTS: CreditVaultMeta[] = [
   {
-    address: CREDIT_VAULT_CONSERVATIVE_ADDRESS,
+    address: CREDIT_VAULT_CONSERVATIVE_V2_ADDRESS,
     name: "Obscura Conservative",
-    description: "Single-market exposure (77% LLTV). Lowest expected APY, lowest tail-risk.",
+    description: "Single-market exposure (M-86, 86% LLTV). Lowest risk, stable yield.",
     riskTier: "Conservative",
-    marketAddresses: [CREDIT_MARKET_77_ADDRESS],
+    marketAddresses: [CREDIT_MARKET_M86_ADDRESS],
   },
   {
-    address: CREDIT_VAULT_AGGRESSIVE_ADDRESS,
-    name: "Obscura Aggressive",
-    description: "Mixed exposure across 77% + 86% LLTV markets for higher yield.",
-    riskTier: "Aggressive",
-    marketAddresses: [CREDIT_MARKET_77_ADDRESS, CREDIT_MARKET_86_ADDRESS],
+    address: CREDIT_VAULT_BALANCED_V2_ADDRESS,
+    name: "Obscura Balanced",
+    description: "60% M-86 / 40% M-70-WETH cross-market yield. Higher APY, moderate tail-risk.",
+    riskTier: "Balanced",
+    marketAddresses: [CREDIT_MARKET_M86_ADDRESS, CREDIT_MARKET_M70WETH_ADDRESS],
   },
 ];
 
@@ -168,8 +175,8 @@ export const CREDIT_GAS_CAPS = {
   supply: 2_000_000n,       // +FHE.add encrypted supply shares
   withdraw: 1_800_000n,     // +FHE.sub encrypted supply shares
   supplyCollateral: 1_200_000n,
-  withdrawCollateral: 2_800_000n, // FHE.sub + outgoing confidentialTransfer (FHE-heavy)
-  borrow: 2_800_000n,             // FHE ops + outgoing confidentialTransfer (FHE-heavy)
+  withdrawCollateral: 3_500_000n, // FHE.asEuint64(InEuint64) ZKPoK + FHE.sub + outgoing confidentialTransfer (same pattern as borrow, ~3.1M needed)
+  borrow: 4_000_000n,             // FHE.asEuint64(InEuint64) ZKPoK (~1.5M) + FHE.add + FHE.asEuint64(plain) + outgoing confidentialTransfer (~1.3M) ≈ 3.3M needed
   repay: 1_100_000n,
   vaultDeposit: 2_200_000n, // +FHE.add encrypted vault shares
   vaultWithdraw: 2_000_000n, // +FHE.sub encrypted vault shares

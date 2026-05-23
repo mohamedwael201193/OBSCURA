@@ -1,0 +1,25 @@
+{
+  "name": "@obscura/credit-keeper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source liquidation keeper for ObscuraCreditMarket. Watches plaintext-shadow positions, computes HF off-chain against Chainlink, triggers liquidations, and submits sealed bids via Fhenix CoFHE.",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --enable-source-maps dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "scan": "tsx src/index.ts --scan-only",
+    "bid": "tsx src/index.ts --bid-only"
+  },
+  "dependencies": {
+    "@cofhe/sdk": "^0.5.1",
+    "viem": "^2.21.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}

@@ -87,7 +87,7 @@ export default function CUSDCEscrowActions() {
     }
     try {
       await refund(BigInt(escrowId));
-      toast.success(`Escrow #${escrowId} refunded — cUSDC returned to creator.`, { duration: 8000 });
+      toast.success(`Escrow #${escrowId} refunded — ocUSDC returned to creator.`, { duration: 8000 });
     } catch (err) {
       toast.error((err as Error).message || "Refund failed");
     }
@@ -100,7 +100,7 @@ export default function CUSDCEscrowActions() {
     }
     try {
       await fund(BigInt(escrowId), parseUnits(fundAmount, 6));
-      toast.success("Escrow funded with encrypted cUSDC");
+      toast.success("Escrow funded with encrypted ocUSDC");
       setFundAmount("");
     } catch (err) {
       toast.error((err as Error).message || "Fund failed");
@@ -120,7 +120,7 @@ export default function CUSDCEscrowActions() {
     if (isRecipientMatch === false) {
       toast.message(
         `Local record says this escrow's recipient is ${savedEscrow?.recipient.slice(0, 8)}…. ` +
-        `Proceeding anyway — if you are not the recipient, the contract will privately transfer 0 cUSDC.`,
+        `Proceeding anyway — if you are not the recipient, the contract will privately transfer 0 ocUSDC.`,
         { duration: 8000 }
       );
     }
@@ -131,14 +131,14 @@ export default function CUSDCEscrowActions() {
         addTrackedUnits(address, BigInt(savedEscrow.amount));
         const displayAmt = formatUnits(BigInt(savedEscrow.amount), 6);
         toast.success(
-          `Escrow #${escrowId} redeemed — ${displayAmt} cUSDC received! ` +
+          `Escrow #${escrowId} redeemed — ${displayAmt} ocUSDC received! ` +
           `Dashboard balance updated. Click REVEAL for exact on-chain amount. ` +
           `Note: Arbiscan shows 0.0001 pUSDC — this is a privacy placeholder, the real amount is encrypted.`,
           { duration: 12000 }
         );
       } else {
         toast.success(
-          "Escrow redeemed! Go to Dashboard → click REVEAL to see your updated cUSDC balance. " +
+          "Escrow redeemed! Go to Dashboard → click REVEAL to see your updated ocUSDC balance. " +
           "Note: Arbiscan shows 0.0001 pUSDC — this is a privacy placeholder.",
           { duration: 10000 }
         );
@@ -158,13 +158,13 @@ export default function CUSDCEscrowActions() {
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Escrow Actions</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Fund · Redeem · cUSDC</p>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Fund · Redeem · ocUSDC</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">cUSDC</span>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ocUSDC</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
-        Fund or redeem existing cUSDC escrows. Redemption uses the silent failure pattern —
+        Fund or redeem existing ocUSDC escrows. Redemption uses the silent failure pattern —
         if you're not the rightful owner, the transaction succeeds but returns zero (no information leak).
       </p>
 
@@ -202,11 +202,11 @@ export default function CUSDCEscrowActions() {
           <div>
             <div className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Top-Up Escrow (Optional)</div>
             <p className="text-[11px] text-muted-foreground/40 mt-1">
-              Add more cUSDC to an already-funded escrow. New escrows are auto-funded at creation — this is only for top-ups.
+              Add more ocUSDC to an already-funded escrow. New escrows are auto-funded at creation — this is only for top-ups.
             </p>
           </div>
           <div className="flex gap-2">
-            <input type="number" placeholder="Amount (cUSDC)" value={fundAmount}
+            <input type="number" placeholder="Amount (ocUSDC)" value={fundAmount}
               onChange={(e) => setFundAmount(e.target.value)}
               className="pay-input flex-1 font-mono" />
             <motion.button onClick={handleFund} disabled={isProcessing || isTxPending || escrowExists === false}
@@ -226,7 +226,7 @@ export default function CUSDCEscrowActions() {
               <AlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
               <p className="text-[11px] text-amber-300/85 leading-relaxed">
                 <strong>Local record mismatch.</strong> Our local record for escrow #{escrowId} lists recipient <span className="font-mono text-emerald-300">{savedEscrow?.recipient.slice(0, 8)}…</span>, but you are connected as <span className="font-mono text-amber-300">{address?.slice(0, 6)}…{address?.slice(-4)}</span>.
-                <span className="block mt-1 text-muted-foreground/55">Proceed only if you are the rightful recipient. A wrong-wallet redeem privately transfers <b>0 cUSDC</b> (no fund loss, no info leak — only gas).</span>
+                <span className="block mt-1 text-muted-foreground/55">Proceed only if you are the rightful recipient. A wrong-wallet redeem privately transfers <b>0 ocUSDC</b> (no fund loss, no info leak — only gas).</span>
               </p>
             </div>
           )}
@@ -241,7 +241,7 @@ export default function CUSDCEscrowActions() {
               <Info className="w-3 h-3 text-blue-400 mt-0.5 shrink-0" />
               <p className="text-[11px] text-blue-300/85 leading-relaxed">
                 <strong>No local record for this ID on this device.</strong>{" "}
-                If you are the recipient, click Redeem — the contract will privately verify your access. Wrong-wallet attempts harmlessly transfer 0 cUSDC.
+                If you are the recipient, click Redeem — the contract will privately verify your access. Wrong-wallet attempts harmlessly transfer 0 ocUSDC.
                 {address && <span className="block mt-1 text-muted-foreground/45 font-mono">Connected: {address.slice(0, 6)}...{address.slice(-4)}</span>}
               </p>
             </div>
@@ -262,7 +262,7 @@ export default function CUSDCEscrowActions() {
           <div className="rounded-xl bg-amber-500/[0.04] border border-amber-500/20 p-4 space-y-3">
             <div className="text-[10px] tracking-[0.15em] uppercase text-amber-300/80 font-semibold">Refund (Expired)</div>
             <p className="text-[11px] text-muted-foreground/55 leading-relaxed">
-              This escrow's auto-refund window has passed. Anyone can return the cUSDC to the original creator.
+              This escrow's auto-refund window has passed. Anyone can return the ocUSDC to the original creator.
             </p>
             <motion.button onClick={handleRefund}
               disabled={isProcessing || isTxPending || !escrowId}

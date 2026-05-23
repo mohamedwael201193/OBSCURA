@@ -49,7 +49,7 @@ export default function DisputeForm() {
             {policies.map((p, i) => (
               <button key={i} onClick={() => setCoverageId(p.coverageId)}
                 className="text-[11px] text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors font-mono">
-                ID {p.coverageId} · Stream {p.streamId} · {p.coverageAmount} cUSDC
+                ID {p.coverageId} · Stream {p.streamId} · {p.coverageAmount} ocUSDC
               </button>
             ))}
           </div>

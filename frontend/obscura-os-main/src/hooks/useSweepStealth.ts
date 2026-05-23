@@ -20,7 +20,7 @@ import { useAccount, usePublicClient, useWalletClient, useSendTransaction } from
 import { createWalletClient, http, parseEther, formatUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { arbitrumSepolia } from "viem/chains";
-import { REINEIRA_CUSDC_ADDRESS, REINEIRA_CUSDC_ABI } from "@/config/pay";
+import { CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
 import { stealthPrivateKey, loadStoredKeys, unlockStoredKeys } from "@/lib/stealth";
 import { initFHEClient, encryptAmount, resetFHEAccount } from "@/lib/fhe";
 import { estimateCappedFees } from "@/lib/gas";
@@ -80,8 +80,8 @@ const STEP_LABELS: Record<SweepStep, string> = {
   funding_gas: "Fund stealth address with 0.002 ETH for gas — sign in MetaMask",
   waiting_fund: "Waiting for gas top-up to confirm…",
   encrypting: "Encrypting amount (CoFHE) — sign permit in MetaMask",
-  sweeping: "Sweeping cUSDC to your wallet — signing internally…",
-  done: "Swept! cUSDC is now in your main wallet.",
+  sweeping: "Sweeping ocUSDC to your wallet — signing internally…",
+  done: "Swept! ocUSDC is now in your main wallet.",
   error: "",
 };
 
@@ -96,7 +96,7 @@ export function useSweepStealth() {
 
   const sweep = useCallback(
     async (payment: ScannedPayment, amountOverride?: bigint) => {
-      if (!address || !publicClient || !walletClient || !REINEIRA_CUSDC_ADDRESS) {
+      if (!address || !publicClient || !walletClient || !CONFIDENTIAL_USDC_ADDRESS) {
         setState({ step: "error", error: "Wallet not connected" });
         return;
       }
@@ -186,7 +186,7 @@ export function useSweepStealth() {
         const sweepFees = await estimateCappedFees(publicClient);
 
         const txHash = await stealthWalletClient.writeContract({
-          address: REINEIRA_CUSDC_ADDRESS,
+          address: CONFIDENTIAL_USDC_ADDRESS,
           abi: CUSDC_TRANSFER_ABI,
           functionName: "confidentialTransfer",
           args: [address, inEuint64],

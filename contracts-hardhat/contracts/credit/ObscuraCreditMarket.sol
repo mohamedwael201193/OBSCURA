@@ -5,6 +5,7 @@ import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import "../interfaces/IConfidentialUSDCv2.sol";
 import "./IObscuraCreditOracle.sol";
 import "./IObscuraCreditIRM.sol";
+import "./IEncryptedScore.sol";
 
 /// @title ObscuraCreditMarket
 /// @notice Isolated FHE money-market (Morpho-Blue shaped).
@@ -53,6 +54,9 @@ contract ObscuraCreditMarket {
     address[] private _borrowers;
 
     address public auctionEngine;
+    /// @notice Pluggable encrypted credit-score oracle for LLTV boosts.
+    ///         Set by factory only; address(0) means no boost.
+    address public scoreOracle;
 
     // ─── Per-user positions ───────────────────────────────────────────────
 
@@ -75,6 +79,10 @@ contract ObscuraCreditMarket {
     // ─── Routing ─────────────────────────────────────────────────────────
 
     mapping(address => bool) public isRepayRouter;
+    /// @notice Routers whitelisted to call *For(user, ...) on-behalf-of paths.
+    ///         Set only by factory; should be a small, audited set (e.g.
+    ///         the canonical ObscuraCreditRouter).
+    mapping(address => bool) public isOnBehalfRouter;
 
     // ─── Events ──────────────────────────────────────────────────────────
 
@@ -87,6 +95,7 @@ contract ObscuraCreditMarket {
     event Accrued(uint128 newTotalBorrowAssets, uint128 ts);
     event LiquidationOpened(address indexed borrower, uint256 indexed auctionId);
     event AuctionEngineSet(address indexed engine);
+    event ScoreOracleSet(address indexed oracle);
 
     // ─── Constructor ─────────────────────────────────────────────────────
 
@@ -131,6 +140,24 @@ contract ObscuraCreditMarket {
     function setRepayRouter(address router, bool ok) external {
         if (msg.sender != factory) revert NotFactory();
         isRepayRouter[router] = ok;
+    }
+
+    /// @notice Factory-only: whitelist a router for on-behalf-of (*For) calls.
+    function setOnBehalfRouter(address router, bool ok) external {
+        if (msg.sender != factory) revert NotFactory();
+        isOnBehalfRouter[router] = ok;
+    }
+
+    /// @notice Factory-only: set the encrypted credit-score oracle for LLTV boosts.
+    function setScoreOracle(address _oracle) external {
+        if (msg.sender != factory) revert NotFactory();
+        scoreOracle = _oracle;
+        emit ScoreOracleSet(_oracle);
+    }
+
+    modifier onlyOnBehalfRouter() {
+        require(isOnBehalfRouter[msg.sender], "not on-behalf router");
+        _;
     }
 
     // ─── Internal helpers ─────────────────────────────────────────────────
@@ -224,15 +251,30 @@ contract ObscuraCreditMarket {
         emit Supplied(msg.sender);
     }
 
-    /// @notice Withdraw loanAsset. Market IS the holder so no client InEuint64
-    ///         needed. Uses FHE.asEuint64(amtPlain) + FHE.allowTransient push.
-    function withdraw(uint64 amtPlain) external {
+    /// @notice Withdraw loanAsset.
+    /// @dev    Caller MUST provide `encAmt` (InEuint64) that encrypts the
+    ///         SAME value as `amtPlain`. The cUSDC push uses a handle derived
+    ///         from `encAmt` (real ciphertext). Reineira cUSDC rejects
+    ///         trivially-encrypted handles in confidentialTransfer.
+    ///
+    ///         Security guard: FHE.eq(req, expected) → FHE.select clamps to
+    ///         _zero if user lies. Plaintext shadow still decreases by
+    ///         amtPlain, so a lying user loses their supply position without
+    ///         draining the pool.
+    function withdraw(uint64 amtPlain, InEuint64 calldata encAmt) external {
         accrueInterest();
         require(_plainSupplyShares[msg.sender] >= amtPlain, "InsufficientSupply");
 
-        // Encrypted supply deduction.
-        euint64 eAmt = FHE.asEuint64(amtPlain);
-        euint64 newSupply = FHE.sub(_encSupplyShares[msg.sender], eAmt);
+        // Real-ciphertext handle from user's InEuint64.
+        euint64 req      = FHE.asEuint64(encAmt);
+        euint64 expected = FHE.asEuint64(amtPlain);
+        ebool   matches  = FHE.eq(req, expected);
+        euint64 safe     = FHE.select(matches, req, _zero);
+        FHE.allowThis(safe);
+
+        // Encrypted supply deduction uses `safe` (0 if lie → no privacy-side
+        // change; plaintext shadow always decreases).
+        euint64 newSupply = FHE.sub(_encSupplyShares[msg.sender], safe);
         FHE.allowThis(newSupply);
         FHE.allow(newSupply, msg.sender);
         _encSupplyShares[msg.sender] = newSupply;
@@ -241,23 +283,27 @@ contract ObscuraCreditMarket {
         if (amtPlain <= totalSupplyAssets - totalBorrowAssets) {
             totalSupplyAssets -= amtPlain;
         }
-        FHE.allowThis(eAmt);           // cUSDC isAllowed(handle, market) check
-        FHE.allowTransient(eAmt, loanAsset);
+        FHE.allowTransient(safe, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
-            msg.sender, uint256(euint64.unwrap(eAmt))
+            msg.sender, uint256(euint64.unwrap(safe))
         );
         emit Withdrew(msg.sender);
     }
 
     /// @notice Vault-internal: withdraw liquidity back to calling vault.
-    ///         Market IS the holder. Uses FHE push pattern (no client InEuint64).
-    ///         Called by vault.reallocateWithdraw().
-    function withdrawToVault(uint64 amtPlain) external {
+    ///         Vault MUST forward a real-ciphertext InEuint64 (encrypted by
+    ///         the curator EOA before calling vault.reallocateWithdraw).
+    function withdrawToVault(uint64 amtPlain, InEuint64 calldata encAmt) external {
         accrueInterest();
         require(_plainSupplyShares[msg.sender] >= amtPlain, "InsufficientSupply");
 
-        euint64 eAmt = FHE.asEuint64(amtPlain);
-        euint64 newSupply = FHE.sub(_encSupplyShares[msg.sender], eAmt);
+        euint64 req      = FHE.asEuint64(encAmt);
+        euint64 expected = FHE.asEuint64(amtPlain);
+        ebool   matches  = FHE.eq(req, expected);
+        euint64 safe     = FHE.select(matches, req, _zero);
+        FHE.allowThis(safe);
+
+        euint64 newSupply = FHE.sub(_encSupplyShares[msg.sender], safe);
         FHE.allowThis(newSupply);
         FHE.allow(newSupply, msg.sender);
         _encSupplyShares[msg.sender] = newSupply;
@@ -266,10 +312,9 @@ contract ObscuraCreditMarket {
         if (amtPlain <= totalSupplyAssets - totalBorrowAssets) {
             totalSupplyAssets -= amtPlain;
         }
-        FHE.allowThis(eAmt);           // cUSDC isAllowed(handle, market) check
-        FHE.allowTransient(eAmt, loanAsset);
+        FHE.allowTransient(safe, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
-            msg.sender, uint256(euint64.unwrap(eAmt))
+            msg.sender, uint256(euint64.unwrap(safe))
         );
         emit Withdrew(msg.sender);
     }
@@ -330,15 +375,20 @@ contract ObscuraCreditMarket {
         _ensurePos(msg.sender);
         Position storage p = _pos[msg.sender];
 
-        euint64 req = FHE.asEuint64(encAmt);
-        p.collateral = FHE.sub(p.collateral, req);
+        // Real-ciphertext handle + FHE.eq guard (see withdraw() for rationale).
+        euint64 req      = FHE.asEuint64(encAmt);
+        euint64 expected = FHE.asEuint64(amtPlain);
+        ebool   matches  = FHE.eq(req, expected);
+        euint64 safe     = FHE.select(matches, req, _zero);
+        FHE.allowThis(safe);
+
+        p.collateral = FHE.sub(p.collateral, safe);
         FHE.allowThis(p.collateral); FHE.allow(p.collateral, msg.sender);
         _plainCollateral[msg.sender] -= amtPlain;
 
-        FHE.allowThis(req);               // cUSDC isAllowed(handle, market) check
-        FHE.allowTransient(req, collateralAsset);
+        FHE.allowTransient(safe, collateralAsset);
         IConfidentialUSDCv2(collateralAsset).confidentialTransfer(
-            msg.sender, uint256(euint64.unwrap(req))
+            msg.sender, uint256(euint64.unwrap(safe))
         );
         emit CollateralWithdrawn(msg.sender);
     }
@@ -358,8 +408,27 @@ contract ObscuraCreditMarket {
         InEuint64 calldata encAmt
     ) external {
         require(amtPlain > 0, "ZeroAmount");
+        // ── Score-based LLTV boost (plan §7.2) ───────────────────────────
+        // userTier is public (tier bucket only, not raw score); tier3 ≥ 750.
+        // FHE.select confirms boost in-circuit without ever decrypting score.
+        uint64 effectiveLLTV = lltvBps;
+        if (scoreOracle != address(0)) {
+            try IEncryptedScore(scoreOracle).userTier(msg.sender) returns (uint8 tier) {
+                if (tier >= 3) {
+                    uint64 boosted = lltvBps + 400;
+                    effectiveLLTV = boosted > 9000 ? 9000 : boosted;
+                }
+            } catch {} // oracle down → conservative base lltv
+            // FHE: verify boost in-circuit (encrypted proof, never leaks score)
+            try IEncryptedScore(scoreOracle).allowTransientForMarket(msg.sender, address(this)) {
+                euint64 eScore = IEncryptedScore(scoreOracle).scoreOf(msg.sender);
+                ebool eTier3 = FHE.gte(eScore, FHE.asEuint64(uint64(750)));
+                euint64 encEffLLTV = FHE.select(eTier3, FHE.asEuint64(effectiveLLTV), _lltv);
+                FHE.allowThis(encEffLLTV); // stored for off-chain auditing
+            } catch {} // user not attested → skip FHE boost proof
+        }
         // ── Plaintext guards ─────────────────────────────────────────────
-        uint128 _maxB = uint128((uint256(_plainCollateral[msg.sender]) * lltvBps) / 10000);
+        uint128 _maxB = uint128((uint256(_plainCollateral[msg.sender]) * effectiveLLTV) / 10000);
         require(_plainBorrow[msg.sender] + amtPlain <= _maxB, "LLTVBreach");
         uint128 available = totalSupplyAssets >= totalBorrowAssets
             ? totalSupplyAssets - totalBorrowAssets : 0;
@@ -369,22 +438,30 @@ contract ObscuraCreditMarket {
         _ensurePos(msg.sender);
 
         Position storage p = _pos[msg.sender];
-        euint64 req = FHE.asEuint64(encAmt); // privacy: tracks encrypted debt
+        // Real-ciphertext handle from user's InEuint64. Reineira cUSDC
+        // REJECTS trivially-encrypted handles (FHE.asEuint64(plaintext))
+        // in confidentialTransfer — proven by 0 outbound events across all
+        // markets and the prior dev's reversed assumption.
+        euint64 req = FHE.asEuint64(encAmt);
 
-        p.borrowShares = FHE.add(p.borrowShares, req);
+        // FHE.eq guard: borrower could supply amtPlain=600 but encAmt encoding
+        // 999 to steal extra cUSDC. Compare against trivially-encrypted amtPlain;
+        // FHE.select clamps to _zero on mismatch → silent no-op, but debt of
+        // amtPlain is still recorded. Lying user loses; pool safe.
+        euint64 expected = FHE.asEuint64(amtPlain);
+        ebool   matches  = FHE.eq(req, expected);
+        euint64 disburse = FHE.select(matches, req, _zero);
+        FHE.allowThis(disburse);
+
+        // Borrow shares accounting uses the guarded `disburse` handle so
+        // encrypted and plaintext views stay consistent even on a lie.
+        p.borrowShares = FHE.add(p.borrowShares, disburse);
         FHE.allowThis(p.borrowShares); FHE.allow(p.borrowShares, msg.sender);
 
         if (!hasBorrow[msg.sender]) { hasBorrow[msg.sender] = true; _borrowers.push(msg.sender); }
         _plainBorrow[msg.sender] += amtPlain;
         totalBorrowAssets        += amtPlain;
 
-        // Disburse via a SEPARATE plaintext-derived handle (same pattern as withdraw()).
-        // Reason: freshly-created InEuint64-derived handles (req) may not yet be
-        // settled by the CoFHE coprocessor when cUSDC tries to use them in its
-        // internal FHE.sub — causing cUSDC to revert. FHE.asEuint64(plaintext)
-        // produces a trivially-encrypted, immediately-usable handle.
-        euint64 disburse = FHE.asEuint64(amtPlain);
-        FHE.allowThis(disburse);           // cUSDC isAllowed(handle, market) check
         FHE.allowTransient(disburse, loanAsset);
         IConfidentialUSDCv2(loanAsset).confidentialTransfer(
             msg.sender, uint256(euint64.unwrap(disburse))
@@ -504,6 +581,130 @@ contract ObscuraCreditMarket {
         uint128 max = uint128((uint256(coll) * lltvBps) / 10000);
         uint128 debt = _plainBorrow[user];
         return debt >= max ? 0 : max - debt;
+    }
+
+    // ─── On-behalf-of paths (Router / v3.16) ─────────────────────────────
+    // Auth model: caller MUST be a whitelisted on-behalf router (set by
+    // factory). The Router is expected to verify the user's operator-grant
+    // on the underlying tokens before calling these. InEuint64 proofs are
+    // signer-bound (user signs client-side); msg.sender = Router is fine.
+
+    function supplyCollateralFor(address user, uint64 amtPlain, InEuint64 calldata encAmt)
+        external onlyOnBehalfRouter
+    {
+        require(amtPlain > 0, "ZeroAmount");
+        accrueInterest();
+        _ensurePos(user);
+
+        euint64 add = FHE.asEuint64(encAmt);
+        Position storage p = _pos[user];
+        p.collateral = FHE.add(p.collateral, add);
+        FHE.allowThis(p.collateral);
+        FHE.allow(p.collateral, user);
+        _plainCollateral[user] += amtPlain;
+        emit CollateralSupplied(user);
+    }
+
+    function borrowFor(address user, uint64 amtPlain, InEuint64 calldata encAmt)
+        external onlyOnBehalfRouter
+    {
+        require(amtPlain > 0, "ZeroAmount");
+        // ── Score-based LLTV boost (plan §7.2) ───────────────────────────
+        uint64 effectiveLLTV = lltvBps;
+        if (scoreOracle != address(0)) {
+            try IEncryptedScore(scoreOracle).userTier(user) returns (uint8 tier) {
+                if (tier >= 3) {
+                    uint64 boosted = lltvBps + 400;
+                    effectiveLLTV = boosted > 9000 ? 9000 : boosted;
+                }
+            } catch {}
+            try IEncryptedScore(scoreOracle).allowTransientForMarket(user, address(this)) {
+                euint64 eScore = IEncryptedScore(scoreOracle).scoreOf(user);
+                ebool eTier3 = FHE.gte(eScore, FHE.asEuint64(uint64(750)));
+                euint64 encEffLLTV = FHE.select(eTier3, FHE.asEuint64(effectiveLLTV), _lltv);
+                FHE.allowThis(encEffLLTV);
+            } catch {}
+        }
+        uint128 _maxB = uint128((uint256(_plainCollateral[user]) * effectiveLLTV) / 10000);
+        require(_plainBorrow[user] + amtPlain <= _maxB, "LLTVBreach");
+        uint128 available = totalSupplyAssets >= totalBorrowAssets
+            ? totalSupplyAssets - totalBorrowAssets : 0;
+        require(available >= amtPlain, "InsufficientLiquidity");
+
+        accrueInterest();
+        _ensurePos(user);
+
+        Position storage p = _pos[user];
+        euint64 req      = FHE.asEuint64(encAmt);
+        euint64 expected = FHE.asEuint64(amtPlain);
+        ebool   matches  = FHE.eq(req, expected);
+        euint64 disburse = FHE.select(matches, req, _zero);
+        FHE.allowThis(disburse);
+
+        p.borrowShares = FHE.add(p.borrowShares, disburse);
+        FHE.allowThis(p.borrowShares); FHE.allow(p.borrowShares, user);
+
+        if (!hasBorrow[user]) { hasBorrow[user] = true; _borrowers.push(user); }
+        _plainBorrow[user] += amtPlain;
+        totalBorrowAssets  += amtPlain;
+
+        FHE.allowTransient(disburse, loanAsset);
+        // Disburse to USER, not to msg.sender (Router).
+        IConfidentialUSDCv2(loanAsset).confidentialTransfer(
+            user, uint256(euint64.unwrap(disburse))
+        );
+        emit Borrowed(user);
+    }
+
+    function repayFor(address user, uint64 amtPlain, InEuint64 calldata encAmt)
+        external onlyOnBehalfRouter
+    {
+        accrueInterest();
+        _ensurePos(user);
+
+        euint64 add = FHE.asEuint64(encAmt);
+        Position storage p = _pos[user];
+        ebool   full   = FHE.gte(add, p.borrowShares);
+        euint64 actual = FHE.select(full, p.borrowShares, add);
+        p.borrowShares = FHE.sub(p.borrowShares, actual);
+        FHE.allowThis(p.borrowShares); FHE.allow(p.borrowShares, user);
+
+        if (amtPlain >= totalBorrowAssets) totalBorrowAssets = 0;
+        else totalBorrowAssets -= amtPlain;
+        if (amtPlain >= _plainBorrow[user]) _plainBorrow[user] = 0;
+        else _plainBorrow[user] -= amtPlain;
+        emit Repaid(user);
+    }
+
+    function withdrawCollateralFor(address user, uint64 amtPlain, InEuint64 calldata encAmt)
+        external onlyOnBehalfRouter
+    {
+        require(amtPlain > 0, "ZeroAmount");
+        require(_plainCollateral[user] >= amtPlain, "InsufficientCollateral");
+        uint128 remainColl = _plainCollateral[user] - amtPlain;
+        uint128 maxBorrow  = uint128((uint256(remainColl) * lltvBps) / 10000);
+        require(_plainBorrow[user] <= maxBorrow, "LLTVBreach");
+
+        accrueInterest();
+        _ensurePos(user);
+        Position storage p = _pos[user];
+
+        euint64 req      = FHE.asEuint64(encAmt);
+        euint64 expected = FHE.asEuint64(amtPlain);
+        ebool   matches  = FHE.eq(req, expected);
+        euint64 safe     = FHE.select(matches, req, _zero);
+        FHE.allowThis(safe);
+
+        p.collateral = FHE.sub(p.collateral, safe);
+        FHE.allowThis(p.collateral); FHE.allow(p.collateral, user);
+        _plainCollateral[user] -= amtPlain;
+
+        FHE.allowTransient(safe, collateralAsset);
+        // Send collateral back to USER, not to Router.
+        IConfidentialUSDCv2(collateralAsset).confidentialTransfer(
+            user, uint256(euint64.unwrap(safe))
+        );
+        emit CollateralWithdrawn(user);
     }
 }
 

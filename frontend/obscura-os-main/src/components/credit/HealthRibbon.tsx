@@ -83,7 +83,7 @@ export default function HealthRibbon({ onRepay, onAddCollateral, className = "" 
                     <span className="text-white/30 mx-1.5">·</span>
                     {worstMarket.market.label}
                     <span className="text-white/30 mx-1.5">·</span>
-                    Debt <span className="font-mono">{fmt6(worstMarket.borrow)}</span> cUSDC
+                    Debt <span className="font-mono">{fmt6(worstMarket.borrow)}</span> ocUSDC
                   </>
                 )}
               </div>

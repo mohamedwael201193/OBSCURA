@@ -31,6 +31,10 @@ contract ObscuraCreditInsuranceHook {
     event Subscribed(uint256 indexed subId, address indexed borrower, address indexed market);
     event Cancelled(uint256 indexed subId);
     event ToppedUp(uint256 indexed subId, uint64 amt);
+    /// @notice Emitted when topUp is skipped due to an error (keeps flow non-reverting).
+    event HookSkipped(uint256 indexed subId, string reason);
+    /// @notice Emitted when a keeper earns a tip. Off-chain treasury processes payouts.
+    event KeeperTip(address indexed keeper, uint256 indexed subId, uint64 amt);
 
     constructor(address _cUSDC) { cUSDC = _cUSDC; }
 
@@ -65,17 +69,24 @@ contract ObscuraCreditInsuranceHook {
         s.lastTopUpAt = uint64(block.timestamp);
 
         // Step 1: Operator-pull encrypted cUSDC from borrower into this hook.
-        IConfidentialUSDCv2(cUSDC).confidentialTransferFrom(s.borrower, address(this), encPull);
+        try IConfidentialUSDCv2(cUSDC).confidentialTransferFrom(s.borrower, address(this), encPull) {
+            // Step 2: Forward cUSDC from hook → market (collateral asset).
+            euint64 handle = FHE.asEuint64(encPush);
+            FHE.allowThis(handle);
+            FHE.allowTransient(handle, cUSDC);
+            IConfidentialUSDCv2(cUSDC).confidentialTransfer(s.market, uint256(euint64.unwrap(handle)));
 
-        // Step 2: Forward cUSDC from hook → market (collateral asset).
-        euint64 handle = FHE.asEuint64(encPush);
-        FHE.allowThis(handle);
-        FHE.allowTransient(handle, cUSDC);
-        IConfidentialUSDCv2(cUSDC).confidentialTransfer(s.market, uint256(euint64.unwrap(handle)));
+            // Step 3: Notify market to credit encrypted collateral.
+            ObscuraCreditMarket(s.market).supplyCollateralFromHook(s.borrower, s.perCycle, handle);
+            emit ToppedUp(subId, s.perCycle);
 
-        // Step 3: Notify market to credit encrypted collateral.
-        ObscuraCreditMarket(s.market).supplyCollateralFromHook(s.borrower, s.perCycle, handle);
-        emit ToppedUp(subId, s.perCycle);
+            // Keeper tip: min(5 bps × perCycle, 1_000_000 = 1 ocUSDC).
+            uint64 tip = uint64(uint256(s.perCycle) * 5 / 10000);
+            if (tip > 1_000_000) tip = 1_000_000;
+            if (tip > 0) emit KeeperTip(msg.sender, subId, tip);
+        } catch (bytes memory reason) {
+            emit HookSkipped(subId, string(reason));
+        }
     }
 
     function subsOf(address u) external view returns (uint256[] memory) { return _byUser[u]; }

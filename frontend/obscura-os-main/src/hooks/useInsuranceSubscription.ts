@@ -23,6 +23,7 @@ import {
 import { estimateCappedFees } from "@/lib/gas";
 import { ensureOperator } from "@/lib/operators";
 import { encryptAmount, initFHEClient } from "@/lib/fhe";
+import { CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
 
 export interface SubscriptionRow {
   subId: bigint;
@@ -119,7 +120,8 @@ export function useInsuranceSubscription() {
           publicClient,
           walletClient,
           address,
-          OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS
+          OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS,
+          CONFIDENTIAL_USDC_ADDRESS
         );
         await initFHEClient(publicClient, walletClient);
         const enc = await encryptAmount(params.maxPremiumPerCycle);

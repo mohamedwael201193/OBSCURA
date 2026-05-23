@@ -9,7 +9,7 @@ const flows = [
     bg: "bg-primary/5",
     borderColor: "border-primary/20",
     steps: [
-      { label: "Wrap USDC", desc: "Convert to encrypted cUSDC via FHERC-20" },
+      { label: "Wrap USDC", desc: "Shield USDC into ocUSDC via FHERC-20" },
       { label: "FHE Encrypt", desc: "Client encrypts amount with cofhe SDK" },
       { label: "On-Chain Transfer", desc: "Ciphertext moves on Arbitrum — Arbiscan shows nothing" },
       { label: "Permit Decrypt", desc: "EIP-712 signature reveals amount to recipient only" },

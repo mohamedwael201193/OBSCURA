@@ -31,7 +31,7 @@ import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
 } from "@/config/pay";
-import { Button } from "@/components/ui/button";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -168,7 +168,7 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
         });
 
         toast.success(
-          `Subscription #${streamId.toString()} active — ${monthly} cUSDC paid now, renews in 30 days`,
+          `Subscription #${streamId.toString()} active — ${monthly} ocUSDC paid now, renews in 30 days`,
         );
       } catch (tickErr) {
         toast.dismiss("sub-tick");
@@ -193,13 +193,13 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
   return (
     <div className="pay-card p-5 space-y-4">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-violet-500/15 border border-violet-500/30 flex items-center justify-center shrink-0">
-          <Repeat className="w-4 h-4 text-violet-300" />
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+          <Repeat className="w-4 h-4 text-emerald-400" />
         </div>
         <div className="min-w-0">
           <div className="font-display text-[15px] font-semibold">Confidential subscription</div>
           <p className="text-[12px] text-muted-foreground/70 mt-0.5 leading-relaxed">
-            Pay a fixed monthly amount privately. Each renewal goes through CoFHE-encrypted cUSDC.
+            Pay a fixed monthly amount privately. Each renewal goes through CoFHE-encrypted ocUSDC.
             Cancel any time from Streams.
           </p>
         </div>
@@ -229,7 +229,7 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
 
       {/* Monthly */}
       <div className="space-y-1.5">
-        <Label className="text-[11px] tracking-[0.12em] uppercase text-muted-foreground/60">Monthly amount (cUSDC)</Label>
+        <Label className="text-[11px] tracking-[0.12em] uppercase text-muted-foreground/60">Monthly amount (ocUSDC)</Label>
         <Input
           inputMode="decimal"
           value={monthly}
@@ -244,7 +244,7 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
               onClick={() => setMonthly(a)}
               className={`px-3 py-1 rounded-md text-[11px] font-mono border ${
                 monthly === a
-                  ? "bg-violet-500/15 border-violet-500/40 text-violet-200"
+                  ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-300"
                   : "bg-white/[0.025] border-white/[0.06] text-muted-foreground/65 hover:border-white/[0.12]"
               }`}
             >
@@ -267,7 +267,7 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
               onClick={() => setMonths(String(d.months))}
               className={`py-2 rounded-lg text-[11px] font-mono border ${
                 Number(months) === d.months
-                  ? "bg-violet-500/15 border-violet-500/40 text-violet-200"
+                  ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-300"
                   : "bg-white/[0.025] border-white/[0.06] text-muted-foreground/70 hover:border-white/[0.12]"
               }`}
             >
@@ -281,7 +281,7 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
       <div className="rounded-xl bg-white/[0.025] border border-white/[0.07] p-3.5 space-y-1.5">
         <div className="flex items-center justify-between text-[12px]">
           <span className="text-muted-foreground/65">Per month</span>
-          <span className="font-mono font-semibold">{monthly || "0"} cUSDC</span>
+          <span className="font-mono font-semibold">{monthly || "0"} ocUSDC</span>
         </div>
         <div className="flex items-center justify-between text-[12px]">
           <span className="text-muted-foreground/65">For</span>
@@ -290,10 +290,10 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
         <div className="h-px bg-white/[0.08]" />
         <div className="flex items-center justify-between text-[13px]">
           <span className="text-foreground/85 font-display font-semibold">Lifetime cap</span>
-          <span className="font-mono font-bold text-violet-200">{totalLifetime} cUSDC</span>
+          <span className="font-mono font-bold text-emerald-300">{totalLifetime} ocUSDC</span>
         </div>
         <p className="text-[10px] text-muted-foreground/45 leading-relaxed">
-          You only spend cUSDC at each renewal. Each charge is encrypted end-to-end via CoFHE.
+          You only spend ocUSDC at each renewal. Each charge is encrypted end-to-end via CoFHE.
         </p>
       </div>
 
@@ -316,19 +316,18 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
         )}
       </AnimatePresence>
 
-      <motion.div whileTap={{ scale: 0.99 }}>
-        <Button
-          onClick={submit}
-          disabled={submitting}
-          className="w-full py-5 bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-400 hover:to-fuchsia-400 text-white font-display font-semibold text-[13px]"
-        >
-          {submitting ? (
-            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Activating subscription…</>
-          ) : (
-            <>Start subscription <ArrowRight className="w-4 h-4 ml-2" /></>
-          )}
-        </Button>
-      </motion.div>
+      <motion.button
+        onClick={submit}
+        disabled={submitting}
+        whileTap={{ scale: 0.99 }}
+        className="btn-pay btn-pay-emerald w-full py-2.5"
+      >
+        {submitting ? (
+          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Activating subscription…</>
+        ) : (
+          <>Start subscription <ArrowRight className="w-4 h-4 ml-2" /></>
+        )}
+      </motion.button>
 
       <p className="text-[10.5px] text-muted-foreground/45 text-center leading-relaxed">
         Renews every 30 days. Manage / pause / cancel from <strong className="text-foreground/70">Streams</strong>.

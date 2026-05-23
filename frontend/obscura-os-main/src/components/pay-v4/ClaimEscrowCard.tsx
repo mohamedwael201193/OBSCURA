@@ -13,7 +13,7 @@ import { formatUSDC } from "@/lib/usdc";
  * ClaimEscrowCard — dedicated landing UI for ?claim=<id> deep links.
  *
  * Renders only when a claim ID is in the URL. Acts as the "Stripe Payment
- * Link" page: a single hero card with a giant "Claim cUSDC" button so a
+ * Link" page: a single hero card with a giant "Claim ocUSDC" button so a
  * recipient who has never used the app can complete redemption in one click.
  *
  * Why a separate card vs. reusing CUSDCEscrowActions:
@@ -35,7 +35,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
   const [loadingProbe, setLoadingProbe] = useState(true);
 
   // ── Phase A1/A2/A5 — post-claim verification state ────────────────────────
-  // Track balance before/after the redeem tx so we can show "+X.XX cUSDC"
+  // Track balance before/after the redeem tx so we can show "+X.XX ocUSDC"
   // (or detect zero-delta = wrong wallet / already claimed).
   type VerifyPhase = "idle" | "settling" | "revealing" | "confirmed" | "zero-delta" | "reveal-failed";
   const [verifyPhase, setVerifyPhase] = useState<VerifyPhase>("idle");
@@ -158,7 +158,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
     if (post > pre) {
       const delta = post - pre;
       setVerifyPhase("confirmed");
-      toast.success(`+${formatUSDC(delta)} cUSDC received privately`, { duration: 10000 });
+      toast.success(`+${formatUSDC(delta)} ocUSDC received privately`, { duration: 10000 });
     } else {
       setVerifyPhase("zero-delta");
     }
@@ -262,7 +262,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
                 ? <>Connect wallet to claim</>
                 : exists === false
                 ? <>Escrow not found</>
-                : <>Claim cUSDC privately</>}
+                : <>Claim ocUSDC privately</>}
             </motion.button>
             <p className="mt-3 text-[10px] text-muted-foreground/45 leading-relaxed text-center">
               Silent-failure design: if this wallet is not the encrypted recipient, the transaction succeeds but transfers 0 cUSDC.
@@ -304,11 +304,11 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
                 <div className="flex-1 min-w-0">
                   <div className="font-display text-sm font-semibold text-emerald-300 flex items-center gap-2">
                     Confirmed — you received <ArrowUpRight className="w-3.5 h-3.5" />
-                    <span className="font-mono">+{formatUSDC(postClaimUnits - preClaimUnits)} cUSDC</span>
+                    <span className="font-mono">+{formatUSDC(postClaimUnits - preClaimUnits)} ocUSDC</span>
                   </div>
                   <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
-                    Pre-claim: <span className="font-mono">{formatUSDC(preClaimUnits)}</span> cUSDC ·
-                    Post-claim: <span className="font-mono text-emerald-200">{formatUSDC(postClaimUnits)}</span> cUSDC.
+                    Pre-claim: <span className="font-mono">{formatUSDC(preClaimUnits)}</span> ocUSDC ·
+                    Post-claim: <span className="font-mono text-emerald-200">{formatUSDC(postClaimUnits)}</span> ocUSDC.
                     The funds are now in your encrypted balance.
                   </p>
                 </div>

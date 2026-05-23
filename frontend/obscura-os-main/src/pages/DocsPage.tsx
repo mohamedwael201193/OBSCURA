@@ -43,7 +43,7 @@ const deployedContracts = [
     explorer: "https://sepolia.arbiscan.io/address/0x8176549dfbE797b1C77316BFac18DAFCe42bEb8c",
   },
   {
-    name: "ConfidentialUSDC (cUSDC)",
+    name: "ObscuraConfidentialToken (ocUSDC)",
     address: "0x6b6e6479b8b3237933c3ab9d8be969862d4ed89f",
     purpose: "FHERC-20 encrypted stablecoin — all balances stored as euint64, wrap/unwrap USDC, confidential transfers",
     explorer: "https://sepolia.arbiscan.io/address/0x6b6e6479b8b3237933c3ab9d8be969862d4ed89f",
@@ -51,7 +51,7 @@ const deployedContracts = [
   {
     name: "ObscuraPayStream",
     address: "0x15d28Cbad36d3aC2d898DFB28644033000F16162",
-    purpose: "Encrypted payroll streams — cUSDC salary to stealth addresses, per-cycle encrypted payments",
+    purpose: "Encrypted payroll streams — ocUSDC salary to stealth addresses, per-cycle encrypted payments",
     explorer: "https://sepolia.arbiscan.io/address/0x15d28Cbad36d3aC2d898DFB28644033000F16162",
   },
   {
@@ -356,7 +356,7 @@ const DocsPage = () => {
                 OBSCURA is the dark operating system for onchain organizations — a five-module privacy platform powered by <strong className="text-foreground">Fhenix CoFHE</strong> (Coprocessor Fully Homomorphic Encryption). All arithmetic executes directly on ciphertext. Data never decrypts on-chain. <em>See only what you're meant to.</em>
               </p>
               <p className="text-sm font-body text-muted-foreground leading-relaxed mb-8 max-w-2xl">
-                Waves 1–2 are live on Arbitrum Sepolia with 15+ deployed contracts: encrypted stablecoins (cUSDC), payroll streams to stealth addresses, confidential escrows, payroll insurance, cross-chain USDC bridging, coercion-resistant governance with treasury and voter rewards, and on-chain delegation. Waves 3–5 (Vault, Trust, Mind) extend the stack to MEV-protected DeFi, selective compliance, and privacy-preserving AI inference.
+                Waves 1–2 are live on Arbitrum Sepolia with 15+ deployed contracts: shielded stablecoins (ocUSDC), payroll streams to stealth addresses, confidential escrows, payroll insurance, cross-chain USDC bridging, coercion-resistant governance with treasury and voter rewards, and on-chain delegation. Waves 3–5 (Vault, Trust, Mind) extend the stack to MEV-protected DeFi, selective compliance, and privacy-preserving AI inference.
               </p>
 
               <div className="grid md:grid-cols-3 gap-4 mb-8">
@@ -438,8 +438,8 @@ const DocsPage = () => {
                 <div className="text-xs tracking-[0.15em] uppercase text-primary mb-4">◆ Frontend — 8-Tab PayPage</div>
                 <div className="grid md:grid-cols-4 gap-3">
                   {[
-                    { tab: "Dashboard", desc: "cUSDC balance, wrap/unwrap, authorize" },
-                    { tab: "Send", desc: "Encrypted P2P cUSDC transfers" },
+                    { tab: "Dashboard", desc: "ocUSDC balance, shield/unshield, authorize" },
+                    { tab: "Send", desc: "Encrypted P2P ocUSDC transfers" },
                     { tab: "Receive", desc: "Stealth setup, incoming streams, balance" },
                     { tab: "Escrows", desc: "Create, fund, redeem with resolvers" },
                     { tab: "Streams", desc: "Payroll streams to stealth addresses" },
@@ -618,11 +618,11 @@ const DocsPage = () => {
               <div className="mt-6 glass-panel rounded-md p-4 border border-violet-500/20 bg-violet-500/[0.03]">
                 <div className="text-[12px] text-foreground/85 mb-3">Invoice Full Stealth Privacy — Monero/Zcash model (Hotfix #8)</div>
                 <p className="text-[12px] text-muted-foreground/75 mb-3">
-                  Before Wave 3, <code className="text-primary/70">payInvoice()</code> transferred cUSDC directly to the creator's real wallet address — visible in calldata. The InvoicePayCard also displayed it in plaintext. Wave 3 fixes both leaks with full ERC-5564 stealth routing.
+                  Before Wave 3, <code className="text-primary/70">payInvoice()</code> transferred ocUSDC directly to the creator's real wallet address — visible in calldata. The InvoicePayCard also displayed it in plaintext. Wave 3 fixes both leaks with full ERC-5564 stealth routing.
                 </p>
                 <ul className="text-[12px] text-muted-foreground/75 space-y-1.5 list-disc pl-4 mb-3">
                   <li><code className="text-primary/70">deriveStealthPayment(meta)</code> → fresh one-time <code>stealthAddr + ephemeralPubKey + viewTag</code></li>
-                  <li><code className="text-primary/70">cUSDC.confidentialTransfer(stealthAddr, encAmt)</code> — amount FHE-encrypted, destination is the one-time address</li>
+                  <li><code className="text-primary/70">ocUSDC.confidentialTransfer(stealthAddr, encAmt)</code> — amount FHE-encrypted, destination is the one-time address</li>
                   <li><code className="text-primary/70">ObscuraPayStream.announce(ephemeralPubKey, viewTag, stealthAddr)</code> — on-chain stealth announcement for scanning</li>
                 </ul>
                 <div className="text-[11px] text-muted-foreground/55">

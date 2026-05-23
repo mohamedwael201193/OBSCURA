@@ -26,6 +26,7 @@ import {
 import { estimateCappedFees } from "@/lib/gas";
 import { ensureOperator } from "@/lib/operators";
 import { encryptAddress, encryptAmount, initFHEClient } from "@/lib/fhe";
+import { CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
 import { getJSON, setJSON } from "@/lib/scopedStorage";
 import {
   loadStoredMetaPublic,
@@ -88,12 +89,6 @@ export function usePayStreamV2() {
       setIsPending(true);
       setError(null);
       try {
-        await ensureOperator(
-          publicClient,
-          walletClient,
-          address,
-          OBSCURA_PAY_STREAM_V2_ADDRESS
-        );
         await initFHEClient(publicClient, walletClient);
         const enc = await encryptAddress(params.recipientAddress);
         const fees = await estimateCappedFees(publicClient);
@@ -156,7 +151,8 @@ export function usePayStreamV2() {
           publicClient,
           walletClient,
           address,
-          OBSCURA_PAY_STREAM_V2_ADDRESS
+          OBSCURA_PAY_STREAM_V2_ADDRESS,
+          CONFIDENTIAL_USDC_ADDRESS
         );
         await initFHEClient(publicClient, walletClient);
         const encA = await encryptAmount(params.amount);

@@ -77,8 +77,8 @@ const HealthBadge = ({ market, user }: Props) => {
 
       {/* What-if simulator */}
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-[11px] uppercase tracking-wider text-white/50">Collateral (cUSDC)</label>
-        <label className="text-[11px] uppercase tracking-wider text-white/50">Debt (cUSDC)</label>
+        <label className="text-[11px] uppercase tracking-wider text-white/50">Collateral (ocUSDC)</label>
+        <label className="text-[11px] uppercase tracking-wider text-white/50">Debt (ocUSDC)</label>
         <input
           inputMode="decimal"
           value={collat}

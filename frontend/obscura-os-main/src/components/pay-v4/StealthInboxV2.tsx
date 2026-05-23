@@ -103,7 +103,7 @@ export default function StealthInboxV2() {
           <Inbox className="w-6 h-6 mx-auto mb-2 text-emerald-400/60" />
           <div className="text-[13px] text-foreground/80 mb-1">Inbox empty</div>
           <p className="text-[12px] text-muted-foreground/60 max-w-xs mx-auto">
-            No incoming stealth payments scanned yet. Share your stealth meta-address from the Receive tab to start receiving private cUSDC.
+            No incoming stealth payments scanned yet. Share your stealth meta-address from the Receive tab to start receiving private ocUSDC.
           </p>
         </div>
       ) : (

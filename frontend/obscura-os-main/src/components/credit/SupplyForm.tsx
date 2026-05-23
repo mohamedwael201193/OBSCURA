@@ -2,7 +2,7 @@
  * SupplyForm — two-step FHE supply to a credit market (earn interest).
  *
  * Supply flow (two-step):
- *   Step 1: cUSDC.confidentialTransfer(market, encAmt1)  ← user signs
+ *   Step 1: ocUSDC.confidentialTransfer(market, encAmt1)  ← user signs
  *   Step 2: market.supply(amtPlain, encAmt2)              ← user signs
  *
  * Withdraw flow (single call, market IS the holder):
@@ -14,15 +14,13 @@
 import { useState } from "react";
 import { usePreWarmFHE } from "@/hooks/usePreWarmFHE";
 import { ArrowUpToLine, ArrowDownToLine, AlertTriangle } from "lucide-react";
-import { useAccount, useReadContract } from "wagmi";
+import { useAccount } from "wagmi";
 import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
 import type { CreditMarketMeta } from "@/config/credit";
-import { REINEIRA_CUSDC_ADDRESS } from "@/config/pay";
+import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
 import EncryptedValue from "@/components/shared/EncryptedValue";
 import FHEStepper from "@/components/shared/FHEStepper";
 import PercentChips from "@/components/shared/PercentChips";
-
-const ERC20_BAL_ABI = [{ name: "balanceOf", type: "function", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }], stateMutability: "view" }] as const;
 
 interface Props {
   market: CreditMarketMeta;
@@ -38,15 +36,8 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
   const { address } = useAccount();
   const { supply, withdraw, fheStatus } = useCreditMarket(market.address);
   const pos = useMarketPosition(market.address);
-
-  const { data: cUSDCBalData } = useReadContract({
-    address: REINEIRA_CUSDC_ADDRESS,
-    abi: ERC20_BAL_ABI,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  });
-  const cUSDCBal: bigint = (cUSDCBalData as bigint | undefined) ?? 0n;
+  const { decrypted: ocUSDCDecrypted } = useCUSDCBalance();
+  const cUSDCBal = ocUSDCDecrypted ?? 0n;
 
   const [tab, setTab]     = useState<Tab>("supply");
   const [amount, setAmount] = useState("");
@@ -68,10 +59,10 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
     try {
       if (tab === "supply") {
         await supply(amtBig);
-        setMsg(`Supplied ${amount} cUSDC to market.`);
+        setMsg(`Supplied ${amount} ocUSDC to market.`);
       } else {
         await withdraw(amtBig);
-        setMsg(`Withdrew ${amount} cUSDC from market.`);
+        setMsg(`Withdrew ${amount} ocUSDC from market.`);
       }
       setAmount("");
       pos.resetDecrypted(); // clear stale tile so user re-reveals fresh value
@@ -92,7 +83,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
           label="Your Supply"
           value={pos.mySupply}
           loading={pos.sharesLoading}
-          symbol="cUSDC"
+          symbol="ocUSDC"
           accent="cyan"
           onReveal={pos.decryptShares}
         />
@@ -144,7 +135,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
 
       {/* Amount input */}
       <label className="text-[11px] uppercase tracking-wider text-white/50">
-        Amount (cUSDC)
+        Amount (ocUSDC)
       </label>
       <input
         inputMode="decimal"
@@ -172,7 +163,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
       {/* Supply privacy note */}
       {tab === "supply" && (
         <p className="text-[11px] text-white/40">
-          Two-step FHE: cUSDC is transferred, then supply shares are credited.
+          Two-step FHE: ocUSDC is transferred, then supply shares are credited.
           Your position amount is private on-chain.
         </p>
       )}

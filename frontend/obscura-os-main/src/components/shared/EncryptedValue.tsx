@@ -47,7 +47,7 @@ export default function EncryptedValue({
   loading = false,
   pending = false,
   onReveal,
-  symbol = "cUSDC",
+  symbol = "ocUSDC",
   decimals = 6,
   className = "",
   label,

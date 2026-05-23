@@ -46,7 +46,7 @@ export default function CUSDCEscrowForm() {
       st(0, "FHE Encrypt",    "fhe_encrypt", "Sealing escrow amount with CoFHE"),
       st(1, "Create Escrow",  "create",      "On-chain record creation"),
       st(2, "FHE Encrypt",    "fhe_encrypt", "Sealing transfer amount"),
-      st(3, "Fund Transfer",  "transfer",    "cUSDC → escrow contract"),
+      st(3, "Fund Transfer",  "transfer",    "ocUSDC → escrow contract"),
       st(4, "Record Funding", "fund",        "Marking escrow as funded"),
     ] as TxStep[];
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -105,7 +105,7 @@ export default function CUSDCEscrowForm() {
       const expiryNote = expiryDays > 0
         ? `Auto-refund enabled after ${expiryDays} days if unclaimed.`
         : `No expiry — cancel manually if needed.`;
-      toast.success(`Escrow created & auto-funded with cUSDC! ${expiryNote} Send the ID to the recipient.`, { duration: 9000 });
+      toast.success(`Escrow created & auto-funded with ocUSDC! ${expiryNote} Send the ID to the recipient.`, { duration: 9000 });
       setOwnerAddr(""); setAmount(""); setResolver(""); setResolverData("");
     } catch (err) {
       toast.error((err as Error).message || "Escrow creation failed");
@@ -143,7 +143,7 @@ export default function CUSDCEscrowForm() {
           </div>
           <div>
             <h3 className="font-display text-sm font-semibold text-emerald-300">Escrow Created &amp; Funded</h3>
-            <p className="text-[10px] text-muted-foreground/40 tracking-widest uppercase">cUSDC · Encrypted</p>
+            <p className="text-[10px] text-muted-foreground/40 tracking-widest uppercase">ocUSDC · Encrypted</p>
           </div>
         </div>
         <div className="rounded-lg bg-emerald-500/8 border border-emerald-500/20 p-4 space-y-2">
@@ -159,7 +159,7 @@ export default function CUSDCEscrowForm() {
             </button>
           </div>
           <p className="text-[11px] text-muted-foreground/55 leading-relaxed">
-            Escrow created and funded. <span className="text-amber-300/90 font-semibold">Save this ID now</span> — the recipient must enter it in <span className="text-foreground/80">Redeem Escrow</span> from their wallet to claim the cUSDC. Without the ID, the funds cannot be retrieved.
+            Escrow created and funded. <span className="text-amber-300/90 font-semibold">Save this ID now</span> — the recipient must enter it in <span className="text-foreground/80">Redeem Escrow</span> from their wallet to claim the ocUSDC. Without the ID, the funds cannot be retrieved.
           </p>
         </div>
         <motion.button onClick={handleCopyLink} whileTap={{ scale: 0.99 }}
@@ -195,9 +195,9 @@ export default function CUSDCEscrowForm() {
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Encrypted Escrow</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">cUSDC · FHE Locked</p>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">ocUSDC · FHE Locked</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">cUSDC</span>
+        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ocUSDC</span>
       </div>
 
       {/* USDC balance pill */}
@@ -211,8 +211,8 @@ export default function CUSDCEscrowForm() {
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
-        Lock cUSDC in an encrypted escrow. The owner address and locked amount are both encrypted on-chain.
-        You must have enough cUSDC balance (wrap USDC first in Dashboard tab).
+        Lock ocUSDC in an encrypted escrow. The owner address and locked amount are both encrypted on-chain.
+        You must have enough ocUSDC balance (shield USDC first in the Send tab).
       </p>
 
       {!isProcessing && (
@@ -226,7 +226,7 @@ export default function CUSDCEscrowForm() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Amount (cUSDC)</label>
+            <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Amount (ocUSDC)</label>
             <input type="number" placeholder="e.g. 100" value={amount}
               onChange={(e) => setAmount(e.target.value)} className="pay-input font-mono" />
           </div>
@@ -263,7 +263,7 @@ export default function CUSDCEscrowForm() {
             </div>
             <p className="text-[11px] text-muted-foreground/40">
               {expiryDays > 0
-                ? `After ${expiryDays} days, anyone can call refund() to return the cUSDC to you. Recipient can still claim before that.`
+                ? `After ${expiryDays} days, anyone can call refund() to return the ocUSDC to you. Recipient can still claim before that.`
                 : "Funds are held indefinitely until recipient claims or you manually cancel."}
             </p>
           </div>

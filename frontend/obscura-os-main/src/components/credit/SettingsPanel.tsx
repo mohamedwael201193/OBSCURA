@@ -22,7 +22,7 @@ import {
 import { useIsOperator } from "@/hooks/useIsOperator";
 import { useEffect as useEffectOp, useState as useStateOp } from "react";
 
-function FaucetRow({ tokenKey }: { tokenKey: "OBS" | "cWETH" }) {
+function FaucetRow({ tokenKey }: { tokenKey: "ocUSDC" | "ocOBS" | "ocWETH" }) {
   const meta = CREDIT_TOKENS[tokenKey];
   const { address } = useAccount();
   const publicClient = usePublicClient();
@@ -161,8 +161,9 @@ const SettingsPanel = ({ markets, approved }: Props) => {
       <Card>
         <CardHeader title="Token faucets" />
         <div className="px-5 py-3 divide-y divide-white/[0.04]">
-          <FaucetRow tokenKey="OBS" />
-          <FaucetRow tokenKey="cWETH" />
+          <FaucetRow tokenKey="ocUSDC" />
+          <FaucetRow tokenKey="ocOBS" />
+          <FaucetRow tokenKey="ocWETH" />
           <p className="text-[10.5px] text-white/40 pt-2">Mint test collateral to your wallet. Balances stay encrypted on-chain.</p>
         </div>
       </Card>
@@ -193,7 +194,7 @@ const SettingsPanel = ({ markets, approved }: Props) => {
               </select>
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-white/45">Per cycle (cUSDC)</label>
+              <label className="text-[10px] uppercase tracking-wider text-white/45">Per cycle (ocUSDC)</label>
               <input value={perCycle} onChange={(e) => setPerCycle(e.target.value)} className="w-full bg-white/[0.03] border border-white/10 rounded-md px-2 py-1.5 text-xs" />
             </div>
             <div>

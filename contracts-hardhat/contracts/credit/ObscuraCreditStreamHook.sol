@@ -32,6 +32,10 @@ contract ObscuraCreditStreamHook {
     event HookEnabled(uint256 indexed hookId, address indexed user, address indexed market);
     event HookDisabled(uint256 indexed hookId);
     event Pulled(uint256 indexed hookId, uint64 amt);
+    /// @notice Emitted when a pull is skipped due to a transfer error (non-reverting failure isolation).
+    event HookSkipped(uint256 indexed hookId, string reason);
+    /// @notice Emitted when a keeper earns a tip. Off-chain treasury processes payouts.
+    event KeeperTip(address indexed keeper, uint256 indexed hookId, uint64 amt);
 
     constructor(address _cUSDC) { cUSDC = _cUSDC; }
 
@@ -71,18 +75,24 @@ contract ObscuraCreditStreamHook {
 
         // Step 1: Operator-pull encrypted cUSDC from borrower into this hook.
         // encPull is consumed by cUSDC's internal verifyInput here.
-        IConfidentialUSDCv2(cUSDC).confidentialTransferFrom(h.borrower, address(this), encPull);
+        try IConfidentialUSDCv2(cUSDC).confidentialTransferFrom(h.borrower, address(this), encPull) {
+            // Step 2: Forward cUSDC from hook → market so market reserves are replenished.
+            euint64 handle = FHE.asEuint64(encPush);
+            FHE.allowThis(handle);
+            FHE.allowTransient(handle, cUSDC);
+            IConfidentialUSDCv2(cUSDC).confidentialTransfer(h.market, uint256(euint64.unwrap(handle)));
 
-        // Step 2: Forward cUSDC from hook → market so market reserves are replenished.
-        // encPush is a second independent proof for the same amount (CoFHE two-step).
-        euint64 handle = FHE.asEuint64(encPush);
-        FHE.allowThis(handle);
-        FHE.allowTransient(handle, cUSDC);
-        IConfidentialUSDCv2(cUSDC).confidentialTransfer(h.market, uint256(euint64.unwrap(handle)));
+            // Step 3: Notify market to decrement encrypted borrow shares.
+            ObscuraCreditMarket(h.market).repayFromHook(h.borrower, h.perCycle, handle);
+            emit Pulled(hookId, h.perCycle);
 
-        // Step 3: Notify market to decrement encrypted borrow shares.
-        ObscuraCreditMarket(h.market).repayFromHook(h.borrower, h.perCycle, handle);
-        emit Pulled(hookId, h.perCycle);
+            // Keeper tip: min(5 bps × perCycle, 1_000_000 = 1 ocUSDC).
+            uint64 tip = uint64(uint256(h.perCycle) * 5 / 10000);
+            if (tip > 1_000_000) tip = 1_000_000;
+            if (tip > 0) emit KeeperTip(msg.sender, hookId, tip);
+        } catch (bytes memory reason) {
+            emit HookSkipped(hookId, string(reason));
+        }
     }
 
     function hooksOf(address user) external view returns (uint256[] memory) { return _byUser[user]; }

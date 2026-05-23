@@ -139,7 +139,7 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
-        Each cycle sends cUSDC to a fresh stealth address. The recipient hint is encrypted on-chain and per-cycle salts + optional jitter prevent timing correlation.
+        Each cycle sends ocUSDC to a fresh stealth address. The recipient hint is encrypted on-chain and per-cycle salts + optional jitter prevent timing correlation.
       </p>
 
       <div className="space-y-4">
@@ -230,7 +230,7 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
             {autoInsure && (
               <div className="mt-3 space-y-1.5">
                 <Label className="text-[10px] tracking-[0.12em] uppercase text-muted-foreground/50">
-                  Max premium per cycle (cUSDC)
+                  Max premium per cycle (ocUSDC)
                 </Label>
                 <Input
                   type="number"

@@ -5,9 +5,8 @@ import { encodeAbiParameters } from "viem";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
-  REINEIRA_CUSDC_ABI,
-  REINEIRA_CUSDC_ADDRESS,
 } from "@/config/pay";
+import { CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
 import { deriveStealthPayment, type MetaAddress } from "@/lib/stealth";
 import { estimateCappedFees } from "@/lib/gas";
@@ -20,7 +19,7 @@ import { toast } from "sonner";
  * Flow (direct-transfer mode — bypasses broken PayStream contract):
  *   1. derive a fresh stealth recipient + ephemeral pubkey + viewTag
  *   2. encrypt the cycle amount via cofhe-sdk
- *   3. call cUSDC.confidentialTransfer(stealthAddr, InEuint64) — money moves
+ *   3. call ocUSDC.confidentialTransfer(stealthAddr, InEuint64) — money moves
  *      directly from the employer to the stealth address
  *   4. announce the stealth payment to ObscuraStealthRegistry so the
  *      recipient's wallet can scan it
@@ -28,7 +27,7 @@ import { toast } from "sonner";
  * Background: The deployed ObscuraPayStream compiles euint64 as bytes32
  * (our @fhenixprotocol/cofhe-contracts), but Reineira cUSDC uses uint256.
  * This selector mismatch causes every tickStream call to revert. Rather
- * than redeploy, we bypass the contract and call cUSDC directly.
+ * than redeploy, we bypass the contract and call ocUSDC directly.
  */
 export function useTickStream() {
   const { address } = useAccount();
@@ -71,7 +70,7 @@ export function useTickStream() {
       if (
         !publicClient ||
         !walletClient ||
-        !REINEIRA_CUSDC_ADDRESS ||
+        !CONFIDENTIAL_USDC_ADDRESS ||
         !OBSCURA_STEALTH_REGISTRY_ADDRESS
       ) {
         throw new Error("Wallet or contracts not configured");
@@ -95,7 +94,7 @@ export function useTickStream() {
         const fees1 = await withRateLimitRetry(() => estimateCappedFees(publicClient!));
 
         const txHash = await writeContractAsync({
-          address: REINEIRA_CUSDC_ADDRESS,
+          address: CONFIDENTIAL_USDC_ADDRESS,
           abi: CUSDC_TRANSFER_ABI,
           functionName: "confidentialTransfer",
           args: [stealth.stealthAddress as `0x${string}`, inEuint64],
@@ -110,8 +109,8 @@ export function useTickStream() {
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
         if (receipt.status === "reverted") {
           throw new Error(
-            `cUSDC confidentialTransfer reverted on-chain (tx ${txHash.slice(0, 10)}…). ` +
-            `Check: sufficient cUSDC balance?`
+            `ocUSDC confidentialTransfer reverted on-chain (tx ${txHash.slice(0, 10)}…). ` +
+            `Check: sufficient ocUSDC balance?`
           );
         }
 
@@ -171,7 +170,7 @@ export function useTickStream() {
         if (announceReceipt.status === "reverted") {
           throw new Error(
             `Stealth announcement reverted on-chain (tx ${announceTx.slice(0, 10)}…). ` +
-            `The cUSDC transfer succeeded but the recipient won't be able to find it in their inbox. ` +
+            `The ocUSDC transfer succeeded but the recipient won't be able to find it in their inbox. ` +
             `Try again or use Direct mode.`
           );
         }
@@ -191,5 +190,4 @@ export function useTickStream() {
   return { tick, isTicking, error };
 }
 
-// Suppress unused import warnings for re-exports used by other modules.
-void REINEIRA_CUSDC_ABI;
+// ocUSDC is now the canonical token for stream payments.

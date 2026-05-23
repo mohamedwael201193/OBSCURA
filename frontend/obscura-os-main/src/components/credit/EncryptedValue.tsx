@@ -18,7 +18,7 @@ interface Props {
   loading?: boolean;
   /** Fired when the user clicks the Reveal button. Triggers FHE permit + decrypt. */
   onReveal?: () => void;
-  /** Token symbol appended after the number (e.g. "cUSDC"). */
+  /** Token symbol appended after the number (e.g. "ocUSDC"). */
   symbol?: string;
   /** Number of decimal places the raw bigint uses (default 6 → 1e6). */
   decimals?: number;
@@ -49,7 +49,7 @@ export default function EncryptedValue({
   value,
   loading = false,
   onReveal,
-  symbol = "cUSDC",
+  symbol = "ocUSDC",
   decimals = 6,
   className = "",
   label,

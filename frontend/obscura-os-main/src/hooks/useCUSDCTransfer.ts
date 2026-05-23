@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useWriteContract, usePublicClient, useWalletClient, useAccount } from 'wagmi';
-import { REINEIRA_CUSDC_ADDRESS, REINEIRA_CUSDC_ABI } from '@/config/pay';
+import { CONFIDENTIAL_USDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from '@/config/credit';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount } from '@/lib/fhe';
@@ -41,8 +41,8 @@ export function useCUSDCTransfer() {
 
   const transfer = useCallback(
     async (to: `0x${string}`, amount: bigint) => {
-      if (!publicClient || !walletClient || !REINEIRA_CUSDC_ADDRESS) {
-        throw new Error('Wallet not connected or cUSDC contract not configured');
+      if (!publicClient || !walletClient || !CONFIDENTIAL_USDC_ADDRESS) {
+        throw new Error('Wallet not connected or ocUSDC contract not configured');
       }
 
       try {
@@ -50,7 +50,7 @@ export function useCUSDCTransfer() {
         await initFHEClient(publicClient, walletClient);
 
         const encryptedInputs = await encryptAmount(amount, (step) => {
-          if (import.meta.env.DEV) console.log('[FHE cUSDC Transfer Encrypt]', step);
+          if (import.meta.env.DEV) console.log('[FHE ocUSDC Transfer Encrypt]', step);
         });
 
         fheStatus.setStep(FHEStepStatus.COMPUTING);
@@ -62,8 +62,8 @@ export function useCUSDCTransfer() {
           : undefined;
 
         const hash = await writeContractAsync({
-          address: REINEIRA_CUSDC_ADDRESS,
-          abi: REINEIRA_CUSDC_ABI,
+          address: CONFIDENTIAL_USDC_ADDRESS,
+          abi: CONFIDENTIAL_TOKEN_ABI,
           functionName: 'confidentialTransfer',
           args: [to, encryptedInputs[0]],
           account: address,
@@ -85,8 +85,8 @@ export function useCUSDCTransfer() {
 
   const setOperator = useCallback(
     async (operator: `0x${string}`, expiry: number) => {
-      if (!REINEIRA_CUSDC_ADDRESS || !address) {
-        throw new Error('Wallet not connected or cUSDC contract not configured');
+      if (!CONFIDENTIAL_USDC_ADDRESS || !address) {
+        throw new Error('Wallet not connected or ocUSDC contract not configured');
       }
 
       const feeData = await publicClient!.estimateFeesPerGas();
@@ -95,8 +95,8 @@ export function useCUSDCTransfer() {
         : undefined;
 
       const hash = await writeContractAsync({
-        address: REINEIRA_CUSDC_ADDRESS,
-        abi: REINEIRA_CUSDC_ABI,
+        address: CONFIDENTIAL_USDC_ADDRESS,
+        abi: CONFIDENTIAL_TOKEN_ABI,
         functionName: 'setOperator',
         args: [operator, expiry],
         account: address,

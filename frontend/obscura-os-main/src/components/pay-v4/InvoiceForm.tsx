@@ -96,7 +96,7 @@ export default function InvoiceForm() {
 
       {/* Amount */}
       <div className="space-y-1.5">
-        <label className="text-[11px] tracking-[0.12em] uppercase text-muted-foreground/60">Amount (cUSDC)</label>
+        <label className="text-[11px] tracking-[0.12em] uppercase text-muted-foreground/60">Amount (ocUSDC)</label>
         <div className="relative">
           <input
             type="text"
@@ -107,7 +107,7 @@ export default function InvoiceForm() {
             className="pay-input w-full pr-16 font-mono"
             disabled={busy}
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] tracking-[0.18em] text-emerald-300/60 font-mono">cUSDC</span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] tracking-[0.18em] text-emerald-300/60 font-mono">ocUSDC</span>
         </div>
       </div>
 

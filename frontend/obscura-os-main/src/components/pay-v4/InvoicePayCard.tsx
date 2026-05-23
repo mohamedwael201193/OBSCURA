@@ -119,7 +119,7 @@ export default function InvoicePayCard({
       setPaidHash(recordHash);
       setPaidAmount(units);
       addTrackedUnits(address, -units);
-      toast.success(`Paid ${formatUSDC(units)} cUSDC privately to invoice #${invoiceId}`);
+      toast.success(`Paid ${formatUSDC(units)} ocUSDC privately to invoice #${invoiceId}`);
     } catch (err) {
       toast.error((err as Error).message || "Payment failed");
     } finally {
@@ -207,7 +207,7 @@ export default function InvoicePayCard({
           <motion.div key="pay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative space-y-3">
             <div className="space-y-1.5">
               <label className="text-[11px] tracking-[0.12em] uppercase text-muted-foreground/60">
-                Amount you owe (cUSDC)
+                Amount you owe (ocUSDC)
               </label>
               <input
                 type="text"
@@ -258,8 +258,8 @@ export default function InvoicePayCard({
                 </motion.button>
                 <p className="text-[10px] text-muted-foreground/45 leading-relaxed text-center">
                   {info?.creatorHasMeta
-                    ? "3 transactions: (1) cUSDC → stealth address, (2) announce (recipient scans inbox), (3) on-chain receipt. Recipient's wallet address is never on-chain."
-                    : "2 transactions: (1) cUSDC.confidentialTransfer, (2) invoice.recordPayment receipt. Amount encrypted via CoFHE. Creator not stealth-registered — recipient address visible on-chain."}
+                    ? "3 transactions: (1) ocUSDC → stealth address, (2) announce (recipient scans inbox), (3) on-chain receipt. Recipient's wallet address is never on-chain."
+                    : "2 transactions: (1) ocUSDC.confidentialTransfer, (2) invoice.recordPayment receipt. Amount encrypted via CoFHE. Creator not stealth-registered — recipient address visible on-chain."}
                 </p>
               </>
             )}
@@ -272,7 +272,7 @@ export default function InvoicePayCard({
                 <div className="font-display text-sm font-semibold text-emerald-300 flex items-center gap-2">
                   Paid <ArrowDownLeft className="w-3.5 h-3.5" />
                   {paidAmount !== null && (
-                    <span className="font-mono">−{formatUSDC(paidAmount)} cUSDC</span>
+                    <span className="font-mono">−{formatUSDC(paidAmount)} ocUSDC</span>
                   )}
                 </div>
                 <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">

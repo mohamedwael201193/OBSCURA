@@ -8,7 +8,7 @@
  *  4. Active streams        — Sending / Receiving tab switcher
  *
  * CUSDCPanel (wrap/unwrap/reveal) has been removed from Streams.
- * It lives in the Send tab under "Encrypt · Decrypt cUSDC" for clarity.
+ * It lives in the Send tab under "Shield · Unshield ocUSDC" for clarity.
  */
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -59,7 +59,7 @@ export default function StreamsDashboard({ onNavigate, refreshKey, onRefresh }: 
   return (
     <div className="space-y-4">
 
-      {/* ── 1. cUSDC Balance Banner ─────────────────────────────────────── */}
+      {/* ── 1. ocUSDC Balance Banner ─────────────────────────────────────── */}
       <div className="pay-card px-4 py-3.5 flex items-center gap-3">
         {/* Icon */}
         <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
@@ -69,16 +69,16 @@ export default function StreamsDashboard({ onNavigate, refreshKey, onRefresh }: 
         {/* Balance */}
         <div className="flex-1 min-w-0">
           <div className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground/35 font-mono">
-            cUSDC available for streams
+            ocUSDC available for streams
           </div>
           <div className="font-mono text-[14px] font-semibold leading-tight mt-0.5">
             {cusdcNum > 0 ? (
               <>
                 <span className="text-emerald-200">≈ {cusdcNum.toFixed(2)}</span>
-                <span className="text-[10px] text-emerald-400/50 ml-1.5">cUSDC</span>
+                <span className="text-[10px] text-emerald-400/50 ml-1.5">ocUSDC</span>
               </>
             ) : (
-              <span className="text-muted-foreground/40 text-[13px]">No cUSDC yet</span>
+              <span className="text-muted-foreground/40 text-[13px]">No ocUSDC yet</span>
             )}
           </div>
         </div>
@@ -86,11 +86,11 @@ export default function StreamsDashboard({ onNavigate, refreshKey, onRefresh }: 
         {/* CTA */}
         <button
           onClick={() => onNavigate("send")}
-          title="Go to Send → Encrypt cUSDC to get tokens for streams"
+          title="Go to Send → Shield ocUSDC to get tokens for streams"
           className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.04] text-[11px] text-emerald-300/70 hover:text-emerald-300 hover:border-emerald-500/50 hover:bg-emerald-500/[0.08] transition-all"
         >
           <ArrowDownToLine className="w-3 h-3" />
-          {cusdcNum > 0 ? "Encrypt more" : "Get cUSDC"} →
+          {cusdcNum > 0 ? "Shield more" : "Get ocUSDC"} →
         </button>
       </div>
 

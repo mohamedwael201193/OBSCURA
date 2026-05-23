@@ -10,7 +10,7 @@ const products = [
     path: "/pay",
     status: "live",
     features: [
-      "Confidential cUSDC transfers — amounts FHE-encrypted, never on-chain plaintext",
+      "Confidential ocUSDC transfers — amounts FHE-encrypted, never on-chain plaintext",
       "Invoice privacy: payer sees 'Private (stealth)' — real wallet never in calldata",
       "Payroll streams to one-time stealth addresses via ERC-5564 / ECDH",
       "Animated TxProgressPanel: real-time SVG progress across all multi-tx flows",

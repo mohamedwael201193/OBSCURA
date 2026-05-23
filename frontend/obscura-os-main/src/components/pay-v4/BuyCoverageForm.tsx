@@ -8,7 +8,7 @@ import { toast } from "sonner";
 const STEP_LABELS: Record<PurchaseStep, string> = {
   idle: "",
   encrypting: "Encrypting coverage data…",
-  authorizing: "Authorizing cUSDC operator (1/2)…",
+  authorizing: "Authorizing ocUSDC operator (1/2)…",
   purchasing: "Purchasing coverage (2/2)…",
   done: "Coverage purchased!",
 };
@@ -33,7 +33,7 @@ export default function BuyCoverageForm() {
     if (sId === 0n) { toast.error("Enter a stream ID (find it in the Streams tab)"); return; }
     if (eId === 0n) { toast.error("Enter an escrow ID"); return; }
     const parsed = Number(coverageUSDC);
-    if (!parsed || parsed <= 0) { toast.error("Enter a coverage amount in cUSDC"); return; }
+    if (!parsed || parsed <= 0) { toast.error("Enter a coverage amount in ocUSDC"); return; }
     const amt = BigInt(Math.floor(parsed * 1_000_000));
     const d = Math.max(1, Math.floor(Number(days) || 30));
     try {
@@ -59,7 +59,7 @@ export default function BuyCoverageForm() {
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Buy Payroll Insurance</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted Coverage · cUSDC</p>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted Coverage · ocUSDC</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">INSURED</span>
       </div>

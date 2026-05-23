@@ -15,7 +15,7 @@ const verticals = [
     icon: Code2,
     title: "Remote-First Crypto Startups",
     pain: "Doxxing payroll on Etherscan kills hiring leverage",
-    fit: "Stealth recipient per cycle, encrypted amounts, real cUSDC",
+    fit: "Stealth recipient per cycle, encrypted amounts, real ocUSDC",
   },
   {
     icon: Briefcase,

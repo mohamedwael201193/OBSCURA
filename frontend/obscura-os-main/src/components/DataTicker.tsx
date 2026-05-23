@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 
 const tickerData = [
-  { symbol: "cUSDC", status: "ENCRYPTED", label: "Confidential USDC", up: true },
+  { symbol: "ocUSDC", status: "ENCRYPTED", label: "Confidential USDC", up: true },
   { symbol: "PAY", status: "ACTIVE", label: "Transfers & Payroll", up: true },
   { symbol: "ESCROW", status: "ACTIVE", label: "Encrypted Escrows", up: true },
   { symbol: "STREAM", status: "ACTIVE", label: "Payroll Streams", up: true },

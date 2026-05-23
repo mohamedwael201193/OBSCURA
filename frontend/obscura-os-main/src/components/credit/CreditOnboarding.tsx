@@ -24,13 +24,13 @@ const STEPS = [
   {
     icon: Lock,
     title: "Encrypted by design",
-    body: "Every borrow amount, collateral balance, and credit score is a CoFHE ciphertext on-chain. Even validators can't see the numbers.",
+    body: "Every borrow amount, collateral balance, and credit score is fully encrypted on-chain. Even validators can\u2019t see the numbers.",
     hint: "Public values: TVL, utilization, interest rates. Private: your position.",
   },
   {
     icon: Droplet,
     title: "Get testnet tokens",
-    body: "Claim cWETH and OBS from the in-app faucet to start supplying or borrowing. cUSDC is wrapped from the protocol mint.",
+    body: "Claim ocWETH and ocOBS from the in-app faucet to start supplying or borrowing. ocUSDC is wrapped from the protocol mint.",
     hint: "Faucet drips reset every 24h — enough to test the full flow.",
   },
   {

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.25;
 
 import "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import "./IEncryptedScore.sol";
 
 /// @title ObscuraCreditScore
 /// @notice Cross-app encrypted reputation oracle. Reads public counters
@@ -13,7 +14,7 @@ interface IPayStreamScore { function streamCount() external view returns (uint25
 interface IAddressBookScore { function getContacts(address u) external view returns (uint256[] memory); }
 interface IVoteScore { function totalVotesByUser(address u) external view returns (uint256); }
 
-contract ObscuraCreditScore {
+contract ObscuraCreditScore is IEncryptedScore {
     error NotOwner();
 
     address public immutable owner;
@@ -23,6 +24,8 @@ contract ObscuraCreditScore {
 
     mapping(address => euint64) private _score;
     mapping(address => mapping(address => bool)) public attestedFor; // user => market => bool
+    /// @notice Plaintext tier bucket (0-3) derived from raw score at updateScore time.
+    mapping(address => uint8) public override userTier;
 
     event ScoreUpdated(address indexed user);
     event AttestedForMarket(address indexed user, address indexed market);
@@ -70,6 +73,13 @@ contract ObscuraCreditScore {
         FHE.allowThis(e);
         FHE.allow(e, user);
         _score[user] = e;
+
+        // Compute plaintext tier (reveals tier bucket, not raw score).
+        if      (raw >= 750) userTier[user] = 3;
+        else if (raw >= 600) userTier[user] = 2;
+        else if (raw >= 300) userTier[user] = 1;
+        else                 userTier[user] = 0;
+
         emit ScoreUpdated(user);
     }
 
@@ -83,6 +93,17 @@ contract ObscuraCreditScore {
     }
 
     function getScore(address user) external view returns (euint64) { return _score[user]; }
+
+    /// @inheritdoc IEncryptedScore
+    function scoreOf(address user) external view override returns (euint64) { return _score[user]; }
+
+    /// @inheritdoc IEncryptedScore
+    /// @dev Grants the specified market transient ACL on user's score for this tx.
+    ///      Reverts if user has not attested for this market.
+    function allowTransientForMarket(address user, address market) external override {
+        require(attestedFor[user][market], "no attest");
+        FHE.allowTransient(_score[user], market);
+    }
 
     function getScoreFor(address market, address user) external view returns (euint64) {
         require(attestedFor[user][market], "no attest");

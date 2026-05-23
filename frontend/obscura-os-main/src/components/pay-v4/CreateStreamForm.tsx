@@ -70,13 +70,13 @@ export default function CreateStreamForm({ onCreated }: { onCreated?: () => void
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Payroll Stream</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">cUSDC · Recurring</p>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">ocUSDC · Recurring</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">PAYROLL</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
-        Set up automatic encrypted salary payments. Each cycle sends cUSDC to a fresh stealth address
+        Set up automatic encrypted salary payments. Each cycle sends ocUSDC to a fresh stealth address
         that only the recipient can claim. The recipient needs to register their stealth meta-address first (Stealth tab).
       </p>
 

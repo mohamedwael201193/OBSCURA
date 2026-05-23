@@ -23,13 +23,13 @@ const features = [
   {
     icon: Zap,
     title: "Cross-Chain Privacy",
-    description: "Bridge USDC from Ethereum or Base via Circle CCTP, then wrap into encrypted cUSDC on Arbitrum. Private liquidity from any chain.",
+    description: "Bridge USDC from Ethereum or Base via Circle CCTP, then wrap into encrypted ocUSDC on Arbitrum. Private liquidity from any chain.",
     tag: "BRIDGE",
   },
   {
     icon: Layers,
     title: "Payroll Insurance",
-    description: "Underwriters stake cUSDC into coverage pools. Missed payroll triggers on-chain disputes with encrypted evidence. Automatic payouts to covered employees.",
+    description: "Underwriters stake ocUSDC into coverage pools. Missed payroll triggers on-chain disputes with encrypted evidence. Automatic payouts to covered employees.",
     tag: "INSURANCE",
   },
   {

@@ -151,7 +151,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
       return;
     }
     if (amt <= 0n) {
-      toast.error("Enter a per-cycle amount in cUSDC (e.g. 2.5)");
+      toast.error("Enter a per-cycle amount in ocUSDC (e.g. 2.5)");
       return;
     }
 
@@ -169,7 +169,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           txHash: hash as string,
           amount: tickAmount,
         });
-        toast.success(`✅ ${tickAmount} cUSDC sent directly to ${stream.recipientHint.slice(0, 8)}…`);
+        toast.success(`✅ ${tickAmount} ocUSDC sent directly to ${stream.recipientHint.slice(0, 8)}…`);
         refresh();
       } else {
         // ── Stealth mode: derive one-time stealth address, announce ─────────
@@ -201,7 +201,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           stealthAddress: result.stealth?.stealthAddress,
         });
         toast.success(
-          `✅ ${tickAmount} cUSDC → stealth address. Recipient must scan Stealth Inbox to claim.`
+          `✅ ${tickAmount} ocUSDC → stealth address. Recipient must scan Stealth Inbox to claim.`
         );
         refresh();
       }
@@ -264,7 +264,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">
             {mode === "employer" ? "Streams You're Paying" : "Streams Paying You"}
           </h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">cUSDC · FHE Encrypted</p>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">ocUSDC · FHE Encrypted</p>
         </div>
         <button onClick={() => refresh()}
           className="ml-auto text-[10px] tracking-[0.15em] uppercase text-muted-foreground/40 hover:text-emerald-400 transition-colors shrink-0">
@@ -284,7 +284,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-400 text-black font-display font-semibold text-[12px] inline-flex items-center justify-center gap-2 disabled:opacity-50"
         >
           <Zap className="w-3.5 h-3.5" />
-          {autoPaying ? "Paying all due cycles…" : `Pay all due cycles (${tickAmount || "—"} cUSDC each)`}
+          {autoPaying ? "Paying all due cycles…" : `Pay all due cycles (${tickAmount || "—"} ocUSDC each)`}
         </button>
       )}
 
@@ -292,7 +292,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
         <div className="space-y-4">
           <div className="space-y-2">
             <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
-              Amount Per Cycle (cUSDC)
+              Amount Per Cycle (ocUSDC)
             </label>
             <input type="number" value={tickAmount} onChange={(e) => setTickAmount(e.target.value)}
               placeholder="e.g. 2.5" className="pay-input font-mono" />
@@ -319,8 +319,8 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
             </div>
             <p className="text-[11px] text-muted-foreground/40 leading-relaxed">
               {payMode === "direct"
-                ? "cUSDC lands directly in the recipient's wallet — they see it immediately."
-                : "cUSDC goes to a derived one-time address. Recipient must scan Stealth Inbox to claim."}
+                ? "ocUSDC lands directly in the recipient's wallet — they see it immediately."
+                : "ocUSDC goes to a derived one-time address. Recipient must scan Stealth Inbox to claim."}
             </p>
           </div>
         </div>
@@ -332,7 +332,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           <Check className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
           <div className="min-w-0 space-y-1">
             <div className="text-[12px] text-emerald-300 font-medium">
-              {lastPayment.amount} cUSDC sent → Stream #{lastPayment.streamId}
+              {lastPayment.amount} ocUSDC sent → Stream #{lastPayment.streamId}
             </div>
             <div className="font-mono text-[11px] text-emerald-400/50">
               tx: {lastPayment.txHash.slice(0, 14)}…{lastPayment.txHash.slice(-8)}

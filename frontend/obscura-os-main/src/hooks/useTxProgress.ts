@@ -43,7 +43,7 @@ export interface TxStep {
 /** Invoice pay — stealth path (3 txs + 2 waits + 2 encrypts = 7 visual steps) */
 export const INVOICE_PAY_STEALTH_STEPS: Omit<TxStep, "status">[] = [
   { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing transfer amount with CoFHE" },
-  { id: "transfer", type: "transfer",    label: "Private Transfer",  sublabel: "cUSDC → one-time stealth address" },
+  { id: "transfer", type: "transfer",    label: "Private Transfer",  sublabel: "ocUSDC → one-time stealth address" },
   { id: "wait1",    type: "wait",        label: "Rate-limit pause",  sublabel: "12 s cooldown before announce", countdownSec: 12 },
   { id: "announce", type: "announce",    label: "Stealth Announce",  sublabel: "Publishing ephemeral key to inbox" },
   { id: "wait2",    type: "wait",        label: "Proof settle",      sublabel: "5 s CoFHE commit window", countdownSec: 5 },
@@ -54,7 +54,7 @@ export const INVOICE_PAY_STEALTH_STEPS: Omit<TxStep, "status">[] = [
 /** Invoice pay — direct/fallback path (2 txs + 1 wait + 2 encrypts) */
 export const INVOICE_PAY_DIRECT_STEPS: Omit<TxStep, "status">[] = [
   { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing transfer amount" },
-  { id: "transfer", type: "transfer",    label: "Transfer cUSDC",    sublabel: "Sending to creator wallet" },
+  { id: "transfer", type: "transfer",    label: "Transfer ocUSDC",   sublabel: "Sending to creator wallet" },
   { id: "wait1",    type: "wait",        label: "Proof settle",      sublabel: "8 s CoFHE commit window", countdownSec: 8 },
   { id: "enc2",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing receipt amount" },
   { id: "record",   type: "record",      label: "Record Payment",    sublabel: "On-chain invoice receipt" },
@@ -65,19 +65,19 @@ export const ESCROW_CREATE_STEPS: Omit<TxStep, "status">[] = [
   { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing escrow amount" },
   { id: "create",   type: "create",      label: "Create Escrow",    sublabel: "On-chain record creation" },
   { id: "enc2",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing transfer amount" },
-  { id: "transfer", type: "transfer",    label: "Fund Transfer",     sublabel: "cUSDC → escrow contract" },
+  { id: "transfer", type: "transfer",    label: "Fund Transfer",     sublabel: "ocUSDC → escrow contract" },
   { id: "fund",     type: "fund",        label: "Record Funding",    sublabel: "Marking escrow as funded" },
 ];
 
 /** Escrow redeem (1 tx) */
 export const ESCROW_REDEEM_STEPS: Omit<TxStep, "status">[] = [
-  { id: "redeem",   type: "redeem",      label: "Redeem Escrow",    sublabel: "FHE-verify & release cUSDC" },
+  { id: "redeem",   type: "redeem",      label: "Redeem Escrow",    sublabel: "FHE-verify & release ocUSDC" },
 ];
 
 /** Send — stealth (2 txs + 1 wait + 1 encrypt) */
 export const SEND_STEALTH_STEPS: Omit<TxStep, "status">[] = [
   { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing transfer amount" },
-  { id: "transfer", type: "transfer",    label: "Private Transfer",  sublabel: "cUSDC → stealth address" },
+  { id: "transfer", type: "transfer",    label: "Private Transfer",  sublabel: "ocUSDC → stealth address" },
   { id: "wait1",    type: "wait",        label: "Rate-limit pause",  sublabel: "12 s cooldown", countdownSec: 12 },
   { id: "announce", type: "announce",    label: "Stealth Announce",  sublabel: "Publishing ephemeral key" },
 ];
@@ -85,14 +85,14 @@ export const SEND_STEALTH_STEPS: Omit<TxStep, "status">[] = [
 /** Send — direct (1 tx + 1 encrypt) */
 export const SEND_DIRECT_STEPS: Omit<TxStep, "status">[] = [
   { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing transfer amount" },
-  { id: "transfer", type: "transfer",    label: "Transfer cUSDC",    sublabel: "Confidential on-chain transfer" },
+  { id: "transfer", type: "transfer",    label: "Transfer ocUSDC",   sublabel: "Confidential on-chain transfer" },
 ];
 
 /** Subscription create + first tick (3 txs + 1 wait + 1 encrypt) */
 export const SUBSCRIPTION_STEPS: Omit<TxStep, "status">[] = [
   { id: "create",   type: "create",      label: "Create Schedule",  sublabel: "Registering subscription stream" },
   { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing first payment" },
-  { id: "transfer", type: "transfer",    label: "Cycle 1 Payment",  sublabel: "cUSDC → stealth address" },
+  { id: "transfer", type: "transfer",    label: "Cycle 1 Payment",  sublabel: "ocUSDC → stealth address" },
   { id: "wait1",    type: "wait",        label: "Rate-limit pause",  sublabel: "12 s cooldown", countdownSec: 12 },
   { id: "announce", type: "announce",    label: "Stealth Announce",  sublabel: "First payment announced" },
 ];
@@ -100,7 +100,7 @@ export const SUBSCRIPTION_STEPS: Omit<TxStep, "status">[] = [
 /** Credit market: supply liquidity (1 encrypt + 1 transfer) */
 export const CREDIT_SUPPLY_STEPS: Omit<TxStep, "status">[] = [
   { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing supply amount" },
-  { id: "transfer", type: "transfer",    label: "Supply cUSDC",     sublabel: "Pulled into market reserves" },
+  { id: "transfer", type: "transfer",    label: "Supply ocUSDC",    sublabel: "Pulled into market reserves" },
   { id: "accrue",   type: "accrue",      label: "Accrue Interest",   sublabel: "Updating utilization" },
 ];
 
@@ -108,14 +108,14 @@ export const CREDIT_SUPPLY_STEPS: Omit<TxStep, "status">[] = [
 export const CREDIT_BORROW_STEPS: Omit<TxStep, "status">[] = [
   { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing borrow amount" },
   { id: "enc2",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing destination address" },
-  { id: "borrow",   type: "borrow",      label: "Borrow cUSDC",      sublabel: "Health-factor checked silently" },
+  { id: "borrow",   type: "borrow",      label: "Borrow ocUSDC",    sublabel: "Health-factor checked silently" },
   { id: "accrue",   type: "accrue",      label: "Accrue Interest",   sublabel: "Updating utilization" },
 ];
 
 /** Credit market: repay (1 encrypt + 1 transfer) */
 export const CREDIT_REPAY_STEPS: Omit<TxStep, "status">[] = [
   { id: "enc1",     type: "fhe_encrypt", label: "FHE Encrypt",      sublabel: "Sealing repay amount" },
-  { id: "transfer", type: "transfer",    label: "Repay cUSDC",       sublabel: "Reducing your debt" },
+  { id: "transfer", type: "transfer",    label: "Repay ocUSDC",     sublabel: "Reducing your debt" },
 ];
 
 /** Vault deposit (1 encrypt + 1 deposit) */

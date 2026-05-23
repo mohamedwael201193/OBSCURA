@@ -120,7 +120,7 @@ const baseSidebarSections: SidebarSection[] = [
 ];
 
 const homeSteps = [
-  { title: "1 · Get cUSDC", description: "Bridge USDC to Arbitrum, then wrap into encrypted cUSDC from the Send tab." },
+  { title: "1 · Get ocUSDC", description: "Bridge USDC to Arbitrum, then shield to ocUSDC from the Send tab." },
   { title: "2 · Send privately", description: "Direct, stealth, or cross-chain — amounts are encrypted in your browser before going on-chain." },
   { title: "3 · Stream payroll", description: "Schedule recurring encrypted payments with optional auto-insurance per cycle." },
   { title: "4 · Escrow & insure", description: "Lock funds with resolvers, or buy coverage so missed cycles still pay out." },
@@ -164,11 +164,11 @@ const WalletPill = () => {
     <button
       onClick={() => void reveal()}
       disabled={busy}
-      title={isRevealed ? "On-chain decrypted balance" : "Click to decrypt your cUSDC balance"}
+      title={isRevealed ? "On-chain decrypted balance" : "Click to reveal your ocUSDC balance"}
       className="group inline-flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.04] px-3 py-1.5 hover:border-emerald-500/40 transition-colors disabled:opacity-60"
     >
       <Lock className="w-3.5 h-3.5 text-emerald-400" />
-      <span className="text-[10px] uppercase tracking-[0.18em] text-emerald-300/70 font-mono">cUSDC</span>
+      <span className="text-[10px] uppercase tracking-[0.18em] text-emerald-300/70 font-mono">ocUSDC</span>
       <span className="font-mono text-[13px] font-semibold text-emerald-200 tabular-nums">
         {busy ? "…" : display}
       </span>
@@ -443,13 +443,13 @@ const SendCUSDCBar = ({ onGetCUSDC }: { onGetCUSDC: () => void }) => {
       <UsdcIcon className="w-5 h-5 shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="text-[12px] text-white/80 font-medium leading-tight">
-          cUSDC — USDC encrypted on-chain with FHE
+          ocUSDC — USDC shielded on-chain with FHE
         </div>
         <div className="text-[11px] text-white/40 mt-0.5">
-          You need cUSDC to send privately. Plain USDC: <span className="text-white/60 font-mono">{usdcBalance ?? "—"}</span>
+          You need ocUSDC to send privately. Plain USDC: <span className="text-white/60 font-mono">{usdcBalance ?? "—"}</span>
           {isRevealed
-            ? <> · cUSDC: <span className="text-emerald-400/80 font-mono">{cusdc}</span></>
-            : <> · cUSDC: <button onClick={() => void reveal()} disabled={busy} className="text-emerald-400/60 hover:text-emerald-400 underline underline-offset-2 transition-colors disabled:opacity-50">{busy ? "…" : "🔒 click to reveal"}</button></>
+            ? <> · ocUSDC: <span className="text-emerald-400/80 font-mono">{cusdc}</span></>
+            : <> · ocUSDC: <button onClick={() => void reveal()} disabled={busy} className="text-emerald-400/60 hover:text-emerald-400 underline underline-offset-2 transition-colors disabled:opacity-50">{busy ? "…" : "🔒 click to reveal"}</button></>
           }
         </div>
       </div>
@@ -458,7 +458,7 @@ const SendCUSDCBar = ({ onGetCUSDC }: { onGetCUSDC: () => void }) => {
           onClick={onGetCUSDC}
           className="btn-pay btn-pay-emerald text-[12px] py-1.5 px-3"
         >
-          Encrypt USDC →
+          Shield USDC →
         </button>
       </div>
     </div>
@@ -526,7 +526,7 @@ const PayPage = () => {
         );
 
       case "send":
-        if (!isConnected) return <NotConnected message="Connect your wallet to send encrypted cUSDC payments." />;
+        if (!isConnected) return <NotConnected message="Connect your wallet to send encrypted ocUSDC payments." />;
         return (
           <div className="space-y-4">
             {/* ── cUSDC quick-info bar ── */}
@@ -546,7 +546,7 @@ const PayPage = () => {
             {/* ── Encrypt / Decrypt cUSDC — bottom ── */}
             <div id="send-encrypt-panel">
               <Card>
-                <CardHeader title="Encrypt · Decrypt cUSDC" eyebrow="Get cUSDC · Convert your USDC" />
+                <CardHeader title="Shield · Unshield ocUSDC" eyebrow="Get ocUSDC · Convert your USDC" />
                 <div className="p-5"><CUSDCPanel /></div>
               </Card>
             </div>
@@ -694,7 +694,7 @@ const PayPage = () => {
               Use the main tabs (Send, Streams, Escrow) for new payments — they include better privacy (encrypted recipient hints, jitter) and bug fixes.
             </div>
             <Card>
-              <CardHeader title="Legacy direct cUSDC transfer" eyebrow="Legacy · V1" />
+              <CardHeader title="Legacy direct ocUSDC transfer" eyebrow="Legacy · V1" />
               <div className="p-5"><CUSDCTransferForm /></div>
             </Card>
             <Card>
@@ -741,7 +741,7 @@ const PayPage = () => {
                 <WalletPill />
                 {prefs.uiMode === "beginner" && (
                   <span className="hidden md:inline-flex items-center gap-1.5 text-[10.5px] tracking-[0.05em] text-emerald-300/80 px-2.5 py-1 rounded-md border border-emerald-500/20 bg-emerald-500/[0.04]">
-                    cUSDC — encrypted stablecoin
+                    ocUSDC — shielded stablecoin
                     <HelpCircle className="w-3 h-3 opacity-60" />
                   </span>
                 )}

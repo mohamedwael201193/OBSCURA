@@ -13,7 +13,7 @@
  * This module is the imperative version used by tx-submission code paths.
  */
 import type { PublicClient, WalletClient } from "viem";
-import { REINEIRA_CUSDC_ADDRESS, REINEIRA_CUSDC_ABI } from "@/config/pay";
+import { CREDIT_OCUSDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
 import { estimateCappedFees } from "./gas";
 
 /** A long-lived operator authorization (approx. 30 days). */
@@ -22,13 +22,15 @@ const OPERATOR_EXPIRY_SECONDS = 30n * 24n * 60n * 60n;
 export async function isOperator(
   client: PublicClient,
   holder: `0x${string}`,
-  spender: `0x${string}`
+  spender: `0x${string}`,
+  tokenOverride?: `0x${string}`
 ): Promise<boolean> {
-  if (!REINEIRA_CUSDC_ADDRESS) return false;
+  const token = tokenOverride ?? CREDIT_OCUSDC_ADDRESS;
+  if (!token) return false;
   try {
     const result = await client.readContract({
-      address: REINEIRA_CUSDC_ADDRESS,
-      abi: REINEIRA_CUSDC_ABI,
+      address: token,
+      abi: CONFIDENTIAL_TOKEN_ABI,
       functionName: "isOperator",
       args: [holder, spender],
     });
@@ -50,18 +52,20 @@ export async function ensureOperator(
   publicClient: PublicClient,
   walletClient: WalletClient,
   holder: `0x${string}`,
-  spender: `0x${string}`
+  spender: `0x${string}`,
+  tokenOverride?: `0x${string}`
 ): Promise<boolean> {
-  if (!REINEIRA_CUSDC_ADDRESS) {
-    throw new Error("cUSDC address not configured");
+  const token = tokenOverride ?? CREDIT_OCUSDC_ADDRESS;
+  if (!token) {
+    throw new Error("ocUSDC address not configured");
   }
-  if (await isOperator(publicClient, holder, spender)) return false;
+  if (await isOperator(publicClient, holder, spender, token)) return false;
 
   const expiry = BigInt(Math.floor(Date.now() / 1000)) + OPERATOR_EXPIRY_SECONDS;
   const fees = await estimateCappedFees(publicClient);
   const hash = await walletClient.writeContract({
-    address: REINEIRA_CUSDC_ADDRESS,
-    abi: REINEIRA_CUSDC_ABI,
+    address: token,
+    abi: CONFIDENTIAL_TOKEN_ABI,
     functionName: "setOperator",
     args: [spender, expiry],
     account: holder,

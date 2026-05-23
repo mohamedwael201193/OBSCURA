@@ -1,8 +1,8 @@
 /**
- * StealthInbox — Scans for stealth payments and auto-sweeps them to the main wallet.
+ * StealthInbox ï¿½ Scans for stealth payments and auto-sweeps them to the main wallet.
  *
  * The old UX required: copy key ? import to MetaMask ? fund ETH ? call contract.
- * The NEW UX: one button "Auto-Sweep" — the app derives the key in-browser,
+ * The NEW UX: one button "Auto-Sweep" ï¿½ the app derives the key in-browser,
  * funds gas automatically, and signs the transfer without any MetaMask import.
  *
  * This follows the Umbra protocol pattern using viem privateKeyToAccount +
@@ -109,10 +109,10 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
           </div>
           <div>
             <div className="text-[13px] font-semibold text-foreground">
-              {m.amount > 0n ? `${formatUnits(m.amount, 6)} cUSDC — Stealth Payment` : "Stealth Payment"}
+              {m.amount > 0n ? `${formatUnits(m.amount, 6)} ocUSDC ðŸ™ˆ Stealth Payment` : "Stealth Payment"}
             </div>
             <div className="text-[10px] text-muted-foreground/55 font-mono">
-              block {m.blockNumber.toString()}{m.streamId > 0n && ` · stream #${m.streamId.toString()}`}
+              block {m.blockNumber.toString()}{m.streamId > 0n && ` ï¿½ stream #${m.streamId.toString()}`}
             </div>
           </div>
         </div>
@@ -132,7 +132,7 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
           <a href={arbiscanAddr} target="_blank" rel="noopener noreferrer"
             className="text-[10px] text-muted-foreground/45 hover:text-emerald-300 transition-colors font-mono"
           >
-            {m.stealthAddress.slice(0, 8)}…
+            {m.stealthAddress.slice(0, 8)}ï¿½
           </a>
         </div>
       </div>
@@ -147,7 +147,7 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
           >
             <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
             <div className="text-[14px] font-semibold text-emerald-200">Swept successfully!</div>
-            <div className="text-[12px] text-emerald-300/70">cUSDC is now in your main wallet. Dashboard balance updated automatically — or click REVEAL to decrypt live on-chain.</div>
+            <div className="text-[12px] text-emerald-300/70">ocUSDC is now in your main wallet. Dashboard balance updated automatically ï¿½ or click REVEAL to decrypt live on-chain.</div>
             {state.txHash && (
               <a href={`https://sepolia.arbiscan.io/tx/${state.txHash}`} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-[11px] text-emerald-400/80 hover:text-emerald-300"
@@ -161,7 +161,7 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
           <>
             <div>
               <label className="text-[10px] text-muted-foreground/50 tracking-wider uppercase mb-1.5 block">
-                Amount to Sweep (cUSDC)
+                Amount to Sweep (ocUSDC)
               </label>
               {m.amount > 0n ? (
                 <div className="flex items-center gap-2">
@@ -175,7 +175,7 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
                   type="number"
                   value={amountInput}
                   onChange={(e) => setAmountInput(e.target.value)}
-                  placeholder="e.g. 2.5 — enter what your employer sent"
+                  placeholder="e.g. 2.5 ï¿½ enter what your employer sent"
                   className="w-full px-3 py-2 bg-background border border-border/50 rounded-lg text-[12px] font-mono focus:border-emerald-500/40 focus:outline-none"
                 />
               )}
@@ -183,7 +183,7 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
 
             <div className="p-3 bg-emerald-500/[0.04] border border-emerald-500/15 rounded-lg text-[11px] text-emerald-300/70 leading-relaxed">
               <div className="font-semibold text-emerald-200 mb-1 flex items-center gap-1.5">
-                <Zap className="w-3 h-3" /> Auto-Sweep — no MetaMask import needed
+                <Zap className="w-3 h-3" /> Auto-Sweep ï¿½ no MetaMask import needed
               </div>
               The app derives the stealth key in your browser, sends 0.002 ETH from your wallet for gas (one MetaMask popup), then signs and submits the cUSDC transfer automatically. Your main wallet receives the cUSDC.
             </div>
@@ -194,9 +194,9 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
                 <div>
                   <div className="text-[12px] text-foreground/80">{stepLabel}</div>
                   <div className="text-[10px] text-muted-foreground/50 mt-0.5">
-                    {state.step === "funding_gas" && "This is the only MetaMask popup — for gas funding."}
-                    {state.step === "encrypting" && "Sign the FHE permit — authorizes amount encryption."}
-                    {state.step === "sweeping" && "Signing from stealth key in-browser — no MetaMask."}
+                    {state.step === "funding_gas" && "This is the only MetaMask popup ï¿½ for gas funding."}
+                    {state.step === "encrypting" && "Sign the FHE permit ï¿½ authorizes amount encryption."}
+                    {state.step === "sweeping" && "Signing from stealth key in-browser ï¿½ no MetaMask."}
                   </div>
                 </div>
               </div>
@@ -264,7 +264,7 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
                     {derivedKey && (
                       <div className="flex items-center gap-1.5">
                         <code className="font-mono flex-1 text-[10px] text-emerald-300/75 bg-emerald-500/[0.05] px-2 py-1.5 rounded-lg border border-emerald-500/18 truncate">
-                          {derivedKey.slice(0, 22)}…{derivedKey.slice(-10)}
+                          {derivedKey.slice(0, 22)}ï¿½{derivedKey.slice(-10)}
                         </code>
                         <button onClick={copyKey} className="px-2 py-1.5 text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-lg shrink-0">
                           {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
@@ -277,7 +277,7 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
                     {derivedAddr && (
                       <div className="flex items-center gap-1.5 text-[10px]">
                         <span className="text-muted-foreground/40">Derived:</span>
-                        <span className="font-mono text-foreground/50">{derivedAddr.slice(0, 12)}…{derivedAddr.slice(-8)}</span>
+                        <span className="font-mono text-foreground/50">{derivedAddr.slice(0, 12)}ï¿½{derivedAddr.slice(-8)}</span>
                         {keyMatch ? <span className="text-emerald-400 flex items-center gap-0.5"><Check className="w-2.5 h-2.5" /> ok</span> : <span className="text-red-400">mismatch</span>}
                       </div>
                     )}
@@ -372,7 +372,7 @@ export default function StealthInbox() {
           <div>
             <h3 className="text-[14px] font-display font-semibold text-foreground">Stealth Inbox</h3>
             <div className="text-[10px] text-muted-foreground/55 tracking-wide">
-              {isScanning ? "Scanning blockchain…" : matches.length > 0 ? `${matches.length} stealth payment${matches.length > 1 ? "s" : ""} found` : "No stealth payments found"}
+              {isScanning ? "Scanning blockchainï¿½" : matches.length > 0 ? `${matches.length} stealth payment${matches.length > 1 ? "s" : ""} found` : "No stealth payments found"}
             </div>
           </div>
         </div>
@@ -380,20 +380,20 @@ export default function StealthInbox() {
           className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-emerald-300 disabled:opacity-50 transition-colors"
         >
           <RefreshCw className={`w-3 h-3 ${isScanning ? "animate-spin" : ""}`} />
-          {isScanning ? "Scanning…" : "Rescan"}
+          {isScanning ? "Scanningï¿½" : "Rescan"}
         </button>
       </div>
 
       <div className="p-3 bg-blue-500/[0.07] border border-blue-500/20 rounded-xl text-[12px] text-blue-300/80 leading-relaxed">
-        <strong className="text-blue-200">Most users:</strong> If your employer used <strong>Direct mode</strong> (the default), your cUSDC is already in your wallet — go to Dashboard ? <strong>REVEAL</strong>. This tab is only for <strong>Stealth mode</strong> payments.
+        <strong className="text-blue-200">Most users:</strong> If your employer used <strong>Direct mode</strong> (the default), your cUSDC is already in your wallet ï¿½ go to Dashboard ? <strong>REVEAL</strong>. This tab is only for <strong>Stealth mode</strong> payments.
       </div>
 
-      {/* Key mismatch warning — most common cause of "inbox empty" during testing */}
+      {/* Key mismatch warning ï¿½ most common cause of "inbox empty" during testing */}
       {keyMismatch === "mismatch" && (
         <div className="p-3 bg-amber-500/[0.08] border border-amber-500/25 rounded-xl text-[12px] text-amber-300/85 flex items-start gap-2.5">
           <KeyRound className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
           <div>
-            <div className="font-semibold text-amber-200 mb-1">Key mismatch — your local keys differ from on-chain</div>
+            <div className="font-semibold text-amber-200 mb-1">Key mismatch ï¿½ your local keys differ from on-chain</div>
             <div className="text-[11px] leading-relaxed text-amber-300/70">
               Your browser's stealth keys <strong>don't match</strong> what's registered on-chain. This means stealth payments sent using your old keys won't be found by this scan. This usually happens when you clicked <strong>"Rotate & Republish"</strong> after your employer sent a payment.
             </div>
@@ -469,7 +469,7 @@ export default function StealthInbox() {
       {matches.length > 0 && (
         <div className="space-y-3">
           <div className="text-[10px] tracking-[0.2em] uppercase text-emerald-400/55 font-mono">
-            {matches.length} payment{matches.length > 1 ? "s" : ""} — auto-sweep each below
+            {matches.length} payment{matches.length > 1 ? "s" : ""} ï¿½ auto-sweep each below
           </div>
           {matches.map((m, i) => <SweepCard key={`${m.txHash}-${m.stealthAddress}`} m={m} index={i} />)}
         </div>

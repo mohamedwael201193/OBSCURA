@@ -9,12 +9,20 @@ import {
 import { arbitrumSepolia } from "viem/chains";
 import { formatUnits, parseUnits } from "viem";
 import {
-  REINEIRA_CUSDC_ABI,
-  REINEIRA_CUSDC_ADDRESS,
-  OBSCURA_PAY_STREAM_ADDRESS,
   USDC_ARB_SEPOLIA,
   ERC20_APPROVE_ABI,
 } from "@/config/pay";
+import {
+  OBSCURA_PAY_STREAM_V2_ADDRESS,
+} from "@/config/payV2";
+import {
+  CONFIDENTIAL_USDC_ADDRESS,
+  CONFIDENTIAL_TOKEN_ABI,
+} from "@/config/credit";
+
+// Convenience alias — useCUSDCBalance migrated to ocUSDC (v3.14+).
+const OCUSDC_ADDRESS = CONFIDENTIAL_USDC_ADDRESS;
+const OCUSDC_ABI = CONFIDENTIAL_TOKEN_ABI;
 import { initFHEClient, encryptAmount, decryptBalance, getOrCreatePermit } from "@/lib/fhe";
 import { withRateLimitRetry } from "@/lib/rateLimit";
 import { estimateCappedFees } from "@/lib/gas";
@@ -48,8 +56,8 @@ export function useCUSDCBalance() {
   const [trackedCusdc, setTrackedCusdc] = useState<string | null>(null);
 
   const { data: handle, refetch } = useReadContract({
-    address: REINEIRA_CUSDC_ADDRESS,
-    abi: REINEIRA_CUSDC_ABI,
+    address: OCUSDC_ADDRESS,
+    abi: OCUSDC_ABI,
     functionName: "confidentialBalanceOf",
     args: address ? [address] : undefined,
     account: address,
@@ -58,7 +66,7 @@ export function useCUSDCBalance() {
 
   // Fetch handle + USDC balance on mount
   useEffect(() => {
-    if (address && REINEIRA_CUSDC_ADDRESS) refetch();
+    if (address && OCUSDC_ADDRESS) refetch();
     if (address && publicClient) {
       publicClient.readContract({
         address: USDC_ARB_SEPOLIA,
@@ -91,7 +99,7 @@ export function useCUSDCBalance() {
       const freshHandle = result.data;
 
       if (!freshHandle) {
-        throw new Error("No cUSDC balance found. Wrap some USDC first.");
+        throw new Error("No ocUSDC balance found. Shield some USDC first.");
       }
 
       const plain = await decryptBalance(freshHandle as bigint);
@@ -104,25 +112,7 @@ export function useCUSDCBalance() {
       }
     } catch (e) {
       const msg = (e as Error).message || "Decrypt failed";
-      console.error("[cUSDC reveal]", e);
-
-      // If 403 (ACL not granted by Reineira contract), fall back to tracked balance
-      if (msg.includes("403") || msg.includes("sealOutput")) {
-        if (trackedCusdc) {
-          setError(
-            `The Reineira cUSDC contract doesn't grant decrypt access (HTTP 403). ` +
-            `Showing your last known balance: ~${trackedCusdc} cUSDC.`
-          );
-        } else {
-          setError(
-            `The Reineira cUSDC contract doesn't grant decrypt access (HTTP 403). ` +
-            `Your encrypted handle exists � the balance is on-chain but can't be revealed from the browser. ` +
-            `Wrap USDC below to track your balance.`
-          );
-        }
-        return; // Don't re-throw � we handled it
-      }
-
+      console.error("[ocUSDC reveal]", e);
       setError(msg);
       throw e;
     } finally {
@@ -135,8 +125,8 @@ export function useCUSDCBalance() {
       if (
         !publicClient ||
         !address ||
-        !OBSCURA_PAY_STREAM_ADDRESS ||
-        !REINEIRA_CUSDC_ADDRESS
+        !OBSCURA_PAY_STREAM_V2_ADDRESS ||
+        !OCUSDC_ADDRESS
       ) {
         throw new Error("Wallet or contracts not configured");
       }
@@ -144,10 +134,10 @@ export function useCUSDCBalance() {
       // Pre-check: skip if already an operator
       try {
         const isOp = await publicClient.readContract({
-          address: REINEIRA_CUSDC_ADDRESS,
-          abi: REINEIRA_CUSDC_ABI,
+          address: OCUSDC_ADDRESS,
+          abi: OCUSDC_ABI,
           functionName: "isOperator",
-          args: [address, OBSCURA_PAY_STREAM_ADDRESS],
+          args: [address, OBSCURA_PAY_STREAM_V2_ADDRESS],
         });
         if (isOp as boolean) {
           return "already-approved";
@@ -162,10 +152,10 @@ export function useCUSDCBalance() {
         : undefined;
 
       const hash = await writeContractAsync({
-        address: REINEIRA_CUSDC_ADDRESS,
-        abi: REINEIRA_CUSDC_ABI,
+        address: OCUSDC_ADDRESS,
+        abi: OCUSDC_ABI,
         functionName: "setOperator",
-        args: [OBSCURA_PAY_STREAM_ADDRESS, untilTimestamp],
+        args: [OBSCURA_PAY_STREAM_V2_ADDRESS, untilTimestamp],
         account: address,
         chain: arbitrumSepolia,
         maxFeePerGas,
@@ -179,12 +169,12 @@ export function useCUSDCBalance() {
 
   const wrap = useCallback(
     async (amountUSDC: string) => {
-      if (!publicClient || !address || !REINEIRA_CUSDC_ADDRESS) {
+      if (!publicClient || !address || !OCUSDC_ADDRESS) {
         throw new Error("Wallet not configured");
       }
       const amount = parseUnits(amountUSDC, USDC_DECIMALS);
 
-      // Step 1: Check allowance � approve cUSDC contract to pull plain USDC if needed
+      // Step 1: Check allowance — approve ocUSDC to pull plain USDC if needed
       const currentAllowance = await publicClient.readContract({
         address: USDC_ARB_SEPOLIA,
         abi: [{
@@ -195,7 +185,7 @@ export function useCUSDCBalance() {
           outputs: [{ name: "", type: "uint256" }],
         }] as const,
         functionName: "allowance",
-        args: [address, REINEIRA_CUSDC_ADDRESS],
+        args: [address, OCUSDC_ADDRESS],
       }) as bigint;
 
       if (currentAllowance < amount) {
@@ -207,7 +197,7 @@ export function useCUSDCBalance() {
           address: USDC_ARB_SEPOLIA,
           abi: ERC20_APPROVE_ABI,
           functionName: "approve",
-          args: [REINEIRA_CUSDC_ADDRESS, amount],
+          args: [OCUSDC_ADDRESS, amount],
           account: address,
           chain: arbitrumSepolia,
           maxFeePerGas: approveMaxFee,
@@ -218,17 +208,17 @@ export function useCUSDCBalance() {
         await new Promise((r) => setTimeout(r, 5000));
       }
 
-      // Step 2: Fetch gas (with retry) then wrap USDC ? cUSDC exactly ONCE
-      // Do NOT wrap writeContractAsync in retry � each retry would open a new MetaMask popup
+      // Step 2: Fetch gas (with retry) then shield USDC → ocUSDC exactly ONCE
+      // Do NOT wrap writeContractAsync in retry — each retry would open a new MetaMask popup
       const feeData2 = await estimateFeesWithRetry(publicClient);
       const wrapMaxFee = feeData2.maxFeePerGas
         ? (feeData2.maxFeePerGas * 130n) / 100n
         : undefined;
       const hash = await writeContractAsync({
-        address: REINEIRA_CUSDC_ADDRESS,
-        abi: REINEIRA_CUSDC_ABI,
-        functionName: "wrap",
-        args: [address, amount],
+        address: OCUSDC_ADDRESS,
+        abi: OCUSDC_ABI,
+        functionName: "shield",
+        args: [amount],
         account: address,
         chain: arbitrumSepolia,
         maxFeePerGas: wrapMaxFee,
@@ -237,7 +227,7 @@ export function useCUSDCBalance() {
       await publicClient.waitForTransactionReceipt({ hash });
       await refetch();
 
-      // Track wrapped cUSDC balance locally (Reineira doesn't allow on-chain decrypt).
+      // Track shielded ocUSDC balance locally.
       // Centralized writer (lib/trackedBalance) keeps the format consistent
       // across all writers (sweep, escrow redeem, wrap, unwrap).
       const updated = addTrackedUnits(address, amount);
@@ -260,21 +250,36 @@ export function useCUSDCBalance() {
 
   const unwrap = useCallback(
     async (amountCUSDC: string) => {
-      if (!publicClient || !address || !REINEIRA_CUSDC_ADDRESS) {
+      if (!publicClient || !walletClient || !address || !OCUSDC_ADDRESS) {
         throw new Error("Wallet not configured");
       }
       const amount = parseUnits(amountCUSDC, USDC_DECIMALS);
+      // amtPlain as uint64; USDC at 6 decimals fits well within uint64 range.
+      const amtPlain = amount;
 
-      // Fetch gas (with retry) then unwrap ONCE � never retry the wallet write
+      // Pre-flight: validate against revealed balance if available.
+      // Prevents "supply" revert when user tries to unshield more than they shielded.
+      if (decrypted !== null && amtPlain > decrypted) {
+        throw new Error(
+          `Amount exceeds your ocUSDC balance (${formatUnits(decrypted, USDC_DECIMALS)} available). Reveal your balance first if unsure.`
+        );
+      }
+
+      // Step 1: Encrypt amount client-side — unshield requires both plain + FHE proof.
+      await initFHEClient(publicClient, walletClient);
+      const encAmt = await encryptAmount(amtPlain);
+
+      // Step 2: Fetch gas then unshield ONCE — never retry the wallet write.
+      // Signature: unshield(uint64 amtPlain, InEuint64 encAmt, address to)
       const feeData = await estimateFeesWithRetry(publicClient);
       const maxFee = feeData.maxFeePerGas
         ? (feeData.maxFeePerGas * 130n) / 100n
         : undefined;
       const hash = await writeContractAsync({
-        address: REINEIRA_CUSDC_ADDRESS,
-        abi: REINEIRA_CUSDC_ABI,
-        functionName: "unwrap",
-        args: [address, amount],
+        address: OCUSDC_ADDRESS,
+        abi: OCUSDC_ABI,
+        functionName: "unshield",
+        args: [amtPlain, encAmt[0], address],
         account: address,
         chain: arbitrumSepolia,
         maxFeePerGas: maxFee,
@@ -283,7 +288,7 @@ export function useCUSDCBalance() {
       await publicClient.waitForTransactionReceipt({ hash });
       await refetch();
 
-      // Update tracked cUSDC balance (centralized writer).
+      // Update tracked ocUSDC balance (centralized writer).
       const updated = addTrackedUnits(address, -amount);
       setTrackedCusdc(formatUnits(updated, USDC_DECIMALS));
 
@@ -299,7 +304,7 @@ export function useCUSDCBalance() {
 
       return hash;
     },
-    [publicClient, address, writeContractAsync, refetch, trackedCusdc]
+    [publicClient, walletClient, address, writeContractAsync, refetch, trackedCusdc, decrypted]
   );
 
   return {

@@ -110,15 +110,15 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
     },
     {
       num: 3,
-      title: "Encrypt USDC → cUSDC",
+      title: "Shield USDC → ocUSDC",
       detail:
         cusdcNum > 0
-          ? `${cusdcNum.toFixed(2)} cUSDC encrypted on-chain with FHE`
-          : "Convert your USDC to private cUSDC — required to send",
+          ? `${cusdcNum.toFixed(2)} ocUSDC shielded on-chain with FHE`
+          : "Convert your USDC to private ocUSDC — required to send",
       done: cusdcNum > 0,
       loading: false,
       action: () => onNavigate("send"),
-      actionLabel: "Encrypt USDC →",
+      actionLabel: "Shield USDC →",
       externalLink: null,
       externalLabel: null,
     },
@@ -267,7 +267,7 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
             [
               {
                 icon: Send,
-                label: "Send cUSDC",
+                label: "Send ocUSDC",
                 sub: "Private · Stealth",
                 tab: "send" as Tab,
               },
@@ -320,8 +320,8 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
             [
               {
                 Icon: UsdcIcon,
-                title: "USDC ↔ cUSDC",
-                desc: "Encrypt your USDC into cUSDC on Arbitrum. Decrypt back any time. Always 1:1.",
+                title: "USDC ↔ ocUSDC",
+                desc: "Shield your USDC into ocUSDC on Arbitrum. Unshield back any time. Always 1:1.",
               },
               {
                 Icon: Lock,
@@ -336,7 +336,7 @@ export default function PayHomeDashboard({ onNavigate }: Props) {
               {
                 Icon: Globe2,
                 title: "Cross-chain via CCTP",
-                desc: "Bridge USDC from Ethereum Sepolia directly into Arbitrum cUSDC using Circle's CCTP protocol.",
+                desc: "Bridge USDC from Ethereum Sepolia directly into Arbitrum and shield to ocUSDC using Circle's CCTP protocol.",
               },
             ] as const
           ).map(({ Icon, title, desc }) => (

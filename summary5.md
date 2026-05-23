@@ -1072,6 +1072,50 @@ Escrows #1–#8 were on the old broken contract (`0x889DD94d...`). They were fun
 
 ---
 
+## Phase 20 — Text Bugs + Invoice Stealth Inbox UX (✅ COMPLETE)
+
+### Trigger
+
+User confirmed all three pay flows work end-to-end on Arbitrum Sepolia:
+- ✅ Single escrow + autofund → claim link → another account claimed **1.5 ocUSDC** (tx `0x97ab162121deec526e907ff5a58f1c4ce5fbf79bfacc4a5bd360b30b52d4a673`)
+- ✅ Confidential Batch Payroll → 2 escrows → both accounts claimed 0.7 ocUSDC each
+- ✅ Request a private payment (invoice) → payer paid → funds reached stealth address
+
+User asked: *"if I pay from another account, will it send direct or should the recipient claim from the Receive page?"*
+
+### Answer
+
+**Invoice payment goes to the creator's stealth address** — NOT directly to their balance. The creator must go to **Receive → Stealth Inbox → "Claim all"** to sweep funds into their main wallet. This is the stealth privacy model: the recipient's real address is never on-chain.
+
+### Bugs Found and Fixed
+
+| File | Bug | Fix |
+|---|---|---|
+| `ClaimEscrowCard.tsx` | Header: "private **cUSDC** payment" | → "private **ocUSDC** payment" |
+| `ClaimEscrowCard.tsx` | Silent-failure note: "transfers 0 **cUSDC**" | → "transfers 0 **ocUSDC**" |
+| `ClaimEscrowCard.tsx` | `daysLeft` still used `/ 7200n` (Phase 18 fix missed this file) | → `Math.round(Number(diff) * 0.25 / 86400)` (Arb Sepolia: 0.25 s/block) |
+| `BatchEscrowForm.tsx` | Success: "receive the **cUSDC**" | → "receive the **ocUSDC**" |
+| `InvoiceForm.tsx` | Creator success: "funds settle directly to your encrypted balance" (**misleading** — funds go to stealth address) | → "funds sent to your stealth address" + cyan callout: **Receive → Stealth Inbox → Claim all** |
+| `InvoicePayCard.tsx` | Payer paid panel: "Funds are now in the creator's encrypted balance" (**misleading**) | → "sent to creator's stealth address"; added cyan guidance: creator must check Stealth Inbox |
+| `InvoicePayCard.tsx` | "Your balance" tile: `≈ 3.7` (no unit) | → `≈ 3.7 ocUSDC` |
+
+### Invoice Payment Flow (Documented)
+
+1. Payer visits invoice link → enters amount → clicks **"Pay invoice privately"**
+2. **3 transactions** (stealth flow):
+   - (1) `ocUSDC.confidentialTransfer(stealthAddress, encAmount)` — funds to stealth one-time address
+   - (2) `announcePayment(stealthRegistry, ...)` — encrypted announcement for recipient to detect
+   - (3) On-chain receipt flip: invoice status → paid
+3. Creator goes to **Receive page → Stealth Inbox** → sees payment → clicks **"Claim all"** → funds sweep to main wallet
+
+The recipient's real wallet address is never published on-chain. Stealth addresses preserve full privacy.
+
+### Commit
+
+`6549073` — `Phase 20: Fix text/UX across escrow, batch, invoice flows`
+
+---
+
 ## Phases 10–20 (PENDING)
 
 Tracked in the master todo. Each gets its own session in this memory doc.
@@ -1142,4 +1186,5 @@ Post-mainnet only. Tracked but blocked on Phase 21 gate.
 | 17 — Escrow recipient UX redesign | ✅ complete | n/a | ✅ CUSDCEscrowActions full redesign; PayPage escrow card promoted | n/a | Build clean |
 | 18 — Escrow share link UX + expiry bug fix | ✅ complete | n/a | ✅ CUSDCEscrowForm blocksPerDay 7200→345600; share link CTA; MyEscrows share button; post-claim panel | n/a | Build clean |
 | 19 — Escrow contract redeploy (correct token) | ✅ complete | ✅ New `ObscuraConfidentialEscrow` `0x5b988CBf9f1b5B479763A5008f52987AA1Af5041` | ✅ .env updated; expiry display /7200n→×0.25/86400 fixed | ✅ deployed arb-sepolia | Root cause: old escrow used Reineira immutable → all redeems returned 0 |
+| 20 — Text bugs + invoice stealth inbox UX | ✅ complete | n/a | ✅ 4 files fixed: cUSDC→ocUSDC (×3), daysLeft formula, InvoiceForm/PayCard stealth inbox guidance, balance unit | n/a | Invoice payment goes to stealth address; creator must Receive → Stealth Inbox → Claim all |
 | 22 — Ops | ⏳ | — | — | ⏳ post-mainnet | |

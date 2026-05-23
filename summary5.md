@@ -904,7 +904,171 @@ After the fix, a full audit of every Pay hook and component was completed:
 
 **Auto-decrypt on mount**: 0 violations found (`decryptForView` only in user-triggered callbacks)  
 **`useEffect` + decrypt**: 0 violations found  
-**`fhe` in `useCallback` deps**: All hooks that call `fheStatus.setStep()` include `fheStatus` in deps ✅
+**`fhe` in `useCallback` deps`: All hooks that call `fheStatus.setStep()` include `fheStatus` in deps ✅
+
+---
+
+## Phase 17 — Escrow Recipient UX Redesign (✅ COMPLETE)
+
+### Problem
+
+Recipients who received an escrow ID (via claim link or chat) landed on the PAY page and could not find the Redeem button because `CUSDCEscrowActions` was:
+1. Buried inside a collapsed `<details>` element ("Manage — Expand ▾")
+2. Presented as a "Fund / Redeem / Refund / Inspect by escrow ID" tool — sender-centric copy
+3. Required clicking a blocking **Check** button before the Redeem button was usable
+4. Showed an amber `AlertTriangle` warning when localStorage had no record for the ID (normal state for a fresh recipient on a new device), making recipients think something was wrong before they even tried
+
+### What shipped
+
+#### `src/components/pay-v4/CUSDCEscrowActions.tsx` (full redesign)
+
+- **Header copy**: "Claim / Redeem Escrow" + eyebrow "Receive · ocUSDC" (recipient-first framing)
+- **Description**: "Enter the escrow ID you received. The contract privately verifies your access."
+- **Lookup is now optional** — replaced the blocking `Check` button with a non-blocking `Lookup` button using animated `lookupStatus` state (`idle | loading | found | not-found | error`). All three non-idle states render informational messages that NEVER disable the Redeem button.
+- **Redeem is always the primary action** — a full-width `btn-pay-emerald` CTA titled "Claim Escrow #N", always enabled as long as an escrow ID is entered. Silent-failure explanation below the button.
+- **Context guidance** (three cases):
+  - `isRecipientMatch === true` → green "Wallet matches recipient — ready to claim"
+  - `isCreatorMatch === true` → blue info box explaining creator wallets return 0
+  - `isRecipientMatch === null` → neutral "No local record — that's normal for recipients on a different device"
+- **Fund section collapsed by default** — moved into `<AnimatePresence>` + `ChevronDown` collapsible ("Top-up escrow · for senders only"). Senders who need it can expand; recipients never see it.
+- **Refund section** — only shown when `isExpired === true` (confirmed by Lookup), with amber styling and `Clock` icon. Not shown by default (doesn't clutter the recipient flow).
+- **Auto-fill from claim link** — `?claim=N` param loads escrow ID on mount and shows a `toast.message` ("Claim link detected — enter your wallet and click Claim").
+- **TX link** — uses `ExternalLink` icon + cyan styling, consistent with other Pay cards.
+- Added `AnimatePresence`, `Search`, `ChevronDown`, `CheckCircle2`, `Clock`, `ExternalLink` imports. Removed unused `DollarSign`. Added `useCallback` for `handleLookup`.
+
+#### `src/pages/PayPage.tsx` (layout promotion)
+
+- Removed `CUSDCEscrowActions` from its `<details>` collapsed section entirely.
+- Added a new visible `<Card>` with `CardHeader title="Claim / Redeem by escrow ID"` + eyebrow "Receive · Claim link or manual ID", positioned between "Create an escrow" (senders) and "Request a private payment" (invoices). This makes the card discoverable for recipients who land on the PAY page.
+- Card is wrapped in `{!claimId && ...}` — hidden when a `?claim=N` URL param is present (in that case `ClaimEscrowCard` hero handles the flow, preventing duplicate UI).
+- Removed the duplicate `<details>` section for "Fund / Redeem / Refund / Inspect by escrow ID" to avoid showing two Redeem UIs simultaneously.
+
+### Build verification
+
+```
+No TypeScript errors in CUSDCEscrowActions.tsx, PayPage.tsx
+```
+
+### UX before vs after
+
+| Before | After |
+|---|---|
+| Buried in collapsed `<details>` | Visible `<Card>` — first thing recipients see |
+| "Fund / Redeem / Refund / Inspect" — sender framing | "Claim / Redeem Escrow" — recipient framing |
+| **Check** required to unlock Redeem | Redeem enabled immediately on ID entry |
+| Amber warning for missing localStorage record | Neutral info box: "No local record — normal for recipients" |
+| Fund form always visible (confusing for recipients) | Fund form collapsed by default |
+
+---
+
+## Phase 18 — Escrow Share Link UX + Expiry Bug Fix (✅ COMPLETE)
+
+### Problems
+
+1. **No visible claim link after creation** — the success screen had a ghost "Copy claim link to share" button below the escrow ID box that was easy to miss. Recipients were never sent a link.
+2. **No way to re-share after dismissing success screen** — `MyEscrows.tsx` had no per-row share button, so if the sender dismissed the success screen they had no way to re-generate the claim link.
+3. **Expiry blocks calculated wrong** — `const blocksPerDay = 7200n` used the Ethereum mainnet block rate (12 s/block). Arbitrum Sepolia runs ~0.25 s/block = **345 600 blocks/day**. A "30-day" escrow was expiring in ~15 hours.
+4. **Expiry display used same wrong constant** — `CUSDCEscrowActions.tsx` divided block difference by `7200n` for the "Expires in ~Nd" label, showing wildly incorrect durations.
+5. **No post-claim success panel** — after a successful redeem the only feedback was a toast (disappears). Users didn't know their balance updated or how to reveal it.
+
+### What shipped
+
+#### `src/components/pay-v4/CUSDCEscrowForm.tsx`
+
+- **Fixed `blocksPerDay`**: changed from `7200n` to `345_600n` — new escrows now have correct 30/7/90-day expiry windows.
+- **Revamped success screen** — "Send to Recipient" section moved to the TOP and styled as the primary action (cyan border, emerald CTA button). Full-width `btn-pay-emerald` "Copy Claim Link to Share" button. Text below explains the link flow ("They open it, connect their wallet, and click Claim Escrow"). Escrow ID inline copy moved to a secondary "or share ID manually" line beneath.
+- Added Arbiscan "privacy placeholder" note inline on the TX link row.
+
+#### `src/components/pay-v4/MyEscrows.tsx`
+
+- **Added `Link2` share button** per active escrow row (before ExternalLink/Trash icons). Clicking copies the full claim URL (`/pay?tab=escrow&claim=N&contract=0x...`) and shows a `toast.success` confirming the link was copied.
+- Added `sharedId` state to track which row shows the `CheckCircle` confirmation.
+- Added `toast` from `sonner` import.
+
+#### `src/components/pay-v4/CUSDCEscrowActions.tsx`
+
+- **Fixed expiry display** — replaced `/ 7200n` division with real-time block math: `Number(blocksRemaining) * 0.25 / 86400` (0.25 s/block → actual days). Shows true real-world time remaining.
+- **Added `redeemDone` state** — set to `true` after a successful `handleRedeem()` call.
+- **Added post-claim success panel** — rendered when `redeemDone && txHash`: emerald card explaining "0.0001 pUSDC on Arbiscan is a privacy placeholder", with a "Go to Dashboard & Reveal Balance →" CTA button.
+- Added `ArrowRight` to lucide imports.
+
+### Build verification
+
+```
+No TypeScript errors in CUSDCEscrowForm.tsx, MyEscrows.tsx, CUSDCEscrowActions.tsx
+```
+
+### UX before vs after
+
+| Before | After |
+|---|---|
+| Ghost "copy link" button below ID — easy to miss | Prominent cyan-bordered "Send to Recipient" section at top of success screen |
+| No way to share after dismissing success screen | `Link2` share icon on every escrow row in My Escrows |
+| 30-day escrow expired in ~15 hours (7200n bug) | Correct 345 600 blocks/day → real 30-day expiry |
+| Expiry display: wrong days shown | Expiry display: actual real-world time (0.25 s/block) |
+| Post-claim: only toast (disappears) | Post-claim: inline emerald panel + "Go to Dashboard & Reveal" button |
+| Refund always visible (confusing) | Refund only shown after Lookup confirms expiry |
+
+---
+
+## Phase 19 — Escrow Contract Redeploy: Correct Token Fix (✅ COMPLETE)
+
+### Root Cause (Critical)
+
+Every `redeem()` on `ObscuraConfidentialEscrow` at `0x889DD94ddBAc614D4A4346bfE5b32a3151578D9A` returned **0 ocUSDC** to the recipient — even with a successful transaction. Root cause confirmed via `redeployEscrowOcUSDC.ts` comments and Arbiscan trace:
+
+- The `0x889DD94d...` contract was deployed with **Reineira cUSDC (`0x6b6e6479b8b3237933c3ab9d8be969862d4ed89f`)** as its `immutable cUSDC` constructor argument.
+- The `create` + `fund` flow transferred **ocUSDC wrapper tokens (`0xEFab856b`)** into the escrow's confidential balance — the correct token.
+- But `redeem()` called `cUSDC.confidentialTransfer(recipient, paidAmount)` where `cUSDC = 0x6b6e6479` (old Reineira) — the escrow held 0 Reineira tokens, so FHE homomorphically transferred 0.
+- **Every claim since deployment returned 0 regardless of which wallet claimed.** The tx succeeds (no revert) because FHE arithmetic on encrypted 0 doesn't revert. Arbiscan showed `0.0001 pUSDC` (privacy placeholder for the transfer event), masking the zero result.
+
+### Fix Applied
+
+The existing `scripts/redeployEscrowOcUSDC.ts` was created for exactly this fix. It was run:
+
+```
+Network:  arb-sepolia
+Deployer: 0xD208aC8327e6479967693Af2F2216e1612D0171A
+Balance:  0.9512943144216196 ETH
+
+Deploying ObscuraConfidentialEscrow with ocUSDC...
+  _cUSDC = 0xEFab856b903C4106769B14798deDE21C6923d7d2
+  -> 0x5b988CBf9f1b5B479763A5008f52987AA1Af5041
+Updated D:\route\Obscura\contracts-hardhat\deployments\arb-sepolia.json
+```
+
+| Property | Old (broken) | New (fixed) |
+|---|---|---|
+| Contract | `0x889DD94ddBAc614D4A4346bfE5b32a3151578D9A` | `0x5b988CBf9f1b5B479763A5008f52987AA1Af5041` |
+| `immutable cUSDC` | `0x6b6e6479...` (Reineira — wrong) | `0xEFab856b...` (ocUSDC wrapper — correct) |
+| `redeem()` transfers | 0 Reineira tokens (escrow has none) | Actual funded ocUSDC amount |
+
+### Files Updated
+
+| File | Change |
+|---|---|
+| `contracts-hardhat/deployments/arb-sepolia.json` | `ObscuraConfidentialEscrow` → `0x5b988CBf9f1b5B479763A5008f52987AA1Af5041` (auto-updated by script) |
+| `frontend/obscura-os-main/.env` | `VITE_OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS` → `0x5b988CBf9f1b5B479763A5008f52987AA1Af5041` |
+
+### Also Fixed in This Phase
+
+**Expiry display formula still using old `/7200n`** — `CUSDCEscrowActions.tsx` line 255 still had the old Ethereum mainnet formula even though Phase 18 intended to fix it. Fixed:
+
+```tsx
+// Before (Ethereum mainnet — shows ~1440d for a 30-day Arb Sepolia escrow)
+Number((expiryInfo.block - expiryInfo.current) / 7200n)
+
+// After (Arbitrum Sepolia: 0.25 s/block → 345,600 blocks/day)
+Math.round((Number(expiryInfo.block - expiryInfo.current) * 0.25) / 86400)
+```
+
+With `10,368,000` remaining blocks (30-day escrow on Arb Sepolia):
+- Old formula: `10,368,000 / 7200 = 1440d` ❌
+- New formula: `10,368,000 × 0.25 / 86400 = 30d` ✅
+
+### Migration Note
+
+Escrows #1–#8 were on the old broken contract (`0x889DD94d...`). They were funded with `0xEFab856b` wrapper tokens but the contract attempts to redeem Reineira tokens → permanently 0. New escrows created after this phase (#1+ on new contract) will correctly transfer funded ocUSDC on claim. Previous escrows cannot be migrated.
 
 ---
 
@@ -975,4 +1139,7 @@ Post-mainnet only. Tracked but blocked on Phase 21 gate.
 | 18 — Auction UX | ✅ already shipped | — | CreditPage `LiquidationsTab` + `useCreditAuctions` | live | discovered pre-built |
 | 19 — ScoreFeedFromVote | ✅ doc shipped | — | n/a | n/a | `docs/credit/SCORE_FEED_FROM_VOTE.md` |
 | 21 — Mainnet gate | ⏳ corrected | — | — | 🛑 BLOCKED on Fhenix CoFHE mainnet GA |
+| 17 — Escrow recipient UX redesign | ✅ complete | n/a | ✅ CUSDCEscrowActions full redesign; PayPage escrow card promoted | n/a | Build clean |
+| 18 — Escrow share link UX + expiry bug fix | ✅ complete | n/a | ✅ CUSDCEscrowForm blocksPerDay 7200→345600; share link CTA; MyEscrows share button; post-claim panel | n/a | Build clean |
+| 19 — Escrow contract redeploy (correct token) | ✅ complete | ✅ New `ObscuraConfidentialEscrow` `0x5b988CBf9f1b5B479763A5008f52987AA1Af5041` | ✅ .env updated; expiry display /7200n→×0.25/86400 fixed | ✅ deployed arb-sepolia | Root cause: old escrow used Reineira immutable → all redeems returned 0 |
 | 22 — Ops | ⏳ | — | — | ⏳ post-mainnet | |

@@ -11,8 +11,9 @@ import { FHEStepStatus } from "@/lib/constants";
 import TxProgressPanel from "@/components/shared/TxProgressPanel";
 import type { TxStep } from "@/hooks/useTxProgress";
 
-// Arbitrum One/Sepolia produces ~7200 blocks/day (12s avg, but L2 rolls up
-// faster — 7200 is the conservative number). 0 = no expiry (legacy mode).
+// Arbitrum Sepolia produces ~345 600 blocks/day (~0.25 s/block).
+// The old comment and constant (7200) was the Ethereum mainnet value; using it
+// made a "30-day" escrow expire in ~15 hours. Fixed. 0 = no expiry (legacy mode).
 const EXPIRY_OPTIONS: Array<{ label: string; days: number }> = [
   { label: "No expiry", days: 0 },
   { label: "7 days", days: 7 },
@@ -75,14 +76,12 @@ export default function CUSDCEscrowForm() {
         : ("0x0000000000000000000000000000000000000000" as `0x${string}`);
       const data = resolverData.startsWith("0x") ? (resolverData as `0x${string}`) : ("0x" as `0x${string}`);
 
-      // Compute expiry block client-side. Arbitrum Sepolia ~7200 blocks/day.
+      // Compute expiry block client-side. Arbitrum Sepolia ~345 600 blocks/day
+      // (~0.25 s/block). The old value (7200) was the Ethereum mainnet figure
+      // and made "30 days" expire in ~15 hours. Fixed.
       let expiryBlock = 0n;
       if (expiryDays > 0) {
-        // Get current block via wagmi public client through window.ethereum is
-        // overkill — just use a forward-looking estimate. The contract only
-        // checks block.number >= expiryBlock at refund time so a slight drift
-        // is harmless.
-        const blocksPerDay = 7200n;
+        const blocksPerDay = 345_600n;
         // We don't have publicClient in scope here — hook does the encryption
         // and submit. Pass approx block based on Date.now diff vs known anchor:
         // simpler: fetch from window.ethereum.
@@ -137,48 +136,67 @@ export default function CUSDCEscrowForm() {
   if (isDone) {
     return (
       <div className="pay-card p-6 space-y-5">
+        {/* Header */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
           <div>
-            <h3 className="font-display text-sm font-semibold text-emerald-300">Escrow Created &amp; Funded</h3>
+            <h3 className="font-display text-sm font-semibold text-emerald-300">Escrow #{lastEscrowId} Created &amp; Funded</h3>
             <p className="text-[10px] text-muted-foreground/40 tracking-widest uppercase">ocUSDC · Encrypted</p>
           </div>
         </div>
-        <div className="rounded-lg bg-emerald-500/8 border border-emerald-500/20 p-4 space-y-2">
-          <div className="text-[11px] text-muted-foreground/55 uppercase tracking-wider">Escrow ID</div>
+
+        {/* PRIMARY: Share with recipient — most important action */}
+        <div className="rounded-xl bg-cyan-500/[0.08] border-2 border-cyan-500/35 p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-2xl font-bold text-emerald-300">#{lastEscrowId}</span>
-            <button onClick={handleCopyId} className="px-2.5 py-1.5 hover:bg-white/[0.06] rounded-md transition-colors text-muted-foreground/60 hover:text-emerald-300 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider border border-white/[0.08]">
-              {copied ? (
-                <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Copied</>
-              ) : (
-                <><Copy className="w-3.5 h-3.5" /> Copy ID</>
-              )}
+            <Link2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span className="text-[11px] text-cyan-300 font-semibold uppercase tracking-wider">Send to Recipient</span>
+          </div>
+          <p className="text-[12px] text-muted-foreground/65 leading-relaxed">
+            Share this link with your recipient. They open it, connect their wallet, and click{" "}
+            <span className="text-foreground/80 font-medium">Claim Escrow</span> — no secret needed.
+            The contract privately verifies their access.
+          </p>
+          <motion.button
+            onClick={handleCopyLink}
+            whileTap={{ scale: 0.99 }}
+            className="btn-pay btn-pay-emerald w-full py-3 text-sm"
+          >
+            {linkCopied ? (
+              <><CheckCircle2 className="w-4 h-4" /> Link copied — paste it to your recipient!</>
+            ) : (
+              <><Link2 className="w-4 h-4" /> Copy Claim Link to Share</>
+            )}
+          </motion.button>
+          <div className="flex items-center gap-2 justify-center">
+            <span className="text-[11px] text-muted-foreground/40">or share the Escrow ID manually:</span>
+            <button
+              onClick={handleCopyId}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-white/[0.1] hover:bg-white/[0.05] transition-colors text-[11px] font-mono text-emerald-300"
+            >
+              #{lastEscrowId}
+              {copied ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 opacity-60" />}
             </button>
           </div>
-          <p className="text-[11px] text-muted-foreground/55 leading-relaxed">
-            Escrow created and funded. <span className="text-amber-300/90 font-semibold">Save this ID now</span> — the recipient must enter it in <span className="text-foreground/80">Redeem Escrow</span> from their wallet to claim the ocUSDC. Without the ID, the funds cannot be retrieved.
-          </p>
         </div>
-        <motion.button onClick={handleCopyLink} whileTap={{ scale: 0.99 }}
-          className="btn-pay btn-pay-ghost w-full py-2.5 text-cyan-300 border-cyan-500/25 hover:text-cyan-200">
-          {linkCopied ? (
-            <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Claim link copied</>
-          ) : (
-            <><Link2 className="w-3.5 h-3.5" /> Copy claim link to share</>
-          )}
-        </motion.button>
+
+        {/* TX link */}
         {txHash && (
           <div className="flex items-center gap-2 px-3 py-2.5 bg-white/[0.025] border border-white/[0.07] rounded-lg">
             <ExternalLink className="w-3 h-3 text-cyan-400 shrink-0" />
-            <a href={`https://sepolia.arbiscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
-              className="font-mono text-[11px] text-cyan-300 hover:text-cyan-200 transition-colors truncate">
+            <a
+              href={`https://sepolia.arbiscan.io/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-[11px] text-cyan-300 hover:text-cyan-200 transition-colors truncate"
+            >
               {txHash.slice(0, 10)}…{txHash.slice(-8)}
             </a>
+            <span className="ml-auto text-[10px] text-muted-foreground/35 shrink-0">Arbiscan shows 0.0001 pUSDC — privacy placeholder</span>
           </div>
         )}
+
         <motion.button onClick={reset} whileTap={{ scale: 0.99 }} className="btn-pay btn-pay-ghost w-full py-2.5">
           Create Another Escrow
         </motion.button>

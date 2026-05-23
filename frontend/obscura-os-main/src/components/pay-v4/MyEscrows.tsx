@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileText, Copy, Trash2, ExternalLink, CheckCircle, AlertTriangle, ShieldCheck, ChevronDown } from "lucide-react";
+import { FileText, Copy, Trash2, ExternalLink, CheckCircle, AlertTriangle, ShieldCheck, ChevronDown, Link2 } from "lucide-react";
 import type { SavedEscrow } from "@/hooks/useCUSDCEscrow";
 import { formatUnits } from "viem";
 import { useAccount } from "wagmi";
 import { getJSON, setJSON, migrateGlobalKey } from "@/lib/scopedStorage";
 import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS } from "@/config/pay";
 import EmptyState from "./EmptyState";
+import { toast } from "sonner";
 
 const STORAGE_KEY = 'obscura_cusdc_escrows';
 
@@ -18,6 +19,7 @@ export default function MyEscrows() {
   const { address } = useAccount();
   const [escrows, setEscrows] = useState<SavedEscrow[]>(() => loadEscrows(undefined));
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sharedId, setSharedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (address) migrateGlobalKey(STORAGE_KEY, address);
@@ -113,6 +115,25 @@ export default function MyEscrows() {
           </div>
         </div>
         <div className="flex items-center gap-1.5 ml-2 shrink-0">
+          {!isLegacy && (
+            <button
+              title="Copy claim link to share with recipient"
+              onClick={() => {
+                const origin = typeof window !== "undefined" ? window.location.origin : "";
+                const contract = escrow.contract ?? OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS ?? "";
+                const link = `${origin}/pay?tab=escrow&claim=${escrow.escrowId}&contract=${contract}`;
+                navigator.clipboard.writeText(link);
+                setSharedId(escrow.escrowId);
+                setTimeout(() => setSharedId(null), 2500);
+                toast.success(`Claim link for escrow #${escrow.escrowId} copied — send it to the recipient.`, { duration: 5000 });
+              }}
+              className="p-1.5 hover:bg-white/[0.05] rounded-md transition-colors"
+            >
+              {sharedId === escrow.escrowId
+                ? <CheckCircle className="w-3 h-3 text-emerald-400" />
+                : <Link2 className="w-3 h-3 text-muted-foreground/40 hover:text-cyan-400 transition-colors" />}
+            </button>
+          )}
           <a href={`https://sepolia.arbiscan.io/tx/${escrow.txHash}`} target="_blank" rel="noopener noreferrer"
             className="p-1.5 hover:bg-white/[0.05] rounded-md transition-colors">
             <ExternalLink className="w-3 h-3 text-muted-foreground/40 hover:text-emerald-400 transition-colors" />

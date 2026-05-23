@@ -628,26 +628,27 @@ const PayPage = () => {
               <div className="px-5 pb-5"><BatchEscrowForm /></div>
             </details>
 
-            {/* GROUP B — Request money */}
+            {/* GROUP B — Claim / Redeem by ID (visible card — recipients need this) */}
+            {!claimId && (
+              <Card>
+                <CardHeader title="Claim / Redeem by escrow ID" eyebrow="Receive · Claim link or manual ID" />
+                <div className="p-5"><CUSDCEscrowActions /></div>
+              </Card>
+            )}
+
+            {/* GROUP C — Request money */}
             <Card>
               <CardHeader title="Request a private payment" eyebrow="Receive · Confidential invoice" />
               <div className="p-5"><InvoiceForm /></div>
             </Card>
 
-            {/* GROUP C — Manage */}
+            {/* GROUP D — Manage */}
             <Card>
               <CardHeader title="Your escrows" eyebrow="Manage" />
               <div className="p-5"><MyEscrows /></div>
             </Card>
-            <details className="pay-card group">
-              <summary className="flex items-center justify-between cursor-pointer p-5 text-[13px] text-foreground/85 hover:text-foreground">
-                <span><span className="text-emerald-300/70 text-[10px] tracking-[0.18em] uppercase mr-2">Manage</span>Fund / Redeem / Refund / Inspect by escrow ID</span>
-                <span className="text-[11px] text-muted-foreground/50 group-open:hidden">Expand ▾</span>
-              </summary>
-              <div className="px-5 pb-5"><CUSDCEscrowActions /></div>
-            </details>
 
-            {/* GROUP D — Advanced */}
+            {/* GROUP E — Advanced */}
             <details className="pay-card group">
               <summary className="flex items-center justify-between cursor-pointer p-5 text-[13px] text-foreground/85 hover:text-foreground">
                 <span><span className="text-amber-300/70 text-[10px] tracking-[0.18em] uppercase mr-2">Advanced</span>Resolver-gated escrows (time-locks &amp; approvers)</span>

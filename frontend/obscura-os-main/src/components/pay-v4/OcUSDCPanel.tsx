@@ -2,11 +2,11 @@ import { motion } from "framer-motion";
 import { Coins, Eye, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Loader2 } from "lucide-react";
 import UsdcIcon from "@/components/shared/UsdcIcon";
 import { useState } from "react";
-import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
+import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
 import { toast } from "sonner";
 
-export default function CUSDCPanel() {
-  const { handle, decrypted, usdcBalance, trackedCusdc, reveal, wrap, unwrap, approveStream, busy, error } = useCUSDCBalance();
+export default function OcUSDCPanel() {
+  const { handle, decrypted, usdcBalance, trackedCusdc, reveal, wrap, unwrap, approveStream, busy, error } = useOcUSDCBalance();
   const [wrapAmount, setWrapAmount] = useState("");
   const [unwrapAmount, setUnwrapAmount] = useState("");
   const [maxApprove, setMaxApprove] = useState("30");

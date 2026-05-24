@@ -33,11 +33,11 @@ import TxProgressPanel from "@/components/shared/TxProgressPanel";
 import type { TxStep } from "@/hooks/useTxProgress";
 
 import ContactPicker from "./ContactPicker";
-import { useCUSDCTransfer } from "@/hooks/useCUSDCTransfer";
+import { useOcUSDCTransfer } from "@/hooks/useOcUSDCTransfer";
 import { useRecipientResolver, type ResolvedRecipient } from "@/hooks/useRecipientResolver";
 import { useReceipts } from "@/hooks/useReceipts";
 import { usePreferences, type SendMode } from "@/contexts/PreferencesContext";
-import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
+import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
@@ -78,10 +78,10 @@ export default function UnifiedSendForm() {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { writeContractAsync } = useWriteContract();
-  const transfer = useCUSDCTransfer();
+  const transfer = useOcUSDCTransfer();
   const resolver = useRecipientResolver();
   const receipts = useReceipts();
-  const { decrypted, trackedCusdc } = useCUSDCBalance();
+  const { decrypted, trackedCusdc } = useOcUSDCBalance();
 
   const cusdc = decrypted !== null
     ? (Number(decrypted) / 1_000_000).toFixed(6)

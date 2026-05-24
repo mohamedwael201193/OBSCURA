@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FileText, Copy, Trash2, ExternalLink, CheckCircle, AlertTriangle, ShieldCheck, ChevronDown, Link2 } from "lucide-react";
-import type { SavedEscrow } from "@/hooks/useCUSDCEscrow";
+import type { SavedEscrow } from "@/hooks/useOcUSDCEscrow";
 import { formatUnits } from "viem";
 import { useAccount } from "wagmi";
 import { getJSON, setJSON, migrateGlobalKey } from "@/lib/scopedStorage";

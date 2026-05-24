@@ -4,8 +4,8 @@ import {
   Unlock, AlertTriangle, Info, RefreshCcw, Search,
   ChevronDown, CheckCircle2, Clock, ExternalLink, ArrowRight,
 } from "lucide-react";
-import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
-import type { SavedEscrow } from "@/hooks/useCUSDCEscrow";
+import { useOcUSDCEscrow } from "@/hooks/useOcUSDCEscrow";
+import type { SavedEscrow } from "@/hooks/useOcUSDCEscrow";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
 import { parseUnits, formatUnits } from "viem";
@@ -19,7 +19,7 @@ function loadSavedEscrows(addr: `0x${string}` | undefined): SavedEscrow[] {
   return getJSON<SavedEscrow[]>(STORAGE_KEY, addr, []);
 }
 
-export default function CUSDCEscrowActions() {
+export default function OcUSDCEscrowActions() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const [escrowId, setEscrowId] = useState("");
@@ -32,7 +32,7 @@ export default function CUSDCEscrowActions() {
   const [redeemDone, setRedeemDone] = useState(false);
 
   const { fund, redeem, refund, checkExists, getExpiryBlock, txHash, isTxPending, status, stepIndex } =
-    useCUSDCEscrow();
+    useOcUSDCEscrow();
 
   const isProcessing = status !== "idle" && status !== "ready" && status !== "error";
 

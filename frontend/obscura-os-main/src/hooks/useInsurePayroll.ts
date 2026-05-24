@@ -8,13 +8,13 @@ import {
 import { arbitrumSepolia } from "viem/chains";
 import { encodeAbiParameters } from "viem";
 import {
-  REINEIRA_COVERAGE_MANAGER_ABI,
-  REINEIRA_COVERAGE_MANAGER_ADDRESS,
-  REINEIRA_INSURANCE_POOL_ADDRESS,
-  REINEIRA_CUSDC_ABI,
-  REINEIRA_CUSDC_ADDRESS,
+  INSURANCE_COVERAGE_MANAGER_ABI,
+  INSURANCE_COVERAGE_MANAGER_ADDRESS,
+  INSURANCE_POOL_ADDRESS,
+  FHERC20_ABI,
   OBSCURA_PAYROLL_UNDERWRITER_ADDRESS,
 } from "@/config/pay";
+import { CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
 import { initFHEClient, encryptAddressAndAmount } from "@/lib/fhe";
 import { estimateCappedFees } from "@/lib/gas";
 import { getJSON, setJSON, migrateGlobalKey } from "@/lib/scopedStorage";
@@ -82,13 +82,13 @@ export function useInsurePayroll() {
         !publicClient ||
         !walletClient ||
         !address ||
-        !REINEIRA_COVERAGE_MANAGER_ADDRESS ||
-        !REINEIRA_CUSDC_ADDRESS ||
+        !INSURANCE_COVERAGE_MANAGER_ADDRESS ||
+        !CONFIDENTIAL_USDC_ADDRESS ||
         !OBSCURA_PAYROLL_UNDERWRITER_ADDRESS
       ) {
         throw new Error("Wallet or contracts not configured");
       }
-      if (!REINEIRA_INSURANCE_POOL_ADDRESS) {
+      if (!INSURANCE_POOL_ADDRESS) {
         throw new Error(
           "Insurance pool not yet created — operator must run setupReineiraPool.ts first"
         );
@@ -122,10 +122,10 @@ export function useInsurePayroll() {
         let needsOperator = true;
         try {
           const isOp = await publicClient.readContract({
-            address: REINEIRA_CUSDC_ADDRESS,
-            abi: REINEIRA_CUSDC_ABI,
+            address: CONFIDENTIAL_USDC_ADDRESS,
+            abi: FHERC20_ABI,
             functionName: "isOperator",
-            args: [address, REINEIRA_COVERAGE_MANAGER_ADDRESS],
+            args: [address, INSURANCE_COVERAGE_MANAGER_ADDRESS],
           });
           needsOperator = !(isOp as boolean);
         } catch { /* default to needing approval */ }
@@ -137,10 +137,10 @@ export function useInsurePayroll() {
           );
 
           const authTx = await writeContractAsync({
-            address: REINEIRA_CUSDC_ADDRESS,
-            abi: REINEIRA_CUSDC_ABI,
+            address: CONFIDENTIAL_USDC_ADDRESS,
+            abi: FHERC20_ABI,
             functionName: "setOperator",
-            args: [REINEIRA_COVERAGE_MANAGER_ADDRESS, untilTs],
+            args: [INSURANCE_COVERAGE_MANAGER_ADDRESS, untilTs],
             account: address,
             chain: arbitrumSepolia,
             maxFeePerGas: fees1.maxFeePerGas,
@@ -163,12 +163,12 @@ export function useInsurePayroll() {
         );
 
         const hash = await writeContractAsync({
-          address: REINEIRA_COVERAGE_MANAGER_ADDRESS,
-          abi: REINEIRA_COVERAGE_MANAGER_ABI,
+          address: INSURANCE_COVERAGE_MANAGER_ADDRESS,
+          abi: INSURANCE_COVERAGE_MANAGER_ABI,
           functionName: "purchaseCoverage",
           args: [
             enc[0], // encryptedHolder
-            REINEIRA_INSURANCE_POOL_ADDRESS as `0x${string}`,
+            INSURANCE_POOL_ADDRESS as `0x${string}`,
             OBSCURA_PAYROLL_UNDERWRITER_ADDRESS, // policy
             params.escrowId, // escrowId
             enc[1], // encryptedCoverageAmount
@@ -193,7 +193,7 @@ export function useInsurePayroll() {
           for (const log of receipt.logs) {
             if (
               log.address.toLowerCase() ===
-              REINEIRA_COVERAGE_MANAGER_ADDRESS.toLowerCase()
+              INSURANCE_COVERAGE_MANAGER_ADDRESS.toLowerCase()
             ) {
               // Coverage ID is likely in topics[1] or data
               if (log.topics.length > 1) {
@@ -242,7 +242,7 @@ export function useInsurePayroll() {
 
   const dispute = useCallback(
     async (coverageId: bigint, missedCycle: bigint) => {
-      if (!publicClient || !address || !REINEIRA_COVERAGE_MANAGER_ADDRESS) {
+      if (!publicClient || !address || !INSURANCE_COVERAGE_MANAGER_ADDRESS) {
         throw new Error("Wallet not configured");
       }
       setIsPending(true);
@@ -254,8 +254,8 @@ export function useInsurePayroll() {
         );
         const fees = await estimateCappedFees(publicClient);
         const hash = await writeContractAsync({
-          address: REINEIRA_COVERAGE_MANAGER_ADDRESS,
-          abi: REINEIRA_COVERAGE_MANAGER_ABI,
+          address: INSURANCE_COVERAGE_MANAGER_ADDRESS,
+          abi: INSURANCE_COVERAGE_MANAGER_ABI,
           functionName: "dispute",
           args: [coverageId, disputeProof],
           account: address,

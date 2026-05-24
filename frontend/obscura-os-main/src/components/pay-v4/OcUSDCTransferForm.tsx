@@ -2,16 +2,16 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Send, ArrowRight, Lock, Loader2, ExternalLink } from "lucide-react";
 import UsdcIcon from "@/components/shared/UsdcIcon";
-import { useCUSDCTransfer } from "@/hooks/useCUSDCTransfer";
+import { useOcUSDCTransfer } from "@/hooks/useOcUSDCTransfer";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
 import { parseUnits } from "viem";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 
-export default function CUSDCTransferForm() {
+export default function OcUSDCTransferForm() {
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
-  const { transfer, txHash, isTxPending, status, stepIndex } = useCUSDCTransfer();
+  const { transfer, txHash, isTxPending, status, stepIndex } = useOcUSDCTransfer();
   const usdcBalance = useUSDCBalance();
 
   const isValidAddress = (addr: string) => /^0x[a-fA-F0-9]{40}$/.test(addr);

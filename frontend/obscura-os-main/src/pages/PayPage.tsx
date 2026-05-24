@@ -41,9 +41,9 @@ import {
   FeatureStrip,
 } from "@/components/elite/Layout";
 
-import CUSDCTransferForm from "@/components/pay-v4/CUSDCTransferForm";
-import CUSDCEscrowForm from "@/components/pay-v4/CUSDCEscrowForm";
-import CUSDCEscrowActions from "@/components/pay-v4/CUSDCEscrowActions";
+import OcUSDCTransferForm from "@/components/pay-v4/OcUSDCTransferForm";
+import OcUSDCEscrowForm from "@/components/pay-v4/OcUSDCEscrowForm";
+import OcUSDCEscrowActions from "@/components/pay-v4/OcUSDCEscrowActions";
 import MyEscrows from "@/components/pay-v4/MyEscrows";
 import BatchEscrowForm from "@/components/pay-v4/BatchEscrowForm";
 import ClaimEscrowCard from "@/components/pay-v4/ClaimEscrowCard";
@@ -52,7 +52,7 @@ import InvoicePayCard from "@/components/pay-v4/InvoicePayCard";
 import CreateStreamForm from "@/components/pay-v4/CreateStreamForm";
 import CreateStreamFormV2 from "@/components/pay-v4/CreateStreamFormV2";
 import StreamList from "@/components/pay-v4/StreamList";
-import CUSDCPanel from "@/components/pay-v4/CUSDCPanel";
+import OcUSDCPanel from "@/components/pay-v4/OcUSDCPanel";
 import RegisterMetaAddressForm from "@/components/pay-v4/RegisterMetaAddressForm";
 import StealthInbox from "@/components/pay-v4/StealthInbox";
 import StealthInboxV2 from "@/components/pay-v4/StealthInboxV2";
@@ -71,7 +71,7 @@ import AddContactModal from "@/components/pay-v4/AddContactModal";
 import PayHomeDashboard from "@/components/pay-v4/PayHomeDashboard";
 import NewPaymentBanner from "@/components/pay-v4/NewPaymentBanner";
 
-import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
+import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 import UsdcIcon from "@/components/shared/UsdcIcon";
 import { useStealthInbox } from "@/hooks/useStealthInbox";
@@ -151,9 +151,7 @@ const NotConnected = ({ message }: { message: string }) => (
 /** Compact wallet balance pill shown in the page header. */
 const WalletPill = () => {
   const { isConnected } = useAccount();
-  const { decrypted, reveal, busy } = useCUSDCBalance();
-
-  if (!isConnected) return null;
+  const { decrypted, reveal, busy } = useOcUSDCBalance();
 
   const isRevealed = decrypted !== null && decrypted !== undefined;
   const display = isRevealed
@@ -432,9 +430,9 @@ const ContactsPanel = () => {
 };
 
 /** Compact info bar at top of Send tab — shows USDC balance + quick actions. */
-const SendCUSDCBar = ({ onGetCUSDC }: { onGetCUSDC: () => void }) => {
+const SendOcUSDCBar = ({ onGetCUSDC }: { onGetCUSDC: () => void }) => {
   const usdcBalance = useUSDCBalance();
-  const { decrypted, reveal, busy } = useCUSDCBalance();
+  const { decrypted, reveal, busy } = useOcUSDCBalance();
   const isRevealed = decrypted !== null && decrypted !== undefined;
   const cusdc = isRevealed ? (Number(decrypted) / 1_000_000).toFixed(2) : null;
 
@@ -530,7 +528,7 @@ const PayPage = () => {
         return (
           <div className="space-y-4">
             {/* ── cUSDC quick-info bar ── */}
-            <SendCUSDCBar onGetCUSDC={() => document.getElementById("send-encrypt-panel")?.scrollIntoView({ behavior: "smooth" })} />
+            <SendOcUSDCBar onGetCUSDC={() => document.getElementById("send-encrypt-panel")?.scrollIntoView({ behavior: "smooth" })} />
 
             {/* ── Primary: Send ── */}
             <UnifiedSendForm />
@@ -547,7 +545,7 @@ const PayPage = () => {
             <div id="send-encrypt-panel">
               <Card>
                 <CardHeader title="Shield · Unshield ocUSDC" eyebrow="Get ocUSDC · Convert your USDC" />
-                <div className="p-5"><CUSDCPanel /></div>
+                <div className="p-5"><OcUSDCPanel /></div>
               </Card>
             </div>
           </div>
@@ -617,7 +615,7 @@ const PayPage = () => {
             <div id="create-escrow-anchor">
               <Card>
                 <CardHeader title="Create an escrow" eyebrow="Send · Confidential escrow" />
-                <div className="p-5"><CUSDCEscrowForm /></div>
+                <div className="p-5"><OcUSDCEscrowForm /></div>
               </Card>
             </div>
             <details className="pay-card group">
@@ -632,7 +630,7 @@ const PayPage = () => {
             {!claimId && (
               <Card>
                 <CardHeader title="Claim / Redeem by escrow ID" eyebrow="Receive · Claim link or manual ID" />
-                <div className="p-5"><CUSDCEscrowActions /></div>
+                <div className="p-5"><OcUSDCEscrowActions /></div>
               </Card>
             )}
 
@@ -696,7 +694,7 @@ const PayPage = () => {
             </div>
             <Card>
               <CardHeader title="Legacy direct ocUSDC transfer" eyebrow="Legacy · V1" />
-              <div className="p-5"><CUSDCTransferForm /></div>
+              <div className="p-5"><OcUSDCTransferForm /></div>
             </Card>
             <Card>
               <CardHeader title="Legacy stream creator" eyebrow="Legacy · V1" />

@@ -20,7 +20,7 @@ import {
   CONFIDENTIAL_TOKEN_ABI,
 } from "@/config/credit";
 
-// Convenience alias — useCUSDCBalance migrated to ocUSDC (v3.14+).
+// ocUSDC balance hook — wraps/unwraps USDC ↔ ocUSDC.
 const OCUSDC_ADDRESS = CONFIDENTIAL_USDC_ADDRESS;
 const OCUSDC_ABI = CONFIDENTIAL_TOKEN_ABI;
 import { initFHEClient, encryptAmount, decryptBalance, getOrCreatePermit } from "@/lib/fhe";
@@ -44,7 +44,7 @@ const USDC_BALANCE_ABI = [
   },
 ] as const;
 
-export function useCUSDCBalance() {
+export function useOcUSDCBalance() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();

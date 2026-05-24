@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Users, Plus, Upload, Trash2, Loader2, CheckCircle2, Link2, Copy, Clock } from "lucide-react";
-import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
+import { useOcUSDCEscrow } from "@/hooks/useOcUSDCEscrow";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { toast } from "sonner";
 import { parseUnits } from "viem";
@@ -53,7 +53,7 @@ export default function BatchEscrowForm() {
   >([]);
   const [fundingIndex, setFundingIndex] = useState<number | null>(null);
 
-  const { createBatch, fund, status, stepIndex, isTxPending, reset } = useCUSDCEscrow();
+  const { createBatch, fund, status, stepIndex, isTxPending, reset } = useOcUSDCEscrow();
   const usdcBalance = useUSDCBalance();
 
   const isProcessing = status !== "idle" && status !== "ready" && status !== "error";

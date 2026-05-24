@@ -38,17 +38,12 @@ import {
   type CreditMarketMeta,
   type CreditVaultMeta,
 } from "@/config/credit";
-import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, REINEIRA_CUSDC_ABI as _LEGACY_CUSDC_ABI } from "@/config/pay";
-// v3.14 — credit-side switched from Reineira cUSDC (contract-hostile: rejected
-// all contract-context confidentialTransfer calls, causing every borrow to
-// revert) to in-repo ObscuraConfidentialToken (ocUSDC). Pay / Vote still use
-// REINEIRA_CUSDC_ADDRESS via @/config/pay.
+import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, FHERC20_ABI as _FHERC20_ABI } from "@/config/pay";
+// v3.14 — credit-side switched to in-repo ObscuraConfidentialToken (ocUSDC).
 import { CREDIT_OCUSDC_ADDRESS } from "@/config/credit";
-const REINEIRA_CUSDC_ADDRESS = CREDIT_OCUSDC_ADDRESS; // alias for minimal-diff — credit market v316 uses v314_ocUSDC
-// The new ocUSDC token exposes confidentialTransfer(address,InEuint64) +
-// setOperator/isOperator with the same selectors as Reineira cUSDC, so the
-// REINEIRA_CUSDC_ABI keeps working for the credit flow.
-const REINEIRA_CUSDC_ABI = _LEGACY_CUSDC_ABI;
+const OCUSDC_ADDRESS = CREDIT_OCUSDC_ADDRESS;
+// ocUSDC exposes the same selectors as Reineira cUSDC, so FHERC20_ABI covers both.
+const OCUSDC_ABI = _FHERC20_ABI;
 void OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS;
 import { decryptBalance, encryptAddressAndAmount, encryptAmount, initFHEClient } from "@/lib/fhe";
 import { estimateCappedFees } from "@/lib/gas";
@@ -201,11 +196,11 @@ export function useEnsureOperator(target?: `0x${string}`) {
 
   const ensure = useCallback(
     async (untilSeconds = Math.floor(Date.now() / 1000) + 30 * 24 * 3600) => {
-      if (!REINEIRA_CUSDC_ADDRESS || !target || !address || !publicClient) return false;
+      if (!OCUSDC_ADDRESS || !target || !address || !publicClient) return false;
       try {
         const isOp = await publicClient.readContract({
-          address: REINEIRA_CUSDC_ADDRESS,
-          abi: REINEIRA_CUSDC_ABI,
+          address: OCUSDC_ADDRESS,
+          abi: OCUSDC_ABI,
           functionName: "isOperator",
           args: [address, target],
         });
@@ -214,8 +209,8 @@ export function useEnsureOperator(target?: `0x${string}`) {
 
       const fees = await estimateCappedFees(publicClient);
       const tx = await writeContractAsync({
-        address: REINEIRA_CUSDC_ADDRESS,
-        abi: REINEIRA_CUSDC_ABI,
+        address: OCUSDC_ADDRESS,
+        abi: OCUSDC_ABI,
         functionName: "setOperator",
         args: [target, BigInt(untilSeconds)],
         account: address,
@@ -253,7 +248,7 @@ export function useCreditMarket(market?: `0x${string}`) {
   // ── Two-step supply: cUSDC.confidentialTransfer(market) → market.supply(amt) ──
   const supply = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !walletClient || !market || !address || !REINEIRA_CUSDC_ADDRESS) throw new Error("not ready");
+      if (!publicClient || !walletClient || !market || !address || !OCUSDC_ADDRESS) throw new Error("not ready");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
       const enc = await encryptAmount(amount);
@@ -262,7 +257,7 @@ export function useCreditMarket(market?: `0x${string}`) {
       // Step 1 — direct cUSDC transfer to market (user is immediate CoFHE caller)
       const fees = await estimateCappedFees(publicClient);
       const txTransfer = await writeContractAsync({
-        address: REINEIRA_CUSDC_ADDRESS, abi: REINEIRA_CUSDC_ABI,
+        address: OCUSDC_ADDRESS, abi: OCUSDC_ABI,
         functionName: "confidentialTransfer", args: [market, enc[0]],
         account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
@@ -334,9 +329,9 @@ export function useCreditMarket(market?: `0x${string}`) {
       fhe.setStep(FHEStepStatus.COMPUTING);
       // Fetch fees once with retry — reused for both steps (Arb Sepolia fees stable over 30 s)
       const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-      // cUSDC (Reineira) uses REINEIRA_CUSDC_ABI; cOBS / cWETH use CONFIDENTIAL_TOKEN_ABI
-      const collAbi = collateralTokenAddress === REINEIRA_CUSDC_ADDRESS
-        ? REINEIRA_CUSDC_ABI
+      // cUSDC (Reineira) uses OCUSDC_ABI; cOBS / cWETH use CONFIDENTIAL_TOKEN_ABI
+      const collAbi = collateralTokenAddress === OCUSDC_ADDRESS
+        ? OCUSDC_ABI
         : CONFIDENTIAL_TOKEN_ABI;
       const txTransfer = await writeContractAsync({
         address: collateralTokenAddress, abi: collAbi,
@@ -464,7 +459,7 @@ export function useCreditMarket(market?: `0x${string}`) {
   // ── Two-step repay: cUSDC.confidentialTransfer(market) → market.repay(amt, encAmt) ──
   const repay = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !walletClient || !market || !address || !REINEIRA_CUSDC_ADDRESS) throw new Error("not ready");
+      if (!publicClient || !walletClient || !market || !address || !OCUSDC_ADDRESS) throw new Error("not ready");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
 
@@ -473,7 +468,7 @@ export function useCreditMarket(market?: `0x${string}`) {
       fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
       const txTransfer = await writeContractAsync({
-        address: REINEIRA_CUSDC_ADDRESS, abi: REINEIRA_CUSDC_ABI,
+        address: OCUSDC_ADDRESS, abi: OCUSDC_ABI,
         functionName: "confidentialTransfer", args: [market, enc1[0]],
         account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
@@ -536,7 +531,7 @@ export function useCreditVault(vault?: `0x${string}`) {
   // ── Two-step deposit: cUSDC.confidentialTransfer(vault) → vault.deposit(amt) ──
   const deposit = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !walletClient || !vault || !address || !REINEIRA_CUSDC_ADDRESS) throw new Error("not ready");
+      if (!publicClient || !walletClient || !vault || !address || !OCUSDC_ADDRESS) throw new Error("not ready");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
       const enc = await encryptAmount(amount);
@@ -545,7 +540,7 @@ export function useCreditVault(vault?: `0x${string}`) {
       // Step 1 — direct cUSDC transfer to vault (user is immediate CoFHE caller)
       const fees = await estimateCappedFees(publicClient);
       const txTransfer = await writeContractAsync({
-        address: REINEIRA_CUSDC_ADDRESS, abi: REINEIRA_CUSDC_ABI,
+        address: OCUSDC_ADDRESS, abi: OCUSDC_ABI,
         functionName: "confidentialTransfer", args: [vault, enc[0]],
         account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,

@@ -137,8 +137,12 @@ export function useStreamList(filter: { employer?: `0x${string}`; recipient?: `0
               boolean,        // paused
             ];
             const period = s[1];
+            const startTime = s[2];
             const lastTick = s[4];
-            const pending = period > 0n ? (now - lastTick) / period : 0n;
+            // Use startTime as baseline if lastTickTime is 0 (fresh stream, never ticked)
+            // Also cap pending to 0 if stream hasn't started yet
+            const baseline = lastTick > 0n ? lastTick : startTime;
+            const pending = period > 0n && now > baseline ? (now - baseline) / period : 0n;
             const storedHint = localStorage.getItem(`v3_stream_recipient_${id.toString()}`);
             return {
               id,

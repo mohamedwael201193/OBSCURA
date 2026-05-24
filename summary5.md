@@ -1355,13 +1355,72 @@ production traffic stays on Arbitrum Sepolia.
 
 ---
 
+## Phase 23 — PAY Codebase Normalization + Stream Display Fix (✅ COMPLETE)
+
+### Summary
+Pure cleanup pass: 7 file renames (cUSDC → ocUSDC), 11 importer updates, config/pay.ts
+de-Reineira, 3 hook internal cleanups, envHealth.ts refresh, and a stream display bug fix.
+Zero new features — code quality only. TypeScript: 0 errors throughout.
+
+### File renames (7)
+| Old | New |
+|---|---|
+| `hooks/useCUSDCBalance.ts` | `hooks/useOcUSDCBalance.ts` |
+| `hooks/useCUSDCEscrow.ts` | `hooks/useOcUSDCEscrow.ts` |
+| `hooks/useCUSDCTransfer.ts` | `hooks/useOcUSDCTransfer.ts` |
+| `components/pay-v4/CUSDCPanel.tsx` | `components/pay-v4/OcUSDCPanel.tsx` |
+| `components/pay-v4/CUSDCEscrowForm.tsx` | `components/pay-v4/OcUSDCEscrowForm.tsx` |
+| `components/pay-v4/CUSDCEscrowActions.tsx` | `components/pay-v4/OcUSDCEscrowActions.tsx` |
+| `components/pay-v4/CUSDCTransferForm.tsx` | `components/pay-v4/OcUSDCTransferForm.tsx` |
+
+### Importer updates (11 files)
+`PayPage.tsx`, `BatchEscrowForm`, `ClaimEscrowCard`, `SupplyForm`, `InvoicePayCard`,
+`StreamList`, `UnifiedSendForm`, `MyEscrows` — all import paths and call sites updated.
+
+### config/pay.ts normalization
+- `REINEIRA_CUSDC_ADDRESS` export removed (consumers → `CONFIDENTIAL_USDC_ADDRESS` from credit)
+- `REINEIRA_CUSDC_ABI` → `FHERC20_ABI` (generic, same ABI works for all ocUSDC variants)
+- `REINEIRA_ESCROW_ADDRESS/ABI` → `LEGACY_ESCROW_ADDRESS/ABI`
+- `REINEIRA_COVERAGE_MANAGER_*` → `INSURANCE_COVERAGE_MANAGER_*`
+- `REINEIRA_INSURANCE_POOL_*` → `INSURANCE_POOL_*`
+- File header comment updated; deprecated V1 exports kept with JSDoc
+
+### Hook internals cleaned
+- `useCredit.ts`: `REINEIRA_CUSDC_*` locals → `OCUSDC_*`
+- `useInsurePayroll.ts`: all REINEIRA constants renamed; `CONFIDENTIAL_USDC_ADDRESS` now from credit config
+- `StakePoolForm.tsx`: same REINEIRA→insurance rename pattern
+
+### envHealth.ts
+- Removed dead `VITE_OBSCURA_PAYROLL_UNDERWRITER_ADDRESS` key
+- Added `VITE_OBSCURA_PAY_STREAM_V3_ADDRESS`, `VITE_OBSCURA_INSURANCE_SUBSCRIPTION_V2_ADDRESS`
+
+### Stream display bug fix (`StreamList.tsx` + `useStreamList.ts`)
+**Root cause**: V2 and V3 stream contracts both issue IDs starting at 0. React keys were
+`s.id.toString()` → both V2-stream-0 and V3-stream-0 rendered as "Stream #0", React
+duplicate-key warning, display disorder. Pause/Cancel always called V2 contract address
+even for V3 streams.
+
+**Fixes applied**:
+- Keys → `${s.version}-${s.id}` (e.g. `v3-0`, `v2-0`) — globally unique across contracts
+- Sort order: V3 with pending cycles first → idle V3 → V2 legacy last
+- Version badge on each stream card: green "V3" badge or grey "V2 legacy" badge
+- V2 streams show "Legacy V2 stream — use V3 streams for new payments" instead of pay button
+- Pause/Cancel/Resume routed to correct contract address + ABI per `s.version`
+- `payAllDue` skips V2 streams (V2 InEuint64 forwarding is broken on-chain)
+- "Pay all due" button only appears when V3 streams have pending cycles
+- V3 `pendingCycles` clamped: `baseline = lastTickTime > 0 ? lastTickTime : startTime`
+  prevents giant pending counts on streams that were never ticked (lastTickTime = 0)
+
+### Git commit
+`Phase 23: normalize cUSDC→ocUSDC naming, clean Reineira branding, fix stream display`
+
+---
+
 ## Phase 22 — Continuous ops (PENDING — post-mainnet)
 
 Post-mainnet only. Tracked but blocked on Phase 21 gate.
 
----
 
-## Running Status Table
 
 | Phase | Status | Contracts | Frontend | Deploy | Notes |
 |---|---|---|---|---|---|

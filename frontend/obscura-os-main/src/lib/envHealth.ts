@@ -15,7 +15,6 @@ const REQUIRED_KEYS = [
   "VITE_OBSCURA_VOTE_ADDRESS",
   // Wave 2 — Pay
   "VITE_OBSCURA_STEALTH_REGISTRY_ADDRESS",
-  "VITE_OBSCURA_PAYROLL_UNDERWRITER_ADDRESS",
   // Wave 3 — Pay (privacy-hardened redeploys + new contracts)
   "VITE_OBSCURA_PAYROLL_RESOLVER_V2_ADDRESS",
   "VITE_OBSCURA_PAY_STREAM_V2_ADDRESS",
@@ -26,6 +25,9 @@ const REQUIRED_KEYS = [
   "VITE_OBSCURA_STEALTH_ROTATION_ADDRESS",
   // Obscura's own confidential cUSDC escrow (replaces broken Reineira proxy)
   "VITE_OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS",
+  // Wave 5 — V3 active contracts
+  "VITE_OBSCURA_PAY_STREAM_V3_ADDRESS",
+  "VITE_OBSCURA_INSURANCE_SUBSCRIPTION_V2_ADDRESS",
 ] as const;
 
 export interface EnvHealthReport {

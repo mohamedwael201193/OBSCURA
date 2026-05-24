@@ -30,7 +30,7 @@ async function withRateLimitRetry<T>(
   throw new Error("Max retries exceeded");
 }
 
-export function useCUSDCTransfer() {
+export function useOcUSDCTransfer() {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { address } = useAccount();

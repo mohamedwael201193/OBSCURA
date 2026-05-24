@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useWriteContract, usePublicClient, useWalletClient, useAccount } from 'wagmi';
 import { parseEventLogs } from 'viem';
 import {
-  REINEIRA_ESCROW_ADDRESS,
+  LEGACY_ESCROW_ADDRESS,
   OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
   OBSCURA_CONFIDENTIAL_ESCROW_ABI,
 } from '@/config/pay';
@@ -18,7 +18,7 @@ import { getJSON, setJSON, migrateGlobalKey } from '@/lib/scopedStorage';
 const STORAGE_KEY = 'obscura_cusdc_escrows';
 
 /**
- * useCUSDCEscrow — fully working confidential cUSDC escrow.
+ * useOcUSDCEscrow — fully working confidential ocUSDC escrow.
  *
  * History:
  *   The deployed Reineira ConfidentialEscrow proxy (0xC4333F84…) calls
@@ -33,7 +33,7 @@ const STORAGE_KEY = 'obscura_cusdc_escrows';
  *
  *   Address (Arbitrum Sepolia): 0xF893F3c1603E0E9B01be878a0E7e369fF704CCF1
  *
- * The legacy REINEIRA_ESCROW_ADDRESS export is kept so My Escrows can
+ * The legacy LEGACY_ESCROW_ADDRESS export is kept so My Escrows can
  * label pre-cutoff escrows as legacy.
  */
 
@@ -60,7 +60,7 @@ function saveEscrow(addr: `0x${string}` | undefined, escrow: SavedEscrow) {
   setJSON(STORAGE_KEY, addr, existing);
 }
 
-export function useCUSDCEscrow() {
+export function useOcUSDCEscrow() {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { address } = useAccount();
@@ -483,9 +483,9 @@ export function useCUSDCEscrow() {
       if (!e.contract) {
         // Pre-fix records have no `contract` field — assume legacy if the
         // env still has the Reineira address configured.
-        return Boolean(REINEIRA_ESCROW_ADDRESS);
+        return Boolean(LEGACY_ESCROW_ADDRESS);
       }
-      return e.contract.toLowerCase() === (REINEIRA_ESCROW_ADDRESS ?? '').toLowerCase();
+      return e.contract.toLowerCase() === (LEGACY_ESCROW_ADDRESS ?? '').toLowerCase();
     },
     []
   );

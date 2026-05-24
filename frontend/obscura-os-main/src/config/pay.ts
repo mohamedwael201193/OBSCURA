@@ -1,6 +1,7 @@
 /**
- * Wave 2 Pay v4 — ReineiraOS-integrated payroll config & ABIs.
- * Kept in a separate file so contracts.ts (Wave 1) stays untouched.
+ * Obscura Pay — contract addresses & ABIs (V1–V3 unified).
+ * V3 active addresses live in payV3.ts. This file retains V1 ABI definitions,
+ * stealth/registry addresses, escrow, invoice, and insurance infrastructure.
  */
 
 // ─── InEuint64 / InEaddress tuple shape (cofhe-sdk encryptInputs output) ──
@@ -13,36 +14,29 @@ const InEuint64Components = [
 const InEaddressComponents = InEuint64Components;
 
 // ─── Addresses ────────────────────────────────────────────────────────────
+/** @deprecated V1 payroll resolver — superseded by OBSCURA_PAYROLL_RESOLVER_V3_ADDRESS in payV3.ts. Kept for ResolverManager legacy reads. */
 export const OBSCURA_PAYROLL_RESOLVER_ADDRESS = import.meta.env
   .VITE_OBSCURA_PAYROLL_RESOLVER_ADDRESS as `0x${string}` | undefined;
 export const OBSCURA_STEALTH_REGISTRY_ADDRESS = import.meta.env
   .VITE_OBSCURA_STEALTH_REGISTRY_ADDRESS as `0x${string}` | undefined;
+/** @deprecated V1 pay stream — superseded by OBSCURA_PAY_STREAM_V3_ADDRESS in payV3.ts. */
 export const OBSCURA_PAY_STREAM_ADDRESS = import.meta.env
   .VITE_OBSCURA_PAY_STREAM_ADDRESS as `0x${string}` | undefined;
+/** @deprecated V1 payroll underwriter — superseded by V3 flow. */
 export const OBSCURA_PAYROLL_UNDERWRITER_ADDRESS = import.meta.env
   .VITE_OBSCURA_PAYROLL_UNDERWRITER_ADDRESS as `0x${string}` | undefined;
 
-// ReineiraOS deployed contracts (Arbitrum Sepolia 421614)
-export const REINEIRA_CUSDC_ADDRESS = import.meta.env
-  .VITE_REINEIRA_CUSDC_ADDRESS as `0x${string}` | undefined;
-/** @deprecated The deployed Reineira escrow proxy at this address is
- *  incompatible with the deployed cUSDC token (calls a non-existent
- *  selector 0xeb3155b5). Use OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS instead.
- *  Kept for legacy escrow lookups in My Escrows. */
-export const REINEIRA_ESCROW_ADDRESS = import.meta.env
-  .VITE_REINEIRA_ESCROW_ADDRESS as `0x${string}` | undefined;
-/** Obscura's own confidential cUSDC escrow — replaces the broken Reineira
- *  proxy. Calls cUSDC via the present uint256-handle overloads (0xca49d7cd
- *  inbound, 0xfe3f670d outbound). End-to-end working on Arbitrum Sepolia. */
+/** Legacy insurance coverage manager — undefined when pool not configured. */
+export const INSURANCE_COVERAGE_MANAGER_ADDRESS = import.meta.env
+  .VITE_REINEIRA_COVERAGE_MANAGER_ADDRESS as `0x${string}` | undefined;
+/** @deprecated Legacy escrow proxy — incompatible selector. Use OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS. Kept for legacy lookups. */
+export const LEGACY_ESCROW_ADDRESS = undefined as `0x${string}` | undefined;
+/** Obscura confidential ocUSDC escrow (V1). */
 export const OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS = import.meta.env
   .VITE_OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS as `0x${string}` | undefined;
-/** Obscura confidential invoice contract — Phase B1.
- *  Inverse of escrow: creator publishes an encrypted billed amount; payer
- *  pays via cUSDC.confidentialTransfer + invoice.recordPayment. */
+/** Obscura confidential invoice contract. */
 export const OBSCURA_INVOICE_ADDRESS = import.meta.env
   .VITE_OBSCURA_INVOICE_ADDRESS as `0x${string}` | undefined;
-export const REINEIRA_COVERAGE_MANAGER_ADDRESS = import.meta.env
-  .VITE_REINEIRA_COVERAGE_MANAGER_ADDRESS as `0x${string}` | undefined;
 
 
 // ─── ObscuraPayrollResolver ABI ───────────────────────────────────────────
@@ -289,10 +283,10 @@ export const OBSCURA_PAY_STREAM_ABI = [
   },
 ] as const;
 
-// ─── Reineira ConfidentialUSDC (cUSDC) ABI — minimal ─────────────────────
-// NOTE: Reineira FHERC20 uses the OPERATOR model. Standard ERC-20 approve(),
+// ─── FHERC20 / ocUSDC ABI — minimal ──────────────────────────────────────
+// FHERC20 uses the OPERATOR model. Standard ERC-20 approve(),
 // transfer(), transferFrom() ALL REVERT. Use setOperator(spender, expiry) instead.
-export const REINEIRA_CUSDC_ABI = [
+export const FHERC20_ABI = [
   {
     type: "function",
     name: "setOperator",
@@ -673,10 +667,9 @@ export const OBSCURA_INVOICE_ABI = [
   },
 ] as const;
 
-// ─── Reineira ConfidentialEscrow ABI — minimal (LEGACY / DEPRECATED) ────
-/** @deprecated See OBSCURA_CONFIDENTIAL_ESCROW_ABI. Retained for read-only
- *  legacy lookups of escrows created against the broken Reineira proxy. */
-export const REINEIRA_ESCROW_ABI = [
+// ─── Legacy escrow ABI (DEPRECATED) ────────────────────────────────────
+/** @deprecated See OBSCURA_CONFIDENTIAL_ESCROW_ABI. Retained as unused type reference. */
+export const LEGACY_ESCROW_ABI = [
   {
     type: "function",
     name: "create",
@@ -727,8 +720,8 @@ export const REINEIRA_ESCROW_ABI = [
   },
 ] as const;
 
-// ─── Reineira ConfidentialCoverageManager ABI — minimal ─────────────────
-export const REINEIRA_COVERAGE_MANAGER_ABI = [
+// ─── Insurance coverage manager ABI ─────────────────────────────────
+export const INSURANCE_COVERAGE_MANAGER_ABI = [
   {
     type: "function",
     name: "purchaseCoverage",
@@ -810,11 +803,11 @@ export const ERC20_APPROVE_ABI = [
   },
 ] as const;
 
-// ─── Reineira Insurance auxiliary contracts (set by operator via setupReineiraPool.ts) ──
-export const REINEIRA_INSURANCE_POOL_ADDRESS = (import.meta.env
+// ─── Insurance pool auxiliary contracts ───────────────────────────────
+export const INSURANCE_POOL_ADDRESS = (import.meta.env
   .VITE_REINEIRA_INSURANCE_POOL_ADDRESS ?? "") as `0x${string}` | "";
 
-export const REINEIRA_INSURANCE_POOL_ABI = [
+export const INSURANCE_POOL_ABI = [
   {
     type: "function",
     name: "addPolicy",

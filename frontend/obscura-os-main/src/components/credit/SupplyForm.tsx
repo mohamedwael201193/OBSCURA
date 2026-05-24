@@ -17,7 +17,7 @@ import { ArrowUpToLine, ArrowDownToLine, AlertTriangle } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
 import type { CreditMarketMeta } from "@/config/credit";
-import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
+import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
 import EncryptedValue from "@/components/shared/EncryptedValue";
 import FHEStepper from "@/components/shared/FHEStepper";
 import PercentChips from "@/components/shared/PercentChips";
@@ -36,7 +36,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
   const { address } = useAccount();
   const { supply, withdraw, fheStatus } = useCreditMarket(market.address);
   const pos = useMarketPosition(market.address);
-  const { decrypted: ocUSDCDecrypted } = useCUSDCBalance();
+  const { decrypted: ocUSDCDecrypted } = useOcUSDCBalance();
   const cUSDCBal = ocUSDCDecrypted ?? 0n;
 
   const [tab, setTab]     = useState<Tab>("supply");

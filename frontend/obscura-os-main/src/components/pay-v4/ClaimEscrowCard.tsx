@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gift, Loader2, CheckCircle2, AlertCircle, Lock, ExternalLink, ShieldCheck, Eye, ArrowUpRight } from "lucide-react";
-import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
-import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
+import { useOcUSDCEscrow } from "@/hooks/useOcUSDCEscrow";
+import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
 import { useAccount, usePublicClient } from "wagmi";
 import { toast } from "sonner";
 import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS } from "@/config/pay";
@@ -25,8 +25,8 @@ import { formatUSDC } from "@/lib/usdc";
 export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: string; contractParam?: string | null }) {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
-  const { redeem, checkExists, getExpiryBlock, txHash, isTxPending, status } = useCUSDCEscrow();
-  const { reveal, busy: revealBusy, decrypted: cusdcDecrypted } = useCUSDCBalance();
+  const { redeem, checkExists, getExpiryBlock, txHash, isTxPending, status } = useOcUSDCEscrow();
+  const { reveal, busy: revealBusy, decrypted: cusdcDecrypted } = useOcUSDCBalance();
 
   const [exists, setExists] = useState<boolean | null>(null);
   const [expiryInfo, setExpiryInfo] = useState<{ block: bigint; current: bigint } | null>(null);
@@ -130,7 +130,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
     setVerifyPhase("revealing");
     try {
       await reveal();
-      // useCUSDCBalance updates `decrypted` in state; we read it from the
+      // useOcUSDCBalance updates `decrypted` in state; we read it from the
       // hook closure on the next render via the effect below.
     } catch (err) {
       console.warn("[ClaimEscrowCard] reveal failed:", err);

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Lock, Plus, Copy, CheckCircle2, Loader2, ExternalLink, Link2, Clock } from "lucide-react";
 import UsdcIcon from "@/components/shared/UsdcIcon";
-import { useCUSDCEscrow } from "@/hooks/useCUSDCEscrow";
+import { useOcUSDCEscrow } from "@/hooks/useOcUSDCEscrow";
 import { toast } from "sonner";
 import { parseUnits } from "viem";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
@@ -21,7 +21,7 @@ const EXPIRY_OPTIONS: Array<{ label: string; days: number }> = [
   { label: "90 days", days: 90 },
 ];
 
-export default function CUSDCEscrowForm() {
+export default function OcUSDCEscrowForm() {
   const [ownerAddr, setOwnerAddr] = useState("");
   const [amount, setAmount] = useState("");
   const [resolver, setResolver] = useState("");
@@ -30,7 +30,7 @@ export default function CUSDCEscrowForm() {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  const { create, txHash, isTxPending, status, stepIndex, lastEscrowId, reset } = useCUSDCEscrow();
+  const { create, txHash, isTxPending, status, stepIndex, lastEscrowId, reset } = useOcUSDCEscrow();
   const usdcBalance = useUSDCBalance();
 
   // Map useCUSDCEscrow's (status, stepIndex) to TxStep[] for TxProgressPanel.

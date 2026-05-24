@@ -5,11 +5,11 @@ import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "
 import { arbitrumSepolia } from "viem/chains";
 import { toast } from "sonner";
 import {
-  REINEIRA_CUSDC_ABI,
-  REINEIRA_CUSDC_ADDRESS,
-  REINEIRA_INSURANCE_POOL_ADDRESS,
-  REINEIRA_INSURANCE_POOL_ABI,
+  FHERC20_ABI,
+  INSURANCE_POOL_ADDRESS,
+  INSURANCE_POOL_ABI,
 } from "@/config/pay";
+import { CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
 
 export default function StakePoolForm() {
@@ -25,7 +25,7 @@ export default function StakePoolForm() {
       toast.error("Connect wallet first");
       return;
     }
-    if (!REINEIRA_INSURANCE_POOL_ADDRESS || !REINEIRA_CUSDC_ADDRESS) {
+    if (!INSURANCE_POOL_ADDRESS || !CONFIDENTIAL_USDC_ADDRESS) {
       toast.error("Insurance pool not configured");
       return;
     }
@@ -51,10 +51,10 @@ export default function StakePoolForm() {
       const untilTimestamp = BigInt(Math.floor(Date.now() / 1000) + 30 * 86400);
 
       const authTx = await writeContractAsync({
-        address: REINEIRA_CUSDC_ADDRESS,
-        abi: REINEIRA_CUSDC_ABI,
+        address: CONFIDENTIAL_USDC_ADDRESS,
+        abi: FHERC20_ABI,
         functionName: "setOperator",
-        args: [REINEIRA_INSURANCE_POOL_ADDRESS as `0x${string}`, untilTimestamp],
+        args: [INSURANCE_POOL_ADDRESS as `0x${string}`, untilTimestamp],
         account: address,
         chain: arbitrumSepolia,
         maxFeePerGas: maxFee,
@@ -71,8 +71,8 @@ export default function StakePoolForm() {
       const maxFee2 = feeData2.maxFeePerGas ? (feeData2.maxFeePerGas * 130n) / 100n : undefined;
 
       const stakeTx = await writeContractAsync({
-        address: REINEIRA_INSURANCE_POOL_ADDRESS as `0x${string}`,
-        abi: REINEIRA_INSURANCE_POOL_ABI,
+        address: INSURANCE_POOL_ADDRESS as `0x${string}`,
+        abi: INSURANCE_POOL_ABI,
         functionName: "stake",
         args: [encrypted[0]],
         account: address,

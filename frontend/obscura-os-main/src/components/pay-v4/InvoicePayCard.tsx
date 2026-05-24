@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, Loader2, CheckCircle2, AlertCircle, Lock, ExternalLink, ShieldCheck, ArrowDownLeft, EyeOff } from "lucide-react";
 import { useInvoice } from "@/hooks/useInvoice";
-import { useCUSDCBalance } from "@/hooks/useCUSDCBalance";
+import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
 import { useAccount, usePublicClient } from "wagmi";
 import { toast } from "sonner";
 import { OBSCURA_INVOICE_ADDRESS } from "@/config/pay";
@@ -37,7 +37,7 @@ export default function InvoicePayCard({
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { payInvoice, probeInvoice } = useInvoice();
-  const { trackedCusdc } = useCUSDCBalance();
+  const { trackedCusdc } = useOcUSDCBalance();
 
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);

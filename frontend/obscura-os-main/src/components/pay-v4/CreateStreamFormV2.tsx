@@ -3,6 +3,10 @@
  * (encrypted recipient hint + jitter) and an optional one-click
  * "Auto-insure each cycle" subscription that delegates to
  * `useInsuranceSubscription.subscribe`.
+ *
+ * Routing logic:
+ *   - If VITE_OBSCURA_PAY_STREAM_V3_ADDRESS is set → uses V3 stream (handle-based, no CoFHE forwarding)
+ *   - Otherwise falls back to V2 (deprecated, CoFHE forwarding bug)
  */
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -11,6 +15,7 @@ import { isAddress } from "viem";
 import { toast } from "sonner";
 
 import { usePayStreamV2 } from "@/hooks/usePayStreamV2";
+import { usePayStreamV3 } from "@/hooks/usePayStreamV3";
 import { useInsuranceSubscription } from "@/hooks/useInsuranceSubscription";
 import { useReceipts } from "@/hooks/useReceipts";
 import { useRecipientStealthCheck } from "@/hooks/useRecipientStealthCheck";
@@ -20,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { arbitrumSepolia } from "viem/chains";
 import { parseUnits } from "viem";
+import { OBSCURA_PAY_STREAM_V3_ADDRESS } from "@/config/payV3";
 
 const PERIODS = [
   { label: "1 Min", seconds: 60 },
@@ -31,7 +37,11 @@ const PERIODS = [
 ];
 
 export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => void } = {}) {
-  const stream = usePayStreamV2();
+  // Route to V3 if contract is deployed; keep V2 as fallback.
+  const useV3 = !!OBSCURA_PAY_STREAM_V3_ADDRESS;
+  const streamV2 = usePayStreamV2();
+  const streamV3 = usePayStreamV3();
+  const stream = useV3 ? streamV3 : streamV2;
   const insurance = useInsuranceSubscription();
   const receipts = useReceipts();
 
@@ -75,8 +85,11 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
         jitterSeconds: jitter,
       });
 
-      // Persist recipient so StreamList can display it (V2 stores encrypted hint on-chain)
-      localStorage.setItem(`v2_stream_recipient_${streamId.toString()}`, hint);
+      // Persist recipient so StreamList can display it
+      const storageKey = useV3
+        ? `v3_stream_recipient_${streamId.toString()}`
+        : `v2_stream_recipient_${streamId.toString()}`;
+      localStorage.setItem(storageKey, hint);
 
       receipts.add({
         kind: "stream-create",
@@ -133,13 +146,16 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Payroll Stream</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted Hint · V2 · Jitter</p>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted Hint · {useV3 ? "V3 · Native ocUSDC" : "V2 · Jitter"}</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">V2</span>
+        <span className={`ml-auto shrink-0 pay-badge ${useV3 ? "pay-badge-blue" : "pay-badge-emerald"}`}>{useV3 ? "V3" : "V2"}</span>
       </div>
 
       <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
-        Each cycle sends ocUSDC to a fresh stealth address. The recipient hint is encrypted on-chain and per-cycle salts + optional jitter prevent timing correlation.
+        {useV3
+          ? "Each cycle sends ocUSDC to escrow via the V3 stream — proofs are processed by the stream contract (no CoFHE forwarding). Stealth recipients redeem from escrow after the release window."
+          : "Each cycle sends ocUSDC to a fresh stealth address. The recipient hint is encrypted on-chain and per-cycle salts + optional jitter prevent timing correlation."
+        }
       </p>
 
       <div className="space-y-4">

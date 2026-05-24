@@ -341,6 +341,109 @@ contract ObscuraConfidentialEscrow {
         }
     }
 
+    // ─── Handle-based helpers for intermediary contracts ────────────────
+
+    /// @notice Create an escrow from pre-computed euint64 handles rather than
+    ///         raw InEuint64 / InEaddress proofs. Used by ObscuraPayStreamV3
+    ///         and other proxy contracts that cannot forward InExx proofs
+    ///         through themselves (CoFHE forwarding restriction).
+    ///
+    ///         Caller MUST call FHE.allowTransient(eOwner, address(this)) AND
+    ///         FHE.allowTransient(eAmount, address(this)) before this call so
+    ///         that FHE.allowThis() inside _createFromHandles can access and
+    ///         persist the ciphertexts.
+    ///
+    /// @param ownerHandle   euint64.unwrap(eOwner) cast to uint256
+    /// @param amountHandle  euint64.unwrap(eAmount) cast to uint256
+    function createFromHandles(
+        uint256 ownerHandle,
+        uint256 amountHandle,
+        address _resolver,
+        bytes calldata _resolverData
+    ) external returns (uint256 escrowId) {
+        return _createFromHandles(ownerHandle, amountHandle, _resolver, _resolverData, 0);
+    }
+
+    /// @notice Same as createFromHandles() but with a plaintext expiry block.
+    function createFromHandlesWithExpiry(
+        uint256 ownerHandle,
+        uint256 amountHandle,
+        address _resolver,
+        bytes calldata _resolverData,
+        uint256 _expiryBlock
+    ) external returns (uint256 escrowId) {
+        return _createFromHandles(ownerHandle, amountHandle, _resolver, _resolverData, _expiryBlock);
+    }
+
+    function _createFromHandles(
+        uint256 ownerHandle,
+        uint256 amountHandle,
+        address _resolver,
+        bytes calldata _resolverData,
+        uint256 _expiryBlock
+    ) internal returns (uint256 escrowId) {
+        escrowId = nextEscrowId++;
+
+        // Reconstruct encrypted types from handles.
+        // Caller must have granted this contract FHE permission on both handles
+        // via FHE.allowTransient(handle, address(this)) before this call.
+        eaddress eOwner  = eaddress.wrap(bytes32(ownerHandle));
+        euint64  eAmount = euint64.wrap(bytes32(amountHandle));
+        euint64  zeroPaid    = FHE.asEuint64(uint256(0));
+        ebool    notRedeemed = FHE.asEbool(false);
+
+        escrows[escrowId] = Escrow({
+            owner: eOwner,
+            amount: eAmount,
+            paidAmount: zeroPaid,
+            isRedeemed: notRedeemed,
+            exists: true,
+            cancelled: false,
+            refunded: false,
+            creatorPlain: msg.sender,
+            expiryBlock: _expiryBlock
+        });
+
+        FHE.allowThis(eOwner);
+        FHE.allowThis(eAmount);
+        FHE.allowThis(zeroPaid);
+        FHE.allowThis(notRedeemed);
+        FHE.allow(eAmount, msg.sender);
+        FHE.allow(zeroPaid, msg.sender);
+
+        if (_resolver != address(0)) {
+            conditionResolvers[escrowId] = _resolver;
+            IConditionResolverCE(_resolver).onConditionSet(escrowId, _resolverData);
+        }
+
+        emit EscrowCreated(escrowId, msg.sender, _resolver);
+        if (_expiryBlock > 0) {
+            emit EscrowExpirySet(escrowId, _expiryBlock);
+        }
+    }
+
+    /// @notice Record funding from a pre-computed handle. Mirrors fund() but
+    ///         accepts a uint256 handle instead of InEuint64. Used by
+    ///         ObscuraPayStreamV3 after moving tokens with
+    ///         cUSDC.confidentialTransferFromHandle.
+    ///
+    ///         Caller MUST call FHE.allowTransient(paymentHandle, address(this))
+    ///         before this call.
+    ///
+    /// @param handle  euint64.unwrap(paymentAmount) cast to uint256
+    function fundFromHandle(uint256 _escrowId, uint256 handle) external {
+        Escrow storage esc = escrows[_escrowId];
+        require(esc.exists, "no escrow");
+        require(!esc.cancelled, "cancelled");
+
+        euint64 paymentH = euint64.wrap(bytes32(handle));
+        esc.paidAmount = FHE.add(esc.paidAmount, paymentH);
+        FHE.allowThis(esc.paidAmount);
+        FHE.allow(esc.paidAmount, esc.creatorPlain);
+
+        emit EscrowFunded(_escrowId, msg.sender);
+    }
+
     // ─── Views ──────────────────────────────────────────────────────────
 
     function exists(uint256 _escrowId) external view returns (bool) {

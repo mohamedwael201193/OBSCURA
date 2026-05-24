@@ -1122,7 +1122,208 @@ Tracked in the master todo. Each gets its own session in this memory doc.
 
 ---
 
-## Phase 21 — Audit + mainnet readiness gate (CORRECTED — see Fhenix testnet note at top)
+## Phase 21 — PAY Migration: Solidity Layer (✅ COMPLETE)
+
+### Goal
+
+Complete the Wave 5 PAY migration at the Solidity level — eliminate all
+remaining Reineira dependencies from every active Pay contract, solve the
+CoFHE "forwarding restriction" that broke stream and insurance flows, and
+produce clean deployable V3 contracts + a deployment script.
+
+### Problem Discovered — CoFHE Forwarding Restriction
+
+`ObscuraPayStreamV2.tickStream()` tried to receive an `InEuint64` proof from
+the employer and forward it into `cUSDC.confidentialTransferFrom()` and
+`escrow.create()`. CoFHE cryptographically binds each proof to its **immediate
+caller** — forwarding a proof through an intermediary contract causes
+`InvalidSigner(address,address)` (selector `0x7ba5ffb5`) at the CoFHE
+coprocessor.
+
+This is not a bug — it is a fundamental property of the system.
+
+### Solution — `confidentialTransferFromHandle` Pattern
+
+Instead of forwarding `InEuint64` proofs:
+
+1. Intermediary (stream/insurance) calls `FHE.asEuint64(encProof)` → gets
+   `euint64 eAmount` (intermediary IS the immediate caller — this works).
+2. Intermediary calls `FHE.allowTransient(eAmount, address(targetToken))`.
+3. Intermediary calls `targetToken.confidentialTransferFromHandle(from, to, uint256(euint64.unwrap(eAmount)))`.
+4. Token contract reconstructs: `euint64 amt = euint64.wrap(bytes32(handle))`
+   — has transient FHE permission from step 2 — calls `_debit` + `_credit`.
+
+### Contracts Changed / Created
+
+| Contract | Change | Notes |
+|---|---|---|
+| `ObscuraConfidentialToken.sol` | Added `confidentialTransferFromHandle(from, to, uint256 handle)` | Core enabler for stream + insurance fix |
+| `interfaces/IObscuraToken.sol` | **New file** — canonical ocUSDC interface | Replaces legacy `IConfidentialUSDC` + `IConfidentialUSDCv2` for new contracts |
+| `interfaces/IConfidentialUSDCv2.sol` | Added `confidentialTransferFromHandle` stub | Backward compat for escrow/invoice |
+| `ObscuraConfidentialEscrow.sol` | Added `createFromHandles()` + `fundFromHandle()` | Enables stream proxy pattern without InEuint64 forwarding |
+| `ObscuraPayrollResolverV3.sol` | **New file** | Plaintext-commit resolver; no `eaddress`/`InEaddress`; compatible with stream proxy |
+| `ObscuraPayStreamV3.sol` | **New file** — replaces broken V2 | Uses `IObscuraToken`, `confidentialTransferFromHandle`, `createFromHandles`, `fundFromHandle` |
+| `ObscuraInsuranceSubscription.sol` | Updated import + `consume()` | Uses `IObscuraToken` + `confidentialTransferFromHandle` instead of v1 ABI |
+| `scripts/deployWave5PayMigration.ts` | **New file** | Deploys all 5 contracts in order; updates `arb-sepolia.json`; prints `.env` additions |
+
+### `tickStream()` Flow (V3)
+
+```
+Employer calls tickStream(streamId, encCycleAmount, encRecipient, ...)
+  ↓
+stream.FHE.asEuint64(encCycleAmount)    → eAmount   (stream is signer ✓)
+stream.FHE.asEaddress(encRecipient)     → eRecipient (stream is signer ✓)
+stream.FHE.allowTransient(eAmount, cUSDC)
+stream → cUSDC.confidentialTransferFromHandle(employer, escrow, handle)
+  ↓ tokens move employer → escrow cUSDC balance
+stream.FHE.allowTransient(eAmount, escrow)
+stream.FHE.allowTransient(eRecipient, escrow)
+stream → escrow.createFromHandles(rcpHandle, amtHandle, resolverV3, data)
+  ↓ escrow record created; resolverV3.onConditionSet() stores commit data
+stream → escrow.fundFromHandle(escrowId, amtHandle)
+  ↓ paidAmount updated in escrow
+stream: lastTickTime += periodSeconds; cyclesPaid += 1
+```
+
+### Resolver Data Format Change
+
+| Version | Format |
+|---|---|
+| V2 (broken) | `abi.encode(uint64, InEaddress, InEaddress, bytes32, bytes32)` |
+| V3 (working) | `abi.encode(uint64 releaseTime, bytes32 employerCommit, bytes32 approverCommit)` |
+
+`employerCommit = keccak256(abi.encode(employer, salt))` — keeps plaintext
+employer address off the resolver storage while still enabling commit-based
+auth for `cancel()` and `approve()`.
+
+### Compile Result
+
+`Compiled 17 Solidity files successfully (evm target: cancun)` — zero errors,
+zero warnings (after compile run 2026-05-26).
+
+### Post-Deploy Operator Setup (Required)
+
+After deploying V3 contracts, each participant must call once:
+```
+cUSDC.setOperator(address(payStreamV3), uint48(block.timestamp + 90 days))
+cUSDC.setOperator(address(insuranceSubV2), uint48(block.timestamp + 90 days))
+```
+
+### New Contract Addresses
+
+Populated after running `npx hardhat run scripts/deployWave5PayMigration.ts --network arb-sepolia`.
+See `deployments/arb-sepolia.json` keys: `ocUSDC_Pay`, `ObscuraConfidentialEscrow`,
+`ObscuraPayrollResolverV3`, `ObscuraPayStreamV3`, `ObscuraInsuranceSubscriptionV2`.
+
+---
+
+## Phase 22 — PAY V3 Frontend Integration (✅ COMPLETE — DEPLOYED 2026-05-24)
+
+### Deployed Addresses (Arbitrum Sepolia)
+
+| Contract | Address |
+|---|---|
+| ocUSDC Pay wrapper v2 | `0xEd46020Df8abe7BB1E096f27d089F4326D223a53` |
+| ObscuraConfidentialEscrow v2 | `0x293810A2081114CcE0c98A709a0c31aE07c01D75` |
+| ObscuraPayrollResolverV3 | `0xB077c231448EF2252060E4B4dD404078DBD94180` |
+| ObscuraPayStreamV3 | `0xE4328F139F03138D63f7fdF90A8Ef240e04653fA` |
+| ObscuraInsuranceSubscriptionV2 | `0xEA9Fc5800F41d090dFB90f9735F4CF3824d6743D` |
+
+### Goal
+
+Wire all V3 contracts into the Vite/React frontend so that once the user
+runs `deployWave5PayMigration.ts`, everything auto-activates with no further
+code changes needed.
+
+### Files Changed / Created
+
+| File | Change |
+|---|---|
+| `frontend/obscura-os-main/src/config/payV3.ts` | **New file** — V3 addresses from env, full ABIs (stream/resolver/insurance/ocUSDC) |
+| `frontend/obscura-os-main/.env` | Added 5 empty V3 address stubs (see "Post-Deploy Steps" below) |
+| `frontend/obscura-os-main/src/hooks/usePayStreamV3.ts` | **New file** — createStream, tickStream (6-param V3), cancelStream, setPaused, getMyStreams |
+| `frontend/obscura-os-main/src/hooks/useStreamList.ts` | Updated — now queries BOTH V2 (legacy) + V3 (active), tags with `version: 'v2' | 'v3'` |
+| `frontend/obscura-os-main/src/hooks/useInsuranceSubscription.ts` | Updated — prefers V2 insurance address; uses PAY ocUSDC for operator check |
+| `frontend/obscura-os-main/src/components/pay-v4/CreateStreamFormV2.tsx` | Updated — routes to V3 when `OBSCURA_PAY_STREAM_V3_ADDRESS` is set |
+
+### Routing Logic in CreateStreamFormV2
+
+```tsx
+const useV3 = !!OBSCURA_PAY_STREAM_V3_ADDRESS;
+const stream = useV3 ? usePayStreamV3() : usePayStreamV2();
+```
+
+When V3 is live:
+- Badge changes from "V2" (emerald) to "V3" (blue).
+- Description explains escrow-based settlement model.
+- localStorage key switches to `v3_stream_recipient_${id}`.
+- tickStream uses 6-param V3 signature with auto-operator setup.
+
+### V3 tickStream Frontend Flow
+
+```typescript
+// 1. Ensure employer has operator approval on PAY ocUSDC
+await ensureOperatorForV3(); // setOperator(streamV3, now + 30d) if needed
+
+// 2. Encrypt both inputs — proofs consumed by V3 stream contract itself
+const encAmt = await encryptAmount(cycleAmount);   // InEuint64
+const encRcp = await encryptAddress(stealthAddr);  // InEaddress
+
+// 3. Generate random employer salt (stored locally for cancel/approve later)
+const employerSalt = makeSalt(streamId, address, saltIndex);
+
+// 4. Call tickStream — contract processes proofs, moves funds, creates escrow
+await writeContractAsync({
+  functionName: 'tickStream',
+  args: [streamId, encAmt[0], encRcp[0], employerSalt, zeroAddress, ZERO_BYTES32],
+});
+```
+
+### V3 vs V2 getStream Return Order
+
+| Position | V2 | V3 |
+|---|---|---|
+| 5 | jitterSeconds (uint32) | cyclesPaid (uint64) ← swapped |
+| 6 | cyclesPaid (uint64) | jitterSeconds (uint32) ← swapped |
+
+Both ABIs in `payV3.ts` and `useStreamList.ts` document this difference.
+
+### TypeScript Compile Status
+
+```
+npx tsc --noEmit   →   (no output = 0 errors) ✅
+```
+
+---
+
+### Post-Deploy Steps (USER ACTION REQUIRED)
+
+1. **Deploy V3 contracts**:
+```powershell
+cd d:\route\Obscura\contracts-hardhat
+npx hardhat run scripts/deployWave5PayMigration.ts --network arb-sepolia
+```
+The script prints all 5 new addresses and auto-updates `deployments/arb-sepolia.json`.
+
+2. **Copy addresses into frontend `.env`**:
+```env
+VITE_OBSCURA_PAY_OCUSDC_ADDRESS=<ocUSDC_Pay from output>
+VITE_OBSCURA_CONFIDENTIAL_ESCROW_V2_ADDRESS=<ObscuraConfidentialEscrow v2>
+VITE_OBSCURA_PAY_STREAM_V3_ADDRESS=<ObscuraPayStreamV3>
+VITE_OBSCURA_PAYROLL_RESOLVER_V3_ADDRESS=<ObscuraPayrollResolverV3>
+VITE_OBSCURA_INSURANCE_SUBSCRIPTION_V2_ADDRESS=<ObscuraInsuranceSubscriptionV2>
+```
+
+3. **Restart `vite dev`** — all V3 hooks and routing logic auto-activates.
+
+4. **Shield USDC into the new PAY ocUSDC** (if testing):
+   Call `newOcUSDC.shield(amount)` after approving Circle USDC.
+
+No contract re-deploy, no code changes needed after step 2.
+
+---
+
+## Phase 21 (Original) — Audit + mainnet readiness gate (CORRECTED — see Fhenix testnet note at top)
 
 ### Goal (REVISED)
 

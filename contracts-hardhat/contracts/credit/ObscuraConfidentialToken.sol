@@ -201,6 +201,35 @@ contract ObscuraConfidentialToken {
         return true;
     }
 
+    // ── Operator-backed handle transfer (stream/escrow proxy path) ────────
+    /// @notice Transfer `handle` (a euint64 ciphertext handle cast to uint256)
+    ///         from `from` to `to`. Caller must be an approved operator of `from`.
+    ///         Caller must have granted THIS contract transient or persistent FHE
+    ///         permission on the handle via FHE.allowTransient / FHE.allow BEFORE
+    ///         this call, so the internal FHE.sub can access the ciphertext.
+    ///
+    ///         This function solves the CoFHE "forwarding restriction": an
+    ///         intermediary contract (e.g. ObscuraPayStreamV3) converts an
+    ///         InEuint64 proof (signed for itself) to a euint64 handle via
+    ///         FHE.asEuint64, grants THIS token contract permission on the handle
+    ///         via FHE.allowTransient, then calls this function — no InEuint64
+    ///         forwarding required.
+    function confidentialTransferFromHandle(
+        address from,
+        address to,
+        uint256 handle
+    ) external whenNotPaused returns (bool) {
+        if (to == address(0)) revert InvalidRecipient();
+        if (msg.sender != from && _operatorExpiry[msg.sender][from] <= block.timestamp) {
+            revert NotAuthorized();
+        }
+        euint64 amt = euint64.wrap(bytes32(handle));
+        _debit(from, amt);
+        _credit(to, amt);
+        emit ConfidentialTransfer(from, to);
+        return true;
+    }
+
     // ── Faucet (faucet mode only; reverts in wrapper mode) ───────────────
     function claimFaucet() external whenNotPaused {
         if (underlying != address(0)) revert WrapperOnly();

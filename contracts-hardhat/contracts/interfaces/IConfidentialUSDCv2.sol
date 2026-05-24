@@ -40,4 +40,14 @@ interface IConfidentialUSDCv2 {
     // ── Outbound (we use this in escrow.redeem / cancel) ────────────────
     /// @dev Selector 0xfe3f670d — handle overload.
     function confidentialTransfer(address to, uint256 amount) external returns (bool);
+
+    // ── Operator-backed handle transfer (stream/insurance proxy path) ────
+    /// @notice Transfer handle `handle` from `from` to `to`. Caller must be
+    ///         operator of `from`. Caller must call FHE.allowTransient on the
+    ///         handle for this token before this call.
+    function confidentialTransferFromHandle(
+        address from,
+        address to,
+        uint256 handle
+    ) external returns (bool);
 }

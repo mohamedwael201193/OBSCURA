@@ -20,10 +20,27 @@ import {
   OBSCURA_INSURANCE_SUBSCRIPTION_ABI,
   OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS,
 } from "@/config/payV2";
+import {
+  OBSCURA_INSURANCE_SUBSCRIPTION_V2_ADDRESS,
+  OBSCURA_INSURANCE_SUBSCRIPTION_V2_ABI,
+  OBSCURA_PAY_OCUSDC_ADDRESS,
+} from "@/config/payV3";
 import { estimateCappedFees } from "@/lib/gas";
 import { ensureOperator } from "@/lib/operators";
 import { encryptAmount, initFHEClient } from "@/lib/fhe";
 import { CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
+
+// Prefer V2 if deployed; fall back to V1.
+const ACTIVE_INSURANCE_ADDRESS =
+  (OBSCURA_INSURANCE_SUBSCRIPTION_V2_ADDRESS ?? OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS) as `0x${string}` | undefined;
+// Use matching ABI (V2 and V1 have identical external interface).
+const ACTIVE_INSURANCE_ABI = OBSCURA_INSURANCE_SUBSCRIPTION_V2_ADDRESS
+  ? OBSCURA_INSURANCE_SUBSCRIPTION_V2_ABI
+  : OBSCURA_INSURANCE_SUBSCRIPTION_ABI;
+// Use PAY ocUSDC for V2 operator check; legacy V1 used CONFIDENTIAL_USDC_ADDRESS.
+const ACTIVE_CUSDC_ADDRESS = OBSCURA_INSURANCE_SUBSCRIPTION_V2_ADDRESS
+  ? OBSCURA_PAY_OCUSDC_ADDRESS
+  : CONFIDENTIAL_USDC_ADDRESS;
 
 export interface SubscriptionRow {
   subId: bigint;
@@ -48,7 +65,7 @@ export function useInsuranceSubscription() {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!publicClient || !address || !OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS) {
+    if (!publicClient || !address || !ACTIVE_INSURANCE_ADDRESS) {
       setSubscriptions([]);
       return;
     }
@@ -56,8 +73,8 @@ export function useInsuranceSubscription() {
     setError(null);
     try {
       const ids = (await publicClient.readContract({
-        address: OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS,
-        abi: OBSCURA_INSURANCE_SUBSCRIPTION_ABI,
+        address: ACTIVE_INSURANCE_ADDRESS!,
+        abi: ACTIVE_INSURANCE_ABI,
         functionName: "subsBySubscriber",
         args: [address],
       })) as bigint[];
@@ -66,8 +83,8 @@ export function useInsuranceSubscription() {
       for (const id of ids) {
         try {
           const r = (await publicClient.readContract({
-            address: OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS,
-            abi: OBSCURA_INSURANCE_SUBSCRIPTION_ABI,
+            address: ACTIVE_INSURANCE_ADDRESS!,
+            abi: ACTIVE_INSURANCE_ABI,
             functionName: "getSubscription",
             args: [id],
           })) as [`0x${string}`, bigint, bigint, bigint, bigint, bigint, boolean];
@@ -108,7 +125,7 @@ export function useInsuranceSubscription() {
         !publicClient ||
         !walletClient ||
         !address ||
-        !OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS
+        !ACTIVE_INSURANCE_ADDRESS
       ) {
         throw new Error("Wallet or contract not configured");
       }
@@ -116,20 +133,21 @@ export function useInsuranceSubscription() {
       setError(null);
       try {
         // Operator authorization for the subscription contract (it pulls cUSDC).
+        // V2 uses PAY ocUSDC; V1 used CONFIDENTIAL_USDC_ADDRESS (same var for fallback).
         await ensureOperator(
           publicClient,
           walletClient,
           address,
-          OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS,
-          CONFIDENTIAL_USDC_ADDRESS
+          ACTIVE_INSURANCE_ADDRESS,
+          ACTIVE_CUSDC_ADDRESS
         );
         await initFHEClient(publicClient, walletClient);
         const enc = await encryptAmount(params.maxPremiumPerCycle);
 
         const fees = await estimateCappedFees(publicClient);
         const hash = await writeContractAsync({
-          address: OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS,
-          abi: OBSCURA_INSURANCE_SUBSCRIPTION_ABI,
+          address: ACTIVE_INSURANCE_ADDRESS,
+          abi: ACTIVE_INSURANCE_ABI,
           functionName: "subscribe",
           args: [params.streamId, params.maxCycles, params.periodSeconds, enc[0]],
           account: address,
@@ -157,7 +175,7 @@ export function useInsuranceSubscription() {
         !publicClient ||
         !walletClient ||
         !address ||
-        !OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS
+        !ACTIVE_INSURANCE_ADDRESS
       ) {
         throw new Error("Wallet or contract not configured");
       }
@@ -166,8 +184,8 @@ export function useInsuranceSubscription() {
       try {
         const fees = await estimateCappedFees(publicClient);
         const hash = await writeContractAsync({
-          address: OBSCURA_INSURANCE_SUBSCRIPTION_ADDRESS,
-          abi: OBSCURA_INSURANCE_SUBSCRIPTION_ABI,
+          address: ACTIVE_INSURANCE_ADDRESS,
+          abi: ACTIVE_INSURANCE_ABI,
           functionName: "cancel",
           args: [subId],
           account: address,

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.25;
 
 import "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import "./interfaces/IConfidentialUSDC.sol";
+import "./interfaces/IObscuraToken.sol";
 
 /// @title ObscuraInsuranceSubscription
 /// @notice Pre-approved recurring insurance budget. Users (typically the
@@ -33,7 +33,7 @@ contract ObscuraInsuranceSubscription {
     ///      sub-minute "rapid-drain" attacks are impossible.
     uint64 public constant MIN_PERIOD_SECONDS = 60;
 
-    IConfidentialUSDC public immutable cUSDC;
+    IObscuraToken public immutable cUSDC;
     /// @notice Authorized to call `consume` (typically the off-chain ticker
     ///         service, or the CoverageManager itself).
     address public consumer;
@@ -67,7 +67,7 @@ contract ObscuraInsuranceSubscription {
 
     constructor(address _cUSDC, address initialConsumer) {
         require(_cUSDC != address(0), "cUSDC=0");
-        cUSDC = IConfidentialUSDC(_cUSDC);
+        cUSDC = IObscuraToken(_cUSDC);
         owner = msg.sender;
         consumer = initialConsumer; // may be address(0); set later via setConsumer
     }
@@ -146,11 +146,19 @@ contract ObscuraInsuranceSubscription {
 
         euint64 premium = FHE.asEuint64(encPremium);
         FHE.allowThis(premium);
-        FHE.allow(premium, address(cUSDC));
+        // Grant the token transient FHE permission on the handle so its
+        // internal _debit() can access the ciphertext. This avoids the CoFHE
+        // forwarding restriction (InEuint64 proof was signed for THIS contract,
+        // not for the token).
+        FHE.allowTransient(premium, address(cUSDC));
 
         // Pull from subscriber, send to dest. cUSDC enforces the operator
         // approval the subscriber granted via setOperator at subscription time.
-        cUSDC.confidentialTransferFrom(s.subscriber, dest, premium);
+        cUSDC.confidentialTransferFromHandle(
+            s.subscriber,
+            dest,
+            uint256(euint64.unwrap(premium))
+        );
 
         s.cyclesConsumed += 1;
         s.lastConsumedAt = uint64(block.timestamp);

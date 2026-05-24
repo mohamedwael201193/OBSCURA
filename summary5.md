@@ -1448,3 +1448,19 @@ Post-mainnet only. Tracked but blocked on Phase 21 gate.
 | 19 — Escrow contract redeploy (correct token) | ✅ complete | ✅ New `ObscuraConfidentialEscrow` `0x5b988CBf9f1b5B479763A5008f52987AA1Af5041` | ✅ .env updated; expiry display /7200n→×0.25/86400 fixed | ✅ deployed arb-sepolia | Root cause: old escrow used Reineira immutable → all redeems returned 0 |
 | 20 — Text bugs + invoice stealth inbox UX | ✅ complete | n/a | ✅ 4 files fixed: cUSDC→ocUSDC (×3), daysLeft formula, InvoiceForm/PayCard stealth inbox guidance, balance unit | n/a | Invoice payment goes to stealth address; creator must Receive → Stealth Inbox → Claim all |
 | 22 — Ops | ⏳ | — | — | ⏳ post-mainnet | |
+
+## Wave 5 Pay Documentation Complete
+
+`docs/pay_wave5.md` — comprehensive 14-section production-grade reference created (2026-05-26).
+
+Covers:
+- Contract registry (all active V3 / legacy / deprecated / archived addresses verified against `.env` + `arb-sepolia.json`)
+- Transaction lifecycle deep dives (10 flows: P2P, stealth, invoice, escrow, stream create/tick, insurance, sweep, balance reveal, batch payroll)
+- FHE privacy system (ACL model, `FHE.allowThis` discipline, `FHE.select` rule, CoFHE forwarding restriction, `encAmt[0]` extraction)
+- Two-token ocUSDC architecture (Pay wrapper vs Credit faucet split — why both exist, which hooks use which)
+- Frontend surface documentation (all routes, all PayPage tabs, 18+ key hooks, config files)
+- Historical migration record (Reineira → cUSDC → ocUSDC, V2 broken → V3 handle-based)
+- Security model (FHE discipline table, operator approval model, mainnet readiness gate)
+- Pay ↔ Credit ↔ Vote integration (IEncryptedScore bridge, LLTV boost, ObscuraGovernor, TreasuryStreamer, credit keeper bot)
+- Deployment & environment architecture (complete annotated `.env`, timeline, deploy scripts, ABI sources)
+- Future roadmap (P0–P2 items, mainnet gate, all Wave 5 phases with ✅/DEFERRED/BLOCKED status)

@@ -1,4 +1,4 @@
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+﻿import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { isAddress, parseUnits } from "viem";
 import { motion } from "framer-motion";
 import { useStreamList, type StreamSummary } from "@/hooks/useStreamList";
@@ -12,10 +12,6 @@ import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
 } from "@/config/pay";
-import {
-  OBSCURA_PAY_STREAM_V2_ABI,
-  OBSCURA_PAY_STREAM_V2_ADDRESS,
-} from "@/config/payV2";
 import {
   OBSCURA_PAY_STREAM_V3_ABI,
   OBSCURA_PAY_STREAM_V3_ADDRESS,
@@ -91,7 +87,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   const { tick, isTicking } = useTickStream();
   const { transfer: directTransfer } = useOcUSDCTransfer();
   const { writeContractAsync } = useWriteContract();
-  // A4: persist per-cycle amount so user doesn't have to retype every reload.
+
   const TICK_AMOUNT_KEY = "obscura.streams.tickAmount.v1";
   const [tickAmount, setTickAmount] = useState(() => getString(TICK_AMOUNT_KEY, undefined) ?? "");
   useEffect(() => { setString(TICK_AMOUNT_KEY, undefined, tickAmount); }, [tickAmount]);
@@ -99,100 +95,60 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [lastPayment, setLastPayment] = useState<{ streamId: string; txHash: string; announceTx?: string; amount: string; stealthAddress?: string } | null>(null);
   const [streamAction, setStreamAction] = useState<string | null>(null);
-  // Per-stream recipient override (for streams created before localStorage fix)
   const [overrideInputs, setOverrideInputs] = useState<Record<string, string>>({});
   const [savedOverrides, setSavedOverrides] = useState<Record<string, string>>({});
 
-  // Track paid cycles in localStorage (on-chain counter won't update since we bypass PayStream)
   const getLocalPaid = useCallback((streamId: bigint): number => {
-    try {
-      const key = `obscura_paid_${streamId.toString()}`;
-      const v = getString(key, address);
-      return parseInt(v ?? "0", 10);
-    } catch { return 0; }
+    try { return parseInt(getString(`obscura_paid_${streamId.toString()}`, address) ?? "0", 10); } catch { return 0; }
   }, [address]);
 
   const incrementLocalPaid = useCallback((streamId: bigint) => {
     try {
-      const key = `obscura_paid_${streamId.toString()}`;
-      const cur = parseInt(getString(key, address) ?? "0", 10);
-      setString(key, address, String(cur + 1));
+      const k = `obscura_paid_${streamId.toString()}`;
+      setString(k, address, String(parseInt(getString(k, address) ?? "0", 10) + 1));
     } catch { /* noop */ }
   }, [address]);
 
   const getLastLocalTick = useCallback((streamId: bigint): number => {
-    try {
-      const key = `obscura_lastTick_${streamId.toString()}`;
-      return parseInt(getString(key, address) ?? "0", 10);
-    } catch { return 0; }
+    try { return parseInt(getString(`obscura_lastTick_${streamId.toString()}`, address) ?? "0", 10); } catch { return 0; }
   }, [address]);
 
   const setLastLocalTick = useCallback((streamId: bigint) => {
-    try {
-      const key = `obscura_lastTick_${streamId.toString()}`;
-      setString(key, address, String(Math.floor(Date.now() / 1000)));
-    } catch { /* noop */ }
+    try { setString(`obscura_lastTick_${streamId.toString()}`, address, String(Math.floor(Date.now() / 1000))); } catch { /* noop */ }
   }, [address]);
 
-  // Auto-refresh "next due" countdown every 5s
   useState(() => {
     const iv = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 5000);
     return () => clearInterval(iv);
   });
 
   const tickOne = async (stream: StreamSummary) => {
-    if (!publicClient || !OBSCURA_STEALTH_REGISTRY_ADDRESS) {
-      toast.error("Not connected");
-      return;
-    }
-
-    // Parse amount using parseUnits for correct decimal handling
+    if (!publicClient || !OBSCURA_STEALTH_REGISTRY_ADDRESS) { toast.error("Not connected"); return; }
     let amt: bigint;
-    try {
-      amt = parseUnits(tickAmount, 6);
-    } catch {
-      toast.error("Invalid amount — enter a number like 2.5");
-      return;
-    }
-    if (amt <= 0n) {
-      toast.error("Enter a per-cycle amount in ocUSDC (e.g. 2.5)");
-      return;
-    }
+    try { amt = parseUnits(tickAmount, 6); } catch { toast.error("Invalid amount — enter a number like 2.5"); return; }
+    if (amt <= 0n) { toast.error("Enter a per-cycle amount in ocUSDC (e.g. 2.5)"); return; }
 
     try {
       if (payMode === "direct") {
-        // ── Direct mode: send cUSDC straight to recipientHint ──────────────
-        // Encrypted on-chain (cUSDC is FHE) but goes to the actual wallet address
-        // so the recipient can see and use it immediately.
         const hash = await directTransfer(stream.recipientHint, amt);
         await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` });
         incrementLocalPaid(stream.id);
         setLastLocalTick(stream.id);
-        setLastPayment({
-          streamId: stream.id.toString(),
-          txHash: hash as string,
-          amount: tickAmount,
-        });
-        toast.success(`✅ ${tickAmount} ocUSDC sent directly to ${stream.recipientHint.slice(0, 8)}…`);
+        setLastPayment({ streamId: stream.id.toString(), txHash: hash as string, amount: tickAmount });
+        toast.success(`${tickAmount} ocUSDC sent to ${stream.recipientHint.slice(0, 8)}…`);
         refresh();
       } else {
-        // ── Stealth mode: derive one-time stealth address, announce ─────────
-        // Maximum privacy — recipient must scan Stealth Inbox to claim.
         const meta = (await publicClient.readContract({
           address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
           abi: OBSCURA_STEALTH_REGISTRY_ABI,
           functionName: "getMetaAddress",
           args: [stream.recipientHint],
         })) as readonly [`0x${string}`, `0x${string}`, bigint];
-
         const [s, v, ts] = meta;
         if (ts === 0n) {
-          toast.error(
-            `Recipient hasn't registered a stealth meta-address yet. Use Direct mode, or ask them to register in the Stealth tab.`
-          );
+          toast.error("Recipient has not registered a stealth meta-address yet. Use Direct mode, or ask them to register in the Stealth tab.");
           return;
         }
-
         const recipientMeta: MetaAddress = { spendingPubKey: s, viewingPubKey: v };
         const result = await tick({ streamId: stream.id, amount: amt, recipientMeta });
         incrementLocalPaid(stream.id);
@@ -204,9 +160,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           amount: tickAmount,
           stealthAddress: result.stealth?.stealthAddress,
         });
-        toast.success(
-          `✅ ${tickAmount} ocUSDC → stealth address. Recipient must scan Stealth Inbox to claim.`
-        );
+        toast.success("ocUSDC sent to stealth address. Recipient must scan Stealth Inbox to claim.");
         refresh();
       }
     } catch (e) {
@@ -216,27 +170,17 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
     }
   };
 
-  // A4: "Pay all due cycles" — loop through streams with pendingCycles>0
-  // and tick each in sequence with the same per-cycle amount.
   const [autoPaying, setAutoPaying] = useState(false);
   const payAllDue = useCallback(async () => {
     if (autoPaying) return;
-    if (!tickAmount || Number(tickAmount) <= 0) {
-      toast.error("Set a per-cycle amount first");
-      return;
-    }
+    if (!tickAmount || Number(tickAmount) <= 0) { toast.error("Set a per-cycle amount first"); return; }
     const due = streams.filter((s) => {
-      if (s.version !== "v3") return false; // V2 streams are broken — skip
-      const localLastTick = getLastLocalTick(s.id);
-      const eff = Math.max(Number(s.lastTickTime), localLastTick);
+      const eff = Math.max(Number(s.lastTickTime), getLastLocalTick(s.id));
       const pending = Math.max(0, Math.floor((Math.floor(Date.now() / 1000) - eff) / Number(s.periodSeconds)));
       const stored = (savedOverrides[s.id.toString()] ?? s.recipientHint) as `0x${string}`;
       return pending > 0 && stored !== ZERO_ADDR && isAddress(stored) && !s.paused;
     });
-    if (due.length === 0) {
-      toast.info("No streams currently due");
-      return;
-    }
+    if (due.length === 0) { toast.info("No streams currently due"); return; }
     setAutoPaying(true);
     let okCount = 0;
     for (const s of due) {
@@ -244,25 +188,18 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
         const stored = (savedOverrides[s.id.toString()] ?? s.recipientHint) as `0x${string}`;
         await tickOne({ ...s, recipientHint: stored });
         okCount += 1;
-      } catch (err) {
-        console.error("[payAllDue]", s.id.toString(), err);
-      }
+      } catch (err) { console.error("[payAllDue]", s.id.toString(), err); }
     }
     setAutoPaying(false);
-    toast.success(`Auto-paid ${okCount} of ${due.length} due stream(s)`);
+    toast.success(`Paid ${okCount} of ${due.length} due stream(s)`);
   }, [autoPaying, streams, tickAmount, savedOverrides, getLastLocalTick]);
 
   if (!address) return null;
 
   return (
     <div className="pay-card p-5 space-y-5">
-      {/* Header */}
       <div className="flex items-center gap-3">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-          mode === "employer"
-            ? "bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25"
-            : "bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25"
-        }`}>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25">
           {mode === "employer" ? <Play className="w-4 h-4 text-emerald-400" /> : <Clock className="w-4 h-4 text-cyan-400" />}
         </div>
         <div className="min-w-0">
@@ -278,11 +215,8 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
       </div>
 
       {mode === "employer" && streams.some((s) => {
-        if (s.version !== "v3") return false; // V2 broken
-        const localLastTick = getLastLocalTick(s.id);
-        const eff = Math.max(Number(s.lastTickTime), localLastTick);
-        const pending = Math.max(0, Math.floor((now - eff) / Number(s.periodSeconds)));
-        return pending > 0 && !s.paused;
+        const eff = Math.max(Number(s.lastTickTime), getLastLocalTick(s.id));
+        return Math.max(0, Math.floor((now - eff) / Number(s.periodSeconds))) > 0 && !s.paused;
       }) && (
         <button
           disabled={autoPaying || isTicking}
@@ -303,7 +237,6 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
             <input type="number" value={tickAmount} onChange={(e) => setTickAmount(e.target.value)}
               placeholder="e.g. 2.5" className="pay-input font-mono" />
           </div>
-
           <div className="space-y-2">
             <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
               Payment Mode
@@ -369,55 +302,29 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
           <p className="text-[12px] text-muted-foreground/55 max-w-xs mx-auto">
             {mode === "employer"
               ? "Create a confidential subscription or custom stream above to start paying recipients on a recurring schedule."
-              : "You're not receiving any streams yet. Share your stealth meta-address with a payer to get started."}
+              : "You are not receiving any streams yet. Share your stealth meta-address with a payer to get started."}
           </p>
         </div>
       )}
 
       <div className="space-y-2.5">
-        {[...streams]
-          .sort((a, b) => {
-            // V3 before V2
-            if (a.version !== b.version) return a.version === "v3" ? -1 : 1;
-            // Pending first within same version
-            const aPend = a.pendingCycles > 0n ? 1 : 0;
-            const bPend = b.pendingCycles > 0n ? 1 : 0;
-            if (aPend !== bPend) return bPend - aPend;
-            // Higher ID (newer) first
-            return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
-          })
-          .map((s) => {
+        {streams.map((s) => {
           const localPaid = getLocalPaid(s.id);
           const totalPaid = Number(s.cyclesPaid) + localPaid;
           const localLastTick = getLastLocalTick(s.id);
           const effectiveLastTick = Math.max(Number(s.lastTickTime), localLastTick);
           const nextDue = effectiveLastTick + Number(s.periodSeconds);
           const effectivePending = Math.max(0, Math.floor((now - effectiveLastTick) / Number(s.periodSeconds)));
-          // Version-namespaced key prevents duplicate React keys when V2+V3 both have stream #0
-          const key = `${s.version}-${s.id.toString()}`;
-          // Effective recipient: localStorage (stored on create) → saved override → raw hint
-          const storedHint = (savedOverrides[s.id.toString()] ?? s.recipientHint) as `0x${string}`;
+          const key = s.id.toString();
+          const storedHint = (savedOverrides[key] ?? s.recipientHint) as `0x${string}`;
           const recipientUnknown = storedHint === ZERO_ADDR || !isAddress(storedHint);
           const effectiveStream = { ...s, recipientHint: recipientUnknown ? (ZERO_ADDR as `0x${string}`) : storedHint };
-          // Version-aware contract routing
-          const streamAddr = s.version === "v3" ? OBSCURA_PAY_STREAM_V3_ADDRESS : OBSCURA_PAY_STREAM_V2_ADDRESS;
-          const streamAbi = s.version === "v3" ? OBSCURA_PAY_STREAM_V3_ABI : OBSCURA_PAY_STREAM_V2_ABI;
-          const actionKey = key; // already version-namespaced
+
           return (
-            <div key={key} className={`rounded-xl border p-4 space-y-3 ${
-              s.version === "v2"
-                ? "border-white/[0.05] bg-white/[0.015] opacity-70"
-                : "border-white/[0.07] bg-white/[0.025]"
-            }`}>
+            <div key={key} className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 space-y-3">
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
-                  <div className="font-display text-sm font-semibold text-foreground flex items-center gap-2">
-                    Stream #{s.id.toString()}
-                    {s.version === "v3"
-                      ? <span className="text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">V3</span>
-                      : <span className="text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded bg-white/[0.06] text-muted-foreground/50 border border-white/[0.08]">V2 legacy</span>
-                    }
-                  </div>
+                  <div className="font-display text-sm font-semibold text-foreground">Stream #{key}</div>
                   <div className="text-[11px] text-muted-foreground/50">
                     every {Number(s.periodSeconds) >= 86400
                       ? `${Math.round(Number(s.periodSeconds) / 86400)}d`
@@ -434,7 +341,6 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                 )}
               </div>
 
-              {/* Recipient row — show set-recipient form if hint is unknown */}
               {recipientUnknown ? (
                 <div className="space-y-1.5">
                   <div className="text-[11px] text-amber-400/70 flex items-center gap-1.5">
@@ -452,7 +358,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                       onClick={() => {
                         const val = (overrideInputs[key] ?? "").trim();
                         if (!isAddress(val)) { toast.error("Invalid address"); return; }
-                        localStorage.setItem(`v2_stream_recipient_${key}`, val);
+                        localStorage.setItem(`v3_stream_recipient_${key}`, val);
                         setSavedOverrides((p) => ({ ...p, [key]: val }));
                         toast.success("Recipient saved");
                       }}
@@ -469,49 +375,46 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                 </div>
               )}
 
-              {mode === "employer" && effectivePending > 0 && !recipientUnknown && s.version === "v3" && (
+              {mode === "employer" && effectivePending > 0 && !recipientUnknown && (
                 <motion.button whileTap={{ scale: 0.98 }} disabled={isTicking} onClick={() => tickOne(effectiveStream)}
                   className="btn-pay btn-pay-emerald w-full py-2">
                   {payMode === "stealth" ? <Shield className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
                   {isTicking ? "Sending…" : `Pay Cycle (${payMode})`}
                 </motion.button>
               )}
-              {mode === "employer" && effectivePending > 0 && s.version === "v2" && (
-                <div className="text-[11px] text-amber-400/50 text-center py-1.5 border border-amber-500/15 rounded-lg">
-                  Legacy V2 stream — use V3 streams for new payments
-                </div>
-              )}
+
               {mode === "employer" && effectivePending === 0 && !s.paused && (
                 <CountdownTimer nextDue={nextDue} now={now} onRefresh={refresh} />
               )}
+
               {mode === "employer" && !s.paused && (
                 <div className="flex gap-1.5 pt-0.5">
-                  <button disabled={streamAction === actionKey}
+                  <button disabled={streamAction === key}
                     onClick={async () => {
-                      if (!publicClient || !streamAddr) return;
-                      setStreamAction(actionKey);
+                      if (!publicClient || !OBSCURA_PAY_STREAM_V3_ADDRESS) return;
+                      setStreamAction(key);
                       try {
                         const feeData = await publicClient.estimateFeesPerGas();
                         const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
-                        const hash = await writeContractAsync({ address: streamAddr, abi: streamAbi, functionName: "setPaused", args: [s.id, true], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
+                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "setPaused", args: [s.id, true], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
                         await publicClient.waitForTransactionReceipt({ hash });
-                        toast.success(`Stream #${s.id.toString()} paused`);
+                        toast.success(`Stream #${key} paused`);
                         refresh();
                       } catch (e) { toast.error((e as Error).message || "Pause failed"); } finally { setStreamAction(null); }
                     }}
                     className="btn-pay btn-pay-ghost flex-1 py-1.5 text-amber-400 hover:text-amber-300 border-amber-500/25 disabled:opacity-50">
-                    <Pause className="w-3 h-3" /> {streamAction === actionKey ? "Pausing…" : "Pause"}
+                    <Pause className="w-3 h-3" /> {streamAction === key ? "Pausing…" : "Pause"}
                   </button>
-                  <button disabled={streamAction === actionKey}
+                  <button disabled={streamAction === key}
                     onClick={async () => {
-                      if (!publicClient || !streamAddr) return;
-                      setStreamAction(actionKey);
+                      if (!publicClient || !OBSCURA_PAY_STREAM_V3_ADDRESS) return;
+                      setStreamAction(key);
                       try {
                         const feeData = await publicClient.estimateFeesPerGas();
                         const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
-                        const hash = await writeContractAsync({ address: streamAddr, abi: streamAbi, functionName: "cancelStream", args: [s.id], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
+                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "cancelStream", args: [s.id], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
                         await publicClient.waitForTransactionReceipt({ hash });
-                        toast.success(`Stream #${s.id.toString()} cancelled permanently`);
+                        toast.success(`Stream #${key} cancelled`);
                         refresh();
                       } catch (e) { toast.error((e as Error).message || "Cancel failed"); } finally { setStreamAction(null); }
                     }}
@@ -520,30 +423,31 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                   </button>
                 </div>
               )}
+
               {s.paused && (
                 <div className="flex gap-2 items-center">
-                  <span className="text-[11px] text-amber-400/60 flex-1">Stream paused / cancelled</span>
-                  <button disabled={streamAction === actionKey}
+                  <span className="text-[11px] text-amber-400/60 flex-1">Stream paused</span>
+                  <button disabled={streamAction === key}
                     onClick={async () => {
-                      if (!publicClient || !streamAddr) return;
-                      setStreamAction(actionKey);
+                      if (!publicClient || !OBSCURA_PAY_STREAM_V3_ADDRESS) return;
+                      setStreamAction(key);
                       try {
                         const feeData = await publicClient.estimateFeesPerGas();
                         const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
-                        const hash = await writeContractAsync({ address: streamAddr, abi: streamAbi, functionName: "setPaused", args: [s.id, false], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
+                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "setPaused", args: [s.id, false], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
                         await publicClient.waitForTransactionReceipt({ hash });
-                        toast.success(`Stream #${s.id.toString()} resumed`);
+                        toast.success(`Stream #${key} resumed`);
                         refresh();
                       } catch (e) { toast.error((e as Error).message || "Resume failed"); } finally { setStreamAction(null); }
                     }}
                     className="btn-pay btn-pay-ghost py-1.5 px-3 text-emerald-400 hover:text-emerald-300 border-emerald-500/25 disabled:opacity-50">
-                    <PlayCircle className="w-3 h-3" /> {streamAction === actionKey ? "Resuming…" : "Resume"}
+                    <PlayCircle className="w-3 h-3" /> {streamAction === key ? "Resuming…" : "Resume"}
                   </button>
                 </div>
               )}
             </div>
           );
-          })}
+        })}
       </div>
     </div>
   );

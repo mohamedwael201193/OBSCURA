@@ -45,8 +45,17 @@ import {
 import { estimateCappedFees } from "@/lib/gas";
 import { deriveStealthPayment } from "@/lib/stealth";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
-import { CONFIDENTIAL_USDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
+import { CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
+import { OBSCURA_PAY_OCUSDC_ADDRESS } from "@/config/payV3";
+import { withRateLimitRetry } from "@/lib/rateLimit";
 import { payHarmony as h } from "@/components/harmony/payHarmonyClasses";
+
+function isRateLimited(e: unknown): boolean {
+  const msg = ((e as { message?: string })?.message ?? String(e)).toLowerCase();
+  return msg.includes("rate limit") || msg.includes("rate-limit");
+}
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 interface ModeOption {
   key: SendMode;
@@ -99,6 +108,14 @@ export default function UnifiedSendForm() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successHash, setSuccessHash] = useState<`0x${string}` | null>(null);
+  // Stored when announce succeeds in transfer but fails in announce — allows independent retry
+  const [pendingAnnounce, setPendingAnnounce] = useState<{
+    stealthAddress: `0x${string}`;
+    ephemeralPubKey: `0x${string}`;
+    viewTag: `0x${string}`;
+    metadata: `0x${string}`;
+  } | null>(null);
+  const [isRetryingAnnounce, setIsRetryingAnnounce] = useState(false);
 
   /** Live per-step progress shown in the UI while a transaction runs. */
   type StepStatus = "pending" | "active" | "done" | "error";
@@ -215,7 +232,7 @@ export default function UnifiedSendForm() {
           advanceProgress(3, "active");
           const fees = await estimateCappedFees(publicClient);
           hash = await writeContractAsync({
-            address: CONFIDENTIAL_USDC_ADDRESS,
+            address: OBSCURA_PAY_OCUSDC_ADDRESS,
             abi: CONFIDENTIAL_TOKEN_ABI,
             functionName: "confidentialTransfer",
             args: [stealth.stealthAddress, enc[0]],
@@ -228,25 +245,47 @@ export default function UnifiedSendForm() {
           await publicClient.waitForTransactionReceipt({ hash });
           advanceProgress(3, "done", `${hash.slice(0, 10)}…`);
 
+          // Cool down after heavy receipt polling to avoid RPC 429 on announce
+          await sleep(2500);
+
           advanceProgress(4, "active");
           const metadata = encodeAbiParameters(
             [{ type: "uint256" }, { type: "uint256" }, { type: "uint256" }],
             [0n, 0n, amountWei]
           );
-          const annFees = await estimateCappedFees(publicClient);
-          const annHash = await writeContractAsync({
-            address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
-            abi: OBSCURA_STEALTH_REGISTRY_ABI,
-            functionName: "announce",
-            args: [stealth.stealthAddress, stealth.ephemeralPubKey, stealth.viewTag, metadata],
-            account: address,
-            chain: arbitrumSepolia,
-            maxFeePerGas: annFees.maxFeePerGas,
-            maxPriorityFeePerGas: annFees.maxPriorityFeePerGas,
-            gas: 250_000n,
-          });
-          await publicClient.waitForTransactionReceipt({ hash: annHash });
-          advanceProgress(4, "done", `${annHash.slice(0, 10)}…`);
+          const announceParams = {
+            stealthAddress: stealth.stealthAddress,
+            ephemeralPubKey: stealth.ephemeralPubKey as `0x${string}`,
+            viewTag: stealth.viewTag as `0x${string}`,
+            metadata,
+          };
+          let annHash: `0x${string}`;
+          try {
+            const annFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+            annHash = await writeContractAsync({
+              address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+              abi: OBSCURA_STEALTH_REGISTRY_ABI,
+              functionName: "announce",
+              args: [announceParams.stealthAddress, announceParams.ephemeralPubKey, announceParams.viewTag, announceParams.metadata],
+              account: address,
+              chain: arbitrumSepolia,
+              maxFeePerGas: annFees.maxFeePerGas,
+              maxPriorityFeePerGas: annFees.maxPriorityFeePerGas,
+              gas: 250_000n,
+            });
+            await publicClient.waitForTransactionReceipt({ hash: annHash });
+            advanceProgress(4, "done", `${annHash.slice(0, 10)}…`);
+          } catch (annErr) {
+            if (isRateLimited(annErr)) {
+              // Transfer succeeded — store params for independent retry
+              setPendingAnnounce(announceParams);
+              advanceProgress(4, "error", "RPC rate limited — use Retry Announcement below");
+              // Don't throw — let the receipt flow complete
+              annHash = "0x" as `0x${string}`;
+            } else {
+              throw annErr;
+            }
+          }
 
           receipts.add({
             kind: "stealth-sweep",
@@ -272,9 +311,44 @@ export default function UnifiedSendForm() {
       setSuccessHash(hash);
       setStep(4);
     } catch (e) {
-      setError((e as Error).message);
+      const msg = isRateLimited(e)
+        ? "RPC rate limited — please wait ~30 seconds and try again."
+        : (e as Error).message;
+      setError(msg);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  /** Retry just the announce step after a rate-limit failure. */
+  const retryAnnounce = async () => {
+    if (!pendingAnnounce || !publicClient || !address) return;
+    setIsRetryingAnnounce(true);
+    setError(null);
+    try {
+      await sleep(1500);
+      const annFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+      const annHash = await writeContractAsync({
+        address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+        abi: OBSCURA_STEALTH_REGISTRY_ABI,
+        functionName: "announce",
+        args: [pendingAnnounce.stealthAddress, pendingAnnounce.ephemeralPubKey, pendingAnnounce.viewTag, pendingAnnounce.metadata],
+        account: address,
+        chain: arbitrumSepolia,
+        maxFeePerGas: annFees.maxFeePerGas,
+        maxPriorityFeePerGas: annFees.maxPriorityFeePerGas,
+        gas: 250_000n,
+      });
+      await publicClient.waitForTransactionReceipt({ hash: annHash });
+      setPendingAnnounce(null);
+      advanceProgress(4, "done", `${annHash.slice(0, 10)}…`);
+    } catch (e) {
+      const msg = isRateLimited(e)
+        ? "Still rate limited — wait another 30 s and try again."
+        : (e as Error).message;
+      setError(msg);
+    } finally {
+      setIsRetryingAnnounce(false);
     }
   };
 
@@ -286,6 +360,7 @@ export default function UnifiedSendForm() {
     setSuccessHash(null);
     setError(null);
     setProgress([]);
+    setPendingAnnounce(null);
   };
 
   return (
@@ -462,9 +537,23 @@ export default function UnifiedSendForm() {
             </div>
           )}
           {error && (
-            <div className="mt-3 flex items-start gap-2 text-[12px] text-red-300 bg-red-500/[0.06] border border-red-500/20 p-2.5 rounded-md">
-              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-              <span>{error}</span>
+            <div className="mt-3 flex flex-col gap-2">
+              <div className="flex items-start gap-2 text-[12px] text-red-300 bg-red-500/[0.06] border border-red-500/20 p-2.5 rounded-md">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+              {pendingAnnounce && (
+                <button
+                  type="button"
+                  onClick={() => void retryAnnounce()}
+                  disabled={isRetryingAnnounce}
+                  className="self-start inline-flex items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300 hover:bg-amber-500/20 disabled:opacity-50 transition-colors"
+                >
+                  {isRetryingAnnounce
+                    ? <><Loader2 className="w-3 h-3 animate-spin" /> Publishing…</>
+                    : <>📡 Retry Announcement</>}
+                </button>
+              )}
             </div>
           )}
           <div className="flex justify-between mt-5">

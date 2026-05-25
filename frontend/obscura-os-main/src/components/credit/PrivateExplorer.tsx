@@ -43,8 +43,8 @@ const ICONS: Record<EventType, React.ComponentType<any>> = {
   WithdrawnCollateral: ArrowUpFromLine, SuppliedCollateral: ArrowDownToLine, Withdrawn: ArrowUpFromLine,
 };
 const COLORS: Record<EventType, string> = {
-  Supplied: "text-emerald-300", Borrowed: "text-violet-300", Repaid: "text-emerald-300",
-  WithdrawnCollateral: "text-amber-300", SuppliedCollateral: "text-emerald-300", Withdrawn: "text-amber-300",
+  Supplied: "text-[hsl(var(--success))]", Borrowed: "text-violet-300", Repaid: "text-[hsl(var(--success))]",
+  WithdrawnCollateral: "text-amber-300", SuppliedCollateral: "text-[hsl(var(--success))]", Withdrawn: "text-amber-300",
 };
 const ALL_TYPES: EventType[] = ["Supplied", "Borrowed", "Repaid", "WithdrawnCollateral", "SuppliedCollateral", "Withdrawn"];
 

@@ -49,6 +49,7 @@
     "@reineira-os/sdk": "^0.2.0",
     "@tanstack/react-query": "^5.83.0",
     "@walletconnect/ethereum-provider": "^2.23.9",
+    "@web3icons/react": "^4.1.17",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

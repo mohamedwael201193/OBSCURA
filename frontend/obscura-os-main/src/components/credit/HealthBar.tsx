@@ -22,7 +22,7 @@ interface HealthBarProps {
 function hfColor(hf: number): { bar: string; text: string; bg: string; icon: string } {
   if (hf < 1.15) return { bar: "bg-red-500", text: "text-red-400", bg: "bg-red-500/10 border-red-500/25", icon: "text-red-400" };
   if (hf < 1.5)  return { bar: "bg-amber-400", text: "text-amber-300", bg: "bg-amber-500/10 border-amber-500/25", icon: "text-amber-300" };
-  return { bar: "bg-emerald-500", text: "text-emerald-300", bg: "bg-emerald-500/[0.07] border-emerald-500/25", icon: "text-emerald-400" };
+  return { bar: "bg-emerald-500", text: "text-[hsl(var(--success))]", bg: "bg-emerald-500/[0.07] border-emerald-500/25", icon: "text-foreground" };
 }
 
 function hfLabel(hf: number): { label: string; hint: string } {
@@ -39,7 +39,7 @@ function hfFill(hf: number): number {
 export default function HealthBar({ hf, loading = false, className = "" }: HealthBarProps) {
   if (loading) {
     return (
-      <div className={`rounded-xl border border-white/10 bg-white/[0.02] p-4 flex items-center gap-2 ${className}`}>
+      <div className={`rounded-xl hairline bg-card p-4 flex items-center gap-2 ${className}`}>
         <Activity className="w-4 h-4 text-white/30 animate-pulse" />
         <span className="text-xs text-white/30">Loading health factor…</span>
       </div>
@@ -48,7 +48,7 @@ export default function HealthBar({ hf, loading = false, className = "" }: Healt
 
   if (hf === null) {
     return (
-      <div className={`rounded-xl border border-white/10 bg-white/[0.02] p-4 ${className}`}>
+      <div className={`rounded-xl hairline bg-card p-4 ${className}`}>
         <p className="text-[10px] text-white/30 font-mono">No borrow position — health factor N/A</p>
       </div>
     );
@@ -81,7 +81,7 @@ export default function HealthBar({ hf, loading = false, className = "" }: Healt
       </div>
 
       {/* Bar track */}
-      <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
         <motion.div
           className={`h-full rounded-full ${colors.bar}`}
           initial={{ width: 0 }}
@@ -95,7 +95,7 @@ export default function HealthBar({ hf, loading = false, className = "" }: Healt
         <span>0</span>
         <span className="text-red-400/60">1.15 danger</span>
         <span className="text-amber-400/60">1.5 caution</span>
-        <span className="text-emerald-400/60">3+</span>
+        <span className="text-foreground/60">3+</span>
       </div>
 
       {/* Hint text */}

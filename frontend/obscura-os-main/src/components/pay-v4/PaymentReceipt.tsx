@@ -29,7 +29,7 @@ const KIND_LABEL: Record<Receipt["kind"], string> = {
 export function ReceiptRow({ r, onRemove }: { r: Receipt; onRemove: (id: string) => void }) {
   const ts = new Date(r.timestamp);
   return (
-    <div className="flex items-start gap-3 p-3 rounded-md border border-white/[0.06] bg-white/[0.02] text-[12px]">
+    <div className="flex items-start gap-3 p-3 rounded-xl hairline bg-muted/40 text-[12px]">
       <div className="flex-1 min-w-0">
         <div className="text-foreground/90 truncate">
           {KIND_LABEL[r.kind] ?? r.kind}
@@ -37,7 +37,7 @@ export function ReceiptRow({ r, onRemove }: { r: Receipt; onRemove: (id: string)
             <span className="text-muted-foreground/70"> · {r.recipientLabel}</span>
           )}
           {r.amount && (
-            <span className="text-emerald-300/80 font-mono"> · {r.amount} ocUSDC</span>
+            <span className="text-[hsl(var(--success))]/80 font-mono"> · {r.amount} ocUSDC</span>
           )}
         </div>
         <div className="text-[10px] text-muted-foreground/55 font-mono truncate">
@@ -48,7 +48,7 @@ export function ReceiptRow({ r, onRemove }: { r: Receipt; onRemove: (id: string)
         href={`https://sepolia.arbiscan.io/tx/${r.txHash}`}
         target="_blank"
         rel="noreferrer"
-        className="text-muted-foreground/65 hover:text-emerald-300"
+        className="text-muted-foreground/65 hover:text-[hsl(var(--success))]"
         title={r.txHash}
       >
         <ExternalLink className="w-3.5 h-3.5" />

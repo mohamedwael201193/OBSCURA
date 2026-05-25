@@ -71,7 +71,7 @@ export default function SealedAuctionCard({ auction, windowSec = 3600, onBid, on
   const ss = (remaining % 60).toString().padStart(2, "0");
 
   return (
-    <div className="p-4 rounded-2xl border border-amber-500/15 bg-white/[0.02] backdrop-blur-xl">
+    <div className="rounded-2xl hairline bg-card p-4 border-amber-500/20">
       <div className="flex items-start gap-4">
         {/* Countdown ring */}
         <div className="relative w-[60px] h-[60px] flex-shrink-0">
@@ -118,7 +118,7 @@ export default function SealedAuctionCard({ auction, windowSec = 3600, onBid, on
             <Eye className="w-2.5 h-2.5" /> Best bid
           </div>
           {auction.settled && auction.bestBid > 0n ? (
-            <div className="mt-0.5 text-emerald-300 tabular-nums font-mono">
+            <div className="mt-0.5 text-[hsl(var(--success))] tabular-nums font-mono">
               ${(Number(auction.bestBid) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </div>
           ) : (

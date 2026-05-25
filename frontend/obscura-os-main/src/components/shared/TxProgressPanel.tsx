@@ -395,9 +395,9 @@ function stepColor(type: TxStepType): string {
 }
 
 function connectorClass(fromStatus: TxStepStatus): string {
-  if (fromStatus === "done") return "bg-emerald-500/60";
-  if (fromStatus === "active") return "bg-cyan-500/40";
-  return "bg-white/[0.07]";
+  if (fromStatus === "done") return "bg-[hsl(var(--success))]";
+  if (fromStatus === "active") return "bg-accent";
+  return "bg-border";
 }
 
 // ── Background network decoration ────────────────────────────────────────────
@@ -446,12 +446,12 @@ export default function TxProgressPanel({
 
   return (
     <motion.div
-      className={`relative overflow-hidden rounded-2xl border bg-[#0a0f1a] ${
+      className={`harmony-tx-panel relative overflow-hidden rounded-2xl border bg-card ${
         hasError
-          ? "border-red-500/30 shadow-[0_0_30px_rgba(248,113,113,0.08)]"
+          ? "border-destructive/30"
           : allDone
-          ? "border-emerald-500/30 shadow-[0_0_30px_rgba(52,211,153,0.10)]"
-          : "border-cyan-500/20 shadow-[0_0_40px_rgba(34,211,238,0.08)]"
+          ? "border-[hsl(var(--success))]/40"
+          : "border-border"
       } ${className}`}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -530,9 +530,9 @@ export default function TxProgressPanel({
         </div>
 
         {/* Overall progress bar */}
-        <div className="h-1 rounded-full bg-white/[0.05] overflow-hidden">
+        <div className="h-1 rounded-full bg-muted overflow-hidden">
           <motion.div
-            className={`h-full rounded-full ${hasError ? "bg-red-400" : "bg-gradient-to-r from-cyan-500 to-emerald-400"}`}
+            className={`h-full rounded-full ${hasError ? "bg-destructive" : "bg-[hsl(var(--success))]"}`}
             initial={{ width: "0%" }}
             animate={{
               width: `${Math.round(
@@ -649,7 +649,7 @@ export default function TxProgressPanel({
         </div>
 
         {/* FHE notice */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.025] border border-white/[0.06]">
+        <div className="flex items-center gap-2 rounded-lg hairline bg-muted/40 px-3 py-2">
           <svg viewBox="0 0 16 16" width={12} height={12} fill="none" className="shrink-0">
             <path d="M8 1l6 2.5v5C14 12 11.5 15 8 16 4.5 15 2 12 2 8.5v-5z"
               stroke="#22d3ee" strokeWidth={1.2} fill="#22d3ee0a" />

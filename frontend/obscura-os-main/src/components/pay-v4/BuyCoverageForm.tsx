@@ -51,38 +51,38 @@ export default function BuyCoverageForm() {
   };
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <Shield className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Shield className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Buy Payroll Insurance</h3>
+          <h3 className="font-display text-lg text-foreground leading-tight">Buy Payroll Insurance</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted Coverage · ocUSDC</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">INSURED</span>
       </div>
 
-      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
+      <p className="text-sm text-muted-foreground leading-relaxed">
         Protect your salary — if a payment cycle is missed, dispute and get paid from the insurance pool. Coverage terms, premium, and payout are all encrypted.
       </p>
 
       {/* ── Success: Coverage Active ── */}
       {step === "done" && lastCoverageId && (
-        <div className="rounded-lg bg-emerald-500/8 border border-emerald-500/20 p-4 space-y-3">
-          <div className="flex items-center gap-2 text-emerald-400">
+        <div className="rounded-xl hairline bg-accent/10 p-4 space-y-3">
+          <div className="flex items-center gap-2 text-foreground">
             <CheckCircle2 className="w-4 h-4" />
             <span className="text-[12px] font-semibold tracking-wider uppercase">Coverage Active</span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[12px] text-muted-foreground/70">Coverage ID:</span>
-            <code className="font-mono text-[11px] text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
+            <code className="font-mono text-[11px] text-[hsl(var(--success))] bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
               {lastCoverageId}
             </code>
             <button
               onClick={() => { navigator.clipboard.writeText(lastCoverageId); toast.success("Coverage ID copied"); }}
-              className="p-1.5 hover:bg-white/[0.06] rounded-md transition-colors text-muted-foreground/50 hover:text-muted-foreground"
+              className="p-1.5 hover:bg-muted/60 rounded-md transition-colors text-muted-foreground/50 hover:text-muted-foreground"
             >
               <Copy className="w-3 h-3" />
             </button>

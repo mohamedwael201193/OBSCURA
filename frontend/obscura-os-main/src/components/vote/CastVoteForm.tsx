@@ -102,11 +102,11 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
   }
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <Vote className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Vote className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Cast Encrypted Vote</h3>
@@ -129,7 +129,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
               <div className="text-sm text-yellow-400 font-semibold">OBS Tokens Required</div>
               <div className="text-xs text-yellow-400/70 mt-0.5">
                 You must claim daily $OBS tokens before voting. Go to the{" "}
-                <Link to="/pay" className="underline text-emerald-400">Pay app</Link> and click "Claim Daily OBS" first.
+                <Link to="/pay" className="underline text-foreground">Pay app</Link> and click "Claim Daily OBS" first.
               </div>
             </div>
           </div>
@@ -154,7 +154,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
           <div className="flex items-center gap-2 p-3 bg-violet-500/5 border border-violet-500/20 rounded-md">
             <Users className="w-4 h-4 text-violet-400 shrink-0" />
             <div className="text-xs text-violet-300">
-              Your vote weight: <span className="font-bold text-white">{effectiveWeight}</span>
+              Your vote weight: <span className="font-bold text-foreground">{effectiveWeight}</span>
               <span className="text-violet-400/70 ml-1">({effectiveWeight - 1} delegate{effectiveWeight - 1 !== 1 ? "s" : ""} have trusted you)</span>
             </div>
           </div>
@@ -184,20 +184,20 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
 
         {/* Proposal info */}
         {hasSelection && proposal?.exists && (
-          <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-4 space-y-1">
+          <div className="rounded-xl hairline bg-card p-4 space-y-1">
             <div className="text-sm text-foreground font-medium">{proposal.title}</div>
             {proposal.description && (
               <div className="text-xs text-muted-foreground/70">{proposal.description}</div>
             )}
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
               <span>Deadline: {new Date(Number(proposal.deadline) * 1000).toLocaleString()}</span>
-              <span className="text-emerald-400/30">|</span>
-              <span>Category: <span className="text-emerald-400">{CATEGORY_LABELS[proposal.category] ?? "General"}</span></span>
-              <span className="text-emerald-400/30">|</span>
+              <span className="text-foreground/30">|</span>
+              <span>Category: <span className="text-foreground">{CATEGORY_LABELS[proposal.category] ?? "General"}</span></span>
+              <span className="text-foreground/30">|</span>
               <span>Voters: {proposal.totalVoters.toString()}</span>
               {proposal.quorum > 0n && (
                 <>
-                  <span className="text-emerald-400/30">|</span>
+                  <span className="text-foreground/30">|</span>
                   <span>Quorum: {proposal.quorum.toString()}</span>
                 </>
               )}
@@ -221,7 +221,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
             )}
 
             {alreadyVoted && isActive && (
-              <div className="text-xs text-emerald-400">
+              <div className="text-xs text-foreground">
                 You have already voted — submitting will change your vote (anti-coercion revote)
               </div>
             )}
@@ -247,8 +247,8 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
                   onClick={() => setSelectedOption(i)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-all text-sm text-left ${
                     selectedOption === i
-                      ? "border-emerald-400/50 text-emerald-400 bg-emerald-400/10"
-                      : "border-white/[0.09] text-muted-foreground hover:border-emerald-500/30 hover:text-foreground"
+                      ? "border-emerald-400/50 text-foreground bg-emerald-400/10"
+                      : "border-border text-muted-foreground hover:border-emerald-500/30 hover:text-foreground"
                   }`}
                 >
                   <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
@@ -258,7 +258,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
                   </div>
                   <span className="text-xs text-muted-foreground/50 w-4">{i}</span>
                   {label}
-                  {selectedOption === i && <CheckCircle2 className="w-4 h-4 ml-auto text-emerald-400" />}
+                  {selectedOption === i && <CheckCircle2 className="w-4 h-4 ml-auto text-foreground" />}
                 </button>
               ))}
             </div>
@@ -307,7 +307,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
                     href={`https://sepolia.arbiscan.io/tx/${txHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-emerald-400 hover:underline inline-flex items-center gap-1"
+                    className="text-foreground hover:underline inline-flex items-center gap-1"
                   >
                     {txHash.slice(0, 10)}…{txHash.slice(-8)}
                     <ExternalLink className="w-3 h-3" />
@@ -318,12 +318,12 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
 
             {/* Verify prompt */}
             <div className="flex items-center gap-2 p-3 bg-emerald-400/5 border border-emerald-400/20 rounded-lg">
-              <Eye className="w-4 h-4 text-emerald-400 shrink-0" />
+              <Eye className="w-4 h-4 text-foreground shrink-0" />
               <div className="text-xs text-foreground/80">
                 Want to confirm your vote? Use{" "}
-                <span className="text-emerald-400 font-semibold">Verify My Vote</span>{" "}
+                <span className="text-foreground font-semibold">Verify My Vote</span>{" "}
                 in the Voting History tab — your wallet can self-decrypt its own ballot via{" "}
-                <span className="font-mono text-emerald-400">FHE.allow</span>.
+                <span className="font-mono text-foreground">FHE.allow</span>.
               </div>
             </div>
           </motion.div>
@@ -337,7 +337,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
               href={`https://sepolia.arbiscan.io/tx/${txHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-emerald-400 hover:underline inline-flex items-center gap-1"
+              className="text-foreground hover:underline inline-flex items-center gap-1"
             >
               {txHash.slice(0, 10)}...{txHash.slice(-8)}
               <ExternalLink className="w-3 h-3" />
@@ -364,9 +364,9 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
             animate={{ opacity: 1, y: 0 }}
             className="flex items-start gap-3 p-3 rounded-lg bg-emerald-400/5 border border-emerald-400/20 text-xs"
           >
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <ShieldCheck className="w-4 h-4 text-foreground shrink-0 mt-0.5" />
             <div className="flex-1">
-              <div className="text-emerald-400 font-semibold mb-0.5">Ready to cast your encrypted vote?</div>
+              <div className="text-foreground font-semibold mb-0.5">Ready to cast your encrypted vote?</div>
               <div className="text-muted-foreground/70">
                 You’ve selected <span className="text-foreground font-semibold">“{(optionLabels as string[])?.[selectedOption] ?? `Option ${selectedOption}`}”</span> on <span className="text-foreground/80">{proposal?.title}</span>.
                 Once confirmed, the ballot is sealed — only you can see your choice, even after results are revealed.

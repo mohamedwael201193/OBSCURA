@@ -64,9 +64,9 @@ export default function RiskMonitorCard() {
 
   if (!hasDebt) {
     return (
-      <div className="rounded-2xl border border-white/8 bg-white/[0.02] backdrop-blur-xl p-5">
+      <div className="rounded-2xl hairline bg-card p-5">
         <div className="flex items-center gap-2 text-white/70 text-sm">
-          <Activity className="w-4 h-4 text-emerald-300" />
+          <Activity className="w-4 h-4 text-[hsl(var(--success))]" />
           No debt — risk monitor idle.
         </div>
         <p className="mt-2 text-[11px] text-white/45">Borrow to activate the realtime HF sparkline & what-if simulator.</p>
@@ -78,7 +78,7 @@ export default function RiskMonitorCard() {
   const simColor = severityColor(simulated?.hf ?? null);
 
   return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.02] backdrop-blur-xl p-5">
+    <div className="rounded-2xl hairline bg-card p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-[9.5px] tracking-[0.22em] uppercase text-violet-400/60 font-mono">Risk monitor</div>
@@ -113,7 +113,7 @@ export default function RiskMonitorCard() {
         <div className="mt-3 grid gap-3">
           <div>
             <div className="flex items-center justify-between text-[10.5px] mb-1">
-              <span className="flex items-center gap-1 text-emerald-300/80"><ArrowUpFromLine className="w-3 h-3" /> Add collateral</span>
+              <span className="flex items-center gap-1 text-[hsl(var(--success))]/80"><ArrowUpFromLine className="w-3 h-3" /> Add collateral</span>
               <span className="font-mono text-white/70">+${dColl.toFixed(2)}</span>
             </div>
             <Slider min={0} max={1000} step={10} value={[dColl]} onValueChange={([v]) => setDColl(v)} />

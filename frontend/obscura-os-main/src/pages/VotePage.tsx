@@ -2,40 +2,25 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAccount, useChainId } from "wagmi";
 import {
-  LayoutDashboard,
   FileText,
   CheckSquare,
   BarChart3,
   Settings,
-  Wallet as WalletIcon,
-  Lock,
-  BookOpen,
-  HelpCircle,
-  Shield,
-  Sparkles,
-  Network,
   Coins,
-  PlayCircle,
   AlertTriangle,
-  Users,
-  Vault,
-  Gift,
-  Gavel,
 } from "lucide-react";
 
 import SectionDiagram from "@/components/elite/SectionDiagram";
-import { useNavigate } from "react-router-dom";
-import AmbientBackground from "@/components/elite/AmbientBackground";
-import DashboardSidebar, {
-  SidebarSection,
-} from "@/components/elite/DashboardSidebar";
+import { HarmonyAppShell } from "@/components/harmony/HarmonyAppShell";
+import { HarmonyFormCard } from "@/components/harmony/harmony-ui";
+import { HarmonyHowItWorks } from "@/components/harmony/HarmonyHowItWorks";
+import { VoteHarmonyDashboard } from "@/components/harmony/VoteHarmonyDashboard";
 import {
-  PageHeader,
-  Card,
-  CardHeader,
-  HowItWorks,
-  FeatureStrip,
-} from "@/components/elite/Layout";
+  VoteHarmonyNotConnected,
+  VoteHarmonyPanelCard,
+  VoteHarmonySubNav,
+  VoteHarmonyTabShell,
+} from "@/components/harmony/VoteHarmonyTabShell";
 
 import VoteDashboard from "@/components/vote/VoteDashboard";
 import ProposalList from "@/components/vote/ProposalList";
@@ -56,28 +41,6 @@ import { Role } from "@/lib/constants";
 type Tab = "dashboard" | "voting" | "governor" | "delegate" | "treasury" | "rewards";
 type VotingSubTab = "create" | "proposals" | "cast" | "results";
 
-const sidebarSections: SidebarSection[] = [
-  { items: [{ key: "dashboard", label: "Dashboard", icon: LayoutDashboard }] },
-  {
-    heading: "Modules",
-    items: [
-      { key: "voting", label: "Encrypted Polls", icon: CheckSquare },
-      { key: "governor", label: "Executable Proposals", icon: Gavel },
-      { key: "delegate", label: "Delegations", icon: Users },
-      { key: "treasury", label: "Treasury", icon: Vault },
-      { key: "rewards", label: "Participation", icon: Gift },
-    ],
-  },
-  {
-    heading: "Resources",
-    items: [
-      { key: "howto", label: "How to Use", icon: PlayCircle },
-      { key: "docs", label: "Docs", icon: BookOpen },
-      { key: "private", label: "What's Private?", icon: Lock },
-    ],
-  },
-];
-
 const votingSubTabs: { key: VotingSubTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: "create", label: "Create", icon: Settings },
   { key: "proposals", label: "Proposals", icon: FileText },
@@ -87,32 +50,46 @@ const votingSubTabs: { key: VotingSubTab; label: string; icon: React.ComponentTy
 
 const dashboardSteps = [
   { title: "Connect wallet", description: "Connect your wallet on Arbitrum Sepolia." },
-  { title: "Claim $OBS tokens", description: <>Use the faucet on the <span className="text-emerald-300">Dashboard</span> to claim 100 $OBS every 24 hours.</> },
-  { title: "Browse proposals", description: <>Open the <span className="text-emerald-300">Proposals</span> tab to see live polls, deadlines, and quorum.</> },
-  { title: "Cast your vote", description: <>Pick an option in <span className="text-emerald-300">Cast Vote</span>. The choice is encrypted before it leaves your browser.</> },
-  { title: "Revote anytime", description: "Change your mind before the deadline — vote-buying becomes irrational because the buyer can't verify the final ballot." },
-  { title: "Reveal results", description: <>After deadline, anyone can call reveal in the <span className="text-emerald-300">Results</span> tab. Aggregate counts go public — individual votes stay private forever.</> },
+  {
+    title: "Claim $OBS tokens",
+    description: (
+      <>
+        Use the faucet on the <span className="font-medium text-foreground">Overview</span> to claim 100 $OBS every 24 hours.
+      </>
+    ),
+  },
+  {
+    title: "Browse proposals",
+    description: (
+      <>
+        Open <span className="font-medium text-foreground">Proposals</span> to see live polls, deadlines, and quorum.
+      </>
+    ),
+  },
+  {
+    title: "Cast your vote",
+    description: (
+      <>
+        Pick an option in <span className="font-medium text-foreground">Cast Vote</span>. The choice is encrypted before it leaves your browser.
+      </>
+    ),
+  },
+  {
+    title: "Revote anytime",
+    description:
+      "Change your mind before the deadline — vote-buying becomes irrational because the buyer can't verify the final ballot.",
+  },
+  {
+    title: "Reveal results",
+    description: (
+      <>
+        After deadline, anyone can call reveal in <span className="font-medium text-foreground">Results</span>. Aggregate counts go public — individual votes stay private forever.
+      </>
+    ),
+  },
 ];
-
-const featureItems = [
-  { icon: Lock, title: "Encrypted Ballots", description: "Your vote is sealed before submission." },
-  { icon: Shield, title: "Coercion Resistant", description: "Revote unlimited times before deadline." },
-  { icon: Sparkles, title: "Aggregate Reveal", description: "Only the totals go public, never your choice." },
-  { icon: Network, title: "On-chain Governance", description: "Verifiable proposals and execution." },
-];
-
-const NotConnected = ({ message }: { message: string }) => (
-  <Card className="p-10 text-center">
-    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-3">
-      <WalletIcon className="w-5 h-5 text-emerald-400" />
-    </div>
-    <div className="font-display text-[15px] text-foreground mb-1">Wallet not connected</div>
-    <p className="text-[12px] text-muted-foreground/65 max-w-sm mx-auto">{message}</p>
-  </Card>
-);
 
 const VotePage = () => {
-  const navigate = useNavigate();
   const { address, isConnected } = useAccount();
   const { data: ownerAddress } = useVoteOwner();
   const { data: userRoleRaw } = useVoteRole(address);
@@ -127,56 +104,146 @@ const VotePage = () => {
   const [votingSubTab, setVotingSubTab] = useState<VotingSubTab>("create");
   const [jumpProposalId, setJumpProposalId] = useState("");
 
-  const handleSidebarSelect = (key: string) => {
-    if (key === "dashboard") return setTab("dashboard");
-    if (key === "howto") { setTab("dashboard"); return; }
-    if (key === "docs") return void navigate("/docs");
-    if (key === "private") return void navigate("/docs#whats-private");
-    if (key === "voting") { setTab("voting"); setVotingSubTab("create"); return; }
-    setTab(key as Tab);
-  };
-
   const handleGuideNavigate = (tabKey: string, subTab?: string) => {
     setTab(tabKey as Tab);
     if (subTab) setVotingSubTab(subTab as VotingSubTab);
+  };
+
+  const renderVotingContent = () => {
+    switch (votingSubTab) {
+      case "proposals":
+        return (
+          <>
+            <VoteHarmonyPanelCard title="Browse all polls" eyebrow="Proposals">
+              <div className="harmony-form-inner">
+                <ProposalList
+                  onVote={(id) => {
+                    setJumpProposalId(String(id));
+                    setVotingSubTab("cast");
+                  }}
+                />
+              </div>
+            </VoteHarmonyPanelCard>
+            <SectionDiagram flow="vote-cast" />
+          </>
+        );
+      case "cast":
+        if (!isConnected) {
+          return <VoteHarmonyNotConnected message="Connect your wallet to cast an encrypted vote." />;
+        }
+        return (
+          <>
+            <VoteHarmonyPanelCard title="Encrypt your choice" eyebrow="Cast vote">
+              <div className="harmony-form-inner">
+                <CastVoteForm initialProposalId={jumpProposalId} />
+              </div>
+            </VoteHarmonyPanelCard>
+            <VoteHarmonyPanelCard title="Voting history" eyebrow="Your activity">
+              <div className="harmony-form-inner">
+                <VotingHistory />
+              </div>
+            </VoteHarmonyPanelCard>
+            <SectionDiagram flow="vote-cast" />
+          </>
+        );
+      case "results":
+        return (
+          <>
+            <VoteHarmonyPanelCard title="Reveal aggregate tallies" eyebrow="Results">
+              <div className="harmony-form-inner">
+                <TallyReveal />
+              </div>
+            </VoteHarmonyPanelCard>
+            <SectionDiagram flow="vote-tally" />
+          </>
+        );
+      case "create":
+      default:
+        if (!isConnected) {
+          return <VoteHarmonyNotConnected message="Connect your wallet to create proposals." />;
+        }
+        return (
+          <>
+            <VoteHarmonyPanelCard title="Launch a proposal" eyebrow="Create">
+              <div className="harmony-form-inner">
+                <CreateProposalForm onSuccess={() => setVotingSubTab("proposals")} />
+              </div>
+            </VoteHarmonyPanelCard>
+            {isAdmin && (
+              <VoteHarmonyPanelCard title="Administrative controls" eyebrow="Admin">
+                <div className="harmony-form-inner">
+                  <AdminControls />
+                </div>
+              </VoteHarmonyPanelCard>
+            )}
+            <SectionDiagram flow="obs-claim" />
+          </>
+        );
+    }
   };
 
   const renderActiveSection = () => {
     switch (tab) {
       case "dashboard":
         return (
-          <div className="space-y-4">
-            <VoteSetupGuide onNavigate={handleGuideNavigate} />
+          <div className="space-y-6">
+            <VoteHarmonyDashboard
+              onNewProposal={() => {
+                setTab("voting");
+                setVotingSubTab("create");
+              }}
+              onDelegate={() => setTab("delegate")}
+            />
 
-            {/* $OBS claim banner — always visible at the top of dashboard */}
-            <div id="obs-claim-banner" className="pay-card p-4 flex items-center gap-4 flex-wrap">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-                <Coins className="w-4 h-4 text-emerald-400" />
+            <HarmonyFormCard title="Get started with ObscuraVote" eyebrow="Setup guide">
+              <VoteSetupGuide onNavigate={handleGuideNavigate} />
+            </HarmonyFormCard>
+
+            <div
+              id="obs-claim-banner"
+              className="flex flex-wrap items-center gap-4 rounded-2xl hairline bg-card p-4"
+            >
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+                <Coins className="h-4 w-4 text-foreground" />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-semibold text-foreground leading-tight">Get $OBS governance tokens</div>
-                <div className="text-[11px] text-muted-foreground/60 mt-0.5">You need $OBS to vote. Claim 100 free tokens every 24 hours.</div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium leading-tight text-foreground">Get $OBS governance tokens</div>
+                <div className="mt-0.5 text-sm text-muted-foreground">
+                  You need $OBS to vote. Claim 100 free tokens every 24 hours.
+                </div>
               </div>
               <div className="shrink-0">
                 <ClaimDailyObsForm compact />
               </div>
             </div>
 
-            {/* Live proposals stats */}
-            <Card>
-              <CardHeader title="Active proposals" eyebrow="Live" />
-              <div className="p-5"><VoteDashboard /></div>
-            </Card>
+            <HarmonyFormCard title="Active proposals" eyebrow="Live">
+              <div className="harmony-form-inner">
+                <VoteDashboard />
+              </div>
+            </HarmonyFormCard>
 
-            {/* Diagram + how-it-works at the bottom */}
+            <HarmonyFormCard title="Proposals" eyebrow="All polls">
+              <p className="mb-4 text-sm text-muted-foreground">All votes confidential by default.</p>
+              <div className="harmony-form-inner -mx-2">
+                <ProposalList
+                  onVote={(id) => {
+                    setJumpProposalId(String(id));
+                    setTab("voting");
+                    setVotingSubTab("cast");
+                  }}
+                />
+              </div>
+            </HarmonyFormCard>
+
             <SectionDiagram flow="vote-cast" />
-            <HowItWorks
+            <HarmonyHowItWorks
               title="How it works — Encrypted Voting"
               steps={dashboardSteps}
               footnote={
                 <>
                   Your individual vote is sealed forever — even after results are revealed. Powered by{" "}
-                  <span className="text-foreground/80">Fhenix CoFHE</span>, every vote stays encrypted while the
+                  <span className="font-medium text-foreground">Fhenix CoFHE</span>, every vote stays encrypted while the
                   contract aggregates them.
                 </>
               }
@@ -184,87 +251,10 @@ const VotePage = () => {
           </div>
         );
 
-      case "voting": {
-        const renderVotingContent = () => {
-          switch (votingSubTab) {
-            case "proposals":
-              return (
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader title="Browse all polls" eyebrow="Proposals" />
-                    <div className="p-5"><ProposalList onVote={(id) => { setJumpProposalId(String(id)); setVotingSubTab("cast"); }} /></div>
-                  </Card>
-                  <SectionDiagram flow="vote-cast" />
-                </div>
-              );
-            case "cast":
-              if (!isConnected) return <NotConnected message="Connect your wallet to cast an encrypted vote." />;
-              return (
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader title="Encrypt your choice" eyebrow="Cast Vote" />
-                    <div className="p-5"><CastVoteForm initialProposalId={jumpProposalId} /></div>
-                  </Card>
-                  <Card>
-                    <CardHeader title="Voting history" eyebrow="Your activity" />
-                    <div className="p-5"><VotingHistory /></div>
-                  </Card>
-                  <SectionDiagram flow="vote-cast" />
-                </div>
-              );
-            case "results":
-              return (
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader title="Reveal aggregate tallies" eyebrow="Results" />
-                    <div className="p-5"><TallyReveal /></div>
-                  </Card>
-                  <SectionDiagram flow="vote-tally" />
-                </div>
-              );
-            case "create":
-            default:
-              if (!isConnected) return <NotConnected message="Connect your wallet to create proposals." />;
-              return (
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader title="Launch a proposal" eyebrow="Create" />
-                    <div className="p-5"><CreateProposalForm onSuccess={() => setVotingSubTab("proposals")} /></div>
-                  </Card>
-                  {isAdmin && (
-                    <Card>
-                      <CardHeader title="Administrative controls" eyebrow="Admin" />
-                      <div className="p-5"><AdminControls /></div>
-                    </Card>
-                  )}
-                  <SectionDiagram flow="obs-claim" />
-                </div>
-              );
-          }
-        };
+      case "voting":
         return (
-          <div className="space-y-4">
-            {/* Inner voting sub-nav */}
-            <div className="flex gap-1 p-1 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-              {votingSubTabs.map((t) => {
-                const SubIcon = t.icon;
-                const isSubActive = votingSubTab === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    onClick={() => setVotingSubTab(t.key)}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium transition-all ${
-                      isSubActive
-                        ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20"
-                        : "text-muted-foreground hover:text-foreground hover:bg-white/[0.04]"
-                    }`}
-                  >
-                    <SubIcon className="w-3.5 h-3.5 shrink-0" />
-                    <span className="hidden sm:inline">{t.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+          <VoteHarmonyTabShell tab="voting" sub={votingSubTab}>
+            <VoteHarmonySubNav active={votingSubTab} onChange={setVotingSubTab} items={votingSubTabs} />
             <AnimatePresence mode="wait">
               <motion.div
                 key={votingSubTab}
@@ -276,116 +266,107 @@ const VotePage = () => {
                 {renderVotingContent()}
               </motion.div>
             </AnimatePresence>
-          </div>
+          </VoteHarmonyTabShell>
         );
-      }
 
       case "delegate":
-        if (!isConnected) return <NotConnected message="Connect your wallet to manage vote delegation." />;
         return (
-          <div className="space-y-4">
-            <Card>
-              <CardHeader title="Vote Delegation" eyebrow="Delegation" />
-              <div className="p-5"><DelegationPanel /></div>
-            </Card>
-          </div>
+          <VoteHarmonyTabShell tab="delegate">
+            {!isConnected ? (
+              <VoteHarmonyNotConnected message="Connect your wallet to manage vote delegation." />
+            ) : (
+              <VoteHarmonyPanelCard title="Vote delegation" eyebrow="Delegation">
+                <div className="harmony-form-inner">
+                  <DelegationPanel />
+                </div>
+              </VoteHarmonyPanelCard>
+            )}
+          </VoteHarmonyTabShell>
         );
 
       case "treasury":
         return (
-          <div className="space-y-4">
-            <Card>
-              <CardHeader title="DAO Treasury" eyebrow="Treasury" />
-              <div className="p-5"><TreasuryPanel /></div>
-            </Card>
-          </div>
+          <VoteHarmonyTabShell tab="treasury">
+            <VoteHarmonyPanelCard title="DAO treasury" eyebrow="Treasury">
+              <div className="harmony-form-inner">
+                <TreasuryPanel />
+              </div>
+            </VoteHarmonyPanelCard>
+          </VoteHarmonyTabShell>
         );
 
       case "rewards":
         return (
-          <div className="space-y-4">
-            <Card>
-              <CardHeader title="Voter Participation" eyebrow="Participation" />
-              <div className="p-5"><RewardsPanel /></div>
-            </Card>
-          </div>
+          <VoteHarmonyTabShell tab="rewards">
+            <VoteHarmonyPanelCard title="Voter participation" eyebrow="Participation">
+              <div className="harmony-form-inner">
+                <RewardsPanel />
+              </div>
+            </VoteHarmonyPanelCard>
+          </VoteHarmonyTabShell>
         );
 
       case "governor":
         return (
-          <div className="space-y-4">
-            <Card>
-              <CardHeader
-                title="Executable Proposals"
-                eyebrow="OZ Governor · Timelock · 2-day delay"
-              />
-              <div className="p-5">
+          <VoteHarmonyTabShell tab="governor">
+            <VoteHarmonyPanelCard title="Executable proposals" eyebrow="OZ Governor · Timelock · 2-day delay">
+              <div className="harmony-form-inner">
                 <GovernorPanel wrongNetwork={wrongNetwork} />
               </div>
-            </Card>
-          </div>
+            </VoteHarmonyPanelCard>
+          </VoteHarmonyTabShell>
         );
     }
   };
 
+  const harmonySidebar = [
+    { key: "dashboard", label: "Overview", active: tab === "dashboard", onClick: () => setTab("dashboard") },
+    {
+      key: "voting",
+      label: "Proposals",
+      badge: "Polls",
+      active: tab === "voting",
+      onClick: () => {
+        setTab("voting");
+        setVotingSubTab("proposals");
+      },
+    },
+    { key: "treasury", label: "Treasury", active: tab === "treasury", onClick: () => setTab("treasury") },
+    { key: "delegate", label: "Delegation", active: tab === "delegate", onClick: () => setTab("delegate") },
+    { key: "rewards", label: "Participation", active: tab === "rewards", onClick: () => setTab("rewards") },
+    { key: "governor", label: "Executable", active: tab === "governor", onClick: () => setTab("governor") },
+  ];
+
   return (
-    <div className="min-h-screen flex bg-[#06090c] text-foreground antialiased">
-      <AmbientBackground />
-
-      <DashboardSidebar
-        sections={sidebarSections}
-        active={tab === "dashboard" ? "dashboard" : tab === "voting" ? "voting" : tab}
-        onSelect={handleSidebarSelect}
-      />
-
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 max-w-4xl mx-auto w-full px-6 lg:px-8 py-7">
-            {wrongNetwork && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-4 flex items-start gap-3 p-4 rounded-lg border border-amber-500/30 bg-amber-500/[0.05]"
-              >
-                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                <div>
-                  <div className="text-sm font-semibold text-amber-400">Wrong network</div>
-                  <div className="text-xs text-amber-400/70 mt-0.5">
-                    Please switch to <span className="font-semibold text-amber-300">Arbitrum Sepolia</span> (chain ID 421614) in your wallet to use ObscuraVote.
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            <PageHeader
-              breadcrumb={["Dashboard", "Vote"]}
-              title={<>Obscura<span className="text-emerald-400">Vote</span></>}
-              lede={<>Encrypted governance you can trust. Your individual vote is sealed forever — even after the result goes public. Revote anytime to defeat coercion.</>}
-              badge={
-                <span className="inline-flex items-center gap-2 text-[10.5px] tracking-[0.05em] text-emerald-300 px-2.5 py-1 rounded-md border border-emerald-500/20 bg-emerald-500/[0.05]">
-                  $OBS — governance token, claim 100 every 24h
-                  <HelpCircle className="w-3 h-3 opacity-60" />
-                </span>
-              }
-            />
-
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={tab}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              >
-                {renderActiveSection()}
-              </motion.div>
-            </AnimatePresence>
-
-            <div className="mt-7">
-              <FeatureStrip items={featureItems} />
+    <HarmonyAppShell appName="Vote" sidebar={harmonySidebar} searchPlaceholder="Search vote…">
+      {wrongNetwork && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4"
+        >
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+          <div>
+            <div className="text-sm font-semibold text-amber-900">Wrong network</div>
+            <div className="mt-0.5 text-xs text-amber-800/80">
+              Please switch to <span className="font-semibold">Arbitrum Sepolia</span> (chain ID 421614) in your wallet to use ObscuraVote.
             </div>
           </div>
-        </div>
-    </div>
+        </motion.div>
+      )}
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {renderActiveSection()}
+        </motion.div>
+      </AnimatePresence>
+    </HarmonyAppShell>
   );
 };
 

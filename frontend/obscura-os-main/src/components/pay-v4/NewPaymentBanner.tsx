@@ -99,31 +99,33 @@ export default function NewPaymentBanner({ onOpenInbox }: { onOpenInbox: () => v
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.25 }}
-          className="mb-4 flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/[0.08] to-cyan-500/[0.04] px-4 py-3"
+          className="mb-4 flex items-center gap-3 rounded-2xl hairline bg-accent/10 px-4 py-3"
         >
-          <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
-            <Bell className="w-4 h-4 text-emerald-300" />
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-card hairline">
+            <Bell className="h-4 w-4 text-foreground" />
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-display text-[13.5px] font-semibold text-emerald-100">
+          <div className="min-w-0 flex-1">
+            <div className="font-display text-base text-foreground">
               {count === 1
                 ? "You have 1 new private payment waiting"
                 : `You have ${count} new private payments waiting`}
             </div>
-            <div className="text-[11.5px] text-emerald-200/70 mt-0.5">
+            <div className="mt-0.5 text-sm text-muted-foreground">
               Sweep them into your encrypted balance from the Receive tab.
             </div>
           </div>
           <button
+            type="button"
             onClick={onOpenInbox}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-display font-semibold text-[12px] transition-colors"
+            className="btn-pay btn-pay-emerald shrink-0 text-sm"
           >
-            Open inbox <ArrowRight className="w-3.5 h-3.5" />
+            Open inbox <ArrowRight className="h-3.5 w-3.5" />
           </button>
           <button
+            type="button"
             onClick={dismissAll}
             title="Dismiss"
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-emerald-300/60 hover:text-emerald-200 hover:bg-white/[0.05] transition-colors"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full hairline text-muted-foreground hover:bg-muted"
           >
             <X className="w-3.5 h-3.5" />
           </button>

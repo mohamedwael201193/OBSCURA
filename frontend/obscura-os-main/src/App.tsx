@@ -16,6 +16,7 @@ import PrivacyPage from "./pages/PrivacyPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import VotePage from "./pages/VotePage.tsx";
 import CreditPage from "./pages/CreditPage.tsx";
+import EcosystemPage from "./pages/EcosystemPage.tsx";
 import PMFPage from "./pages/PMFPage.tsx";
 import ContactsPage from "./pages/ContactsPage.tsx";
 import SettingsPage from "./pages/SettingsPage.tsx";
@@ -26,12 +27,23 @@ const ONBOARDING_KEY = "obscura.onboarding.cofhe.v1";
 
 const queryClient = new QueryClient();
 
-/** Dashboard paths have a sidebar — hide the logo from the top nav there to avoid duplication. */
-const DASHBOARD_PATHS = new Set(["/pay", "/pay/contacts", "/pay/settings", "/vote", "/credit"]);
+/** App workspace routes use the integrated light shell (icon rail + sidebar + top bar). */
+const WORKSPACE_PATHS = new Set(["/pay", "/pay/contacts", "/pay/settings", "/vote", "/credit", "/ecosystem"]);
+
+const normalizePath = (pathname: string) => {
+  const base = pathname.split("?")[0].replace(/\/$/, "") || "/";
+  return base;
+};
+
+const isWorkspacePath = (pathname: string) => {
+  const p = normalizePath(pathname);
+  return WORKSPACE_PATHS.has(p) || p.startsWith("/pay/");
+};
 
 const AnimatedRoutes = () => {
   const location = useLocation();
-  const isDashboard = DASHBOARD_PATHS.has(location.pathname);
+  const isLanding = location.pathname === "/";
+  const isWorkspace = isWorkspacePath(location.pathname);
 
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -50,32 +62,38 @@ const AnimatedRoutes = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-background">
-        {/* Persistent nav — always mounted, never flickers during route transitions */}
-        <GooeyNav rightSlot={<NavRightSlot />} />
+      <div className={isLanding || isWorkspace ? "min-h-screen bg-sage-1" : "min-h-screen bg-background"}>
+        {!isLanding && !isWorkspace && <GooeyNav rightSlot={<NavRightSlot />} />}
 
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18, ease: "easeInOut" }}
-          >
-            <Routes location={location}>
-              <Route path="/" element={<Index />} />
-              <Route path="/pay" element={<PayPage />} />
-              <Route path="/pay/contacts" element={<ContactsPage />} />
-              <Route path="/pay/settings" element={<SettingsPage />} />
-              <Route path="/vote" element={<VotePage />} />
-              <Route path="/credit" element={<CreditPage />} />
-              <Route path="/docs" element={<DocsPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/pmf" element={<PMFPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </motion.div>
-        </AnimatePresence>
+        {/* Landing scroll-pin sections need no transform ancestor (breaks sticky). */}
+        {isLanding ? (
+          <Routes location={location}>
+            <Route path="/" element={<Index />} />
+          </Routes>
+        ) : (
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeInOut" }}
+            >
+              <Routes location={location}>
+                <Route path="/pay" element={<PayPage />} />
+                <Route path="/pay/contacts" element={<ContactsPage />} />
+                <Route path="/pay/settings" element={<SettingsPage />} />
+                <Route path="/vote" element={<VotePage />} />
+                <Route path="/credit" element={<CreditPage />} />
+                <Route path="/ecosystem" element={<EcosystemPage />} />
+                <Route path="/docs" element={<DocsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/pmf" element={<PMFPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </motion.div>
+          </AnimatePresence>
+        )}
 
       </div>
 

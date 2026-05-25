@@ -33,7 +33,7 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
   }
 
   return (
-    <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 space-y-2">
+    <div className="rounded-xl hairline bg-card p-3 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
           <div className="text-xs text-foreground truncate font-medium">
@@ -41,7 +41,7 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
           </div>
           <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
             <span>{CATEGORY_LABELS[proposal.category] ?? "General"}</span>
-            <span className="text-emerald-400/30">|</span>
+            <span className="text-foreground/30">|</span>
             <span>Deadline: {new Date(Number(proposal.deadline) * 1000).toLocaleDateString()}</span>
             {isCancelled ? (
               <span className="pay-badge pay-badge-red">Cancelled</span>
@@ -83,7 +83,7 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
       {voted && !isCancelled && (
         <div className="pl-0">
           {myVoteIndex !== null ? (
-            <div className="text-xs text-emerald-400 flex items-center gap-1.5">
+            <div className="text-xs text-foreground flex items-center gap-1.5">
               <Eye className="w-3 h-3" />
               Your vote: <span className="font-semibold">{options[myVoteIndex] ?? `Option ${myVoteIndex}`}</span>
             </div>
@@ -95,7 +95,7 @@ function HistoryRow({ index, address }: { index: number; address: `0x${string}` 
               <button
                 onClick={handleVerify}
                 disabled={status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
-                className="text-xs text-emerald-400 hover:underline flex items-center gap-1 disabled:opacity-30"
+                className="text-xs text-foreground hover:underline flex items-center gap-1 disabled:opacity-30"
               >
                 <Eye className="w-3 h-3" /> Verify My Vote
               </button>
@@ -118,11 +118,11 @@ export default function VotingHistory() {
   const proposalCount = Number(count ?? 0);
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <History className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <History className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Voting History</h3>

@@ -37,12 +37,12 @@ function BurnTxBanner({ hash }: { hash: string }) {
   const short = `${hash.slice(0, 10)}…${hash.slice(-8)}`;
   return (
     <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-500/[0.08] border border-emerald-500/20 rounded-lg">
-      <ExternalLink className="w-3 h-3 text-cyan-400 shrink-0" />
+      <ExternalLink className="w-3 h-3 text-foreground shrink-0" />
       <a
         href={`https://sepolia.etherscan.io/tx/${hash}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="font-mono text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors truncate"
+        className="font-mono text-[11px] text-foreground hover:text-[hsl(var(--success))] transition-colors truncate"
       >
         {short}
       </a>
@@ -69,7 +69,7 @@ function StepProgress({ current, attestationProgress }: { current: BridgeStep; a
           <div key={s} className="flex items-center gap-2.5">
             <div className="shrink-0">
               {isDone ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-foreground" />
               ) : isActive ? (
                 <Loader2 className="w-3.5 h-3.5 text-violet-400 animate-spin" />
               ) : (
@@ -77,7 +77,7 @@ function StepProgress({ current, attestationProgress }: { current: BridgeStep; a
               )}
             </div>
             <span className={`text-[11px] leading-tight ${
-              isDone ? "text-emerald-400/60" : isActive ? "text-emerald-300" : "text-muted-foreground/30"
+              isDone ? "text-foreground/60" : isActive ? "text-[hsl(var(--success))]" : "text-muted-foreground/30"
             }`}>
               {STEP_LABELS[s]}
               {s === "waiting-attestation" && isActive && attestationProgress > 0 && (
@@ -140,19 +140,19 @@ export default function CrossChainFundForm() {
       <div className="pay-card pay-card-violet p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-foreground" />
           </div>
           <div>
-            <h3 className="font-display text-sm font-semibold text-emerald-400">Bridge Complete!</h3>
+            <h3 className="font-display text-lg text-foreground">Bridge Complete!</h3>
             <p className="text-[10px] text-muted-foreground/45 mt-0.5 uppercase tracking-widest">CCTP · Arbitrum Sepolia</p>
           </div>
         </div>
 
-        <div className="rounded-lg bg-emerald-500/8 border border-emerald-500/20 p-4 space-y-2.5">
-          <p className="text-[12px] text-emerald-300 leading-relaxed">
+        <div className="rounded-xl hairline bg-accent/10 p-4 space-y-2.5">
+          <p className="text-[12px] text-[hsl(var(--success))] leading-relaxed">
             <span className="font-semibold">{displayAmount} USDC</span> has been bridged and minted on Arbitrum Sepolia.
           </p>
-          <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             Head to the <span className="text-primary">Pay</span> tab and shield USDC → ocUSDC to use it for encrypted payments.
           </p>
           {burnTxHash && (
@@ -160,7 +160,7 @@ export default function CrossChainFundForm() {
               href={`https://sepolia.etherscan.io/tx/${burnTxHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors"
+              className="inline-flex items-center gap-1.5 text-[11px] text-foreground hover:text-[hsl(var(--success))] transition-colors"
             >
               <ExternalLink className="w-3 h-3" />
               View burn tx on Etherscan
@@ -180,14 +180,14 @@ export default function CrossChainFundForm() {
   }
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <Globe2 className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Globe2 className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Bridge USDC From Ethereum</h3>
+          <h3 className="font-display text-lg text-foreground leading-tight">Bridge USDC From Ethereum</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">CCTP · Cross-chain</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">CCTP V1</span>
@@ -203,7 +203,7 @@ export default function CrossChainFundForm() {
         <span className="text-[10px] text-[#3e73c4] font-semibold uppercase tracking-wider">USDC</span>
       </div>
 
-      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
+      <p className="text-sm text-muted-foreground leading-relaxed">
         Bridge USDC from Ethereum Sepolia to Arbitrum Sepolia via Circle&apos;s CCTP. The full flow — burn → attestation → claim — runs automatically. Takes a few minutes for Circle to attest.
       </p>
 
@@ -232,7 +232,7 @@ export default function CrossChainFundForm() {
           </div>
 
           {/* Recover */}
-          <div className="border-t border-white/[0.05] pt-3">
+          <div className="border-t border-border pt-3">
             <button
               onClick={() => setShowRecover(!showRecover)}
               className="flex items-center gap-1.5 text-[11px] text-muted-foreground/45 hover:text-muted-foreground/70 transition-colors"
@@ -279,8 +279,8 @@ export default function CrossChainFundForm() {
         <div className="space-y-3">
           {burnTxHash && <BurnTxBanner hash={burnTxHash} />}
           <StepProgress current={step} attestationProgress={attestationProgress} />
-          <div className="rounded-lg bg-emerald-500/8 border border-emerald-500/20 p-3">
-            <p className="text-[12px] text-emerald-300 leading-relaxed">
+          <div className="rounded-xl hairline bg-accent/10 p-3">
+            <p className="text-[12px] text-[hsl(var(--success))] leading-relaxed">
               Circle attestation received! Click below to mint <span className="font-semibold">{displayAmount} USDC</span> on Arbitrum Sepolia.
             </p>
           </div>

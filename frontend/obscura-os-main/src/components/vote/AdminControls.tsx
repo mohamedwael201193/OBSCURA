@@ -65,7 +65,7 @@ function ProposalAdminRow({ index }: { index: number }) {
   }
 
   return (
-    <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 space-y-2">
+    <div className="rounded-xl hairline bg-card p-3 space-y-2">
       <div className="flex items-center justify-between">
         <div className="text-xs text-foreground truncate font-medium">
           #{index} — {proposal.title}
@@ -119,7 +119,7 @@ function ProposalAdminRow({ index }: { index: number }) {
               href={`https://sepolia.arbiscan.io/tx/${feedbackTxHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-emerald-400 hover:underline inline-flex items-center"
+              className="text-foreground hover:underline inline-flex items-center"
             >
               <ExternalLink className="w-3 h-3" />
             </a>
@@ -136,14 +136,14 @@ export default function AdminControls() {
 
   if (proposalCount === 0) {
     return (
-      <div className="pay-card p-6 text-center">
+      <div className="space-y-5 p-6 text-center">
         <p className="text-sm text-muted-foreground">No proposals to manage.</p>
       </div>
     );
   }
 
   return (
-    <div className="pay-card p-6 space-y-4">
+    <div className="space-y-5 p-6 space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-700/10 border border-amber-500/25 flex items-center justify-center shrink-0">

@@ -23,7 +23,6 @@ import {
   Loader2,
   ExternalLink,
   Wallet as WalletIcon,
-  Hash,
   Users,
   TimerReset,
 } from "lucide-react";
@@ -36,8 +35,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { VoteKpi, VoteTabs, vh } from "@/components/harmony/voteHarmonyUi";
 
 import {
   OBSCURA_GOVERNOR_ADDRESS,
@@ -62,14 +61,14 @@ import { useVoterParticipation } from "@/hooks/useProposals";
 const ARB_SCAN = "https://sepolia.arbiscan.io";
 
 const stateTone: Record<string, string> = {
-  Pending: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  Active: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  Canceled: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",
-  Defeated: "bg-red-500/15 text-red-300 border-red-500/30",
-  Succeeded: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  Queued: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  Expired: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",
-  Executed: "bg-violet-500/15 text-violet-300 border-violet-500/30",
+  Pending: "border-amber-500/30 bg-amber-500/10 text-amber-900",
+  Active: "border-accent/40 bg-accent/15 text-[hsl(var(--success))]",
+  Canceled: "hairline bg-muted text-muted-foreground",
+  Defeated: "border-destructive/30 bg-destructive/10 text-destructive",
+  Succeeded: "border-accent/40 bg-accent/15 text-[hsl(var(--success))]",
+  Queued: "border-border bg-muted text-foreground",
+  Expired: "hairline bg-muted text-muted-foreground",
+  Executed: "border-accent/35 bg-accent/10 text-foreground",
 };
 
 const truncate = (addr: string) =>
@@ -86,35 +85,13 @@ const blocksToHours = (n?: bigint | null) => {
 const NotConnected = ({ message }: { message: string }) => (
   <Card className="p-10 text-center">
     <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-3">
-      <WalletIcon className="w-5 h-5 text-emerald-400" />
+      <WalletIcon className="w-5 h-5 text-foreground" />
     </div>
     <div className="font-display text-[15px] text-foreground mb-1">Wallet not connected</div>
     <p className="text-[12px] text-muted-foreground/65 max-w-sm mx-auto">{message}</p>
   </Card>
 );
 
-const StatTile = ({
-  label,
-  value,
-  sub,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) => (
-  <div className="rounded-md border border-white/8 bg-white/[0.02] p-4 flex items-start gap-3">
-    <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-      <Icon className="w-4 h-4 text-emerald-400" />
-    </div>
-    <div className="min-w-0">
-      <div className="text-[10px] tracking-[0.18em] uppercase text-muted-foreground/60">{label}</div>
-      <div className="font-display text-[15px] text-foreground mt-0.5 truncate">{value}</div>
-      {sub && <div className="text-[11px] text-muted-foreground/55 mt-0.5">{sub}</div>}
-    </div>
-  </div>
-);
 
 const VotesBar = ({
   forVotes,
@@ -132,15 +109,15 @@ const VotesBar = ({
   const pct = (n: bigint) => Number((n * 1000n) / total) / 10;
   return (
     <div className="space-y-1.5">
-      <div className="flex h-1.5 rounded overflow-hidden bg-white/[0.04]">
+      <div className="flex h-1.5 rounded overflow-hidden bg-muted">
         <div className="bg-emerald-500/80" style={{ width: `${pct(forVotes)}%` }} />
         <div className="bg-red-500/70" style={{ width: `${pct(against)}%` }} />
         <div className="bg-zinc-500/70" style={{ width: `${pct(abstain)}%` }} />
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground/70 font-mono">
-        <span className="text-emerald-300">For {forVotes.toString()}</span>
-        <span className="text-red-300">Against {against.toString()}</span>
-        <span className="text-zinc-300">Abstain {abstain.toString()}</span>
+        <span className="text-[hsl(var(--success))]">For {forVotes.toString()}</span>
+        <span className="text-destructive">Against {against.toString()}</span>
+        <span className="text-muted-foreground">Abstain {abstain.toString()}</span>
       </div>
     </div>
   );
@@ -191,18 +168,18 @@ const ProposalCard = ({ row }: { row: ProposalRow }) => {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
-      <Card className="p-5 space-y-4">
+      <Card className="hairline bg-card p-5 space-y-4 border-border">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] font-mono tracking-[0.12em] text-muted-foreground/55">{idStr}</span>
               {label && (
-                <Badge variant="outline" className={stateTone[label] ?? "bg-white/5 text-white/70"}>
+                <Badge variant="outline" className={stateTone[label] ?? "bg-muted/60 text-muted-foreground/70"}>
                   {label}
                 </Badge>
               )}
               {hasVoted && (
-                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-300 border-emerald-500/30">
+                <Badge variant="outline" className="bg-emerald-500/10 text-[hsl(var(--success))] border-emerald-500/30">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
                   Voted
                 </Badge>
@@ -215,7 +192,7 @@ const ProposalCard = ({ row }: { row: ProposalRow }) => {
                 href={`${ARB_SCAN}/address/${row.proposer}`}
                 target="_blank"
                 rel="noreferrer"
-                className="font-mono hover:text-emerald-300"
+                className="font-mono hover:text-[hsl(var(--success))]"
               >
                 {truncate(row.proposer)}
               </a>{" "}
@@ -230,7 +207,7 @@ const ProposalCard = ({ row }: { row: ProposalRow }) => {
 
         <VotesBar forVotes={f} against={against} abstain={abstain} />
 
-        <Separator className="bg-white/5" />
+        <Separator className="bg-muted/60" />
 
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2 flex-wrap">
@@ -239,7 +216,7 @@ const ProposalCard = ({ row }: { row: ProposalRow }) => {
               variant="outline"
               onClick={() => doVote(1)}
               disabled={voting || hasVoted || label !== "Active"}
-              className="border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+              className="border-emerald-500/30 text-[hsl(var(--success))] hover:bg-emerald-500/10"
             >
               {voting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
               For
@@ -382,7 +359,7 @@ const NewProposalForm = ({ onCreated }: { onCreated: () => void }) => {
         <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Rationale, links, risk notes…" />
       </div>
 
-      <Separator className="bg-white/5" />
+      <Separator className="bg-muted/60" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-2 sm:col-span-2">
@@ -453,36 +430,37 @@ export function GovernorPanel({ wrongNetwork = false }: { wrongNetwork?: boolean
   const cfg = useGovernorConfig();
   const { proposals, isLoading, refresh } = useGovernorProposals();
   const participation = useVoterParticipation(address);
+  const [govTab, setGovTab] = useState<"proposals" | "new">("proposals");
 
   const yourWeight =
     (participation.data as bigint | undefined) !== undefined ? (participation.data as bigint).toString() : "—";
 
   return (
-    <div className="space-y-6">
+    <div className={vh.panel}>
       {wrongNetwork && (
-        <Card className="p-4 border-amber-500/30 bg-amber-500/5">
-          <div className="flex items-center gap-2 text-amber-300 text-[12px]">
+        <Card className="rounded-xl border border-amber-500/30 bg-amber-500/8 p-4">
+          <div className="flex items-center gap-2 text-sm text-amber-900">
             <AlertCircle className="w-4 h-4" />
             Wrong network. Please switch to <span className="font-mono">Arbitrum Sepolia (421614)</span>.
           </div>
         </Card>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatTile
+      <div className={vh.kpiGrid}>
+        <VoteKpi
           icon={Clock}
           label="Voting period"
           value={blocksToHours(cfg.votingPeriod)}
           sub={cfg.votingPeriod ? `${cfg.votingPeriod.toString()} blocks` : "—"}
         />
-        <StatTile
+        <VoteKpi
           icon={Shield}
           label="Quorum"
           value={cfg.quorum ? `${cfg.quorum.toString()} votes` : "—"}
           sub="Adjustable via governance"
         />
-        <StatTile icon={TimerReset} label="Timelock delay" value="2 days" sub={truncate(OBSCURA_TIMELOCK_ADDRESS)} />
-        <StatTile
+        <VoteKpi icon={TimerReset} label="Timelock delay" value="2 days" sub={truncate(OBSCURA_TIMELOCK_ADDRESS)} />
+        <VoteKpi
           icon={Users}
           label="Your voting weight"
           value={yourWeight}
@@ -490,91 +468,81 @@ export function GovernorPanel({ wrongNetwork = false }: { wrongNetwork?: boolean
         />
       </div>
 
-      <Card className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px]">
-        <div className="space-y-0.5">
-          <div className="text-muted-foreground/55 tracking-wider uppercase">Governor</div>
-          <a
-            href={`${ARB_SCAN}/address/${OBSCURA_GOVERNOR_ADDRESS}`}
-            target="_blank"
-            rel="noreferrer"
-            className="font-mono text-emerald-300 hover:text-emerald-200 inline-flex items-center gap-1"
-          >
+      <div className={`${vh.section} p-5 grid grid-cols-1 gap-4 md:grid-cols-3`}>
+        <div className="space-y-1">
+          <p className={vh.label}>Governor</p>
+          <a href={`${ARB_SCAN}/address/${OBSCURA_GOVERNOR_ADDRESS}`} target="_blank" rel="noreferrer" className={vh.link}>
             {truncate(OBSCURA_GOVERNOR_ADDRESS)}
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
-        <div className="space-y-0.5">
-          <div className="text-muted-foreground/55 tracking-wider uppercase">Timelock</div>
-          <a
-            href={`${ARB_SCAN}/address/${OBSCURA_TIMELOCK_ADDRESS}`}
-            target="_blank"
-            rel="noreferrer"
-            className="font-mono text-emerald-300 hover:text-emerald-200 inline-flex items-center gap-1"
-          >
+        <div className="space-y-1">
+          <p className={vh.label}>Timelock</p>
+          <a href={`${ARB_SCAN}/address/${OBSCURA_TIMELOCK_ADDRESS}`} target="_blank" rel="noreferrer" className={vh.link}>
             {truncate(OBSCURA_TIMELOCK_ADDRESS)}
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
-        <div className="space-y-0.5">
-          <div className="text-muted-foreground/55 tracking-wider uppercase">Treasury Streamer</div>
+        <div className="space-y-1">
+          <p className={vh.label}>Treasury streamer</p>
           <a
             href={`${ARB_SCAN}/address/${OBSCURA_TREASURY_STREAMER_ADDRESS}`}
             target="_blank"
             rel="noreferrer"
-            className="font-mono text-emerald-300 hover:text-emerald-200 inline-flex items-center gap-1"
+            className={vh.link}
           >
             {truncate(OBSCURA_TREASURY_STREAMER_ADDRESS)}
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
-      </Card>
+      </div>
 
-      <Tabs defaultValue="proposals">
-        <TabsList>
-          <TabsTrigger value="proposals">
-            <Hash className="w-3.5 h-3.5 mr-1.5" />
-            Proposals
-          </TabsTrigger>
-          <TabsTrigger value="new">
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            New proposal
-          </TabsTrigger>
-        </TabsList>
+      <VoteTabs
+        tabs={[
+          { key: "proposals", label: "Proposals" },
+          { key: "new", label: "New proposal" },
+        ]}
+        active={govTab}
+        onChange={setGovTab}
+      />
 
-        <TabsContent value="proposals" className="space-y-3">
+      {govTab === "proposals" && (
+        <div className="space-y-3">
           {isLoading && proposals.length === 0 && (
-            <Card className="p-10 text-center text-[12px] text-muted-foreground/60">
-              <Loader2 className="w-4 h-4 inline mr-2 animate-spin" />
+            <div className={`${vh.empty} text-sm text-muted-foreground`}>
+              <Loader2 className="mb-2 inline h-4 w-4 animate-spin" />
               Loading proposals from chain…
-            </Card>
+            </div>
           )}
 
           {!isLoading && proposals.length === 0 && (
-            <Card className="p-10 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-3">
-                <VoteIcon className="w-5 h-5 text-emerald-400" />
+            <div className={vh.empty}>
+              <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-muted">
+                <VoteIcon className="h-5 w-5 text-foreground" />
               </div>
-              <div className="font-display text-[15px] text-foreground mb-1">No proposals yet</div>
-              <p className="text-[12px] text-muted-foreground/65 max-w-sm mx-auto">
-                Be the first to propose a treasury action. Switch to the <span className="text-emerald-300">New proposal</span> tab.
+              <p className="font-display text-lg text-foreground">No proposals yet</p>
+              <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+                Be the first to propose a treasury action. Switch to the{" "}
+                <button type="button" onClick={() => setGovTab("new")} className="font-medium text-[hsl(var(--success))] hover:underline">
+                  New proposal
+                </button>{" "}
+                tab.
               </p>
-            </Card>
+            </div>
           )}
 
           {proposals.map((p) => (
             <ProposalCard key={p.proposalId.toString()} row={p} />
           ))}
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="new">
-          <NewProposalForm onCreated={refresh} />
-        </TabsContent>
-      </Tabs>
+      {govTab === "new" && <NewProposalForm onCreated={refresh} />}
 
-      <p className="text-[11px] text-center text-muted-foreground/45 pt-2">
+      <p className="pt-2 text-center text-sm text-muted-foreground">
         Powered by OpenZeppelin Governor · TimelockController ·{" "}
         <span className="text-foreground/65">2-day delay</span> ·{" "}
-        <span className="text-emerald-400/80">privacy-preserved ballots</span>
+        <span className="text-foreground/80">privacy-preserved ballots</span>
       </p>
     </div>
   );

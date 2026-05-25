@@ -112,7 +112,7 @@ const CreditScoreCard = () => {
           <button
             disabled={!address || !!busy || !marketAddr}
             onClick={attest}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-foreground hover:bg-emerald-500/25 disabled:opacity-50"
           >
             {busy === "attest" ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
             Attest to market

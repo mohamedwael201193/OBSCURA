@@ -18,20 +18,20 @@ export default function RegisterMetaAddressForm() {
   const trunc = (s?: string) => (s ? `${s.slice(0, 14)}…${s.slice(-6)}` : "—");
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <Eye className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Eye className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Your Stealth Address Setup</h3>
+          <h3 className="font-display text-lg text-foreground leading-tight">Your Stealth Address Setup</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">One-Time Setup</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">STEALTH</span>
       </div>
 
-      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
+      <p className="text-sm text-muted-foreground leading-relaxed">
         Generate a keypair that lets you receive payments at unique hidden addresses.
         The public part is saved on-chain so senders can derive stealth addresses for you.
         The private key stays in your browser — only you can scan and claim incoming payments.
@@ -66,7 +66,7 @@ export default function RegisterMetaAddressForm() {
           { label: "On-Chain Spending",      value: trunc(onChainMeta?.spendingPubKey) },
           { label: "On-Chain Viewing",       value: trunc(onChainMeta?.viewingPubKey) },
         ].map(({ label, value }) => (
-          <div key={label} className="flex justify-between items-center py-2 px-3 rounded-lg bg-white/[0.025] border border-white/[0.07]">
+          <div key={label} className="flex justify-between items-center rounded-lg hairline bg-muted/40 py-2 px-3">
             <span className="text-[11px] text-muted-foreground/50">{label}</span>
             <span className="text-[11px] font-mono text-foreground/75">{value}</span>
           </div>

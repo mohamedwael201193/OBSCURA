@@ -37,9 +37,12 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['"Space Grotesk"', 'sans-serif'],
+        display: ['"Instrument Serif"', '"Cormorant Garamond"', 'serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
         body: ['"DM Sans"', 'sans-serif'],
+        spadeDisplay: ['"Sora"', 'sans-serif'],
+        spadeBody: ['"Inter"', 'sans-serif'],
+        editorial: ['"Cormorant Garamond"', '"Sora"', 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -47,6 +50,8 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        surface: "hsl(var(--surface))",
+        success: "hsl(var(--success))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -82,6 +87,8 @@ export default {
           green: "hsl(var(--terminal-green))",
         },
         surface: {
+          DEFAULT: "hsl(var(--surface))",
+          elevated: "hsl(var(--vault-surface-elevated))",
           glass: "hsl(var(--surface-glass))",
         },
         cyan: {
@@ -100,6 +107,34 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        sage: {
+          1: "#F7F9F2",
+          2: "#EEF3EA",
+          3: "#E4EBDF",
+        },
+        forest: {
+          DEFAULT: "#18280E",
+          light: "#2A3D1E",
+        },
+        lime: {
+          accent: "#B2EB76",
+        },
+        brand: {
+          DEFAULT: "hsl(var(--vault-brand))",
+          soft: "hsl(var(--vault-brand-soft))",
+          ink: "hsl(var(--vault-brand-ink))",
+        },
+        "border-subtle": "hsl(var(--vault-border-subtle))",
+        "surface-elevated": "hsl(var(--vault-surface-elevated))",
+        ink: {
+          DEFAULT: "var(--vault-ink)",
+          elev: "var(--vault-ink-elev)",
+          fg: "var(--vault-ink-fg)",
+          mute: "var(--vault-ink-muted)",
+          accent: "var(--vault-ink-accent)",
+        },
+        "ink-accent": "var(--vault-ink-accent)",
+        "ink-elev": "var(--vault-ink-elev)",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -119,11 +154,21 @@ export default {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        marquee: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+        "marquee-reverse": {
+          "0%": { transform: "translateX(-50%)" },
+          "100%": { transform: "translateX(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.3s ease-out",
+        marquee: "marquee 55s linear infinite",
+        "marquee-reverse": "marquee-reverse 55s linear infinite",
       },
     },
   },

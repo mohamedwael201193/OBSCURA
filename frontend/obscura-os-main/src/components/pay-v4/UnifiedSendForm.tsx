@@ -46,6 +46,7 @@ import { estimateCappedFees } from "@/lib/gas";
 import { deriveStealthPayment } from "@/lib/stealth";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
 import { CONFIDENTIAL_USDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
+import { payHarmony as h } from "@/components/harmony/payHarmonyClasses";
 
 interface ModeOption {
   key: SendMode;
@@ -288,28 +289,28 @@ export default function UnifiedSendForm() {
   };
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <Send className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Send className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Send ocUSDC</h3>
+          <h3 className="font-display text-lg text-foreground leading-tight">Send ocUSDC</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted · Private</p>
         </div>
         {/* cUSDC balance */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-500/20 shrink-0">
-          <Lock className="w-3 h-3 text-emerald-400/70" />
-          <span className="font-mono text-[12px] text-emerald-300 font-medium">
+        <div className="flex shrink-0 items-center gap-1.5 rounded-full hairline bg-muted px-2.5 py-1.5">
+          <Lock className="w-3 h-3 text-foreground/70" />
+          <span className="font-mono text-[12px] text-[hsl(var(--success))] font-medium">
             {cusdc ?? "•••"}
           </span>
-          <span className="text-[9px] text-emerald-400/50 uppercase">ocUSDC</span>
+          <span className="text-[9px] text-foreground/50 uppercase">ocUSDC</span>
         </div>
         {/* step dots */}
         <div className="flex items-center gap-1 shrink-0">
           {[1, 2, 3, 4].map((i) => (
-            <span key={i} className={`block w-1.5 h-1.5 rounded-full ${i <= step ? "bg-emerald-400" : "bg-white/15"}`} />
+            <span key={i} className={`block h-1.5 w-1.5 rounded-full ${i <= step ? "bg-accent" : "bg-border"}`} />
           ))}
         </div>
       </div>
@@ -318,7 +319,7 @@ export default function UnifiedSendForm() {
       {step === 1 && (
         <div className="space-y-3">
           <div>
-            <div className="text-[10px] tracking-[0.18em] uppercase text-muted-foreground/50 font-mono mb-3">
+            <div className={`${h.label} mb-3`}>
               Step 1 / 4 · Choose how to send
             </div>
           </div>
@@ -332,38 +333,38 @@ export default function UnifiedSendForm() {
                   onClick={() => { setMode(m.key); setStep(2); }}
                   className={`p-4 rounded-xl border text-left flex items-center gap-4 transition-all ${
                     isSelected
-                      ? "border-emerald-500/50 bg-emerald-500/[0.07]"
-                      : "border-white/[0.08] hover:border-white/[0.16] bg-white/[0.015]"
+                      ? "border-accent/40 bg-accent/15"
+                      : "hairline bg-card hover:bg-muted/50"
                   }`}
                 >
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
                     isSelected
-                      ? "bg-emerald-500/15 border-emerald-500/30"
-                      : "bg-white/[0.04] border-white/[0.08]"
+                      ? "bg-accent/20 border-accent/35"
+                      : "bg-muted hairline"
                   }`}>
-                    <Icon className={`w-4 h-4 ${isSelected ? "text-emerald-300" : "text-muted-foreground/60"}`} />
+                    <Icon className={`w-4 h-4 ${isSelected ? "text-[hsl(var(--success))]" : "text-muted-foreground/60"}`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-[13px] font-medium text-foreground">{m.title}</span>
                       {m.tag && (
-                        <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-semibold">
+                        <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-foreground border border-emerald-500/25 font-semibold">
                           {m.tag}
                         </span>
                       )}
                     </div>
                     <div className="text-[11px] text-muted-foreground/55 mt-0.5 leading-relaxed">{m.description}</div>
                   </div>
-                  <ArrowRight className={`w-4 h-4 shrink-0 ${isSelected ? "text-emerald-400" : "text-muted-foreground/25"}`} />
+                  <ArrowRight className={`w-4 h-4 shrink-0 ${isSelected ? "text-foreground" : "text-muted-foreground/25"}`} />
                 </button>
               );
             })}
           </div>
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-white/[0.02] border border-white/[0.05]">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400/60 mt-0.5 shrink-0" />
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl hairline bg-muted/40">
+            <ShieldCheck className="w-3.5 h-3.5 text-foreground/60 mt-0.5 shrink-0" />
             <p className="text-[11px] text-muted-foreground/55 leading-relaxed">
               Both modes encrypt the amount client-side with FHE before it touches the chain.
-              <span className="text-emerald-300/70"> Stealth</span> also hides who you're paying.
+              <span className="text-[hsl(var(--success))]/70"> Stealth</span> also hides who you're paying.
             </p>
           </div>
         </div>
@@ -373,7 +374,7 @@ export default function UnifiedSendForm() {
       {step === 2 && (
         <div className="space-y-4">
           <div>
-            <div className="text-[10px] tracking-[0.18em] uppercase text-muted-foreground/50 font-mono mb-1">
+            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-mono mb-1">
               Step 2 / 4 · Recipient
             </div>
             <p className="text-[12px] text-muted-foreground/60">
@@ -428,8 +429,8 @@ export default function UnifiedSendForm() {
             placeholder="0.00"
             className="mt-1.5 font-mono"
           />
-          <div className="mt-4 p-3 rounded-md border border-white/[0.06] bg-white/[0.02] text-[11px] text-muted-foreground/65 space-y-1.5">
-            <div className="flex items-center gap-1.5 text-emerald-300/80">
+          <div className="mt-4 p-3 rounded-xl hairline bg-muted/40 text-[11px] text-muted-foreground/65 space-y-1.5">
+            <div className="flex items-center gap-1.5 text-[hsl(var(--success))]/80">
               <Lock className="w-3 h-3" /> Amount encrypted client-side before submission.
             </div>
             {mode === "stealth" && (
@@ -483,7 +484,7 @@ export default function UnifiedSendForm() {
       {step === 4 && successHash && (
         <div className="text-center py-6">
           <div className="inline-flex w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 items-center justify-center mb-3">
-            <CheckCircle2 className="w-6 h-6 text-emerald-300" />
+            <CheckCircle2 className="w-6 h-6 text-[hsl(var(--success))]" />
           </div>
           <h3 className="font-display text-lg text-foreground mb-1">Payment sent</h3>
           <p className="text-[12px] text-muted-foreground/70 mb-4">
@@ -492,7 +493,7 @@ export default function UnifiedSendForm() {
               href={`https://sepolia.arbiscan.io/tx/${successHash}`}
               target="_blank"
               rel="noreferrer"
-              className="font-mono text-emerald-300 hover:underline"
+              className="font-mono text-[hsl(var(--success))] hover:underline"
             >
               {successHash.slice(0, 10)}…{successHash.slice(-6)}
             </a>

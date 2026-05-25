@@ -161,11 +161,11 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
   }
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <Plus className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Plus className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Proposal</h3>
@@ -205,8 +205,8 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
                 onClick={() => applyTemplate(i)}
                 className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
                   selectedTemplate === i
-                    ? "border-emerald-400/50 text-emerald-400 bg-emerald-400/10"
-                    : "border-white/[0.09] text-muted-foreground hover:border-emerald-500/30 hover:text-foreground"
+                    ? "border-emerald-400/50 text-foreground bg-emerald-400/10"
+                    : "border-border text-muted-foreground hover:border-emerald-500/30 hover:text-foreground"
                 }`}
               >
                 {t.label}
@@ -297,7 +297,7 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
                 placeholder="Add option..."
                 className="pay-input py-1.5"
               />
-              <button type="button" onClick={addOption} className="text-emerald-400 text-xs hover:underline">
+              <button type="button" onClick={addOption} className="text-foreground text-xs hover:underline">
                 + Add
               </button>
             </div>
@@ -333,8 +333,8 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
                 onClick={() => setSelectedDuration(i)}
                 className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
                   selectedDuration === i
-                    ? "border-emerald-400/50 text-emerald-400 bg-emerald-400/10"
-                    : "border-white/[0.09] text-muted-foreground hover:border-emerald-500/30 hover:text-foreground"
+                    ? "border-emerald-400/50 text-foreground bg-emerald-400/10"
+                    : "border-border text-muted-foreground hover:border-emerald-500/30 hover:text-foreground"
                 }`}
               >
                 {d.label}
@@ -373,14 +373,14 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
         )}
 
         {txHash && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-400/5 border border-emerald-400/20 text-emerald-400 text-xs">
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-400/5 border border-emerald-400/20 text-foreground text-xs">
             <CheckCircle className="w-3.5 h-3.5 shrink-0" />
             <span>Proposal created!</span>
             <a
               href={`https://sepolia.arbiscan.io/tx/${txHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="ml-auto underline inline-flex items-center gap-1 hover:text-emerald-300"
+              className="ml-auto underline inline-flex items-center gap-1 hover:text-[hsl(var(--success))]"
             >
               Arbiscan <ExternalLink className="w-3 h-3" />
             </a>

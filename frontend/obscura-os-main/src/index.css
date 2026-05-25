@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@import "./styles/harmony-workspace-forms.css";
 
 @tailwind base;
 @tailwind components;
@@ -55,6 +56,15 @@
     --accent-cyan-rgb: 6, 182, 212;
     --accent-amber: 38 92% 50%;
     --accent-amber-rgb: 245, 158, 11;
+
+    --surface-ink: 225 18% 4%;
+    --surface-elevated: 220 16% 8%;
+    --surface-soft: 220 12% 12%;
+    --line-soft: 0 0% 100%;
+    --brand-pay: 153 62% 54%;
+    --brand-credit: 258 88% 68%;
+    --brand-vote: 38 92% 58%;
+    --brand-system: 88 72% 68%;
   }
 }
 
@@ -428,3 +438,698 @@
 .pay-badge-amber   { color: #fde68a; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); }
 .pay-badge-violet  { color: #c4b5fd; background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.25); }
 .pay-badge-red     { color: #fca5a5; background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.25); }
+
+/* ─── Vault landing (obscura-os / obscura-vault reference) ─────────────────── */
+.landing-vault {
+  --background: 96 18% 98%;
+  --foreground: 140 22% 12%;
+  --surface: 96 20% 96%;
+  --vault-surface-elevated: 0 0% 100%;
+  --card: 0 0% 100%;
+  --card-foreground: 140 22% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 140 22% 12%;
+  --primary: 145 28% 28%;
+  --primary-foreground: 96 18% 98%;
+  --vault-brand: 145 32% 38%;
+  --vault-brand-soft: 145 40% 92%;
+  --vault-brand-ink: 140 22% 14%;
+  --secondary: 96 15% 94%;
+  --secondary-foreground: 140 18% 18%;
+  --muted: 96 12% 94%;
+  --muted-foreground: 140 8% 42%;
+  --accent: 145 35% 90%;
+  --accent-foreground: 140 22% 14%;
+  --destructive: 25 75% 48%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 96 12% 88%;
+  --vault-border-subtle: 96 10% 91%;
+  --input: 96 12% 88%;
+  --ring: 145 32% 38%;
+  --vault-ink: oklch(0.14 0.018 150);
+  --vault-ink-elev: oklch(0.18 0.02 150);
+  --vault-ink-fg: oklch(0.96 0.012 130);
+  --vault-ink-muted: oklch(0.68 0.018 140);
+  --vault-ink-accent: oklch(0.88 0.14 145);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -8px rgb(20 60 40 / 0.08);
+  --shadow-float: 0 2px 4px rgb(0 0 0 / 0.04), 0 24px 60px -20px rgb(20 60 40 / 0.18);
+  --shadow-glow: 0 0 0 1px hsl(145 32% 38% / 0.18), 0 12px 40px -12px hsl(145 32% 38% / 0.35);
+  color-scheme: light;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+.landing-vault .font-display {
+  font-family: "Instrument Serif", "Cormorant Garamond", ui-serif, Georgia, serif;
+  letter-spacing: -0.02em;
+}
+
+.landing-vault .font-mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+.landing-vault .tag-bracket {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--vault-brand));
+}
+
+.landing-vault .receipt-card {
+  border: 1px dashed hsl(var(--vault-brand) / 0.35);
+  background: hsl(var(--vault-surface-elevated) / 0.92);
+  border-radius: 10px;
+}
+
+.landing-vault .aurora-ring::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(closest-side, hsl(var(--vault-brand) / 0.14), transparent 70%);
+  filter: blur(40px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.landing-vault .chip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  color: white;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    inset 0 -8px 16px rgb(0 0 0 / 0.18),
+    0 6px 20px -8px var(--chip-glow, rgb(0 0 0 / 0.4));
+  background: linear-gradient(155deg, var(--chip-from), var(--chip-to));
+}
+
+.landing-vault .chip-emerald { --chip-from: #5ecf8a; --chip-to: #2d6b45; --chip-glow: rgb(45 107 69 / 0.55); }
+.landing-vault .chip-amber { --chip-from: #f5d06a; --chip-to: #a67c2e; --chip-glow: rgb(166 124 46 / 0.55); }
+.landing-vault .chip-violet { --chip-from: #b794f6; --chip-to: #5b3d8a; --chip-glow: rgb(91 61 138 / 0.55); }
+.landing-vault .chip-rose { --chip-from: #f0a0a8; --chip-to: #9e3d4a; --chip-glow: rgb(158 61 74 / 0.55); }
+.landing-vault .chip-sky { --chip-from: #7ec8f0; --chip-to: #3d6a9e; --chip-glow: rgb(61 106 158 / 0.55); }
+
+.landing-vault .bg-ink { background: var(--vault-ink); }
+.landing-vault .bg-ink-elev { background: var(--vault-ink-elev); }
+.landing-vault .text-ink-fg { color: var(--vault-ink-fg); }
+.landing-vault .text-ink-mute { color: var(--vault-ink-muted); }
+.landing-vault .border-ink { border-color: oklch(1 0 0 / 8%); }
+
+.landing-vault .mesh-bg {
+  background:
+    radial-gradient(50% 40% at 20% 30%, hsl(var(--vault-brand) / 0.22), transparent 70%),
+    radial-gradient(40% 35% at 80% 20%, hsl(230 70% 60% / 0.18), transparent 70%),
+    radial-gradient(45% 40% at 60% 80%, hsl(290 60% 60% / 0.16), transparent 70%);
+  filter: blur(20px);
+}
+
+.landing-vault .marquee-mask {
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+}
+
+/* ─── Spade-style landing page ─────────────────────────────────────────────── */
+.landing-spade {
+  --background: 90 20% 97%;
+  --foreground: 120 30% 8%;
+  --primary: 88 72% 68%;
+  --primary-foreground: 120 30% 8%;
+  --muted-foreground: 120 10% 40%;
+  --border: 90 15% 88%;
+  color-scheme: light;
+  background: #F7F9F2;
+  color: #18280E;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+.landing-spade h1,
+.landing-spade h2,
+.landing-spade h3,
+.landing-spade .font-display {
+  font-family: 'Instrument Serif', 'Cormorant Garamond', ui-serif, Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.landing-spade .font-body {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+.landing-spade .money-glyph-figure {
+  background: transparent;
+}
+
+/* Luminance mask: black plate drops out, lines render as solid forest green */
+.landing-spade .money-glyph-mask {
+  -webkit-mask-image: url("/images/money-glyph-hero.png");
+  mask-image: url("/images/money-glyph-hero.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  mask-mode: luminance;
+  -webkit-mask-mode: luminance;
+  background: linear-gradient(
+    165deg,
+    #1a4a2e 0%,
+    #2d6b45 42%,
+    #3d8f5c 72%,
+    #245a38 100%
+  );
+  filter: contrast(1.2) drop-shadow(0 12px 28px rgba(24, 40, 14, 0.14))
+    drop-shadow(0 2px 10px rgba(45, 107, 69, 0.28));
+}
+
+.landing-spade .money-glyph-mask--boost {
+  opacity: 0.42;
+  background: #18300e;
+  filter: blur(18px);
+  transform: scale(1.02);
+}
+
+/* Idle: static glyph — encrypt cycle only while .money-glyph-figure--active (hover/focus) */
+.landing-spade .money-glyph-mask--live {
+  animation: none;
+}
+
+.landing-spade .money-glyph-figure--active .money-glyph-mask--live {
+  animation: money-glyph-resolve 2.6s ease-in-out forwards;
+}
+
+.landing-spade .money-glyph-cipher {
+  -webkit-mask-image: url("/images/money-glyph-hero.png");
+  mask-image: url("/images/money-glyph-hero.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  mask-mode: luminance;
+  -webkit-mask-mode: luminance;
+  background-color: #142610;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      #1a4a2e 0,
+      #1a4a2e 3px,
+      #4a9e6a 3px,
+      #4a9e6a 4px,
+      #142610 4px,
+      #142610 7px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 5px,
+      rgba(247, 249, 242, 0.14) 5px,
+      rgba(247, 249, 242, 0.14) 6px
+    );
+  background-size: 140% 100%, 100% 100%;
+  opacity: 0;
+  animation: none;
+}
+
+.landing-spade .money-glyph-figure--active .money-glyph-cipher {
+  animation:
+    money-glyph-cipher-opacity 2.6s ease-in-out forwards,
+    money-glyph-cipher-scroll 0.18s linear infinite;
+}
+
+.landing-spade .money-glyph-fhe-beam {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(178, 235, 118, 0.05) 42%,
+    rgba(88, 200, 120, 0.35) 49.5%,
+    rgba(247, 249, 242, 0.55) 50%,
+    rgba(88, 200, 120, 0.35) 50.5%,
+    rgba(178, 235, 118, 0.05) 58%,
+    transparent 100%
+  );
+  height: 20%;
+  opacity: 0;
+  filter: blur(0.5px);
+  animation: none;
+}
+
+.landing-spade .money-glyph-figure--active .money-glyph-fhe-beam {
+  animation: money-glyph-fhe-beam 2.6s ease-in-out forwards;
+}
+
+.landing-spade .money-glyph-seal-pulse {
+  border-radius: 50%;
+  border: 1px solid rgba(45, 107, 69, 0.35);
+  opacity: 0;
+  animation: none;
+}
+
+.landing-spade .money-glyph-figure--active .money-glyph-seal-pulse {
+  animation: money-glyph-seal-pulse 2.6s ease-out forwards;
+}
+
+.landing-spade .money-glyph-scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 3px,
+    rgba(24, 40, 14, 0.05) 3px,
+    rgba(24, 40, 14, 0.05) 4px
+  );
+  mix-blend-mode: multiply;
+  animation: none;
+}
+
+.landing-spade .money-glyph-figure--active .money-glyph-scanlines {
+  animation: money-glyph-scan-drift 2.6s linear forwards;
+}
+
+@keyframes money-glyph-resolve {
+  0%,
+  48% {
+    filter: contrast(1.2) drop-shadow(0 12px 28px rgba(24, 40, 14, 0.14))
+      drop-shadow(0 2px 10px rgba(45, 107, 69, 0.28));
+  }
+  52% {
+    filter: contrast(0.75) brightness(1.35) blur(2px)
+      drop-shadow(0 2px 6px rgba(45, 107, 69, 0.15));
+  }
+  58% {
+    filter: contrast(1.35) brightness(1.05) blur(0)
+      drop-shadow(0 14px 32px rgba(45, 107, 69, 0.22))
+      drop-shadow(0 2px 12px rgba(72, 140, 90, 0.35));
+  }
+  100% {
+    filter: contrast(1.2) drop-shadow(0 12px 28px rgba(24, 40, 14, 0.14))
+      drop-shadow(0 2px 10px rgba(45, 107, 69, 0.28));
+  }
+}
+
+@keyframes money-glyph-cipher-opacity {
+  0%,
+  46% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.88;
+  }
+  56% {
+    opacity: 0.45;
+  }
+  62%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes money-glyph-cipher-scroll {
+  0% {
+    background-position: 0 0, 0 0;
+  }
+  100% {
+    background-position: 48px 0, 0 4px;
+  }
+}
+
+@keyframes money-glyph-fhe-beam {
+  0%,
+  44% {
+    transform: translateY(-130%);
+    opacity: 0;
+  }
+  48% {
+    opacity: 0.35;
+  }
+  54% {
+    transform: translateY(130%);
+    opacity: 0.95;
+  }
+  60%,
+  100% {
+    transform: translateY(130%);
+    opacity: 0;
+  }
+}
+
+@keyframes money-glyph-seal-pulse {
+  0%,
+  54% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  58% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  66% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes money-glyph-scan-drift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 8px;
+  }
+}
+
+.landing-spade .footer-wire-coin {
+  -webkit-mask-image: url("/images/money-glyph-hero.png");
+  mask-image: url("/images/money-glyph-hero.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  mask-mode: luminance;
+  -webkit-mask-mode: luminance;
+  background: linear-gradient(145deg, #b2eb76 0%, #5ecf8a 45%, #2d6b45 100%);
+  filter: drop-shadow(0 8px 24px rgba(178, 235, 118, 0.15));
+}
+
+.landing-spade .footer-marquee-track {
+  animation: footer-marquee 45s linear infinite;
+}
+
+.landing-spade .footer-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes footer-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.landing-spade .marquee-track:hover {
+  animation-play-state: paused;
+}
+
+.landing-spade .marquee-mask {
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
+}
+
+/* Vault sections nested under spade landing keep their own tokens */
+.landing-spade .landing-vault {
+  --background: 96 18% 98%;
+  --foreground: 140 22% 12%;
+  --surface: 96 20% 96%;
+  --vault-surface-elevated: 0 0% 100%;
+  --card: 0 0% 100%;
+  --card-foreground: 140 22% 12%;
+  --muted-foreground: 140 8% 42%;
+  --vault-brand: 145 32% 38%;
+  --vault-brand-soft: 145 40% 92%;
+  --vault-brand-ink: 140 22% 14%;
+  --border: 96 12% 88%;
+  --vault-border-subtle: 96 10% 91%;
+  --accent: 145 35% 90%;
+  --accent-foreground: 140 22% 14%;
+  --vault-ink: oklch(0.14 0.018 150);
+  --vault-ink-elev: oklch(0.18 0.02 150);
+  --vault-ink-fg: oklch(0.96 0.012 130);
+  --vault-ink-muted: oklch(0.68 0.018 140);
+  --vault-ink-accent: oklch(0.88 0.14 145);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -8px rgb(20 60 40 / 0.08);
+  --shadow-float: 0 2px 4px rgb(0 0 0 / 0.04), 0 24px 60px -20px rgb(20 60 40 / 0.18);
+  --shadow-glow: 0 0 0 1px hsl(145 32% 38% / 0.18), 0 12px 40px -12px hsl(145 32% 38% / 0.35);
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+.landing-spade .landing-vault .font-display {
+  font-family: "Instrument Serif", "Cormorant Garamond", ui-serif, Georgia, serif;
+  letter-spacing: -0.02em;
+}
+
+.landing-spade .landing-vault .tag-bracket {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--vault-brand));
+}
+
+.landing-spade .landing-vault .receipt-card {
+  border: 1px dashed hsl(var(--vault-brand) / 0.35);
+  background: hsl(var(--vault-surface-elevated) / 0.92);
+  border-radius: 10px;
+}
+
+.landing-spade .landing-vault .chip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  color: white;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    inset 0 -8px 16px rgb(0 0 0 / 0.18),
+    0 6px 20px -8px var(--chip-glow, rgb(0 0 0 / 0.4));
+  background: linear-gradient(155deg, var(--chip-from), var(--chip-to));
+}
+
+.landing-spade .landing-vault .chip-emerald { --chip-from: #5ecf8a; --chip-to: #2d6b45; --chip-glow: rgb(45 107 69 / 0.55); }
+.landing-spade .landing-vault .chip-amber { --chip-from: #f5d06a; --chip-to: #a67c2e; --chip-glow: rgb(166 124 46 / 0.55); }
+.landing-spade .landing-vault .chip-violet { --chip-from: #b794f6; --chip-to: #5b3d8a; --chip-glow: rgb(91 61 138 / 0.55); }
+.landing-spade .landing-vault .chip-rose { --chip-from: #f0a0a8; --chip-to: #9e3d4a; --chip-glow: rgb(158 61 74 / 0.55); }
+.landing-spade .landing-vault .chip-sky { --chip-from: #7ec8f0; --chip-to: #3d6a9e; --chip-glow: rgb(61 106 158 / 0.55); }
+
+.landing-spade .landing-vault .bg-ink { background: var(--vault-ink); }
+.landing-spade .landing-vault .text-ink-fg { color: var(--vault-ink-fg); }
+.landing-spade .landing-vault .text-ink-mute { color: var(--vault-ink-muted); }
+.landing-spade .landing-vault .border-ink { border-color: oklch(1 0 0 / 8%); }
+
+.landing-spade .landing-vault .mesh-bg {
+  background:
+    radial-gradient(50% 40% at 20% 30%, hsl(var(--vault-brand) / 0.22), transparent 70%),
+    radial-gradient(40% 35% at 80% 20%, hsl(230 70% 60% / 0.18), transparent 70%),
+    radial-gradient(45% 40% at 60% 80%, hsl(290 60% 60% / 0.16), transparent 70%);
+  filter: blur(20px);
+}
+
+.landing-spade .landing-vault .marquee-mask {
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+}
+
+.landing-spade .landing-vault .logo-marquee-track {
+  animation-play-state: running;
+}
+
+.landing-spade .landing-vault .scroll-story-section {
+  isolation: isolate;
+}
+
+/* ─── Light app workspace (Pay · Credit · Vote) ───────────────────────────── */
+.obscura-app {
+  --background: 96 18% 97%;
+  --foreground: 140 18% 12%;
+  --surface: 95 22% 94%;
+  --card: 0 0% 100%;
+  --card-foreground: 140 18% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 140 18% 12%;
+  --primary: 145 22% 18%;
+  --primary-foreground: 96 18% 97%;
+  --secondary: 95 15% 92%;
+  --secondary-foreground: 140 12% 28%;
+  --muted: 95 12% 93%;
+  --muted-foreground: 140 8% 42%;
+  --accent: 145 55% 72%;
+  --accent-foreground: 145 30% 14%;
+  --destructive: 25 75% 48%;
+  --destructive-foreground: 0 0% 98%;
+  --success: 150 45% 42%;
+  --border: 95 14% 86%;
+  --border-strong: 95 12% 78%;
+  --input: 95 14% 88%;
+  --ring: 145 40% 45%;
+  color-scheme: light;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.obscura-app h1,
+.obscura-app h2,
+.obscura-app h3,
+.obscura-app .font-display {
+  font-family: 'Instrument Serif', 'Cormorant Garamond', 'Times New Roman', serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.obscura-app .font-editorial {
+  font-family: 'Instrument Serif', 'Cormorant Garamond', serif;
+}
+
+.obscura-app .hairline {
+  border: 1px solid hsl(var(--border));
+}
+
+.obscura-app .hairline-strong {
+  border: 1px solid hsl(var(--border-strong));
+}
+
+.obscura-app .bg-surface {
+  background-color: hsl(var(--surface));
+}
+
+.obscura-app .text-success {
+  color: hsl(var(--success));
+}
+
+@keyframes cipher-shimmer-keyframes {
+  0%, 100% { opacity: 0.85; letter-spacing: 0.12em; }
+  50% { opacity: 1; letter-spacing: 0.18em; }
+}
+
+.obscura-app .cipher-shimmer {
+  animation: cipher-shimmer-keyframes 2.4s ease-in-out infinite;
+}
+
+.obscura-app button,
+.obscura-app a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Wallet connect — light pill */
+.obscura-app .app-wallet-slot button {
+  border-radius: 9999px !important;
+  border-color: rgba(24, 40, 14, 0.12) !important;
+  background: #fff !important;
+  color: #18280e !important;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-size: 12px;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 4px 16px rgba(24, 40, 14, 0.06);
+}
+
+.obscura-app .app-wallet-slot button:hover {
+  border-color: rgba(24, 40, 14, 0.2) !important;
+  background: #f7f9f2 !important;
+}
+
+/* Remap common dark-glass utility patterns inside app workspace */
+.obscura-app [class*="border-white/"],
+.obscura-app [class*="border-white\\/"] {
+  border-color: rgba(24, 40, 14, 0.08) !important;
+}
+
+.obscura-app [class*="bg-white/\\[0.0"],
+.obscura-app [class*="bg-white\\/\\[0.0"] {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.obscura-app [class*="bg-\\[#0"],
+.obscura-app [class*="bg-\\[#06"],
+.obscura-app [class*="bg-\\[#05"] {
+  background-color: #fff !important;
+}
+
+.obscura-app [class*="text-white/"] {
+  color: rgba(24, 40, 14, 0.55) !important;
+}
+
+.obscura-app [class*="text-white\\/8"],
+.obscura-app [class*="text-white\\/9"] {
+  color: rgba(24, 40, 14, 0.88) !important;
+}
+
+.obscura-app [class*="text-emerald-200"],
+.obscura-app [class*="text-emerald-300"],
+.obscura-app [class*="text-emerald-400"] {
+  color: #047857 !important;
+}
+
+.obscura-app [class*="text-cyan-100"],
+.obscura-app [class*="text-cyan-200"] {
+  color: #0e7490 !important;
+}
+
+.obscura-app [class*="text-violet-200"] {
+  color: #6d28d9 !important;
+}
+
+.obscura-app input,
+.obscura-app textarea,
+.obscura-app select {
+  background-color: #fff;
+  border-color: rgba(24, 40, 14, 0.1);
+  color: #18280e;
+}
+
+/* Legacy pay-card inside harmony workspace → flat editorial cards */
+.obscura-app .pay-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 1rem;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+.obscura-app .pay-card::before {
+  display: none;
+}
+
+.premium-focus {
+  outline: none;
+}
+
+.premium-focus:focus-visible {
+  box-shadow: 0 0 0 2px rgba(178, 235, 118, 0.48);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .obscura-app * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  /* Keep landing marquee + scroll story usable; show headline unblurred */
+  .landing-spade .landing-vault .logo-marquee-track {
+    animation: none !important;
+  }
+
+  .landing-spade .scroll-story-section [style*="filter"] {
+    filter: none !important;
+  }
+
+  .landing-spade .money-glyph-figure--active .money-glyph-mask--live,
+  .landing-spade .money-glyph-figure--active .money-glyph-cipher,
+  .landing-spade .money-glyph-figure--active .money-glyph-fhe-beam,
+  .landing-spade .money-glyph-figure--active .money-glyph-seal-pulse,
+  .landing-spade .money-glyph-figure--active .money-glyph-scanlines {
+    animation: none !important;
+  }
+
+  .landing-spade .money-glyph-status {
+    display: none;
+  }
+
+  .landing-spade .footer-marquee-track {
+    animation: none !important;
+  }
+}

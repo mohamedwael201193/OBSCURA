@@ -62,8 +62,8 @@ export default function StreamsDashboard({ onNavigate, refreshKey, onRefresh }: 
       {/* ── 1. ocUSDC Balance Banner ─────────────────────────────────────── */}
       <div className="pay-card px-4 py-3.5 flex items-center gap-3">
         {/* Icon */}
-        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-          <Lock className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Lock className="w-4 h-4 text-foreground" />
         </div>
 
         {/* Balance */}
@@ -74,8 +74,8 @@ export default function StreamsDashboard({ onNavigate, refreshKey, onRefresh }: 
           <div className="font-mono text-[14px] font-semibold leading-tight mt-0.5">
             {cusdcNum > 0 ? (
               <>
-                <span className="text-emerald-200">≈ {cusdcNum.toFixed(2)}</span>
-                <span className="text-[10px] text-emerald-400/50 ml-1.5">ocUSDC</span>
+                <span className="text-foreground">≈ {cusdcNum.toFixed(2)}</span>
+                <span className="text-[10px] text-foreground/50 ml-1.5">ocUSDC</span>
               </>
             ) : (
               <span className="text-muted-foreground/40 text-[13px]">No ocUSDC yet</span>
@@ -87,7 +87,7 @@ export default function StreamsDashboard({ onNavigate, refreshKey, onRefresh }: 
         <button
           onClick={() => onNavigate("send")}
           title="Go to Send → Shield ocUSDC to get tokens for streams"
-          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.04] text-[11px] text-emerald-300/70 hover:text-emerald-300 hover:border-emerald-500/50 hover:bg-emerald-500/[0.08] transition-all"
+          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.04] text-[11px] text-[hsl(var(--success))]/70 hover:text-[hsl(var(--success))] hover:border-emerald-500/50 hover:bg-emerald-500/[0.08] transition-all"
         >
           <ArrowDownToLine className="w-3 h-3" />
           {cusdcNum > 0 ? "Shield more" : "Get ocUSDC"} →
@@ -102,9 +102,9 @@ export default function StreamsDashboard({ onNavigate, refreshKey, onRefresh }: 
         {/* Toggle header */}
         <button
           onClick={() => setShowBulk((v) => !v)}
-          className="pay-card w-full px-5 py-4 flex items-center gap-3 hover:bg-white/[0.03] transition-colors text-left"
+          className="pay-card w-full px-5 py-4 flex items-center gap-3 hover:bg-muted/40 transition-colors text-left"
         >
-          <div className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center shrink-0">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-muted hairline">
             <Upload className="w-3.5 h-3.5 text-muted-foreground/55" />
           </div>
           <div className="flex-1 min-w-0">
@@ -155,8 +155,8 @@ export default function StreamsDashboard({ onNavigate, refreshKey, onRefresh }: 
                 onClick={() => setStreamTab(key)}
                 className={`inline-flex items-center gap-1.5 px-4 py-2 text-[12px] font-medium rounded-lg border transition-all ${
                   streamTab === key
-                    ? "bg-emerald-500/12 border-emerald-500/30 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.08)]"
-                    : "bg-transparent border-white/[0.07] text-muted-foreground/50 hover:text-muted-foreground/80 hover:border-white/[0.12]"
+                    ? "bg-emerald-500/12 border-emerald-500/30 text-[hsl(var(--success))] shadow-[0_0_10px_rgba(52,211,153,0.08)]"
+                    : "bg-transparent hairline text-muted-foreground hover:text-foreground hover:bg-muted/40"
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -167,7 +167,7 @@ export default function StreamsDashboard({ onNavigate, refreshKey, onRefresh }: 
 
           <button
             onClick={onRefresh}
-            className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground/35 hover:text-emerald-400 transition-colors"
+            className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground/35 hover:text-foreground transition-colors"
           >
             <RefreshCw className="w-3 h-3" />
             Refresh
@@ -176,13 +176,13 @@ export default function StreamsDashboard({ onNavigate, refreshKey, onRefresh }: 
 
         {/* How-to hint for receiving tab */}
         {streamTab === "receiving" && (
-          <div className="flex items-start gap-2 px-3.5 py-3 rounded-xl bg-white/[0.02] border border-white/[0.06] text-[11px] text-muted-foreground/50 leading-relaxed">
-            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-cyan-400/50" />
+          <div className="flex items-start gap-2 px-3.5 py-3 rounded-xl hairline bg-muted/40 text-[11px] text-muted-foreground/50 leading-relaxed">
+            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-foreground/50" />
             Streams paying you appear here once an employer creates a stream to your address.
             If you registered a stealth meta-address, payments may arrive in the{" "}
             <button
               onClick={() => onNavigate("receive")}
-              className="text-cyan-400/70 hover:text-cyan-400 underline underline-offset-2 transition-colors"
+              className="text-foreground/70 hover:text-foreground underline underline-offset-2 transition-colors"
             >
               Stealth Inbox
             </button>{" "}

@@ -104,8 +104,8 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-full bg-emerald-500/[0.12] border border-emerald-500/25 flex items-center justify-center">
             {isDone
-              ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              : <Lock className="w-3.5 h-3.5 text-emerald-400" />}
+              ? <CheckCircle2 className="w-3.5 h-3.5 text-foreground" />
+              : <Lock className="w-3.5 h-3.5 text-foreground" />}
           </div>
           <div>
             <div className="text-[13px] font-semibold text-foreground">
@@ -119,18 +119,18 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => { navigator.clipboard.writeText(m.stealthAddress); setCopiedAddr(true); setTimeout(() => setCopiedAddr(false), 1200); }}
-            className="p-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.05] text-muted-foreground/55 hover:text-foreground transition-colors"
+            className="p-1.5 rounded-md hairline bg-muted hover:bg-muted/80 text-muted-foreground/55 hover:text-foreground transition-colors"
             title="Copy stealth address"
           >
-            {copiedAddr ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+            {copiedAddr ? <Check className="w-3 h-3 text-foreground" /> : <Copy className="w-3 h-3" />}
           </button>
           <a href={arbiscanTx} target="_blank" rel="noopener noreferrer"
-            className="p-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.05] text-muted-foreground/55 hover:text-emerald-300 transition-colors"
+            className="p-1.5 rounded-md hairline bg-muted hover:bg-muted/80 text-muted-foreground/55 hover:text-[hsl(var(--success))] transition-colors"
           >
             <ExternalLink className="w-3 h-3" />
           </a>
           <a href={arbiscanAddr} target="_blank" rel="noopener noreferrer"
-            className="text-[10px] text-muted-foreground/45 hover:text-emerald-300 transition-colors font-mono"
+            className="text-[10px] text-muted-foreground/45 hover:text-[hsl(var(--success))] transition-colors font-mono"
           >
             {m.stealthAddress.slice(0, 8)}�
           </a>
@@ -145,12 +145,12 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
             animate={{ opacity: 1, scale: 1 }}
             className="p-4 bg-emerald-500/[0.08] border border-emerald-500/25 rounded-xl text-center space-y-2"
           >
-            <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
-            <div className="text-[14px] font-semibold text-emerald-200">Swept successfully!</div>
-            <div className="text-[12px] text-emerald-300/70">ocUSDC is now in your main wallet. Dashboard balance updated automatically � or click REVEAL to decrypt live on-chain.</div>
+            <CheckCircle2 className="w-8 h-8 text-foreground mx-auto" />
+            <div className="text-[14px] font-semibold text-foreground">Swept successfully!</div>
+            <div className="text-[12px] text-[hsl(var(--success))]/70">ocUSDC is now in your main wallet. Dashboard balance updated automatically � or click REVEAL to decrypt live on-chain.</div>
             {state.txHash && (
               <a href={`https://sepolia.arbiscan.io/tx/${state.txHash}`} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] text-emerald-400/80 hover:text-emerald-300"
+                className="inline-flex items-center gap-1 text-[11px] text-foreground/80 hover:text-[hsl(var(--success))]"
               >
                 <ExternalLink className="w-3 h-3" /> View sweep tx
               </a>
@@ -165,10 +165,10 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
               </label>
               {m.amount > 0n ? (
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 px-3 py-2 bg-emerald-500/[0.06] border border-emerald-500/20 rounded-lg text-[13px] font-mono text-emerald-300">
+                  <div className="flex-1 px-3 py-2 bg-emerald-500/[0.06] border border-emerald-500/20 rounded-lg text-[13px] font-mono text-[hsl(var(--success))]">
                     {formatUnits(m.amount, 6)} cUSDC
                   </div>
-                  <span className="text-[10px] text-emerald-400/60 shrink-0">auto-detected ?</span>
+                  <span className="text-[10px] text-foreground/60 shrink-0">auto-detected ?</span>
                 </div>
               ) : (
                 <input
@@ -181,16 +181,16 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
               )}
             </div>
 
-            <div className="p-3 bg-emerald-500/[0.04] border border-emerald-500/15 rounded-lg text-[11px] text-emerald-300/70 leading-relaxed">
-              <div className="font-semibold text-emerald-200 mb-1 flex items-center gap-1.5">
+            <div className="p-3 bg-emerald-500/[0.04] border border-emerald-500/15 rounded-lg text-[11px] text-[hsl(var(--success))]/70 leading-relaxed">
+              <div className="font-semibold text-foreground mb-1 flex items-center gap-1.5">
                 <Zap className="w-3 h-3" /> Auto-Sweep � no MetaMask import needed
               </div>
               The app derives the stealth key in your browser, sends 0.002 ETH from your wallet for gas (one MetaMask popup), then signs and submits the cUSDC transfer automatically. Your main wallet receives the cUSDC.
             </div>
 
             {isBusy && (
-              <div className="p-3 bg-white/[0.03] border border-white/[0.06] rounded-lg flex items-center gap-2.5">
-                <Loader2 className="w-4 h-4 text-emerald-400 animate-spin shrink-0" />
+              <div className="p-3 hairline bg-card rounded-lg flex items-center gap-2.5">
+                <Loader2 className="w-4 h-4 text-foreground animate-spin shrink-0" />
                 <div>
                   <div className="text-[12px] text-foreground/80">{stepLabel}</div>
                   <div className="text-[10px] text-muted-foreground/50 mt-0.5">
@@ -222,7 +222,7 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
                     : (() => { try { return BigInt(Math.round(parseFloat(amountInput) * 1_000_000)); } catch { return 0n; } })();
                   void sweep(m, amt > 0n ? amt : undefined);
                 }}
-                className="w-full py-3 text-sm tracking-[0.2em] uppercase bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 font-semibold"
+                className="w-full py-3 text-sm tracking-[0.2em] uppercase bg-emerald-500/15 hover:bg-emerald-500/25 text-[hsl(var(--success))] border border-emerald-500/30 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 font-semibold"
               >
                 <ArrowRight className="w-4 h-4" />
                 Auto-Sweep to My Wallet
@@ -233,10 +233,10 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
       </div>
 
       {/* Advanced: export private key */}
-      <div className="border-t border-white/[0.04]">
+      <div className="border-t border-border">
         <button
           onClick={() => setShowAdvanced((v) => !v)}
-          className="w-full px-4 py-2.5 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors"
+          className="w-full px-4 py-2.5 flex items-center justify-between text-left hover:bg-muted/40 transition-colors"
         >
           <span className="text-[11px] text-muted-foreground/45">Advanced: export private key (manual MetaMask import)</span>
           {showAdvanced ? <ChevronUp className="w-3 h-3 text-muted-foreground/35" /> : <ChevronDown className="w-3 h-3 text-muted-foreground/35" />}
@@ -250,7 +250,7 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
               transition={{ duration: 0.18 }}
               className="overflow-hidden"
             >
-              <div className="px-4 pb-4 space-y-2 border-t border-white/[0.04]">
+              <div className="px-4 pb-4 space-y-2 border-t border-border">
                 <div className="text-[11px] text-amber-400/70 flex items-start gap-1.5 pt-2">
                   <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
                   Anyone with this key can access funds in the stealth address.
@@ -263,13 +263,13 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
                   <div className="space-y-1.5">
                     {derivedKey && (
                       <div className="flex items-center gap-1.5">
-                        <code className="font-mono flex-1 text-[10px] text-emerald-300/75 bg-emerald-500/[0.05] px-2 py-1.5 rounded-lg border border-emerald-500/18 truncate">
+                        <code className="font-mono flex-1 text-[10px] text-[hsl(var(--success))]/75 bg-emerald-500/[0.05] px-2 py-1.5 rounded-lg border border-emerald-500/18 truncate">
                           {derivedKey.slice(0, 22)}�{derivedKey.slice(-10)}
                         </code>
-                        <button onClick={copyKey} className="px-2 py-1.5 text-[10px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-lg shrink-0">
+                        <button onClick={copyKey} className="px-2 py-1.5 text-[10px] bg-emerald-500/10 text-[hsl(var(--success))] border border-emerald-500/20 rounded-lg shrink-0">
                           {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                         </button>
-                        <button onClick={() => setAdvKey(false)} className="p-1.5 bg-white/[0.04] text-muted-foreground/55 border border-white/[0.05] rounded-lg">
+                        <button onClick={() => setAdvKey(false)} className="p-1.5 rounded-lg hairline bg-muted text-muted-foreground">
                           <EyeOff className="w-3 h-3" />
                         </button>
                       </div>
@@ -278,7 +278,7 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
                       <div className="flex items-center gap-1.5 text-[10px]">
                         <span className="text-muted-foreground/40">Derived:</span>
                         <span className="font-mono text-foreground/50">{derivedAddr.slice(0, 12)}�{derivedAddr.slice(-8)}</span>
-                        {keyMatch ? <span className="text-emerald-400 flex items-center gap-0.5"><Check className="w-2.5 h-2.5" /> ok</span> : <span className="text-red-400">mismatch</span>}
+                        {keyMatch ? <span className="text-foreground flex items-center gap-0.5"><Check className="w-2.5 h-2.5" /> ok</span> : <span className="text-red-400">mismatch</span>}
                       </div>
                     )}
                   </div>
@@ -367,7 +367,7 @@ export default function StealthInbox() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-emerald-500/[0.08] border border-emerald-500/20 flex items-center justify-center">
-            <Inbox className="w-4 h-4 text-emerald-400" />
+            <Inbox className="w-4 h-4 text-foreground" />
           </div>
           <div>
             <h3 className="text-[14px] font-display font-semibold text-foreground">Stealth Inbox</h3>
@@ -377,7 +377,7 @@ export default function StealthInbox() {
           </div>
         </div>
         <button onClick={scan} disabled={isScanning || !hasKeys}
-          className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-emerald-300 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-[hsl(var(--success))] disabled:opacity-50 transition-colors"
         >
           <RefreshCw className={`w-3 h-3 ${isScanning ? "animate-spin" : ""}`} />
           {isScanning ? "Scanning�" : "Rescan"}
@@ -404,12 +404,12 @@ export default function StealthInbox() {
         </div>
       )}
 
-      <div className="border border-white/[0.07] rounded-xl overflow-hidden">
+      <div className="hairline rounded-xl overflow-hidden">
         <button onClick={() => setShowBenefits((v) => !v)}
-          className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors"
+          className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-muted/40 transition-colors"
         >
           <div className="flex items-center gap-2 text-[12px] text-foreground/80 font-medium">
-            <Shield className="w-3.5 h-3.5 text-emerald-400" />
+            <Shield className="w-3.5 h-3.5 text-foreground" />
             Why use Stealth mode? The privacy benefits
           </div>
           {showBenefits ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground/40" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/40" />}
@@ -417,20 +417,20 @@ export default function StealthInbox() {
         <AnimatePresence>
           {showBenefits && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} className="overflow-hidden">
-              <div className="px-4 pb-4 pt-1 space-y-3 border-t border-white/[0.05]">
+              <div className="px-4 pb-4 pt-1 space-y-3 border-t border-border">
                 {BENEFIT_CARDS.map((b) => (
                   <div key={b.title} className="flex items-start gap-3">
                     <div className="w-7 h-7 rounded-lg bg-emerald-500/[0.07] border border-emerald-500/15 flex items-center justify-center shrink-0 mt-0.5">
-                      <b.icon className="w-3.5 h-3.5 text-emerald-400" />
+                      <b.icon className="w-3.5 h-3.5 text-foreground" />
                     </div>
                     <div>
                       <div className="text-[12px] font-medium text-foreground/85">{b.title}</div>
-                      <div className="text-[11px] text-muted-foreground/60 leading-relaxed">{b.desc}</div>
+                      <div className="text-sm text-muted-foreground leading-relaxed">{b.desc}</div>
                     </div>
                   </div>
                 ))}
-                <div className="p-3 bg-emerald-500/[0.04] border border-emerald-500/15 rounded-lg text-[11px] text-emerald-300/70">
-                  <strong className="text-emerald-200">Obscura Auto-Sweep</strong>: Unlike Umbra and other protocols where you manually import a private key into MetaMask, Obscura derives the key in-browser and sweeps automatically. Maximum privacy, minimum friction.
+                <div className="p-3 bg-emerald-500/[0.04] border border-emerald-500/15 rounded-lg text-[11px] text-[hsl(var(--success))]/70">
+                  <strong className="text-foreground">Obscura Auto-Sweep</strong>: Unlike Umbra and other protocols where you manually import a private key into MetaMask, Obscura derives the key in-browser and sweeps automatically. Maximum privacy, minimum friction.
                 </div>
               </div>
             </motion.div>
@@ -452,14 +452,14 @@ export default function StealthInbox() {
 
       {isScanning && matches.length === 0 && (
         <div className="space-y-2">
-          {[0, 1].map((i) => <div key={i} className="h-24 rounded-xl bg-white/[0.03] border border-white/[0.05] animate-pulse" />)}
+          {[0, 1].map((i) => <div key={i} className="h-24 rounded-xl hairline bg-muted animate-pulse" />)}
         </div>
       )}
 
       {!isScanning && matches.length === 0 && hasKeys && (
         <div className="py-10 text-center">
           <div className="w-10 h-10 rounded-full bg-emerald-500/[0.07] border border-emerald-500/15 flex items-center justify-center mx-auto mb-3">
-            <Inbox className="w-4.5 h-4.5 text-emerald-400/50" />
+            <Inbox className="w-4.5 h-4.5 text-foreground/50" />
           </div>
           <div className="text-[13px] text-foreground/50 mb-1">No stealth payments in the lookback window</div>
           <div className="text-[11px] text-muted-foreground/38">Payments announced on the Stealth Registry (last ~14 days) will appear here.</div>
@@ -468,7 +468,7 @@ export default function StealthInbox() {
 
       {matches.length > 0 && (
         <div className="space-y-3">
-          <div className="text-[10px] tracking-[0.2em] uppercase text-emerald-400/55 font-mono">
+          <div className="text-[10px] tracking-[0.2em] uppercase text-foreground/55 font-mono">
             {matches.length} payment{matches.length > 1 ? "s" : ""} � auto-sweep each below
           </div>
           {matches.map((m, i) => <SweepCard key={`${m.txHash}-${m.stealthAddress}`} m={m} index={i} />)}

@@ -17,29 +17,29 @@ function getStatus(deadline: bigint, isFinalized: boolean, isCancelled: boolean,
 
 function ProposalRowSkeleton() {
   return (
-    <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-4 space-y-2 animate-pulse">
+    <div className="rounded-xl hairline bg-card p-4 space-y-2 animate-pulse">
       <div className="flex items-start gap-3">
-        <div className="w-8 h-4 bg-white/[0.05] rounded mt-0.5" />
+        <div className="w-8 h-4 bg-muted rounded mt-0.5" />
         <div className="flex-1 space-y-2">
-          <div className="h-4 bg-white/[0.07] rounded w-3/4" />
-          <div className="h-3 bg-white/[0.04] rounded w-1/2" />
+          <div className="h-4 bg-muted rounded w-3/4" />
+          <div className="h-3 bg-muted rounded w-1/2" />
           <div className="flex gap-2">
-            <div className="h-5 bg-white/[0.04] rounded w-16" />
-            <div className="h-5 bg-white/[0.04] rounded w-16" />
-            <div className="h-5 bg-white/[0.04] rounded w-12" />
+            <div className="h-5 bg-muted rounded w-16" />
+            <div className="h-5 bg-muted rounded w-16" />
+            <div className="h-5 bg-muted rounded w-12" />
           </div>
         </div>
-        <div className="h-5 bg-white/[0.05] rounded w-16 shrink-0" />
+        <div className="h-5 bg-muted rounded w-16 shrink-0" />
       </div>
-      <div className="pl-11 h-3 bg-white/[0.03] rounded w-40" />
+      <div className="pl-11 h-3 bg-muted rounded w-40" />
     </div>
   );
 }
 
 const statusConfig: Record<ProposalStatus, { label: string; color: string; icon: typeof Clock }> = {
-  active: { label: "Active", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", icon: Clock },
+  active: { label: "Active", color: "text-foreground bg-emerald-400/10 border-emerald-400/20", icon: Clock },
   ended: { label: "Ended", color: "text-amber-400 bg-amber-400/10 border-amber-400/20", icon: Lock },
-  finalized: { label: "Finalized", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20", icon: CheckCircle },
+  finalized: { label: "Finalized", color: "text-foreground bg-emerald-400/10 border-emerald-400/20", icon: CheckCircle },
   cancelled: { label: "Cancelled", color: "text-red-400 bg-red-400/10 border-red-400/20", icon: XCircle },
 };
 
@@ -64,7 +64,7 @@ function Countdown({ deadline }: { deadline: bigint }) {
     return () => clearInterval(interval);
   }, [deadline]);
 
-  return <span className="text-emerald-400 font-semibold">{remaining}</span>;
+  return <span className="text-foreground font-semibold">{remaining}</span>;
 }
 
 function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { proposalId: bigint; searchQuery: string; statusFilter: StatusFilter; onVote?: (id: number) => void; now: bigint }) {
@@ -88,7 +88,7 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { p
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-4 space-y-2 hover:border-white/[0.12] transition-colors"
+      className="rounded-xl hairline bg-card p-4 space-y-2 hover:border-border transition-colors"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
@@ -117,11 +117,11 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { p
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground/50">
                   <span>{proposal.totalVoters.toString()} / {proposal.quorum.toString()} voters</span>
                   {proposal.totalVoters >= proposal.quorum
-                    ? <span className="text-emerald-400 flex items-center gap-0.5"><CheckCircle2 className="w-2.5 h-2.5" /> Quorum met</span>
+                    ? <span className="text-foreground flex items-center gap-0.5"><CheckCircle2 className="w-2.5 h-2.5" /> Quorum met</span>
                     : <span className="text-amber-400/70">Quorum needed</span>
                   }
                 </div>
-                <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                <div className="h-1 rounded-full bg-muted overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
@@ -153,7 +153,7 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { p
         <div className="pl-11">
           <button
             onClick={() => onVote(Number(proposalId))}
-            className="flex items-center gap-1 text-[11px] text-emerald-400 hover:underline"
+            className="flex items-center gap-1 text-[11px] text-foreground hover:underline"
           >
             Vote on this <ArrowRight className="w-3 h-3" />
           </button>
@@ -187,11 +187,11 @@ export default function ProposalList({ onVote }: { onVote?: (id: number) => void
   ];
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <FileText className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <FileText className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Browse Proposals</h3>
@@ -200,7 +200,7 @@ export default function ProposalList({ onVote }: { onVote?: (id: number) => void
         <button
           onClick={() => refetch()}
           title="Refresh proposals"
-          className="ml-auto p-1.5 text-muted-foreground hover:text-emerald-400 transition-colors"
+          className="ml-auto p-1.5 text-muted-foreground hover:text-foreground transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
@@ -225,8 +225,8 @@ export default function ProposalList({ onVote }: { onVote?: (id: number) => void
               onClick={() => setStatusFilter(f.key)}
               className={`px-2.5 py-1 text-[11px] rounded-md border transition-all ${
                 statusFilter === f.key
-                  ? "border-emerald-400/50 text-emerald-400 bg-emerald-400/10"
-                  : "border-white/[0.09] text-muted-foreground hover:border-emerald-500/30"
+                  ? "border-emerald-400/50 text-foreground bg-emerald-400/10"
+                  : "border-border text-muted-foreground hover:border-emerald-500/30"
               }`}
             >
               {f.label}

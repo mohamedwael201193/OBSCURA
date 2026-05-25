@@ -95,7 +95,7 @@ const AuctionCard = ({ auction, onBid, onSettle }: Props) => {
             value={bid}
             onChange={(e) => setBid(e.target.value)}
             placeholder="Bid in ocUSDC"
-            className="flex-1 bg-white/[0.03] border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-amber-500/40"
+            className="flex-1 border-border bg-background rounded-md px-3 py-2 text-sm focus:outline-none focus:border-amber-500/40"
           />
           <button
             disabled={!bid || !!busy}
@@ -112,7 +112,7 @@ const AuctionCard = ({ auction, onBid, onSettle }: Props) => {
         <button
           disabled={!!busy}
           onClick={settle}
-          className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-emerald-100 hover:bg-emerald-500/25 disabled:opacity-50"
+          className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-foreground hover:bg-emerald-500/25 disabled:opacity-50"
         >
           {busy === "settle" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Award className="w-3.5 h-3.5" />}
           Settle

@@ -40,7 +40,7 @@ function DeadlineCountdown({ deadline }: { deadline: bigint }) {
   }, [deadline]);
   if (!remaining) return null;
   return (
-    <span className="inline-flex items-center gap-1 text-emerald-400/70">
+    <span className="inline-flex items-center gap-1 text-foreground/70">
       <Clock className="w-3 h-3" />
       <span className="font-mono">{remaining}</span>
     </span>
@@ -48,8 +48,8 @@ function DeadlineCountdown({ deadline }: { deadline: bigint }) {
 }
 const TEXT_COLORS = [
   "text-green-400", "text-red-400", "text-blue-400", "text-yellow-400",
-  "text-purple-400", "text-pink-400", "text-cyan-400", "text-orange-400",
-  "text-emerald-400", "text-indigo-400",
+  "text-purple-400", "text-pink-400", "text-foreground", "text-orange-400",
+  "text-foreground", "text-indigo-400",
 ];
 
 function exportCSV(title: string, options: string[], tallies: TallyResultData[]) {
@@ -156,20 +156,20 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
   }
 
   return (
-    <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-4 space-y-3">
+    <div className="rounded-xl hairline bg-card p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <div className="text-sm text-foreground font-medium">{proposal.title}</div>
           <div className="text-xs text-muted-foreground flex items-center gap-2">
             <span>#{proposalId.toString()}</span>
-            <span className="text-emerald-400/30">|</span>
+            <span className="text-foreground/30">|</span>
             <span>{CATEGORY_LABELS[proposal.category] ?? "General"}</span>
-            <span className="text-emerald-400/30">|</span>
+            <span className="text-foreground/30">|</span>
             <span>{proposal.totalVoters.toString()} voter{proposal.totalVoters !== 1n ? "s" : ""}</span>
             {proposal.quorum > 0n && (
               <>
-                <span className="text-emerald-400/30">|</span>
-                <span className={quorumMet ? "text-emerald-400" : "text-red-400"}>
+                <span className="text-foreground/30">|</span>
+                <span className={quorumMet ? "text-foreground" : "text-red-400"}>
                   Quorum: {proposal.totalVoters.toString()}/{proposal.quorum.toString()}
                 </span>
               </>
@@ -198,10 +198,10 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
           </div>
           {/* Who should finalize */}
           {quorumMet && (
-            <div className="flex items-start gap-2 p-2.5 rounded-md bg-white/[0.025] border border-white/[0.06] text-xs text-muted-foreground/70">
+            <div className="flex items-start gap-2 p-2.5 rounded-md bg-muted border border-border text-xs text-muted-foreground/70">
               {isCreator ? (
-                <><User className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                <span><span className="text-emerald-400 font-semibold">You created this proposal.</span> Finalizing publishes the encrypted tallies on-chain so voters can decrypt their portion of the result.</span></>
+                <><User className="w-3.5 h-3.5 text-foreground shrink-0 mt-0.5" />
+                <span><span className="text-foreground font-semibold">You created this proposal.</span> Finalizing publishes the encrypted tallies on-chain so voters can decrypt their portion of the result.</span></>
               ) : (
                 <><Users className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                 <span><span className="text-amber-400 font-semibold">Waiting for creator to finalize.</span> Only the proposal creator (<span className="font-mono text-foreground/70">{proposal.creator.slice(0,6)}…{proposal.creator.slice(-4)}</span>) can finalize this vote.</span></>
@@ -228,7 +228,7 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
                   href={`https://sepolia.arbiscan.io/tx/${finalizeTxHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-emerald-400 hover:underline inline-flex items-center gap-1"
+                  className="text-foreground hover:underline inline-flex items-center gap-1"
                 >
                   {finalizeTxHash.slice(0, 10)}...{finalizeTxHash.slice(-8)}
                   <ExternalLink className="w-3 h-3" />
@@ -274,11 +274,11 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
                   ) : (
                     <>
                       <div className="text-sm text-foreground font-semibold">
-                        Winner: <span className="text-emerald-400">{options[winnerIdx] ?? `Option ${winnerIdx}`}</span>
+                        Winner: <span className="text-foreground">{options[winnerIdx] ?? `Option ${winnerIdx}`}</span>
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {winnerPct}% of votes · leads by{" "}
-                        <span className="text-emerald-400 font-mono">{margin.toString()} vote{margin !== 1n ? "s" : ""}</span>
+                        <span className="text-foreground font-mono">{margin.toString()} vote{margin !== 1n ? "s" : ""}</span>
                         {" "}({marginPct}% margin)
                       </div>
                     </>
@@ -323,18 +323,18 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
             <span>Total: {total?.toString()} votes</span>
             <button
               onClick={() => exportCSV(proposal.title, options, tallies)}
-              className="flex items-center gap-1 text-emerald-400 hover:underline"
+              className="flex items-center gap-1 text-foreground hover:underline"
             >
               <Download className="w-3 h-3" /> Export CSV
             </button>
           </div>
 
           {/* Privacy guarantee note */}
-          <div className="flex items-start gap-2 p-3 bg-secondary/20 rounded-md border border-border/20">
+          <div className="flex items-start gap-2 p-3 bg-secondary/20 rounded-md border border-border">
             <ShieldCheck className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" />
             <div className="text-[11px] text-muted-foreground/70 leading-relaxed">
               These tallies are publicly decryptable via{" "}
-              <span className="font-mono text-emerald-400">FHE.allowPublic</span> — called at finalization.
+              <span className="font-mono text-foreground">FHE.allowPublic</span> — called at finalization.
               Individual ballots remain as encrypted handles on-chain and{" "}
               <span className="text-foreground/80">can never be decrypted</span>.
             </div>
@@ -377,11 +377,11 @@ export default function TallyReveal() {
   ];
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <BarChart3 className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <BarChart3 className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Vote Results</h3>
@@ -406,8 +406,8 @@ export default function TallyReveal() {
                 filter === f.key
                   ? f.key === "action"
                     ? "border-amber-400/50 text-amber-400 bg-amber-400/10"
-                    : "border-emerald-400/50 text-emerald-400 bg-emerald-400/10"
-                  : "border-white/[0.09] text-muted-foreground hover:border-emerald-500/30"
+                    : "border-emerald-400/50 text-foreground bg-emerald-400/10"
+                  : "border-border text-muted-foreground hover:border-emerald-500/30"
               }`}
             >
               {f.key === "action" && <Timer className="w-2.5 h-2.5 inline mr-1" />}

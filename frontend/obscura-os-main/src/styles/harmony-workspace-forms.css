@@ -1,0 +1,527 @@
+/**
+ * Pay / Credit / Vote workspace — form & button overrides
+ * Maps legacy dark pay-* styles to obscure-harmony-system (light editorial).
+ */
+
+/* ─── All pay-cards in workspace → light editorial cards ─────────────────── */
+.obscura-app .pay-card {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 1rem !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 1px 2px hsl(145 18% 12% / 0.04) !important;
+}
+
+.obscura-app .pay-card::before {
+  display: none !important;
+}
+
+/* Flatten only when nested inside harmony panel (avoid double frame) */
+.obscura-app .harmony-form-inner > .pay-card,
+.obscura-app .harmony-form-inner > div > .pay-card,
+.obscura-app .harmony-form-inner > .space-y-5 > .pay-card:first-child {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.obscura-app .harmony-form-inner > .pay-card.p-6,
+.obscura-app .harmony-form-inner > .pay-card.p-5 {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* ─── Legacy pay buttons → harmony pills ─────────────────────────────────── */
+.obscura-app .btn-pay {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  height: 2.5rem !important;
+  padding: 0 1rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  border-radius: 9999px !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
+  box-shadow: none !important;
+  transform: none !important;
+  overflow: visible !important;
+}
+
+.obscura-app .btn-pay:hover:not(:disabled),
+.obscura-app .btn-pay:active:not(:disabled) {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.obscura-app .btn-pay-emerald,
+.obscura-app .btn-pay-cyan,
+.obscura-app .btn-pay-amber,
+.obscura-app .btn-pay-violet {
+  background: hsl(var(--foreground)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.obscura-app .btn-pay-emerald:hover:not(:disabled),
+.obscura-app .btn-pay-cyan:hover:not(:disabled),
+.obscura-app .btn-pay-amber:hover:not(:disabled),
+.obscura-app .btn-pay-violet:hover:not(:disabled) {
+  background: hsl(145 22% 14% / 0.92) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.obscura-app .btn-pay-ghost {
+  background: transparent !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.obscura-app .btn-pay-ghost:hover:not(:disabled) {
+  background: hsl(var(--muted)) !important;
+  border-color: hsl(var(--border-strong)) !important;
+}
+
+/* ─── pay-input / pay-select ─────────────────────────────────────────────── */
+.obscura-app .pay-input,
+.obscura-app .pay-select,
+.obscura-app textarea.pay-input {
+  width: 100% !important;
+  min-height: 2.5rem !important;
+  padding: 0 0.75rem !important;
+  background: #fff !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 0.625rem !important;
+  font-size: 0.875rem !important;
+  font-family: "JetBrains Mono", ui-monospace, monospace !important;
+  color: hsl(var(--foreground)) !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.obscura-app .pay-input::placeholder {
+  color: hsl(var(--muted-foreground)) !important;
+  opacity: 0.65 !important;
+}
+
+.obscura-app .pay-input:focus,
+.obscura-app .pay-select:focus,
+.obscura-app textarea.pay-input:focus {
+  border-color: hsl(var(--ring)) !important;
+  box-shadow: 0 0 0 2px hsl(var(--accent) / 0.35) !important;
+}
+
+.obscura-app .pay-select option {
+  background: #fff !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* ─── shadcn Input / Button / Label / Textarea ───────────────────────────── */
+.obscura-app main input,
+.obscura-app main textarea,
+.obscura-app main select {
+  border-color: hsl(var(--border)) !important;
+  background: #fff !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.obscura-app main input.flex,
+.obscura-app main textarea.flex {
+  height: 2.5rem !important;
+  border-radius: 0.625rem !important;
+  font-size: 0.875rem !important;
+  box-shadow: 0 1px 2px hsl(145 18% 12% / 0.04) !important;
+}
+
+.obscura-app main label {
+  color: hsl(var(--muted-foreground)) !important;
+  font-family: "JetBrains Mono", ui-monospace, monospace !important;
+  font-size: 0.625rem !important;
+  letter-spacing: 0.2em !important;
+  text-transform: uppercase !important;
+}
+
+.obscura-app main button.inline-flex {
+  border-radius: 9999px !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+.obscura-app main button.bg-primary {
+  background: hsl(var(--foreground)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.obscura-app main button.border-input {
+  border-color: hsl(var(--border)) !important;
+  background: #fff !important;
+}
+
+.obscura-app main button.border-input:hover {
+  background: hsl(var(--muted)) !important;
+}
+
+/* ─── Badges ───────────────────────────────────────────────────────────────── */
+.obscura-app .pay-badge {
+  border-radius: 9999px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.12em !important;
+  font-size: 0.625rem !important;
+  font-weight: 600 !important;
+  padding: 0.2rem 0.55rem !important;
+}
+
+.obscura-app .pay-badge-emerald,
+.obscura-app .pay-badge-cyan,
+.obscura-app .pay-badge-amber,
+.obscura-app .pay-badge-violet {
+  color: hsl(145 30% 22%) !important;
+  background: hsl(var(--accent) / 0.25) !important;
+  border: 1px solid hsl(var(--accent) / 0.4) !important;
+}
+
+/* ─── Tx progress panel (light) ──────────────────────────────────────────── */
+.obscura-app .harmony-tx-panel {
+  background: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+  box-shadow: 0 1px 3px hsl(145 18% 12% / 0.06) !important;
+}
+
+.obscura-app .harmony-tx-panel .bg-\[\#0a0f1a\] {
+  background: hsl(var(--card)) !important;
+}
+
+.obscura-app .harmony-tx-panel [class*="border-cyan-500"],
+.obscura-app .harmony-tx-panel [class*="border-emerald-500"] {
+  border-color: hsl(var(--border)) !important;
+}
+
+.obscura-app .harmony-tx-panel [class*="shadow-\\[0_0"] {
+  box-shadow: none !important;
+}
+
+.obscura-app .harmony-tx-panel [class*="bg-white/"] {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.obscura-app .harmony-tx-panel [class*="text-cyan-"],
+.obscura-app .harmony-tx-panel [class*="text-emerald-3"] {
+  color: hsl(var(--foreground)) !important;
+}
+
+.obscura-app .harmony-tx-panel [class*="from-cyan-500"] {
+  background: hsl(var(--accent)) !important;
+}
+
+/* ─── FHE stepper ────────────────────────────────────────────────────────── */
+.obscura-app .harmony-fhe-stepper [class*="bg-violet-500"],
+.obscura-app .harmony-fhe-stepper [class*="bg-white/"] {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.obscura-app .harmony-fhe-stepper [class*="text-violet-"] {
+  color: hsl(var(--foreground)) !important;
+}
+
+/* ─── Utility remaps (global in workspace) ───────────────────────────────── */
+.obscura-app [class*="bg-\\[#0a0f"],
+.obscura-app [class*="bg-\\[#0a0d"],
+.obscura-app [class*="bg-\\[#0c0f"],
+.obscura-app [class*="bg-\\[#06"],
+.obscura-app [class*="bg-\\[#05"],
+.obscura-app [class*="bg-\\[#3e73c4"] {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Fixed overlays / sheets inside workspace */
+.obscura-app [class*="fixed"][class*="bg-\\[#"] {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.obscura-app [class*="bg-black/"] {
+  background-color: hsl(var(--card)) !important;
+}
+
+.obscura-app [class*="border-white/"],
+.obscura-app [class*="border-white\\/"] {
+  border-color: hsl(var(--border)) !important;
+}
+
+.obscura-app [class*="bg-white/\\[0.0"],
+.obscura-app [class*="bg-white\\/\\[0.0"] {
+  background-color: hsl(var(--card)) !important;
+}
+
+.obscura-app [class*="text-white/"] {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.obscura-app [class*="text-white\\/8"],
+.obscura-app [class*="text-white\\/9"],
+.obscura-app [class*="text-white "] {
+  color: hsl(var(--foreground)) !important;
+}
+
+.obscura-app [class*="bg-emerald-950"],
+.obscura-app [class*="bg-emerald-900"] {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.obscura-app [class*="bg-emerald-500/"],
+.obscura-app [class*="bg-emerald-500\\/"],
+.obscura-app [class*="bg-cyan-500/"] {
+  background-color: hsl(var(--accent) / 0.12) !important;
+}
+
+.obscura-app [class*="border-emerald-500"],
+.obscura-app [class*="border-emerald-400"],
+.obscura-app [class*="border-cyan-500"] {
+  border-color: hsl(var(--accent) / 0.4) !important;
+}
+
+.obscura-app [class*="from-emerald-500"],
+.obscura-app [class*="from-emerald-700"],
+.obscura-app [class*="from-cyan-500"],
+.obscura-app [class*="to-cyan-500"] {
+  background: hsl(var(--muted)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.obscura-app [class*="via-transparent"] {
+  background: hsl(var(--accent) / 0.08) !important;
+}
+
+.obscura-app [class*="text-emerald-1"],
+.obscura-app [class*="text-emerald-2"],
+.obscura-app [class*="text-emerald-3"],
+.obscura-app [class*="text-emerald-4"] {
+  color: hsl(145 35% 28%) !important;
+}
+
+.obscura-app [class*="text-cyan-"] {
+  color: hsl(190 50% 28%) !important;
+}
+
+.obscura-app [class*="text-red-3"],
+.obscura-app [class*="text-red-4"] {
+  color: hsl(var(--destructive)) !important;
+}
+
+.obscura-app [class*="bg-red-500/"],
+.obscura-app [class*="border-red-500"] {
+  background-color: hsl(var(--destructive) / 0.06) !important;
+  border-color: hsl(var(--destructive) / 0.25) !important;
+}
+
+.obscura-app [class*="text-amber-"] {
+  color: hsl(32 90% 28%) !important;
+}
+
+.obscura-app [class*="bg-amber-500/"],
+.obscura-app [class*="border-amber-500"] {
+  background-color: hsl(38 92% 50% / 0.08) !important;
+  border-color: hsl(38 92% 50% / 0.28) !important;
+}
+
+.obscura-app [class*="shadow-\\[0_0"] {
+  box-shadow: none !important;
+}
+
+.obscura-app [class*="bg-gradient-to-"]:not(.section-diagram-host *) {
+  background-image: none !important;
+}
+
+/* Section diagrams — keep SVG node fills (avoid global rect overrides) */
+.obscura-app .section-diagram-host svg rect[fill^="hsl"] {
+  fill: inherit !important;
+}
+
+/* Mode tiles & tabs */
+.obscura-app main button.rounded-xl,
+.obscura-app .harmony-form-inner button.rounded-xl {
+  border-radius: 0.75rem !important;
+}
+
+.obscura-app main [class*="rounded-full"][class*="bg-white/"],
+.obscura-app main [class*="rounded-full"][class*="border-white/"] {
+  background: hsl(var(--muted)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.obscura-app main [class*="rounded-full"].bg-emerald-500,
+.obscura-app main [class*="rounded-full"][class*="bg-accent"] {
+  background: hsl(var(--accent)) !important;
+}
+
+/* Step dots */
+.obscura-app [class*="bg-white/15"],
+.obscura-app [class*="bg-white/10"] {
+  background-color: hsl(var(--border)) !important;
+}
+
+.obscura-app [class*="bg-emerald-400"]:not(.harmony-tx-panel *) {
+  background-color: hsl(var(--accent)) !important;
+}
+
+/* Details / summary */
+.obscura-app details.pay-card,
+.obscura-app details.group {
+  border-radius: 1rem !important;
+  border: 1px solid hsl(var(--border)) !important;
+  background: hsl(var(--card)) !important;
+}
+
+.obscura-app details summary {
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Code blocks */
+.obscura-app code {
+  background: hsl(var(--muted)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-radius: 0.375rem !important;
+  padding: 0.125rem 0.375rem !important;
+}
+
+/* Tables */
+.obscura-app table {
+  border-color: hsl(var(--border)) !important;
+}
+
+.obscura-app th,
+.obscura-app td {
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Sonner toasts stay as-is */
+
+/* Typography in forms */
+.obscura-app main h3.font-display,
+.obscura-app .harmony-form-inner h3.font-display {
+  font-family: "Instrument Serif", "Cormorant Garamond", serif !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.obscura-app main [class*="tracking-[0.18em]"],
+.obscura-app main [class*="tracking-[0.22em]"],
+.obscura-app main [class*="tracking-widest"] {
+  font-family: "JetBrains Mono", ui-monospace, monospace !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* Backdrop-blur legacy panels → flat cards */
+.obscura-app main [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: hsl(var(--card)) !important;
+}
+
+/* Gradient primary CTAs inside workspace */
+.obscura-app main button[class*="from-emerald-500"][class*="to-cyan"],
+.obscura-app .harmony-form-inner button[class*="from-emerald-500"] {
+  background: hsl(var(--foreground)) !important;
+  background-image: none !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-radius: 9999px !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+/* Tx progress dynamic step rows (template classes) */
+.obscura-app .harmony-tx-panel [class*="bg-cyan-500/"],
+.obscura-app .harmony-tx-panel [class*="bg-emerald-500/"],
+.obscura-app .harmony-tx-panel [class*="border-cyan-500"],
+.obscura-app .harmony-tx-panel [class*="border-emerald-500"] {
+  background-color: hsl(var(--muted)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.obscura-app .harmony-tx-panel [class*="border-cyan-500/30"],
+.obscura-app .harmony-tx-panel [class*="border-t-cyan"] {
+  border-color: hsl(var(--accent) / 0.45) !important;
+}
+
+.obscura-app .harmony-tx-panel .bg-muted {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* Credit / pay inline inputs without pay-input class */
+.obscura-app main input[class*="bg-white"],
+.obscura-app main select[class*="bg-white"],
+.obscura-app main textarea[class*="bg-white"] {
+  background: #fff !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-radius: 0.625rem !important;
+}
+
+.obscura-app main input:focus[class*="border-violet"],
+.obscura-app main input:focus[class*="border-cyan"],
+.obscura-app main input:focus[class*="border-emerald"] {
+  border-color: hsl(var(--ring)) !important;
+  box-shadow: 0 0 0 2px hsl(var(--accent) / 0.35) !important;
+}
+
+/* ─── Vote panels — readable labels on light workspace (harmony reference) ─ */
+.obscura-app .vote-harmony-panel [class*="text-muted-foreground/"] {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.obscura-app .vote-harmony-panel [class*="text-foreground/"] {
+  color: hsl(var(--foreground)) !important;
+}
+
+.obscura-app .vote-harmony-panel .text-violet-300,
+.obscura-app .vote-harmony-panel .text-violet-400 {
+  color: hsl(258 42% 36%) !important;
+}
+
+.obscura-app .vote-harmony-panel .text-amber-300,
+.obscura-app .vote-harmony-panel .text-amber-400 {
+  color: hsl(32 85% 32%) !important;
+}
+
+.obscura-app .vote-harmony-panel .text-red-300,
+.obscura-app .vote-harmony-panel .text-red-400 {
+  color: hsl(var(--destructive)) !important;
+}
+
+.obscura-app .vote-harmony-panel .text-blue-300,
+.obscura-app .vote-harmony-panel .text-blue-400 {
+  color: hsl(210 55% 36%) !important;
+}
+
+.obscura-app .vote-harmony-panel .text-zinc-300 {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.obscura-app .vote-harmony-panel [class*="bg-violet-500/"],
+.obscura-app .vote-harmony-panel [class*="bg-amber-500/"][class*="border-violet"],
+.obscura-app .vote-harmony-panel [class*="bg-violet-500/\\[0.04\\]"] {
+  background-color: hsl(var(--muted) / 0.65) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.obscura-app .vote-harmony-panel [class*="bg-amber-500/\\[0.0"],
+.obscura-app .vote-harmony-panel [class*="bg-amber-500/5"] {
+  background-color: hsl(38 92% 50% / 0.08) !important;
+  border-color: hsl(38 92% 50% / 0.22) !important;
+}
+
+.obscura-app .vote-harmony-panel [class*="bg-emerald-500/5"],
+.obscura-app .vote-harmony-panel [class*="bg-emerald-500/\\[0.0"] {
+  background-color: hsl(var(--accent) / 0.12) !important;
+  border-color: hsl(var(--accent) / 0.35) !important;
+}

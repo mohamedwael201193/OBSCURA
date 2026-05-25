@@ -25,7 +25,7 @@ interface Props {
 
 const STYLE: Record<HealthSeverity, { bg: string; border: string; text: string; icon: React.ElementType; label: string; pulse: boolean }> = {
   idle:     { bg: "",                                  border: "",                            text: "",                     icon: ShieldCheck,  label: "",                            pulse: false },
-  safe:     { bg: "bg-emerald-500/5",                  border: "border-emerald-500/15",       text: "text-emerald-200",     icon: ShieldCheck,  label: "Position healthy",            pulse: false },
+  safe:     { bg: "bg-emerald-500/5",                  border: "border-emerald-500/15",       text: "text-foreground",     icon: ShieldCheck,  label: "Position healthy",            pulse: false },
   caution:  { bg: "bg-amber-500/10",                   border: "border-amber-500/30",         text: "text-amber-200",       icon: Activity,     label: "Caution — HF trending down",  pulse: false },
   warning:  { bg: "bg-orange-500/12",                  border: "border-orange-500/40",        text: "text-orange-100",      icon: AlertTriangle,label: "Warning — top up collateral", pulse: false },
   critical: { bg: "bg-red-500/15",                     border: "border-red-500/50",           text: "text-red-100",         icon: ShieldAlert,  label: "LIQUIDATION RISK",            pulse: true  },

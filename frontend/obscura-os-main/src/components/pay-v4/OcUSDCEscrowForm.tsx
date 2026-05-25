@@ -135,14 +135,14 @@ export default function OcUSDCEscrowForm() {
 
   if (isDone) {
     return (
-      <div className="pay-card p-6 space-y-5">
+      <div className="space-y-5">
         {/* Header */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 text-foreground" />
           </div>
           <div>
-            <h3 className="font-display text-sm font-semibold text-emerald-300">Escrow #{lastEscrowId} Created &amp; Funded</h3>
+            <h3 className="font-display text-lg text-[hsl(var(--success))]">Escrow #{lastEscrowId} Created &amp; Funded</h3>
             <p className="text-[10px] text-muted-foreground/40 tracking-widest uppercase">ocUSDC · Encrypted</p>
           </div>
         </div>
@@ -150,8 +150,8 @@ export default function OcUSDCEscrowForm() {
         {/* PRIMARY: Share with recipient — most important action */}
         <div className="rounded-xl bg-cyan-500/[0.08] border-2 border-cyan-500/35 p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <Link2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span className="text-[11px] text-cyan-300 font-semibold uppercase tracking-wider">Send to Recipient</span>
+            <Link2 className="w-3.5 h-3.5 text-foreground shrink-0" />
+            <span className="text-[11px] text-foreground font-semibold uppercase tracking-wider">Send to Recipient</span>
           </div>
           <p className="text-[12px] text-muted-foreground/65 leading-relaxed">
             Share this link with your recipient. They open it, connect their wallet, and click{" "}
@@ -173,10 +173,10 @@ export default function OcUSDCEscrowForm() {
             <span className="text-[11px] text-muted-foreground/40">or share the Escrow ID manually:</span>
             <button
               onClick={handleCopyId}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-white/[0.1] hover:bg-white/[0.05] transition-colors text-[11px] font-mono text-emerald-300"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-white/[0.1] hover:bg-white/[0.05] transition-colors text-[11px] font-mono text-[hsl(var(--success))]"
             >
               #{lastEscrowId}
-              {copied ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 opacity-60" />}
+              {copied ? <CheckCircle2 className="w-3 h-3 text-foreground" /> : <Copy className="w-3 h-3 opacity-60" />}
             </button>
           </div>
         </div>
@@ -184,12 +184,12 @@ export default function OcUSDCEscrowForm() {
         {/* TX link */}
         {txHash && (
           <div className="flex items-center gap-2 px-3 py-2.5 bg-white/[0.025] border border-white/[0.07] rounded-lg">
-            <ExternalLink className="w-3 h-3 text-cyan-400 shrink-0" />
+            <ExternalLink className="w-3 h-3 text-foreground shrink-0" />
             <a
               href={`https://sepolia.arbiscan.io/tx/${txHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-[11px] text-cyan-300 hover:text-cyan-200 transition-colors truncate"
+              className="font-mono text-[11px] text-foreground hover:text-cyan-200 transition-colors truncate"
             >
               {txHash.slice(0, 10)}…{txHash.slice(-8)}
             </a>
@@ -205,14 +205,14 @@ export default function OcUSDCEscrowForm() {
   }
 
   return (
-    <div className="pay-card p-6 space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
-          <Lock className="w-4 h-4 text-emerald-400" />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+          <Lock className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Encrypted Escrow</h3>
+          <h3 className="font-display text-lg text-foreground leading-tight">Create Encrypted Escrow</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">ocUSDC · FHE Locked</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ocUSDC</span>
@@ -228,7 +228,7 @@ export default function OcUSDCEscrowForm() {
         <span className="text-[10px] text-[#3e73c4] font-semibold uppercase tracking-wider">USDC</span>
       </div>
 
-      <p className="text-[12px] text-muted-foreground/55 leading-relaxed">
+      <p className="text-sm text-muted-foreground leading-relaxed">
         Lock ocUSDC in an encrypted escrow. The owner address and locked amount are both encrypted on-chain.
         You must have enough ocUSDC balance (shield USDC first in the Send tab).
       </p>
@@ -271,7 +271,7 @@ export default function OcUSDCEscrowForm() {
                   onClick={() => setExpiryDays(opt.days)}
                   className={`px-2 py-1.5 rounded-lg text-[11px] border transition-colors ${
                     expiryDays === opt.days
-                      ? "bg-emerald-500/12 border-emerald-500/40 text-emerald-300"
+                      ? "bg-emerald-500/12 border-emerald-500/40 text-[hsl(var(--success))]"
                       : "bg-white/[0.02] border-white/[0.08] text-muted-foreground/60 hover:text-foreground/80"
                   }`}
                 >

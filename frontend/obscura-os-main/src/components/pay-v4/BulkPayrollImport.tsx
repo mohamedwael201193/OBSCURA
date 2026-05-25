@@ -135,10 +135,10 @@ export default function BulkPayrollImport() {
     <Card className="p-6">
       <h3 className="font-display text-lg text-foreground mb-1">Bulk payroll import</h3>
       <p className="text-[12px] text-muted-foreground/70 mb-4 leading-relaxed">
-        Upload CSV with columns: <code className="text-emerald-300 font-mono">name,address,amount_per_cycle,period_seconds,duration_cycles[,jitter_seconds]</code>.
+        Upload CSV with columns: <code className="text-[hsl(var(--success))] font-mono">name,address,amount_per_cycle,period_seconds,duration_cycles[,jitter_seconds]</code>.
         Each valid row produces one privacy-hardened V2 stream.
       </p>
-      <label className="flex items-center gap-2 cursor-pointer text-[12px] text-emerald-300 hover:text-emerald-200 mb-4">
+      <label className="flex items-center gap-2 cursor-pointer text-[12px] text-[hsl(var(--success))] hover:text-foreground mb-4">
         <Upload className="w-3.5 h-3.5" />
         <span>Choose CSV file</span>
         <input
@@ -171,12 +171,12 @@ export default function BulkPayrollImport() {
                 {rows.map((r, i) => {
                   const tone =
                     r.status === "ok"
-                      ? "text-emerald-300"
+                      ? "text-[hsl(var(--success))]"
                       : r.status === "error"
                         ? "text-red-300"
                         : "text-foreground/85";
                   return (
-                    <tr key={i} className={`border-t border-white/[0.04] ${tone}`}>
+                    <tr key={i} className={`border-t border-border ${tone}`}>
                       <td className="px-2 py-1.5">{i + 1}</td>
                       <td className="px-2 py-1.5">{r.name}</td>
                       <td className="px-2 py-1.5">

@@ -103,7 +103,7 @@ export default function StakePoolForm() {
           <h3 className="font-display text-lg text-foreground leading-tight">Stake to Insurance Pool</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Earn Yield · ocUSDC</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">LP YIELD</span>
+        <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-full bg-muted border border-border px-2 py-0.5 text-[10.5px] font-medium text-foreground/75">LP Yield</span>
       </div>
 
       <p className="text-sm text-muted-foreground leading-relaxed">
@@ -128,7 +128,7 @@ export default function StakePoolForm() {
             whileTap={{ scale: 0.98 }}
             onClick={handleStake}
             disabled={busy || !amount}
-            className="btn-pay btn-pay-emerald px-5"
+            className="btn-pay btn-pay-primary px-5"
           >
             {busy ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Staking…</> : "Stake"}
           </motion.button>

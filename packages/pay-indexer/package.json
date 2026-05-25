@@ -1,0 +1,21 @@
+{
+  "name": "@obscura/pay-indexer",
+  "version": "1.0.0",
+  "description": "Event indexer for Obscura Pay — watches on-chain events and persists to Supabase Postgres",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "viem": "^2.21.0",
+    "@supabase/supabase-js": "^2.43.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.4.5",
+    "tsx": "^4.11.0"
+  }
+}

@@ -171,7 +171,7 @@ export default function OcUSDCEscrowActions() {
             Receive · ocUSDC
           </p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ocUSDC</span>
+        <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-full bg-muted border border-border px-2 py-0.5 text-[10.5px] font-medium text-foreground/75">ocUSDC</span>
       </div>
 
       <p className="text-sm text-muted-foreground leading-relaxed">
@@ -204,7 +204,7 @@ export default function OcUSDCEscrowActions() {
             className="btn-pay btn-pay-ghost px-4 disabled:opacity-30 shrink-0 gap-1.5"
           >
             {lookupStatus === "loading" ? (
-              <span className="w-3.5 h-3.5 rounded-full border-2 border-emerald-400/40 border-t-emerald-400 animate-spin inline-block" />
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-muted-foreground/30 border-t-foreground animate-spin inline-block" />
             ) : (
               <Search className="w-3.5 h-3.5" />
             )}
@@ -224,10 +224,10 @@ export default function OcUSDCEscrowActions() {
               <div
                 className={`flex items-start gap-2 text-[12px] px-3 py-2.5 rounded-lg border ${
                   lookupStatus === "found"
-                    ? "bg-emerald-500/[0.06] border-emerald-500/25 text-[hsl(var(--success))]/80"
+                    ? "bg-muted/40 border-border text-foreground/80"
                     : lookupStatus === "not-found"
                     ? "bg-amber-500/[0.06] border-amber-500/25 text-amber-300/80"
-                    : "bg-white/[0.025] border-white/[0.07] text-muted-foreground/55"
+                    : "bg-muted/40 border-border text-muted-foreground/55"
                 }`}
               >
                 {lookupStatus === "found" && (
@@ -275,16 +275,16 @@ export default function OcUSDCEscrowActions() {
       </div>
 
       {/* ── Redeem / Claim — primary action, always visible ── */}
-      <div className="rounded-xl bg-white/[0.02] border border-white/[0.07] p-4 space-y-3">
+        <div className="rounded-xl bg-card border border-border p-4 space-y-3">
         <div className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
           Claim / Redeem
         </div>
 
         {/* Contextual guidance based on localStorage state */}
         {isRecipientMatch === true && (
-          <div className="flex items-center gap-2 p-2.5 bg-emerald-500/8 border border-emerald-500/20 rounded-lg">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-            <p className="text-[11px] text-[hsl(var(--success))]/80">
+          <div className="flex items-center gap-2 p-2.5 bg-muted/50 border border-border rounded-lg">
+            <span className="w-1.5 h-1.5 rounded-full bg-foreground/60 shrink-0" />
+            <p className="text-[11px] text-foreground/80">
               Your wallet matches the recipient for escrow #{escrowId} — ready to claim.
             </p>
           </div>
@@ -322,13 +322,13 @@ export default function OcUSDCEscrowActions() {
           onClick={handleRedeem}
           disabled={isProcessing || isTxPending || !escrowId}
           whileTap={{ scale: 0.98 }}
-          className="btn-pay btn-pay-emerald w-full py-2.5 disabled:opacity-50"
+          className="btn-pay btn-pay-primary disabled:opacity-50"
         >
           <Unlock className="w-3.5 h-3.5" />
           {isProcessing || isTxPending
             ? "Processing…"
             : escrowId
-            ? `Claim Escrow #${escrowId}`
+            ? `Claim escrow #${escrowId}`
             : "Enter an escrow ID above"}
         </motion.button>
 
@@ -420,24 +420,26 @@ export default function OcUSDCEscrowActions() {
 
       {/* ── Claim success panel ── */}
       {redeemDone && txHash && (
-        <div className="rounded-xl bg-emerald-500/[0.08] border border-emerald-500/25 p-4 space-y-3">
+        <div className="rounded-xl bg-card border border-border p-4 space-y-3">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-foreground shrink-0" />
-            <span className="text-sm font-semibold text-[hsl(var(--success))]">Claimed!</span>
+            <span className="text-sm font-semibold text-foreground">Claimed!</span>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Your ocUSDC was privately transferred. Arbiscan will show{" "}
             <strong className="text-foreground/75">0.0001 pUSDC</strong> — that is a privacy
             placeholder. Your real encrypted balance lives on-chain. Go to{" "}
             <strong className="text-foreground/75">Dashboard</strong> and click{" "}
-            <strong className="text-[hsl(var(--success))]">REVEAL</strong> to decrypt it.
+            <strong className="text-foreground/75">REVEAL</strong> to decrypt it.
           </p>
-          <a
-            href="/dashboard"
-            className="btn-pay btn-pay-emerald w-full py-2.5 text-xs flex items-center justify-center gap-1.5"
-          >
-            Go to Dashboard &amp; Reveal Balance <ArrowRight className="w-3.5 h-3.5" />
-          </a>
+          <div className="flex justify-end">
+            <a
+              href="/dashboard"
+              className="btn-pay btn-pay-primary text-xs inline-flex items-center gap-1.5"
+            >
+              Go to Dashboard &amp; reveal <ArrowRight className="w-3.5 h-3.5" />
+            </a>
+          </div>
         </div>
       )}
 
@@ -450,13 +452,13 @@ export default function OcUSDCEscrowActions() {
 
       {/* ── TX link ── */}
       {txHash && (
-        <div className="flex items-center gap-2 px-3 py-2.5 bg-white/[0.025] border border-white/[0.07] rounded-lg">
+        <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/40 border border-border rounded-lg">
           <ExternalLink className="w-3 h-3 text-foreground shrink-0" />
           <a
             href={`https://sepolia.arbiscan.io/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-[11px] text-foreground hover:text-cyan-200 transition-colors truncate"
+            className="font-mono text-[11px] text-foreground hover:text-foreground/70 transition-colors truncate"
           >
             {txHash.slice(0, 12)}…{txHash.slice(-8)}
           </a>

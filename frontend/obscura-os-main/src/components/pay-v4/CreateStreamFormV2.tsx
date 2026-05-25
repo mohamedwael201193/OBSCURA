@@ -9,7 +9,6 @@
  *   - Otherwise falls back to V2 (deprecated, CoFHE forwarding bug)
  */
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Repeat, CheckCircle2, XCircle, Loader2, Shield } from "lucide-react";
 import { isAddress } from "viem";
 import { toast } from "sonner";
@@ -20,9 +19,7 @@ import { useInsuranceSubscription } from "@/hooks/useInsuranceSubscription";
 import { useReceipts } from "@/hooks/useReceipts";
 import { useRecipientStealthCheck } from "@/hooks/useRecipientStealthCheck";
 import ContactPicker from "./ContactPicker";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { HarmonyField, HarmonyFieldGrid, HarmonyPillGroup } from "@/components/harmony/harmony-ui";
 import { arbitrumSepolia } from "viem/chains";
 import { parseUnits } from "viem";
 import { OBSCURA_PAY_STREAM_V3_ADDRESS } from "@/config/payV3";
@@ -134,147 +131,110 @@ export default function CreateStreamFormV2({ onCreated }: { onCreated?: () => vo
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-5"
-    >
-      {/* ── Header ── */}
-      <div className="flex items-center gap-3">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
-          <Repeat className="w-4 h-4 text-foreground" />
-        </div>
-        <div className="min-w-0">
-          <h3 className="font-display text-lg text-foreground leading-tight">Create Payroll Stream</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted Hint · {useV3 ? "V3 · Native ocUSDC" : "V2 · Jitter"}</p>
-        </div>
-        <span className={`ml-auto shrink-0 pay-badge ${useV3 ? "pay-badge-blue" : "pay-badge-emerald"}`}>{useV3 ? "V3" : "V2"}</span>
-      </div>
-
-      <p className="text-sm text-muted-foreground leading-relaxed">
+    <div className="space-y-4">
+      {/* One-line context — drawer header already carries the title */}
+      <p className="text-[12px] text-muted-foreground leading-relaxed">
         {useV3
-          ? "Each cycle sends ocUSDC to escrow via the V3 stream — proofs are processed by the stream contract (no CoFHE forwarding). Stealth recipients redeem from escrow after the release window."
-          : "Each cycle sends ocUSDC to a fresh stealth address. The recipient hint is encrypted on-chain and per-cycle salts + optional jitter prevent timing correlation."
-        }
+          ? "Each cycle delivers private USDC to escrow. The recipient claims it from a fresh stealth address."
+          : "Each cycle sends private USDC to a new stealth address. The recipient hint is hidden on-chain."}
       </p>
 
-      <div className="space-y-4">
-        {/* Recipient */}
-        <div className="space-y-2">
-          <Label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Recipient</Label>
-          <ContactPicker value={hint} onChange={setHint} placeholder="0x… recipient address or contact" />
-          {recipientStatus === "registered" && (
-            <div className="flex items-center gap-1.5 text-[11px] text-[hsl(var(--success))] mt-1">
-              <CheckCircle2 className="w-3 h-3" /> Stealth meta-address found
-            </div>
-          )}
-          {recipientStatus === "not-registered" && (
-            <div className="flex items-center gap-1.5 text-[11px] text-red-400 mt-1">
-              <XCircle className="w-3 h-3" /> Recipient hasn't registered a meta-address yet
-            </div>
-          )}
-        </div>
+      {/* Recipient (full row) */}
+      <HarmonyField label="Recipient">
+        <ContactPicker value={hint} onChange={setHint} placeholder="0x… address or contact" />
+        {recipientStatus === "registered" && (
+          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-foreground/70">
+            <CheckCircle2 className="w-3 h-3" /> Stealth meta-address found
+          </div>
+        )}
+        {recipientStatus === "not-registered" && (
+          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-destructive">
+            <XCircle className="w-3 h-3" /> Recipient hasn't registered a meta-address yet
+          </div>
+        )}
+      </HarmonyField>
 
-        {/* Period pills */}
-        <div className="space-y-2">
-          <Label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Period</Label>
-          <div className="flex flex-wrap gap-1.5">
-            {PERIODS.map((p) => (
-              <button
-                key={p.seconds}
-                type="button"
-                onClick={() => setPeriod(p.seconds)}
-                className={`px-3 py-1.5 text-[11px] font-mono rounded-lg border transition-all ${
-                  period === p.seconds
-                    ? "bg-emerald-500/15 border-emerald-500/40 text-[hsl(var(--success))] shadow-[0_0_12px_rgba(52,211,153,0.18)]"
-                    : "bg-white/[0.025] border-white/[0.08] text-muted-foreground/60 hover:border-white/[0.15] hover:text-foreground/80"
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Period (full row, compact pills) */}
+      <HarmonyField label="Pay every">
+        <HarmonyPillGroup
+          options={PERIODS.map((p) => ({ value: p.seconds, label: p.label }))}
+          value={period}
+          onChange={setPeriod}
+        />
+      </HarmonyField>
 
-        {/* Duration + Jitter */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Duration (days)</Label>
-            <Input
-              type="number"
-              value={durationDays}
-              onChange={(e) => setDurationDays(e.target.value)}
-              className="mt-0 font-mono border-border bg-background focus:border-emerald-500/40 text-[12px]"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">Jitter (seconds)</Label>
-            <Input
-              type="number"
-              min="0"
-              value={jitterSeconds}
-              onChange={(e) => setJitterSeconds(e.target.value)}
-              className="mt-0 font-mono border-border bg-background focus:border-emerald-500/40 text-[12px]"
-              placeholder="e.g. 300 — set 0 to disable"
-            />
-          </div>
-        </div>
+      {/* Duration + Jitter (2-col) */}
+      <HarmonyFieldGrid>
+        <HarmonyField label="Duration (days)">
+          <input
+            type="number"
+            value={durationDays}
+            onChange={(e) => setDurationDays(e.target.value)}
+            className="pay-input pay-input-sm"
+          />
+        </HarmonyField>
+        <HarmonyField label="Jitter (seconds)" helper="0 disables jitter">
+          <input
+            type="number"
+            min="0"
+            value={jitterSeconds}
+            onChange={(e) => setJitterSeconds(e.target.value)}
+            className="pay-input pay-input-sm"
+            placeholder="e.g. 300"
+          />
+        </HarmonyField>
+      </HarmonyFieldGrid>
 
-        {/* Auto-insure toggle */}
-        <label className="flex items-start gap-3 p-4 rounded-xl border border-white/[0.07] bg-white/[0.02] cursor-pointer hover:border-emerald-500/25 hover:bg-muted/40 transition-all">
-          <div className="relative mt-0.5 shrink-0">
-            <input
-              type="checkbox"
-              checked={autoInsure}
-              onChange={(e) => setAutoInsure(e.target.checked)}
-              className="sr-only"
-            />
-            <div className={`w-8 h-4.5 rounded-full transition-all ${autoInsure ? "bg-emerald-500" : "bg-white/[0.1]"}`}
-                 style={{ height: "18px" }}>
-              <div className={`w-3.5 h-3.5 rounded-full bg-white shadow transition-transform mt-0.5 ${autoInsure ? "translate-x-4" : "translate-x-0.5"}`}
-                   style={{ marginLeft: "2px" }} />
-            </div>
-          </div>
+      {/* Auto-insure — compact 1-line row */}
+      <div className="rounded-xl border border-border bg-card">
+        <label className="flex items-center gap-3 p-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={autoInsure}
+            onChange={(e) => setAutoInsure(e.target.checked)}
+            className="h-4 w-4 rounded border-border accent-foreground"
+          />
+          <Shield className="w-3.5 h-3.5 text-foreground/55 shrink-0" />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 text-[12px] text-foreground">
-              <Shield className="w-3.5 h-3.5 text-[hsl(var(--success))] shrink-0" />
-              Auto-insure each cycle
+            <div className="text-[12px] text-foreground">Auto-insure each cycle</div>
+            <div className="text-[11px] text-muted-foreground/65 leading-snug">
+              Subscribes coverage for every cycle automatically.
             </div>
-            <div className="text-[11px] text-muted-foreground/55 mt-0.5 leading-relaxed">
-              Subscribes the recipient to insurance coverage for every cycle of this stream.
-            </div>
-            {autoInsure && (
-              <div className="mt-3 space-y-1.5">
-                <Label className="text-[10px] tracking-[0.12em] uppercase text-muted-foreground/50">
-                  Max premium per cycle (ocUSDC)
-                </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={maxPremium}
-                  onChange={(e) => setMaxPremium(e.target.value)}
-                  className="font-mono border-border bg-background focus:border-emerald-500/40 text-[12px]"
-                />
-              </div>
-            )}
           </div>
         </label>
+        {autoInsure && (
+          <div className="px-3 pb-3 pt-1">
+            <HarmonyField label="Max premium per cycle (USDC)">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={maxPremium}
+                onChange={(e) => setMaxPremium(e.target.value)}
+                className="pay-input pay-input-sm"
+              />
+            </HarmonyField>
+          </div>
+        )}
+      </div>
 
-        <motion.button
-          whileTap={{ scale: 0.99 }}
+      {/* Submit footer */}
+      <div className="flex items-center justify-end pt-3 mt-2 border-t border-border/60">
+        <button
+          type="button"
           onClick={() => void submit()}
           disabled={submitting}
-          className="btn-pay btn-pay-emerald w-full py-2.5"
+          className="btn-pay btn-pay-primary"
         >
-          {submitting
-            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Creating…</>
-            : autoInsure
-              ? <><Shield className="w-3.5 h-3.5" /> Create Insured Stream</>
-              : <><Repeat className="w-3.5 h-3.5" /> Create Stream</>
-          }
-        </motion.button>
+          {submitting ? (
+            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Creating…</>
+          ) : autoInsure ? (
+            <><Shield className="w-3.5 h-3.5" /> Create insured stream</>
+          ) : (
+            <><Repeat className="w-3.5 h-3.5" /> Create stream</>
+          )}
+        </button>
       </div>
-    </motion.div>
+    </div>
   );
 }

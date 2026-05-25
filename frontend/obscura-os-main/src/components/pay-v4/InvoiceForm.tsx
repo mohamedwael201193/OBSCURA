@@ -83,7 +83,7 @@ export default function InvoiceForm() {
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-muted hairline flex items-center justify-center shrink-0">
           <FileText className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0 flex-1">
@@ -96,7 +96,7 @@ export default function InvoiceForm() {
 
       {/* Amount */}
       <div className="space-y-1.5">
-        <label className="text-[11px] tracking-[0.12em] uppercase text-muted-foreground/60">Amount (ocUSDC)</label>
+        <label className="text-[11px] tracking-[0.12em] uppercase text-muted-foreground/60">Amount (USDC)</label>
         <div className="relative">
           <input
             type="text"
@@ -107,7 +107,7 @@ export default function InvoiceForm() {
             className="pay-input w-full pr-16 font-mono"
             disabled={busy}
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] tracking-[0.18em] text-[hsl(var(--success))]/60 font-mono">ocUSDC</span>
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] tracking-[0.18em] text-muted-foreground/50 font-mono">ocUSDC</span>
         </div>
       </div>
 
@@ -140,7 +140,7 @@ export default function InvoiceForm() {
               disabled={busy}
               className={`py-2 rounded-lg text-[11px] font-mono border transition-colors ${
                 expiry === opt
-                  ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-200"
+                  ? "bg-foreground text-background border-foreground font-medium"
                   : "hairline bg-card text-muted-foreground hover:bg-muted/50"
               }`}
             >
@@ -150,28 +150,30 @@ export default function InvoiceForm() {
         </div>
       </div>
 
-      <motion.button
-        onClick={handleCreate}
-        disabled={busy || !amountValid || !isConnected}
-        whileTap={{ scale: 0.99 }}
-        className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-400 text-black font-display font-semibold text-[13px] inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:from-muted-foreground/20 disabled:to-muted-foreground/20"
-      >
-        {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Encrypting + publishing…</>
-          : !isConnected ? "Connect wallet"
-          : <><Lock className="w-3.5 h-3.5" /> Create encrypted invoice</>}
-      </motion.button>
+      <div className="flex justify-end pt-3 border-t border-border/60">
+        <motion.button
+          onClick={handleCreate}
+          disabled={busy || !amountValid || !isConnected}
+          whileTap={{ scale: 0.99 }}
+          className="btn-pay btn-pay-primary disabled:opacity-50"
+        >
+          {busy ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Publishing…</>
+            : !isConnected ? "Connect wallet"
+            : <><Lock className="w-3.5 h-3.5" /> Create invoice</>}
+        </motion.button>
+      </div>
 
       {created && (
-        <div className="rounded-xl bg-emerald-500/[0.07] border border-emerald-500/25 p-4 space-y-2">
+        <div className="rounded-xl bg-card border border-border p-4 space-y-2">
           <div className="font-display text-[13px] font-semibold text-foreground">
             Invoice #{created.id} published
           </div>
           <p className="text-[11px] text-muted-foreground/65">
             Share this link with the payer. They click, connect, and pay — ocUSDC is sent privately to your stealth address.
           </p>
-          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-cyan-500/[0.06] border border-cyan-500/20">
-            <span className="text-[11px] text-foreground leading-relaxed">
-              ⚠️ After payment, go to <strong className="text-cyan-200">Receive → Stealth Inbox</strong> and click <strong className="text-cyan-200">Claim all</strong> to sweep the funds into your wallet.
+          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-muted/40 border border-border">
+            <span className="text-[11px] text-muted-foreground/80 leading-relaxed">
+              After payment, go to <strong>Receive → Stealth Inbox</strong> and click <strong>Claim all</strong> to sweep the funds into your wallet.
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -180,7 +182,7 @@ export default function InvoiceForm() {
             </code>
             <button
               onClick={copy}
-              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-mono text-[11px] inline-flex items-center gap-1"
+              className="btn-pay btn-pay-primary btn-pay-sm shrink-0"
             >
               {copied ? <><Check className="w-3 h-3" /> Copied</> : <><Copy className="w-3 h-3" /> Copy</>}
             </button>
@@ -189,7 +191,7 @@ export default function InvoiceForm() {
             href={`https://sepolia.arbiscan.io/tx/${created.hash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[10.5px] font-mono text-foreground hover:text-cyan-200"
+            className="inline-flex items-center gap-1 text-[10.5px] font-mono text-foreground hover:text-foreground/70"
           >
             View tx <ExternalLink className="w-3 h-3" />
           </a>

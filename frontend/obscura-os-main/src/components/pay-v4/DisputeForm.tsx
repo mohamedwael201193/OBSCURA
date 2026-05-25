@@ -34,7 +34,7 @@ export default function DisputeForm() {
           <h3 className="font-display text-lg text-foreground leading-tight">File a Dispute</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Missed Cycle · Auto-Payout</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">CLAIM PAYOUT</span>
+        <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-full bg-muted border border-border px-2 py-0.5 text-[10.5px] font-medium text-foreground/75">Claim payout</span>
       </div>
 
       <p className="text-sm text-muted-foreground leading-relaxed">
@@ -48,7 +48,7 @@ export default function DisputeForm() {
           <div className="flex flex-wrap gap-1.5">
             {policies.map((p, i) => (
               <button key={i} onClick={() => setCoverageId(p.coverageId)}
-                className="text-[11px] text-[hsl(var(--success))] bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors font-mono">
+                className="text-[11px] text-foreground bg-muted px-2.5 py-1 rounded-lg border border-border hover:bg-muted/70 transition-colors font-mono">
                 ID {p.coverageId} · Stream {p.streamId} · {p.coverageAmount} ocUSDC
               </button>
             ))}
@@ -79,10 +79,12 @@ export default function DisputeForm() {
         </div>
       )}
 
-      <motion.button onClick={submit} disabled={isPending} whileTap={{ scale: 0.99 }}
-        className="btn-pay btn-pay-emerald w-full py-2.5">
-        {isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Submitting…</> : <><AlertTriangle className="w-3.5 h-3.5" /> Submit Dispute</>}
-      </motion.button>
+      <div className="flex justify-end pt-3 border-t border-border/60">
+        <motion.button onClick={submit} disabled={isPending} whileTap={{ scale: 0.99 }}
+          className="btn-pay btn-pay-primary disabled:opacity-50">
+          {isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Submitting…</> : <><AlertTriangle className="w-3.5 h-3.5" /> Submit dispute</>}
+        </motion.button>
+      </div>
     </div>
   );
 }

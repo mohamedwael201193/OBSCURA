@@ -26,6 +26,9 @@ import {
 import { useAccount } from "wagmi";
 import { getTrackedUnits } from "@/lib/trackedBalance";
 import CreateStreamFormV2 from "@/components/pay-v4/CreateStreamFormV2";
+// W5P1.9.1: create-form moved to drawer (sole entry). Keeping import as no-op so
+// downstream tree-shaking still includes the chunk on demand from PayPage drawer.
+void CreateStreamFormV2;
 import StreamList from "@/components/pay-v4/StreamList";
 import BulkPayrollImport from "@/components/pay-v4/BulkPayrollImport";
 
@@ -86,16 +89,15 @@ export default function StreamsDashboard({ onNavigate, refreshKey, onRefresh }: 
         {/* CTA */}
         <button
           onClick={() => onNavigate("send")}
-          title="Go to Send → Shield ocUSDC to get tokens for streams"
-          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.04] text-[11px] text-[hsl(var(--success))]/70 hover:text-[hsl(var(--success))] hover:border-emerald-500/50 hover:bg-emerald-500/[0.08] transition-all"
+          title="Go to Send → Make USDC private to get tokens for streams"
+          className="btn-pay btn-pay-ghost btn-pay-sm shrink-0"
         >
           <ArrowDownToLine className="w-3 h-3" />
-          {cusdcNum > 0 ? "Shield more" : "Get ocUSDC"} →
+          {cusdcNum > 0 ? "Make more private" : "Get private USDC"}
         </button>
       </div>
 
-      {/* ── 2. Create Stream (V2 — has its own pay-card) ──────────────── */}
-      <CreateStreamFormV2 onCreated={onRefresh} />
+      {/* ── 2. Create Stream — moved to drawer (W5P1.9.1). Drawer is sole entry. */}
 
       {/* ── 3. Bulk Payroll Import (collapsible) ──────────────────────── */}
       <div>
@@ -155,7 +157,7 @@ export default function StreamsDashboard({ onNavigate, refreshKey, onRefresh }: 
                 onClick={() => setStreamTab(key)}
                 className={`inline-flex items-center gap-1.5 px-4 py-2 text-[12px] font-medium rounded-lg border transition-all ${
                   streamTab === key
-                    ? "bg-emerald-500/12 border-emerald-500/30 text-[hsl(var(--success))] shadow-[0_0_10px_rgba(52,211,153,0.08)]"
+                    ? "bg-[hsl(var(--success))]/10 border-[hsl(var(--success))]/30 text-[hsl(var(--success))]"
                     : "bg-transparent hairline text-muted-foreground hover:text-foreground hover:bg-muted/40"
                 }`}
               >

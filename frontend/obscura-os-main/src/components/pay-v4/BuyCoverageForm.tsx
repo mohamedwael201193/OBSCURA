@@ -61,7 +61,7 @@ export default function BuyCoverageForm() {
           <h3 className="font-display text-lg text-foreground leading-tight">Buy Payroll Insurance</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted Coverage · ocUSDC</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">INSURED</span>
+        <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-full bg-muted border border-border px-2 py-0.5 text-[10.5px] font-medium text-foreground/75">Insured</span>
       </div>
 
       <p className="text-sm text-muted-foreground leading-relaxed">
@@ -77,7 +77,7 @@ export default function BuyCoverageForm() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[12px] text-muted-foreground/70">Coverage ID:</span>
-            <code className="font-mono text-[11px] text-[hsl(var(--success))] bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
+            <code className="font-mono text-[11px] text-foreground bg-muted border border-border px-2.5 py-1 rounded-md">
               {lastCoverageId}
             </code>
             <button
@@ -101,7 +101,7 @@ export default function BuyCoverageForm() {
 
       {/* ── Step progress ── */}
       {step !== "idle" && step !== "done" && (
-        <div className="rounded-lg bg-white/[0.025] border border-white/[0.07] p-4">
+        <div className="rounded-lg bg-card border border-border p-4">
           <div className="flex items-center gap-2.5">
             <Loader2 className="w-3.5 h-3.5 text-primary animate-spin shrink-0" />
             <span className="text-[12px] text-primary">{STEP_LABELS[step]}</span>
@@ -184,15 +184,17 @@ export default function BuyCoverageForm() {
             </div>
           )}
 
-          <motion.button
-            onClick={submit}
-            disabled={isPending}
-            whileTap={{ scale: 0.99 }}
-            className="btn-pay btn-pay-emerald w-full py-2.5"
-          >
-            <Lock className="w-3.5 h-3.5" />
-            Buy Coverage
-          </motion.button>
+          <div className="flex justify-end pt-3 border-t border-border/60">
+            <motion.button
+              onClick={submit}
+              disabled={isPending}
+              whileTap={{ scale: 0.99 }}
+              className="btn-pay btn-pay-primary disabled:opacity-50"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              Buy coverage
+            </motion.button>
+          </div>
         </>
       )}
     </div>

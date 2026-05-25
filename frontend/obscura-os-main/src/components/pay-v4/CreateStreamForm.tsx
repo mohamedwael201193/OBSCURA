@@ -114,13 +114,13 @@ export default function CreateStreamForm({ onCreated }: { onCreated?: () => void
                   <div className="flex items-center gap-2 text-[12px] text-red-400">
                     <XCircle className="w-3 h-3" /> Not registered — this address cannot receive stealth payments yet
                   </div>
-                  <div className="rounded-xl bg-white/[0.025] border border-white/[0.07] p-3 space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      The recipient needs to register their stealth address first. Send them this invite:
+                  <div className="rounded-xl bg-muted/40 border border-border p-3 space-y-2">
+                    <p className="text-[11px] text-muted-foreground">
+                      The recipient needs to register their stealth address first.
                     </p>
                     <button type="button" onClick={copyInviteLink}
-                      className="btn-pay btn-pay-ghost w-full py-2">
-                      <Copy className="w-3 h-3" /> Copy Invite Message
+                      className="btn-pay btn-pay-ghost btn-pay-sm">
+                      <Copy className="w-3 h-3" /> Copy Invite
                     </button>
                   </div>
                 </div>
@@ -136,10 +136,10 @@ export default function CreateStreamForm({ onCreated }: { onCreated?: () => void
           <div className="flex gap-2">
             {PERIODS.map((p) => (
               <button key={p.seconds} onClick={() => setPeriod(p.seconds)}
-                className={`flex-1 py-2 text-[11px] tracking-[0.15em] uppercase rounded-xl border transition-all ${
+                className={`flex-1 py-1.5 text-[11px] rounded-lg border transition-colors ${
                   period === p.seconds
-                    ? "border-emerald-500/40 text-foreground bg-emerald-500/5"
-                    : "border-white/[0.07] text-muted-foreground/50 hover:text-foreground hover:border-white/[0.12]"
+                    ? "bg-foreground text-background border-foreground font-medium"
+                    : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 }`}>
                 {p.label}
               </button>
@@ -158,11 +158,13 @@ export default function CreateStreamForm({ onCreated }: { onCreated?: () => void
 
       {error && <div className="text-[12px] text-red-400">{error}</div>}
 
-      <motion.button onClick={submit} disabled={isPending} whileTap={{ scale: 0.99 }}
-        className="btn-pay btn-pay-emerald w-full py-3">
-        <Calendar className="w-3.5 h-3.5" />
-        {isPending ? "Creating..." : "Create Stream"}
-      </motion.button>
+      <div className="flex justify-end pt-3 border-t border-border/60">
+        <motion.button onClick={submit} disabled={isPending} whileTap={{ scale: 0.99 }}
+          className="btn-pay btn-pay-primary disabled:opacity-50">
+          <Calendar className="w-3.5 h-3.5" />
+          {isPending ? "Creating…" : "Create stream"}
+        </motion.button>
+      </div>
     </div>
   );
 }

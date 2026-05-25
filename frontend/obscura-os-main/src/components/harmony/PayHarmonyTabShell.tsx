@@ -12,9 +12,15 @@ export type PayHarmonyTabKey =
   | "streams"
   | "escrow"
   | "insurance"
+  | "receivables"
   | "advanced"
   | "contacts"
-  | "settings";
+  | "settings"
+  // W5P1.5 — new IA tabs
+  | "pay"
+  | "getpaid"
+  | "automations"
+  | "activity";
 
 const TAB_META: Record<
   PayHarmonyTabKey,
@@ -45,6 +51,11 @@ const TAB_META: Record<
     title: "Insurance",
     description: "Buy stream coverage, manage policies, file disputes, and optionally provide LP liquidity.",
   },
+  receivables: {
+    eyebrow: "Earn · Collect",
+    title: "Receivables",
+    description: "Manage your active subscriptions, track upcoming debits, collect pending payments, and earn yield as an LP.",
+  },
   advanced: {
     eyebrow: "Legacy · V1",
     title: "Legacy access",
@@ -59,6 +70,27 @@ const TAB_META: Record<
     eyebrow: "Preferences · Privacy",
     title: "Settings",
     description: "UX preferences and privacy maintenance. Nothing here is stored on-chain.",
+  },
+  // W5P1.5 — new IA tabs
+  pay: {
+    eyebrow: "Move money · Private",
+    title: "Pay",
+    description: "Send private payments. Amounts are encrypted on your device before they leave your browser.",
+  },
+  getpaid: {
+    eyebrow: "Inbound · Private",
+    title: "Get Paid",
+    description: "Set up your private receive address, claim incoming payments, and create invoices.",
+  },
+  automations: {
+    eyebrow: "Recurring · Agreements",
+    title: "Automations",
+    description: "Streams, escrows, subscriptions, and payroll — all with private amounts.",
+  },
+  activity: {
+    eyebrow: "History · Local",
+    title: "Activity",
+    description: "Your payment history stored privately in this browser. Never sent to any server.",
   },
 };
 

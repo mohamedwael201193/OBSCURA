@@ -46,19 +46,19 @@ export default function OcUSDCTransferForm() {
         </div>
         <div className="min-w-0">
           <h3 className="font-display text-lg text-foreground leading-tight">Confidential P2P Transfer</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">FHE Encrypted · ocUSDC</p>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Private transfer · ocUSDC</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ENCRYPTED</span>
+        <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-full bg-muted border border-border px-2 py-0.5 text-[10.5px] font-medium text-foreground/75">Encrypted</span>
       </div>
 
       {/* USDC balance pill */}
-      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#3e73c4]/10 border border-[#3e73c4]/25">
+      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-muted border border-border">
         <UsdcIcon className="w-4 h-4 shrink-0" />
-        <span className="text-[11px] text-white/60 font-medium tracking-wide">USDC Balance</span>
-        <span className="ml-auto font-mono text-[14px] text-white font-semibold">
-          {usdcBalance !== null ? usdcBalance : "—"}
+        <span className="text-[11px] text-muted-foreground font-medium tracking-wide">USDC Balance</span>
+        <span className="ml-auto font-mono text-[14px] text-foreground font-semibold">
+          {usdcBalance !== null ? usdcBalance : "\u2014"}
         </span>
-        <span className="text-[10px] text-[#3e73c4] font-semibold uppercase tracking-wider">USDC</span>
+        <span className="text-[10px] text-foreground/50 font-semibold uppercase tracking-wider">USDC</span>
       </div>
 
       <p className="text-sm text-muted-foreground leading-relaxed">
@@ -105,27 +105,28 @@ export default function OcUSDCTransferForm() {
         </div>
       )}
 
-      <motion.button
-        onClick={handleTransfer}
-        disabled={isProcessing || isTxPending}
-        whileHover={!isProcessing ? { scale: 1.005 } : {}}
-        whileTap={!isProcessing ? { scale: 0.99 } : {}}
-        className="btn-pay btn-pay-emerald w-full py-2.5"
-      >
-        {isProcessing
-          ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</>
-          : <><Send className="w-3.5 h-3.5" /> Shield &amp; Send ocUSDC</>
-        }
-      </motion.button>
+      <div className="flex justify-end pt-3 border-t border-border/60">
+        <motion.button
+          onClick={handleTransfer}
+          disabled={isProcessing || isTxPending}
+          whileTap={!isProcessing ? { scale: 0.99 } : {}}
+          className="btn-pay btn-pay-primary disabled:opacity-50"
+        >
+          {isProcessing
+            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</>
+            : <><Send className="w-3.5 h-3.5" /> Shield &amp; send</>
+          }
+        </motion.button>
+      </div>
 
       {txHash && (
-        <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-500/8 border border-emerald-500/20 rounded-lg">
+        <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/40 border border-border rounded-lg">
           <ExternalLink className="w-3 h-3 text-foreground shrink-0" />
           <a
             href={`https://sepolia.arbiscan.io/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-[11px] text-[hsl(var(--success))] hover:text-foreground transition-colors truncate"
+            className="font-mono text-[11px] text-foreground hover:text-foreground/70 transition-colors truncate"
           >
             {txHash.slice(0, 10)}…{txHash.slice(-8)}
           </a>

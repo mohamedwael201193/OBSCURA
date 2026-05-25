@@ -90,7 +90,7 @@ export default function AuditorGrantPanel({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="w-full py-2.5 rounded-xl bg-white/[0.025] border border-white/[0.07] hover:border-cyan-500/30 text-[12px] text-muted-foreground/70 hover:text-cyan-200 inline-flex items-center justify-center gap-2 transition-colors"
+        className="btn-pay btn-pay-ghost"
       >
         <ShieldCheck className="w-3.5 h-3.5" />
         Grant auditor view (selective disclosure)
@@ -100,12 +100,12 @@ export default function AuditorGrantPanel({
 
   return (
     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-cyan-500/25 bg-gradient-to-br from-cyan-500/[0.06] to-transparent p-4 space-y-3"
+      className="rounded-xl border border-border bg-card p-4 space-y-3"
     >
       <div className="flex items-start gap-2.5">
         <ShieldCheck className="w-4 h-4 text-foreground mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="font-display text-[13px] font-semibold text-cyan-200">
+          <div className="font-display text-[13px] font-semibold text-foreground">
             Share with auditor
           </div>
           <p className="text-[11px] text-muted-foreground/65 leading-relaxed mt-0.5">
@@ -133,7 +133,7 @@ export default function AuditorGrantPanel({
         <button
           onClick={grant}
           disabled={busy || !isAddress(auditor)}
-          className="px-3 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-mono text-[11.5px] inline-flex items-center gap-1.5 disabled:opacity-50"
+          className="btn-pay btn-pay-primary px-4 font-mono text-[11.5px] inline-flex items-center gap-1.5 disabled:opacity-50"
         >
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
           Grant

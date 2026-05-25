@@ -43,7 +43,7 @@ export default function StealthInboxV2() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/55 font-mono">
-            Stealth inbox
+            Private inbox
           </div>
           <div className="text-[13px] text-foreground/90 flex items-center gap-2">
             {inbox.items.length} payment{inbox.items.length === 1 ? "" : "s"}

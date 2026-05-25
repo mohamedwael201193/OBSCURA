@@ -1,0 +1,88 @@
+###############################################################################
+# Obscura Pay — Render Deployment Config
+# Services: pay-relay (web), pay-indexer (worker), pay-notifications (web)
+#
+# Deploy: Connect repo to Render, it auto-reads this file.
+# Docs:   https://render.com/docs/yaml-spec
+###############################################################################
+
+services:
+  # ── pay-relay ──────────────────────────────────────────────────────────────
+  # ERC-4337 UserOp relay — accepts PackedUserOps from frontend, forwards to bundler
+  - type: web
+    name: obscura-pay-relay
+    runtime: node
+    rootDir: packages/pay-relay
+    buildCommand: npm install && npm run build
+    startCommand: node dist/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3701"
+      # ERC-4337 bundler (Alchemy or Pimlico) — set in Render dashboard
+      - key: BUNDLER_URL
+        sync: false
+      # Deployed paymaster address — set in Render dashboard
+      - key: PAYMASTER_ADDRESS
+        value: "0x9B1F61A65467F11339A8d0834349Be32EB2CF878"
+      # Allow frontend origin — set in Render dashboard
+      - key: ALLOWED_ORIGINS
+        sync: false
+    autoDeploy: true
+
+  # ── pay-indexer ─────────────────────────────────────────────────────────────
+  # On-chain event indexer — backfills + watches live events, writes to Supabase
+  - type: worker
+    name: obscura-pay-indexer
+    runtime: node
+    rootDir: packages/pay-indexer
+    buildCommand: npm install && npm run build
+    startCommand: node dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Supabase connection — set in Render dashboard (use service role key)
+      - key: SUPABASE_URL
+        value: "https://woqfefgrkpleedsuxavd.supabase.co"
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # RPC endpoint for Arbitrum Sepolia — set in Render dashboard
+      - key: RPC_URL
+        value: "https://sepolia-rollup.arbitrum.io/rpc"
+    autoDeploy: true
+
+  # ── pay-notifications ────────────────────────────────────────────────────────
+  # Web Push + email notification dispatcher — listens to Supabase Realtime
+  - type: web
+    name: obscura-pay-notifications
+    runtime: node
+    rootDir: packages/pay-notifications
+    buildCommand: npm install && npm run build
+    startCommand: node dist/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3702"
+      # Supabase — set in Render dashboard
+      - key: SUPABASE_URL
+        value: "https://woqfefgrkpleedsuxavd.supabase.co"
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # VAPID keys — generate once: node packages/pay-notifications/dist/generate-vapid.js
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_CONTACT_EMAIL
+        sync: false
+      # Resend API key for email notifications
+      - key: RESEND_API_KEY
+        sync: false
+      # Allow frontend origin
+      - key: ALLOWED_ORIGINS
+        sync: false
+    autoDeploy: true

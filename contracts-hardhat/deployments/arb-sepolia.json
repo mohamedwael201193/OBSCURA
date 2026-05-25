@@ -110,5 +110,8 @@
   "ObscuraPayrollResolverV3": "0xB077c231448EF2252060E4B4dD404078DBD94180",
   "ObscuraPayStreamV3": "0xE4328F139F03138D63f7fdF90A8Ef240e04653fA",
   "ObscuraInsuranceSubscriptionV2": "0xEA9Fc5800F41d090dFB90f9735F4CF3824d6743D",
-  "wave5PayMigrationDeployedAt": "2026-05-23T23:39:05.559Z"
+  "wave5PayMigrationDeployedAt": "2026-05-23T23:39:05.559Z",
+  "ObscuraSmartAccountFactory": "0xbe8dC1d4Dcc368e0dBb6c7A5BDFfac2Fe72AFd05",
+  "ObscuraPaymaster": "0x9B1F61A65467F11339A8d0834349Be32EB2CF878",
+  "wave5Phase3DeployedAt": "2026-05-25T18:24:43.071Z"
 }

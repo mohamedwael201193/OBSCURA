@@ -21,11 +21,19 @@ import {
   Check,
   X,
   Loader2,
+  Inbox,
+  FileText,
+  Mail,
+  Repeat2,
+  CalendarClock,
+  Users,
+  Database,
+  KeyRound,
 } from "lucide-react";
 
 import SectionDiagram from "@/components/elite/SectionDiagram";
 import { HarmonyAppShell } from "@/components/harmony/HarmonyAppShell";
-import { HarmonyFormCard, HarmonySection } from "@/components/harmony/harmony-ui";
+import { HarmonyDrawer, HarmonyFormCard, HarmonyMetricRow, HarmonySection, HarmonySelect, HarmonySubNav, HarmonyWorkspaceHeader } from "@/components/harmony/harmony-ui";
 import { PayHarmonyHome } from "@/components/harmony/PayHarmonyHome";
 import {
   PayHarmonyDetails,
@@ -56,17 +64,20 @@ import BuyCoverageForm from "@/components/pay-v4/BuyCoverageForm";
 import DisputeForm from "@/components/pay-v4/DisputeForm";
 import StakePoolForm from "@/components/pay-v4/StakePoolForm";
 import MyPolicies from "@/components/pay-v4/MyPolicies";
+import ReceivablesHub from "@/components/pay-v4/ReceivablesHub";
 import ResolverManager from "@/components/pay-v4/ResolverManager";
 import UnifiedSendForm from "@/components/pay-v4/UnifiedSendForm";
 import BulkPayrollImport from "@/components/pay-v4/BulkPayrollImport";
 import StreamsDashboard from "@/components/pay-v4/StreamsDashboard";
 import SubscriptionForm from "@/components/pay-v4/SubscriptionForm";
 import { ReceiptList } from "@/components/pay-v4/PaymentReceipt";
+import { ActivityFeed } from "@/components/harmony/ActivityFeed";
 import AddContactModal from "@/components/pay-v4/AddContactModal";
 import NewPaymentBanner from "@/components/pay-v4/NewPaymentBanner";
 
 import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
+import { useOnboardingState } from "@/hooks/useOnboardingState";
 import UsdcIcon from "@/components/shared/UsdcIcon";
 import { useStealthInbox } from "@/hooks/useStealthInbox";
 import { usePreferences, type GasMode, type SendMode, type UIMode } from "@/contexts/PreferencesContext";
@@ -75,27 +86,22 @@ import { useReceipts } from "@/hooks/useReceipts";
 import { useAddressBook } from "@/hooks/useAddressBook";
 import { Input } from "@/components/ui/input";
 
+// W5P1.5 — IA refactor: 9 tabs collapsed to 6 user-intent tabs
 type Tab =
   | "home"
-  | "send"
-  | "receive"
-  | "streams"
-  | "escrow"
-  | "insurance"
-  | "advanced"
-  | "contacts"
+  | "pay"
+  | "getpaid"
+  | "automations"
+  | "activity"
   | "settings";
 
 const basePayNav: { key: Tab; label: string }[] = [
   { key: "home", label: "Overview" },
-  { key: "send", label: "Send" },
-  { key: "receive", label: "Receive" },
-  { key: "streams", label: "Streams" },
-  { key: "escrow", label: "Escrow" },
-  { key: "insurance", label: "Insurance" },
-  { key: "contacts", label: "Contacts" },
+  { key: "pay", label: "Pay" },
+  { key: "getpaid", label: "Get Paid" },
+  { key: "automations", label: "Automations" },
+  { key: "activity", label: "Activity" },
   { key: "settings", label: "Settings" },
-  { key: "advanced", label: "Legacy" },
 ];
 
 function PayTabNotConnected({ tab, message }: { tab: Parameters<typeof PayHarmonyTabShell>[0]["tab"]; message: string }) {
@@ -106,56 +112,53 @@ function PayTabNotConnected({ tab, message }: { tab: Parameters<typeof PayHarmon
   );
 }
 
-// ── Settings Panel (rendered inside PayPage as a tab) ──────────────────────
-const PrettySelect = ({ value, onChange, children }: { value: string; onChange: (v: string) => void; children: React.ReactNode }) => (
-  <div className="relative inline-block">
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="pay-select pr-8 min-w-[160px]"
-    >
-      {children}
-    </select>
-    <svg className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-300/70" viewBox="0 0 12 12" fill="none">
-      <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  </div>
-);
-
-const SettingsPanel = () => {
+// ── Settings sub-panels (content only — shells rendered by renderActiveSection) ───
+const SettingsPrefsCard = () => {
   const prefs = usePreferences();
-  const rotation = useStealthRotation();
-  const inbox = useStealthInbox();
-  const receipts = useReceipts();
-
   return (
-    <PayHarmonyTabShell tab="settings">
+    <>
       <HarmonyFormCard title="Interface" eyebrow="UX">
         <div className="space-y-4">
         <div className="grid grid-cols-[1fr_auto] gap-y-4 items-center">
           <label className="text-[12px] text-foreground/80">UI mode</label>
-          <PrettySelect value={prefs.uiMode} onChange={(v) => prefs.setPreference("uiMode", v as UIMode)}>
-            <option value="beginner" className="bg-[#0a0d12]">Beginner</option>
-            <option value="advanced" className="bg-[#0a0d12]">Advanced</option>
-          </PrettySelect>
+          <HarmonySelect value={prefs.uiMode} onChange={(v) => prefs.setPreference("uiMode", v as UIMode)}>
+            <option value="beginner">Beginner</option>
+            <option value="advanced">Advanced</option>
+          </HarmonySelect>
 
           <label className="text-[12px] text-foreground/80">Default send mode</label>
-          <PrettySelect value={prefs.defaultSendMode} onChange={(v) => prefs.setPreference("defaultSendMode", v as SendMode)}>
-            <option value="direct" className="bg-[#0a0d12]">Direct</option>
-            <option value="stealth" className="bg-[#0a0d12]">Stealth</option>
-            <option value="cross-chain" className="bg-[#0a0d12]">Cross-chain</option>
-          </PrettySelect>
+          <HarmonySelect value={prefs.defaultSendMode} onChange={(v) => prefs.setPreference("defaultSendMode", v as SendMode)}>
+            <option value="direct">Direct</option>
+            <option value="stealth">Stealth</option>
+            <option value="cross-chain">Cross-chain</option>
+          </HarmonySelect>
 
           <label className="text-[12px] text-foreground/80">Gas mode</label>
-          <PrettySelect value={prefs.gasMode} onChange={(v) => prefs.setPreference("gasMode", v as GasMode)}>
-            <option value="fast" className="bg-[#0a0d12]">Fast</option>
-            <option value="standard" className="bg-[#0a0d12]">Standard</option>
-            <option value="eco" className="bg-[#0a0d12]">Eco</option>
-          </PrettySelect>
+          <HarmonySelect value={prefs.gasMode} onChange={(v) => prefs.setPreference("gasMode", v as GasMode)}>
+            <option value="fast">Fast</option>
+            <option value="standard">Standard</option>
+            <option value="eco">Eco</option>
+          </HarmonySelect>
         </div>
         </div>
       </HarmonyFormCard>
 
+      <HarmonyFormCard title="Onboarding" eyebrow="Wizard">
+        <button type="button" onClick={() => prefs.setPreference("hasCompletedOnboarding", false)} className="btn-pay btn-pay-ghost">
+          <SettingsIcon className="w-3.5 h-3.5" />
+          Replay onboarding wizard
+        </button>
+      </HarmonyFormCard>
+    </>
+  );
+};
+
+const SettingsPrivacyCard = () => {
+  const prefs = usePreferences();
+  const rotation = useStealthRotation();
+  const inbox = useStealthInbox();
+  return (
+    <>
       <HarmonyFormCard title="Stealth privacy" eyebrow="Meta-address">
         <div className="space-y-4">
         <div className="grid grid-cols-[1fr_auto] gap-y-3 items-center">
@@ -197,36 +200,34 @@ const SettingsPanel = () => {
         </button>
         </div>
       </HarmonyFormCard>
-
-      <HarmonyFormCard title="Local data" eyebrow="Receipts">
-        <div className="space-y-3">
-        <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
-          Receipts are stored only in this browser. Export before clearing if you want to keep proofs of payment.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => receipts.exportJSON()} className="btn-pay btn-pay-ghost">
-            Export receipts
-          </button>
-          <button onClick={() => receipts.clear()} className="btn-pay btn-pay-ghost">
-            <Trash2 className="w-3.5 h-3.5 text-red-400" />
-            <span className="text-red-400">Clear receipts ({receipts.receipts.length})</span>
-          </button>
-        </div>
-        </div>
-      </HarmonyFormCard>
-
-      <HarmonyFormCard title="Onboarding" eyebrow="Wizard">
-        <button type="button" onClick={() => prefs.setPreference("hasCompletedOnboarding", false)} className="btn-pay btn-pay-ghost">
-          <SettingsIcon className="w-3.5 h-3.5" />
-          Replay onboarding wizard
-        </button>
-      </HarmonyFormCard>
-    </PayHarmonyTabShell>
+    </>
   );
 };
 
-// ── Contacts Panel (rendered inside PayPage as a tab) ───────────────────────
-const ContactsPanel = () => {
+const SettingsDataCard = () => {
+  const receipts = useReceipts();
+  return (
+    <HarmonyFormCard title="Local data" eyebrow="Receipts">
+      <div className="space-y-3">
+      <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
+        Receipts are stored only in this browser. Export before clearing if you want to keep proofs of payment.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => receipts.exportJSON()} className="btn-pay btn-pay-ghost">
+          Export receipts
+        </button>
+        <button onClick={() => receipts.clear()} className="btn-pay btn-pay-ghost">
+          <Trash2 className="w-3.5 h-3.5 text-red-400" />
+          <span className="text-red-400">Clear receipts ({receipts.receipts.length})</span>
+        </button>
+      </div>
+      </div>
+    </HarmonyFormCard>
+  );
+};
+
+// ── Contacts Section (content only — rendered inside settings tab) ──────────
+const ContactsSection = () => {
   const { contacts, isLoading, isPending, error, refresh, removeContact, relabel } = useAddressBook();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -246,30 +247,29 @@ const ContactsPanel = () => {
   };
 
   return (
-    <PayHarmonyTabShell
-      tab="contacts"
-      actions={
-        <>
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            disabled={isLoading}
-            className="inline-flex h-10 items-center gap-2 rounded-full hairline px-4 text-sm hover:bg-muted"
+    <HarmonyFormCard
+      title="Contacts"
+      eyebrow="Address book"
+    >
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          disabled={isLoading}
+          className="inline-flex h-8 items-center gap-1.5 rounded-full hairline px-3 text-xs hover:bg-muted"
+        >
+          {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCw className="h-3 w-3" />}
+          Refresh
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-foreground px-3 text-xs font-medium text-background"
           >
-            {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}
-            Refresh
-          </button>
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="inline-flex h-10 items-center gap-2 rounded-full bg-foreground px-4 text-sm font-medium text-background"
-          >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-3 w-3" />
             Add contact
           </button>
-        </>
-      }
-    >
+        </div>
       {error && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>
       )}
@@ -347,25 +347,92 @@ const ContactsPanel = () => {
       )}
 
       <AddContactModal open={open} onClose={() => setOpen(false)} />
-    </PayHarmonyTabShell>
+    </HarmonyFormCard>
   );
 };
 
 const PayPage = () => {
   const { isConnected } = useAccount();
   const inbox = useStealthInbox();
-  const [tab, setTab] = useState<Tab>(() => {
-    if (typeof window === "undefined") return "home";
+  const onboarding = useOnboardingState();
+  const [showLegacy, setShowLegacy] = useState(false);
+
+  // Initial URL parse → top tab + sub tab
+  const initial = (() => {
+    if (typeof window === "undefined") return { tab: "home" as Tab, sub: null as string | null };
     try {
       const params = new URLSearchParams(window.location.search);
       const t = params.get("tab");
-      // Auto-route claim & invoice links to escrow tab even when ?tab is omitted.
-      if (params.get("claim")) return "escrow";
-      if (params.get("invoice")) return "escrow";
-      if (t) return t as Tab;
+      const s = params.get("sub");
+      // Deep-link short-circuits
+      if (params.get("claim") || params.get("invoice")) return { tab: "getpaid" as Tab, sub: "inbox" };
+      // Map legacy tab names to new IA tabs
+      if (t === "send") return { tab: "pay" as Tab, sub: s ?? "send" };
+      if (t === "receive") return { tab: "getpaid" as Tab, sub: s ?? "inbox" };
+      if (t === "escrow") return { tab: "automations" as Tab, sub: s ?? "escrows" };
+      if (t === "streams") return { tab: "automations" as Tab, sub: s ?? "streams" };
+      if (t === "receivables") return { tab: "automations" as Tab, sub: s ?? "subscriptions" };
+      if (t === "insurance") return { tab: "automations" as Tab, sub: s ?? "subscriptions" };
+      if (t === "contacts") return { tab: "settings" as Tab, sub: s ?? "contacts" };
+      if (t === "advanced") return { tab: "settings" as Tab, sub: s ?? "legacy" };
+      if (t && basePayNav.some((n) => n.key === t)) return { tab: t as Tab, sub: s };
     } catch { /* ignore */ }
-    return "home";
+    return { tab: "home" as Tab, sub: null };
+  })();
+
+  const [tab, setTabState] = useState<Tab>(initial.tab);
+
+  // Per-tab sub-navigation state (workspace inside the tab)
+  type PaySub = "send" | "convert" | "bridge";
+  type GetPaidSub = "inbox" | "setup" | "request" | "inbound";
+  type AutoSub = "streams" | "escrows" | "subscriptions" | "payroll";
+  type SettingsSub = "prefs" | "privacy" | "contacts" | "data" | "legacy";
+
+  const [paySub, setPaySub] = useState<PaySub>(
+    initial.tab === "pay" && (initial.sub === "send" || initial.sub === "convert" || initial.sub === "bridge")
+      ? (initial.sub as PaySub)
+      : "send",
+  );
+  const [getPaidSub, setGetPaidSub] = useState<GetPaidSub>(() => {
+    if (initial.tab === "getpaid" && (initial.sub === "inbox" || initial.sub === "setup" || initial.sub === "request" || initial.sub === "inbound")) {
+      return initial.sub as GetPaidSub;
+    }
+    // Smart default: stealth-registered users land on inbox, others on setup
+    return onboarding.isStealthRegistered ? "inbox" : "setup";
   });
+  const [autoSub, setAutoSub] = useState<AutoSub>(
+    initial.tab === "automations" && (initial.sub === "streams" || initial.sub === "escrows" || initial.sub === "subscriptions" || initial.sub === "payroll")
+      ? (initial.sub as AutoSub)
+      : "streams",
+  );
+  const [settingsSub, setSettingsSub] = useState<SettingsSub>(
+    initial.tab === "settings" && (initial.sub === "prefs" || initial.sub === "privacy" || initial.sub === "contacts" || initial.sub === "data" || initial.sub === "legacy")
+      ? (initial.sub as SettingsSub)
+      : "prefs",
+  );
+
+  // Sync URL when tab/sub changes (preserves deep links)
+  const writeUrl = (nextTab: Tab, nextSub?: string | null) => {
+    if (typeof window === "undefined") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      params.set("tab", nextTab);
+      if (nextSub) params.set("sub", nextSub); else params.delete("sub");
+      const newUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+      window.history.replaceState({}, "", newUrl);
+    } catch { /* ignore */ }
+  };
+
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    const sub =
+      next === "pay" ? paySub :
+      next === "getpaid" ? getPaidSub :
+      next === "automations" ? autoSub :
+      next === "settings" ? settingsSub : null;
+    writeUrl(next, sub);
+  };
+
   const [streamRefreshKey, setStreamRefreshKey] = useState(0);
   const refreshStreams = () => setStreamRefreshKey((k) => k + 1);
 
@@ -374,91 +441,74 @@ const PayPage = () => {
     label: item.label,
     active: tab === item.key,
     badge:
-      item.key === "receive" && inbox.unreadCount > 0 ? String(inbox.unreadCount) : undefined,
+      item.key === "getpaid" && inbox.unreadCount > 0 ? String(inbox.unreadCount) : undefined,
     onClick: () => setTab(item.key),
   }));
+
+  // Sub-nav change handlers (with URL sync)
+  const onPaySub = (next: PaySub) => { setPaySub(next); writeUrl("pay", next); };
+  const onGetPaidSub = (next: GetPaidSub) => { setGetPaidSub(next); writeUrl("getpaid", next); };
+  const onAutoSub = (next: AutoSub) => { setAutoSub(next); writeUrl("automations", next); };
+  const onSettingsSub = (next: SettingsSub) => { setSettingsSub(next); writeUrl("settings", next); };
+
+  // W5P1.9: automations create-flow drawer state (right-side slide-in)
+  const [autoDrawer, setAutoDrawer] = useState<AutoSub | null>(null);
+  const closeAutoDrawer = () => setAutoDrawer(null);
+  const closeAndRefreshStreams = () => { setAutoDrawer(null); refreshStreams(); };
 
   const renderActiveSection = () => {
     switch (tab) {
       case "home":
-        return <PayHarmonyHome onNavigate={(t) => setTab(t)} />;
+        return <PayHarmonyHome onNavigate={(t) => setTab(t as Tab)} />;
 
-      case "send":
+      case "pay": {
         if (!isConnected) {
-          return <PayTabNotConnected tab="send" message="Connect your wallet to send encrypted ocUSDC payments." />;
+          return <PayTabNotConnected tab="pay" message="Connect your wallet to send private payments." />;
         }
         return (
-          <PayHarmonyTabShell tab="send">
-            <PayHarmonySendBar
-              onShield={() => document.getElementById("send-encrypt-panel")?.scrollIntoView({ behavior: "smooth" })}
+          <PayHarmonyTabShell tab="pay">
+            <HarmonySubNav<PaySub>
+              value={paySub}
+              onChange={onPaySub}
+              items={[
+                { key: "send", label: "Send", icon: Send },
+                { key: "convert", label: "Make private", icon: Shield },
+                { key: "bridge", label: "Bridge", icon: Network, badge: "CCTP" },
+              ]}
             />
-            <PayHarmonyPanelCard title="Quick send" eyebrow="Encrypted transfer">
-              <UnifiedSendForm />
-            </PayHarmonyPanelCard>
-            <PayHarmonyPanelCard title="Bridge USDC into Arbitrum" eyebrow="Cross-chain · CCTP">
-              <CrossChainFundForm />
-            </PayHarmonyPanelCard>
-            <HarmonySection title="Payment flow" hint="What happens on-chain">
-              <div className="rounded-2xl hairline bg-card p-6">
-                <SectionDiagram flow="send" />
-              </div>
-            </HarmonySection>
-            <div id="send-encrypt-panel">
-              <PayHarmonyPanelCard title="Shield · Unshield ocUSDC" eyebrow="Get ocUSDC">
+            {paySub === "send" && (
+              <>
+                <PayHarmonySendBar onShield={() => onPaySub("convert")} />
+                <PayHarmonyPanelCard title="Send a private payment" eyebrow="Encrypted transfer">
+                  <UnifiedSendForm />
+                </PayHarmonyPanelCard>
+              </>
+            )}
+            {paySub === "convert" && (
+              <PayHarmonyPanelCard title="Make USDC private" eyebrow="Shield · Unshield">
                 <OcUSDCPanel />
               </PayHarmonyPanelCard>
-            </div>
+            )}
+            {paySub === "bridge" && (
+              <>
+                <PayHarmonyPanelCard title="Bridge USDC from another chain" eyebrow="Cross-chain · CCTP">
+                  <CrossChainFundForm />
+                </PayHarmonyPanelCard>
+                <HarmonySection title="How it works" hint="Payment flow on-chain">
+                  <div className="rounded-2xl hairline bg-card p-6">
+                    <SectionDiagram flow="send" />
+                  </div>
+                </HarmonySection>
+              </>
+            )}
           </PayHarmonyTabShell>
         );
+      }
 
-      case "receive":
+      case "getpaid": {
         if (!isConnected) {
-          return <PayTabNotConnected tab="receive" message="Connect your wallet to set up private receiving." />;
+          return <PayTabNotConnected tab="getpaid" message="Connect your wallet to set up private receiving and claim payments." />;
         }
-        return (
-          <PayHarmonyTabShell tab="receive">
-            <PayHarmonyPanelCard title="Register stealth meta-address" eyebrow="Step 1">
-              <RegisterMetaAddressForm />
-            </PayHarmonyPanelCard>
-            <HarmonyFormCard title="Stealth inbox" eyebrow="Scan · Claim" noPadding>
-              <StealthInboxV2 />
-            </HarmonyFormCard>
-            <PayHarmonyPanelCard title="Streams paying you" eyebrow="Inbound">
-              <StreamList mode="recipient" />
-            </PayHarmonyPanelCard>
-            <HarmonySection title="Receive flow" hint="End-to-end">
-              <div className="rounded-2xl hairline bg-card p-6">
-                <SectionDiagram flow="receive" />
-              </div>
-            </HarmonySection>
-          </PayHarmonyTabShell>
-        );
-
-      case "streams":
-        if (!isConnected) {
-          return <PayTabNotConnected tab="streams" message="Connect your wallet to create payroll streams." />;
-        }
-        return (
-          <PayHarmonyTabShell tab="streams">
-            <PayHarmonyPanelCard title="Confidential subscription" eyebrow="Subscriptions">
-              <SubscriptionForm onCreated={refreshStreams} />
-            </PayHarmonyPanelCard>
-            <div className="harmony-form-inner rounded-2xl hairline bg-card p-6">
-              <StreamsDashboard
-                onNavigate={(t) => setTab(t)}
-                refreshKey={streamRefreshKey}
-                onRefresh={refreshStreams}
-              />
-            </div>
-          </PayHarmonyTabShell>
-        );
-
-      case "escrow": {
-        if (!isConnected) {
-          return <PayTabNotConnected tab="escrow" message="Connect your wallet to manage encrypted escrows." />;
-        }
-        // Read ?claim and ?contract on every render so the hero card stays
-        // visible after the user redeems and we don't have to remount.
         let claimId: string | null = null;
         let invoiceId: string | null = null;
         let contractParam: string | null = null;
@@ -473,100 +523,254 @@ const PayPage = () => {
           } catch { /* ignore */ }
         }
         return (
-          <PayHarmonyTabShell tab="escrow">
-            {invoiceId && <InvoicePayCard invoiceId={invoiceId} contractParam={contractParam} />}
-            {claimId && <ClaimEscrowCard claimId={claimId} contractParam={contractParam} />}
-
-            <div id="create-escrow-anchor">
-              <PayHarmonyPanelCard title="Create an escrow" eyebrow="Send · Confidential">
-                <OcUSDCEscrowForm />
-              </PayHarmonyPanelCard>
-            </div>
-
-            <PayHarmonyDetails eyebrow="Send · Batch" title="Confidential batch payroll — up to 20 in one tx">
-              <BatchEscrowForm />
-            </PayHarmonyDetails>
-
-            {!claimId && (
-              <PayHarmonyPanelCard title="Claim / Redeem by escrow ID" eyebrow="Receive · Claim link">
-                <OcUSDCEscrowActions />
+          <PayHarmonyTabShell tab="getpaid">
+            <HarmonySubNav<GetPaidSub>
+              value={getPaidSub}
+              onChange={onGetPaidSub}
+              items={[
+                { key: "inbox", label: "Inbox", icon: Inbox, badge: inbox.unreadCount > 0 ? inbox.unreadCount : undefined },
+                { key: "setup", label: "Setup", icon: KeyRound },
+                { key: "request", label: "Request", icon: FileText },
+                { key: "inbound", label: "Inbound streams", icon: Mail },
+              ]}
+            />
+            {getPaidSub === "inbox" && (
+              <>
+                {invoiceId && <InvoicePayCard invoiceId={invoiceId} contractParam={contractParam} />}
+                {claimId && <ClaimEscrowCard claimId={claimId} contractParam={contractParam} />}
+                <HarmonyFormCard title="Private inbox" eyebrow="Incoming · Claim" noPadding>
+                  <StealthInboxV2 />
+                </HarmonyFormCard>
+                {!claimId && (
+                  <PayHarmonyPanelCard title="Claim a protected payment" eyebrow="By escrow ID">
+                    <OcUSDCEscrowActions />
+                  </PayHarmonyPanelCard>
+                )}
+              </>
+            )}
+            {getPaidSub === "setup" && (
+              <>
+                <PayHarmonyPanelCard title="Set up private receiving" eyebrow="Private receive address">
+                  <RegisterMetaAddressForm />
+                </PayHarmonyPanelCard>
+                <HarmonySection title="How receiving works" hint="End-to-end flow">
+                  <div className="rounded-2xl hairline bg-card p-6">
+                    <SectionDiagram flow="receive" />
+                  </div>
+                </HarmonySection>
+              </>
+            )}
+            {getPaidSub === "request" && (
+              <PayHarmonyPanelCard title="Request a payment" eyebrow="Invoice">
+                <InvoiceForm />
               </PayHarmonyPanelCard>
             )}
-
-            <PayHarmonyPanelCard title="Request a private payment" eyebrow="Confidential invoice">
-              <InvoiceForm />
-            </PayHarmonyPanelCard>
-
-            <PayHarmonyPanelCard title="Your escrows" eyebrow="Manage">
-              <MyEscrows />
-            </PayHarmonyPanelCard>
-
-            <PayHarmonyDetails eyebrow="Advanced" title="Resolver-gated escrows (time-locks & approvers)">
-              <ResolverManager />
-            </PayHarmonyDetails>
+            {getPaidSub === "inbound" && (
+              <PayHarmonyPanelCard title="Payments streaming to you" eyebrow="Inbound streams">
+                <StreamList mode="recipient" />
+              </PayHarmonyPanelCard>
+            )}
           </PayHarmonyTabShell>
         );
       }
 
-      case "insurance":
+      case "automations": {
         if (!isConnected) {
-          return <PayTabNotConnected tab="insurance" message="Connect your wallet to buy or manage insurance." />;
+          return <PayTabNotConnected tab="automations" message="Connect your wallet to create streams, escrows, and subscriptions." />;
         }
         return (
-          <PayHarmonyTabShell tab="insurance">
-            <div id="buy-coverage-anchor">
-              <PayHarmonyPanelCard title="Buy coverage" eyebrow="Insurance">
-                <BuyCoverageForm />
-              </PayHarmonyPanelCard>
-            </div>
-            <PayHarmonyPanelCard title="Your policies" eyebrow="Active">
-              <MyPolicies />
-            </PayHarmonyPanelCard>
-            <PayHarmonyPanelCard title="File a dispute" eyebrow="Claims">
-              <DisputeForm />
-            </PayHarmonyPanelCard>
-            <PayHarmonyPanelCard title="Earn yield as an LP" eyebrow="Optional">
-              <StakePoolForm />
-            </PayHarmonyPanelCard>
+          <PayHarmonyTabShell tab="automations">
+            <HarmonySubNav<AutoSub>
+              value={autoSub}
+              onChange={onAutoSub}
+              items={[
+                { key: "streams", label: "Streams", icon: Repeat2 },
+                { key: "escrows", label: "Escrows", icon: ShieldCheck },
+                { key: "subscriptions", label: "Subscriptions", icon: CalendarClock },
+                { key: "payroll", label: "Payroll", icon: Users },
+              ]}
+            />
+
+            {/* Streams workspace — summary + list; "+ New" opens drawer */}
+            {autoSub === "streams" && (
+              <div className="space-y-5">
+                <HarmonyWorkspaceHeader
+                  eyebrow="Automations"
+                  title="Continuous streams"
+                  description="Pay salaries, retainers, and grants per-second. Amounts stay encrypted on-chain."
+                  cta={{ label: "New stream", icon: Plus, onClick: () => setAutoDrawer("streams") }}
+                />
+                <div className="harmony-form-inner rounded-2xl hairline bg-card p-6">
+                  <StreamsDashboard
+                    onNavigate={(t) => setTab(t as Tab)}
+                    refreshKey={streamRefreshKey}
+                    onRefresh={refreshStreams}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Escrows workspace — list-first; "+ New" opens drawer */}
+            {autoSub === "escrows" && (
+              <div className="space-y-5">
+                <HarmonyWorkspaceHeader
+                  eyebrow="Automations"
+                  title="Protected escrows"
+                  description="Lock funds until a condition is met. Refund window keeps funds recoverable."
+                  cta={{ label: "New escrow", icon: Plus, onClick: () => setAutoDrawer("escrows") }}
+                />
+                <div className="rounded-2xl hairline bg-card p-6">
+                  <MyEscrows />
+                </div>
+              </div>
+            )}
+
+            {/* Subscriptions workspace */}
+            {autoSub === "subscriptions" && (
+              <div className="space-y-5">
+                <HarmonyWorkspaceHeader
+                  eyebrow="Automations"
+                  title="Recurring subscriptions"
+                  description="Bill or pay on a regular cadence. Amount and recipients are encrypted."
+                  cta={{ label: "New subscription", icon: Plus, onClick: () => setAutoDrawer("subscriptions") }}
+                />
+                <ReceivablesHub onNavigate={(t) => setTab(t as Tab)} />
+              </div>
+            )}
+
+            {/* Payroll workspace */}
+            {autoSub === "payroll" && (
+              <div className="space-y-5">
+                <HarmonyWorkspaceHeader
+                  eyebrow="Automations · Advanced"
+                  title="Batch payroll"
+                  description="Send to many recipients in a single resolver-gated batch. Amounts encrypted per row."
+                  cta={{ label: "New batch", icon: Plus, onClick: () => setAutoDrawer("payroll") }}
+                />
+                <HarmonyMetricRow
+                  items={[
+                    { label: "Active resolvers", value: "—" },
+                    { label: "Last batch", value: "—" },
+                  ]}
+                />
+                <details className="rounded-2xl hairline bg-card">
+                  <summary className="cursor-pointer list-none px-6 py-4 text-sm font-medium text-foreground">
+                    Manage resolvers
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      (configure payroll authorizers)
+                    </span>
+                  </summary>
+                  <div className="border-t border-border px-6 py-5">
+                    <ResolverManager />
+                  </div>
+                </details>
+              </div>
+            )}
+
+            {/* Drawer: stream creation */}
+            <HarmonyDrawer
+              open={autoDrawer === "streams"}
+              onClose={closeAutoDrawer}
+              eyebrow="New automation"
+              title="Create a continuous stream"
+              width="md"
+            >
+              <CreateStreamFormV2 onCreated={closeAndRefreshStreams} />
+            </HarmonyDrawer>
+
+            {/* Drawer: escrow creation */}
+            <HarmonyDrawer
+              open={autoDrawer === "escrows"}
+              onClose={closeAutoDrawer}
+              eyebrow="New automation"
+              title="Create a protected escrow"
+              width="md"
+            >
+              <OcUSDCEscrowForm />
+            </HarmonyDrawer>
+
+            {/* Drawer: subscription creation */}
+            <HarmonyDrawer
+              open={autoDrawer === "subscriptions"}
+              onClose={closeAutoDrawer}
+              eyebrow="New automation"
+              title="Create a recurring subscription"
+              width="md"
+            >
+              <SubscriptionForm onCreated={closeAndRefreshStreams} />
+            </HarmonyDrawer>
+
+            {/* Drawer: payroll batch */}
+            <HarmonyDrawer
+              open={autoDrawer === "payroll"}
+              onClose={closeAutoDrawer}
+              eyebrow="New automation · Advanced"
+              title="Create a batch payroll"
+              width="lg"
+            >
+              <BatchEscrowForm />
+            </HarmonyDrawer>
           </PayHarmonyTabShell>
         );
+      }
 
-      case "advanced":
-        if (!isConnected) {
-          return <PayTabNotConnected tab="advanced" message="Connect your wallet to access legacy V1 surfaces." />;
-        }
+      case "activity":
         return (
-          <PayHarmonyTabShell tab="advanced">
-            <PayHarmonyNotice title="Legacy V1 surfaces.">
-              Deprecated forms for old escrows and streams. Use Send, Streams, or Escrow for new payments.
-            </PayHarmonyNotice>
-            <PayHarmonyPanelCard title="Legacy direct ocUSDC transfer" eyebrow="V1">
-              <OcUSDCTransferForm />
-            </PayHarmonyPanelCard>
-            <PayHarmonyPanelCard title="Legacy stream creator" eyebrow="V1">
-              <CreateStreamForm onCreated={refreshStreams} />
-            </PayHarmonyPanelCard>
-            <PayHarmonyPanelCard title="Legacy stealth inbox" eyebrow="V1">
-              <StealthInbox />
-            </PayHarmonyPanelCard>
-            <PayHarmonyPanelCard title="All receipts" eyebrow="Local data">
+          <PayHarmonyTabShell tab="activity">
+            <ActivityFeed />
+            <HarmonyFormCard title="Local receipts" eyebrow="Browser only · Not synced">
               <ReceiptList />
-            </PayHarmonyPanelCard>
+            </HarmonyFormCard>
           </PayHarmonyTabShell>
         );
 
       case "settings":
-        return <SettingsPanel />;
-
-      case "contacts":
-        return <ContactsPanel />;
+        return (
+          <PayHarmonyTabShell tab="settings">
+            <HarmonySubNav<SettingsSub>
+              value={settingsSub}
+              onChange={onSettingsSub}
+              items={[
+                { key: "prefs", label: "Preferences", icon: SettingsIcon },
+                { key: "privacy", label: "Privacy", icon: Shield },
+                { key: "contacts", label: "Contacts", icon: BookUser },
+                { key: "data", label: "Data", icon: Database },
+                { key: "legacy", label: "Legacy", icon: Wrench },
+              ]}
+            />
+            {settingsSub === "prefs" && <SettingsPrefsCard />}
+            {settingsSub === "privacy" && <SettingsPrivacyCard />}
+            {settingsSub === "contacts" && <ContactsSection />}
+            {settingsSub === "data" && <SettingsDataCard />}
+            {settingsSub === "legacy" && (
+              <HarmonyFormCard title="Legacy tools" eyebrow="Advanced · V1">
+                <div className="space-y-3">
+                  <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
+                    Legacy V1 forms for old escrows and streams. Not needed for new payments.
+                  </p>
+                  <button type="button" onClick={() => setShowLegacy((v) => !v)} className="btn-pay btn-pay-ghost">
+                    <Wrench className="w-3.5 h-3.5" />
+                    {showLegacy ? "Hide legacy tools" : "Show legacy tools"}
+                  </button>
+                  {showLegacy && isConnected && (
+                    <div className="space-y-6 pt-2">
+                      <OcUSDCTransferForm />
+                      <CreateStreamForm onCreated={refreshStreams} />
+                      <StealthInbox />
+                    </div>
+                  )}
+                </div>
+              </HarmonyFormCard>
+            )}
+          </PayHarmonyTabShell>
+        );
     }
   };
 
   return (
     <HarmonyAppShell appName="Pay" sidebar={harmonySidebar} searchPlaceholder="Search pay…">
-      {isConnected && tab !== "receive" && tab !== "home" && (
-        <NewPaymentBanner onOpenInbox={() => setTab("receive")} />
+      {isConnected && tab !== "getpaid" && tab !== "home" && (
+        <NewPaymentBanner onOpenInbox={() => setTab("getpaid")} />
       )}
 
       <AnimatePresence mode="wait">

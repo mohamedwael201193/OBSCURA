@@ -223,12 +223,12 @@ export default function BatchEscrowForm() {
     return (
       <div className="space-y-5">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-muted border border-border flex items-center justify-center">
             <CheckCircle2 className="w-4 h-4 text-foreground" />
           </div>
           <div>
-            <h3 className="font-display text-lg text-[hsl(var(--success))]">{createdIds.length} Confidential Escrows Created</h3>
-            <p className="text-[10px] text-muted-foreground/40 tracking-widest uppercase">Encrypted Payroll · ocUSDC</p>
+            <h3 className="font-display text-[15px] text-foreground leading-tight">{createdIds.length} private escrows created</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Each recipient and amount stays hidden on-chain.</p>
           </div>
         </div>
 
@@ -278,12 +278,12 @@ export default function BatchEscrowForm() {
               fr?.status === "funding" ? "text-foreground animate-pulse" :
               "text-muted-foreground/45";
             return (
-              <div key={id} className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-500/[0.04] border border-emerald-500/15">
-                <span className="font-mono text-[13px] text-[hsl(var(--success))] font-semibold w-12">#{id}</span>
-                <span className="font-mono text-[11px] text-muted-foreground/55 truncate flex-1">
+              <div key={id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border">
+                <span className="font-mono text-[12px] text-foreground font-medium w-12">#{id}</span>
+                <span className="font-mono text-[11px] text-muted-foreground truncate flex-1">
                   {filteredRows[i]?.recipient.slice(0, 8)}…{filteredRows[i]?.recipient.slice(-6)}
                 </span>
-                <span className="font-mono text-[11px] text-foreground/70">{filteredRows[i]?.amount} ocUSDC</span>
+                <span className="font-mono text-[11px] text-foreground/80">{filteredRows[i]?.amount} USDC</span>
                 {fundLabel && (
                   <span
                     className={`font-mono text-[10px] uppercase tracking-wider w-16 text-right ${fundColor}`}
@@ -293,7 +293,7 @@ export default function BatchEscrowForm() {
                   </span>
                 )}
                 <button onClick={() => copyLink(id, i)}
-                  className="px-2 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-foreground text-[10px] uppercase tracking-wider inline-flex items-center gap-1 transition-colors">
+                  className="px-2 py-1 rounded-md bg-muted hover:bg-muted/70 text-foreground text-[10px] tracking-wide inline-flex items-center gap-1 transition-colors border border-border">
                   {linkCopiedIdx === i ? <CheckCircle2 className="w-3 h-3" /> : <Link2 className="w-3 h-3" />}
                   {linkCopiedIdx === i ? "Copied" : "Link"}
                 </button>
@@ -309,10 +309,12 @@ export default function BatchEscrowForm() {
           </a>
         )}
 
-        <motion.button onClick={() => { setCreatedIds(null); setCreatedHash(null); setFundingResults([]); setFundingIndex(null); reset(); setRows([{ recipient: "", amount: "", note: "" }]); }}
-          whileTap={{ scale: 0.99 }} className="btn-pay btn-pay-ghost w-full py-2.5">
-          Create Another Batch
-        </motion.button>
+        <div className="flex justify-end">
+          <motion.button onClick={() => { setCreatedIds(null); setCreatedHash(null); setFundingResults([]); setFundingIndex(null); reset(); setRows([{ recipient: "", amount: "", note: "" }]); }}
+            whileTap={{ scale: 0.99 }} className="btn-pay btn-pay-ghost">
+            Create another batch
+          </motion.button>
+        </div>
       </div>
     );
   }
@@ -320,38 +322,36 @@ export default function BatchEscrowForm() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-700/10 border border-violet-500/25 flex items-center justify-center">
-          <Users className="w-4 h-4 text-violet-300" />
+        <div className="w-9 h-9 rounded-xl bg-muted border border-border flex items-center justify-center">
+          <Users className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-lg text-foreground">Confidential Batch Payroll</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Up to 20 recipients · single tx</p>
+          <div className="font-display text-[15px] text-foreground leading-tight">Private batch payroll</div>
+          <p className="text-[11px] text-muted-foreground/70 mt-0.5">Up to 20 recipients in a single transaction</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ocUSDC</span>
+        <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-full bg-muted border border-border px-2 py-0.5 text-[10.5px] font-medium text-foreground/75">Private USDC</span>
       </div>
 
-      <p className="text-sm text-muted-foreground leading-relaxed">
-        Create up to 20 confidential escrows in a single transaction. Each (recipient, amount) is encrypted client-side.
-        Observers see only that <em>some number</em> of escrows were created — no amounts, no recipients are leaked.
-        Perfect for HR/payroll where competitors and employees must not see each other's salaries.
+      <p className="text-[12px] text-muted-foreground leading-relaxed">
+        Create up to 20 private escrows in one transaction. Each (recipient, amount) is encrypted client-side. Observers only see that <em>some number</em> of escrows were created — no amounts, no recipients.
       </p>
 
       <div className="grid grid-cols-2 gap-2 text-[11px]">
-        <div className="px-3 py-2 rounded-lg bg-white/[0.025] border border-white/[0.07]">
-          <div className="text-muted-foreground/40 uppercase tracking-wider text-[10px]">Total ocUSDC</div>
-          <div className="font-mono text-base text-[hsl(var(--success))] font-semibold">{totalUsdc.toFixed(2)}</div>
+        <div className="px-3 py-2 rounded-lg bg-card border border-border">
+          <div className="text-muted-foreground text-[10px]">Total USDC</div>
+          <div className="font-mono text-base text-foreground font-medium tabular-nums">{totalUsdc.toFixed(2)}</div>
         </div>
-        <div className="px-3 py-2 rounded-lg bg-white/[0.025] border border-white/[0.07]">
-          <div className="text-muted-foreground/40 uppercase tracking-wider text-[10px]">Valid Rows</div>
-          <div className="font-mono text-base text-foreground font-semibold">
-            {validCount}/{rows.length} <span className="text-muted-foreground/40 text-xs">(max 20)</span>
+        <div className="px-3 py-2 rounded-lg bg-card border border-border">
+          <div className="text-muted-foreground text-[10px]">Valid rows</div>
+          <div className="font-mono text-base text-foreground font-medium">
+            {validCount}/{rows.length} <span className="text-muted-foreground/60 text-xs">(max 20)</span>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#3e73c4]/10 border border-[#3e73c4]/25">
-        <span className="text-[10px] text-white/60 uppercase tracking-wider">Your USDC</span>
-        <span className="ml-auto font-mono text-[13px] text-white font-semibold">{usdcBalance ?? "—"}</span>
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border">
+        <span className="text-[11px] text-muted-foreground">Plain USDC</span>
+        <span className="ml-auto font-mono text-[13px] text-foreground tabular-nums">{usdcBalance ?? "—"}</span>
       </div>
 
       <div className="space-y-2">
@@ -363,8 +363,8 @@ export default function BatchEscrowForm() {
             <button key={opt.days} type="button" onClick={() => setExpiryDays(opt.days)}
               className={`px-2 py-1.5 rounded-lg text-[11px] border transition-colors ${
                 expiryDays === opt.days
-                  ? "bg-emerald-500/12 border-emerald-500/40 text-[hsl(var(--success))]"
-                  : "bg-white/[0.02] border-white/[0.08] text-muted-foreground/60 hover:text-foreground/80"
+                  ? "bg-foreground text-background border-foreground font-medium"
+                  : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}>
               {opt.label}
             </button>
@@ -412,13 +412,13 @@ export default function BatchEscrowForm() {
         <motion.button onClick={handleSubmit}
           disabled={isProcessing || isTxPending || submitting || validCount === 0}
           whileTap={{ scale: 0.98 }}
-          className="btn-pay btn-pay-emerald flex-[2] py-2 disabled:opacity-50">
-          {isProcessing || submitting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Encrypting, creating & funding…</> : <>Create + Fund {validCount} Confidential Escrows</>}
+          className="btn-pay btn-pay-primary flex-[2] disabled:opacity-50">
+          {isProcessing || submitting ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Creating…</> : <>Create + fund {validCount} private escrows</>}
         </motion.button>
       </div>
 
       {status !== "idle" && (
-        <div className="rounded-lg bg-white/[0.025] border border-white/[0.07] p-3">
+        <div className="rounded-lg bg-card border border-border p-3">
           <AsyncStepper status={status} stepIndex={stepIndex} />
         </div>
       )}

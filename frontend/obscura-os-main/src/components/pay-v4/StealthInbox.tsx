@@ -222,7 +222,7 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
                     : (() => { try { return BigInt(Math.round(parseFloat(amountInput) * 1_000_000)); } catch { return 0n; } })();
                   void sweep(m, amt > 0n ? amt : undefined);
                 }}
-                className="w-full py-3 text-sm tracking-[0.2em] uppercase bg-emerald-500/15 hover:bg-emerald-500/25 text-[hsl(var(--success))] border border-emerald-500/30 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50 font-semibold"
+                className="btn-pay btn-pay-primary disabled:opacity-50"
               >
                 <ArrowRight className="w-4 h-4" />
                 Auto-Sweep to My Wallet
@@ -263,10 +263,10 @@ function SweepCard({ m, index }: { m: ScannedPayment; index: number }) {
                   <div className="space-y-1.5">
                     {derivedKey && (
                       <div className="flex items-center gap-1.5">
-                        <code className="font-mono flex-1 text-[10px] text-[hsl(var(--success))]/75 bg-emerald-500/[0.05] px-2 py-1.5 rounded-lg border border-emerald-500/18 truncate">
+                        <code className="font-mono flex-1 text-[10px] text-foreground/75 bg-muted px-2 py-1.5 rounded-lg border border-border truncate">
                           {derivedKey.slice(0, 22)}�{derivedKey.slice(-10)}
                         </code>
-                        <button onClick={copyKey} className="px-2 py-1.5 text-[10px] bg-emerald-500/10 text-[hsl(var(--success))] border border-emerald-500/20 rounded-lg shrink-0">
+                        <button onClick={copyKey} className="px-2 py-1.5 text-[10px] bg-muted text-foreground/70 border border-border rounded-lg shrink-0">
                           {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                         </button>
                         <button onClick={() => setAdvKey(false)} className="p-1.5 rounded-lg hairline bg-muted text-muted-foreground">

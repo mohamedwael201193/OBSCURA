@@ -1,25 +1,24 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Lock, Eye, Shield, KeyRound } from "lucide-react";
+import {
+  ObscuraFeatureIcon,
+  ENCRYPTION_STEP_ICONS,
+} from "@/components/landing/ObscuraFeatureIcon";
 
 const STEPS = [
   {
-    icon: KeyRound,
     title: "Inputs encrypted client-side",
     body: "Your values are sealed with FHE in the browser before they ever touch a public network. No node sees the plaintext.",
   },
   {
-    icon: Lock,
     title: "Computation on ciphertext",
     body: "Smart contracts add, subtract, and compare encrypted numbers directly. The CoFHE coprocessor never decrypts your data.",
   },
   {
-    icon: Eye,
     title: "Selective reveal",
     body: "Decryption needs an explicit EIP-712 permit signed by you. Auditors, partners, regulators — invited one viewer at a time.",
   },
   {
-    icon: Shield,
     title: "Public proofs, private values",
     body: "Settlement is on Arbitrum. The math is verifiable, the numbers are yours. Privacy by mathematics, not by trust.",
   },
@@ -46,7 +45,6 @@ export function EncryptionStory() {
         </div>
 
         <div className="relative grid md:grid-cols-2 gap-x-16 gap-y-20">
-          {/* Vertical progress line (md+) */}
           <div className="hidden md:block absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-px bg-border-subtle">
             <motion.div
               style={{ height: lineHeight }}
@@ -56,7 +54,7 @@ export function EncryptionStory() {
 
           {STEPS.map((s, i) => (
             <motion.div
-              key={i}
+              key={s.title}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
@@ -65,9 +63,10 @@ export function EncryptionStory() {
             >
               <div className="rounded-3xl border border-border-subtle bg-surface-elevated p-8 shadow-[var(--shadow-card)]">
                 <div className="flex items-center gap-3 mb-5">
-                  <div className={`chip-icon size-11 ${["chip-emerald","chip-violet","chip-sky","chip-amber"][i]}`}>
-                    <s.icon className="size-5" />
-                  </div>
+                  <ObscuraFeatureIcon
+                    icon={ENCRYPTION_STEP_ICONS[i].icon}
+                    tone={ENCRYPTION_STEP_ICONS[i].tone}
+                  />
                   <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
                     Step 0{i + 1}
                   </div>

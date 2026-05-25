@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import ObscuraSlogan from "@/components/brand/ObscuraSlogan";
 import SideRulers from "./SideRulers";
 import MoneyGlyph from "./MoneyGlyph";
 import FloatingDataCards from "./FloatingDataCards";
@@ -16,16 +17,7 @@ export default function SpadeHeroSection() {
         <div className={`relative z-10 ${SAGE_INSET}`}>
           <div className="overflow-hidden rounded-[1.5rem] bg-sage-1 shadow-[0_1px_0_rgba(24,40,14,0.05)] ring-1 ring-forest/[0.05] md:rounded-[1.75rem] lg:rounded-[2rem]">
             <div className="flex min-h-[min(90vh,920px)] flex-col px-3 pt-8 pb-8 sm:px-4 sm:pt-9 sm:pb-9 md:px-5 md:pt-10 md:pb-10 lg:pt-11 lg:pb-11">
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
-                className="mx-auto max-w-[18ch] shrink-0 text-center font-display text-4xl font-normal leading-[1.05] tracking-tight text-forest md:max-w-none md:text-6xl lg:text-[5.25rem]"
-              >
-                Private money,
-                <br />
-                computed in the open.
-              </motion.h1>
+              <ObscuraSlogan centered size="hero" className="shrink-0" />
 
               <div className="relative mt-5 flex flex-1 flex-col justify-center md:mt-6">
                 <div className="relative mx-auto w-full max-w-[960px] flex-1">

@@ -526,11 +526,15 @@
   background: linear-gradient(155deg, var(--chip-from), var(--chip-to));
 }
 
-.landing-vault .chip-emerald { --chip-from: #5ecf8a; --chip-to: #2d6b45; --chip-glow: rgb(45 107 69 / 0.55); }
-.landing-vault .chip-amber { --chip-from: #f5d06a; --chip-to: #a67c2e; --chip-glow: rgb(166 124 46 / 0.55); }
-.landing-vault .chip-violet { --chip-from: #b794f6; --chip-to: #5b3d8a; --chip-glow: rgb(91 61 138 / 0.55); }
-.landing-vault .chip-rose { --chip-from: #f0a0a8; --chip-to: #9e3d4a; --chip-glow: rgb(158 61 74 / 0.55); }
-.landing-vault .chip-sky { --chip-from: #7ec8f0; --chip-to: #3d6a9e; --chip-glow: rgb(61 106 158 / 0.55); }
+.landing-vault .chip-forest,
+.landing-vault .chip-emerald { --chip-from: #b2eb76; --chip-to: #2d6b45; --chip-glow: rgb(45 107 69 / 0.45); }
+.landing-vault .chip-lime,
+.landing-vault .chip-amber { --chip-from: #d4f5a8; --chip-to: #3d8f5c; --chip-glow: rgb(61 140 90 / 0.45); }
+.landing-vault .chip-moss,
+.landing-vault .chip-violet { --chip-from: #7dce96; --chip-to: #245a38; --chip-glow: rgb(36 90 56 / 0.45); }
+.landing-vault .chip-deep,
+.landing-vault .chip-sky { --chip-from: #5ecf8a; --chip-to: #18280e; --chip-glow: rgb(24 40 14 / 0.5); }
+.landing-vault .chip-rose { --chip-from: #9ed4a8; --chip-to: #1a4a2e; --chip-glow: rgb(45 107 69 / 0.4); }
 
 .landing-vault .bg-ink { background: var(--vault-ink); }
 .landing-vault .bg-ink-elev { background: var(--vault-ink-elev); }
@@ -578,8 +582,162 @@
   font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Shared slogan — bold editorial display */
+.landing-spade .obscura-slogan {
+  font-feature-settings: "liga" 1, "kern" 1;
+  max-width: 14ch;
+}
+
+.landing-spade .obscura-slogan--hero {
+  max-width: none;
+}
+
+.landing-spade .obscura-slogan-line1 {
+  font-family: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.048em;
+  line-height: 0.9;
+  color: #0a0f08;
+  -webkit-text-stroke: 0.4px #0a0f08;
+  paint-order: stroke fill;
+}
+
+.landing-spade .obscura-slogan--hero .obscura-slogan-line1 {
+  font-size: clamp(2.65rem, 9vw, 5.25rem);
+}
+
+.landing-spade .obscura-slogan--page .obscura-slogan-line1 {
+  font-size: clamp(2.45rem, 8vw, 4.5rem);
+}
+
+.landing-spade .obscura-slogan-line2-wrap {
+  position: relative;
+  display: inline-block;
+  width: fit-content;
+  margin-inline: auto;
+}
+
+.landing-spade .obscura-slogan-line2,
+.landing-spade .obscura-slogan-line2-text {
+  font-family: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.038em;
+  line-height: 0.88;
+  filter: drop-shadow(0 10px 24px rgba(24, 40, 14, 0.07));
+}
+
+.landing-spade .obscura-slogan-line2-text {
+  background: linear-gradient(102deg, #0a0f08 0%, #18280e 36%, #2d6b45 70%, #6bb84a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.landing-spade .obscura-slogan-word-computed {
+  background: linear-gradient(102deg, #0a0f08 0%, #18280e 55%, #2d6b45 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.landing-spade .obscura-slogan-word-computed--sealing {
+  opacity: 0.72;
+}
+
+.landing-spade .obscura-slogan-word-open {
+  background: linear-gradient(102deg, #2d6b45 0%, #5ecf8a 55%, #b2eb76 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.landing-spade .obscura-slogan--hero .obscura-slogan-line2-wrap,
+.landing-spade .obscura-slogan--hero .obscura-slogan-line2-text {
+  font-size: clamp(2.85rem, 9.5vw, 5.5rem);
+}
+
+.landing-spade .obscura-slogan--page .obscura-slogan-line2-wrap,
+.landing-spade .obscura-slogan--page .obscura-slogan-line2-text {
+  font-size: clamp(2.6rem, 8.5vw, 4.75rem);
+}
+
+.landing-spade .obscura-slogan-word-computed,
+.landing-spade .obscura-slogan-word-open {
+  font-style: italic;
+}
+
+/* Figure showcase — fixed center column so the organic card never collapses */
+.landing-spade .figure-showcase-grid {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+  .landing-spade .figure-showcase-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px) minmax(0, 1fr);
+  }
+}
+
+/* Shield wireframe — zoom left-weighted asset so the glyph sits in the frame center */
+.landing-spade .organic-figure-shield-stage {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.landing-spade .organic-figure-shield-mask {
+  flex-shrink: 0;
+  height: 78%;
+  width: min(62%, 200px);
+  -webkit-mask-image: url("/images/docs-shield-figure.png");
+  mask-image: url("/images/docs-shield-figure.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 42% center;
+  mask-position: 42% center;
+  -webkit-mask-mode: luminance;
+  mask-mode: luminance;
+  background: linear-gradient(
+    165deg,
+    #1a4a2e 0%,
+    #2d6b45 42%,
+    #3d8f5c 72%,
+    #5ecf8a 100%
+  );
+}
+
+@media (min-width: 640px) {
+  .landing-spade .organic-figure-shield-mask {
+    height: 82%;
+    width: min(58%, 210px);
+  }
+}
+
+/* ─── Docs page (light launch theme) ───────────────────────────────────────── */
+.landing-spade.docs-page .glass-panel,
+.landing-spade.docs-page .docs-panel {
+  background: #ffffff;
+  border: 1px solid rgba(24, 40, 14, 0.1);
+  backdrop-filter: none;
+  box-shadow: 0 1px 3px rgba(24, 40, 14, 0.06);
+}
+
+.landing-spade.docs-page .docs-code code {
+  color: rgba(178, 235, 118, 0.88);
+}
+
 .landing-spade .money-glyph-figure {
+  --scan-line: 0%;
   background: transparent;
+  animation: money-glyph-scan-sweep 6.5s linear infinite;
+}
+
+.landing-spade .money-glyph-figure--active {
+  animation: money-glyph-scan-sweep-active 2.6s ease-in-out forwards;
 }
 
 /* Luminance mask: black plate drops out, lines render as solid forest green */
@@ -610,11 +768,150 @@
   background: #18300e;
   filter: blur(18px);
   transform: scale(1.02);
+  animation: money-glyph-glow-pulse 4.5s ease-in-out infinite;
 }
 
-/* Idle: static glyph — encrypt cycle only while .money-glyph-figure--active (hover/focus) */
+/* Scan-line wipe: digital grid above line, wireframe green below */
+@property --scan-line {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 0%;
+}
+
 .landing-spade .money-glyph-mask--live {
-  animation: none;
+  z-index: 1;
+  -webkit-mask-image:
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      transparent var(--scan-line),
+      #000 calc(var(--scan-line) + 0.2%),
+      #000 100%
+    ),
+    url("/images/money-glyph-hero.png");
+  mask-image:
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      transparent var(--scan-line),
+      #000 calc(var(--scan-line) + 0.2%),
+      #000 100%
+    ),
+    url("/images/money-glyph-hero.png");
+  -webkit-mask-size: 100% 100%, contain;
+  mask-size: 100% 100%, contain;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-repeat: no-repeat, no-repeat;
+  -webkit-mask-position: center, center;
+  mask-position: center, center;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-mode: alpha, luminance;
+  mask-mode: alpha, luminance;
+  animation: money-glyph-idle-breathe 6s ease-in-out infinite;
+}
+
+/* Encrypted zone — bright grid plate (slider left side in reference) */
+.landing-spade .money-glyph-encrypt-trail {
+  pointer-events: none;
+  z-index: 2;
+  -webkit-mask-image:
+    linear-gradient(
+      180deg,
+      #000 0%,
+      #000 calc(var(--scan-line) - 0.05%),
+      transparent var(--scan-line),
+      transparent 100%
+    ),
+    url("/images/money-glyph-hero.png");
+  mask-image:
+    linear-gradient(
+      180deg,
+      #000 0%,
+      #000 calc(var(--scan-line) - 0.05%),
+      transparent var(--scan-line),
+      transparent 100%
+    ),
+    url("/images/money-glyph-hero.png");
+  -webkit-mask-size: 100% 100%, contain;
+  mask-size: 100% 100%, contain;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-repeat: no-repeat, no-repeat;
+  -webkit-mask-position: center, center;
+  mask-position: center, center;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-mode: alpha, luminance;
+  mask-mode: alpha, luminance;
+  background-color: #f7f9f2;
+  background-image:
+    linear-gradient(rgba(45, 107, 69, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 107, 69, 0.14) 1px, transparent 1px);
+  background-size: 7px 7px;
+}
+
+/* Dot-matrix $ shape inside encrypted zone */
+.landing-spade .money-glyph-digital-dots {
+  pointer-events: none;
+  z-index: 3;
+  -webkit-mask-image:
+    linear-gradient(
+      180deg,
+      #000 0%,
+      #000 calc(var(--scan-line) - 0.05%),
+      transparent var(--scan-line),
+      transparent 100%
+    ),
+    url("/images/money-glyph-hero.png");
+  mask-image:
+    linear-gradient(
+      180deg,
+      #000 0%,
+      #000 calc(var(--scan-line) - 0.05%),
+      transparent var(--scan-line),
+      transparent 100%
+    ),
+    url("/images/money-glyph-hero.png");
+  -webkit-mask-size: 100% 100%, contain;
+  mask-size: 100% 100%, contain;
+  -webkit-mask-repeat: no-repeat, no-repeat;
+  mask-repeat: no-repeat, no-repeat;
+  -webkit-mask-position: center, center;
+  mask-position: center, center;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-mode: alpha, luminance;
+  mask-mode: alpha, luminance;
+  background-color: transparent;
+  background-image: radial-gradient(circle, #3a6b8c 1.15px, transparent 1.2px);
+  background-size: 3.5px 3.5px;
+  opacity: 0.88;
+}
+
+/* Sharp scan boundary — like slider edge */
+.landing-spade .money-glyph-scan-edge {
+  position: absolute;
+  z-index: 5;
+  left: 2%;
+  right: 2%;
+  top: var(--scan-line);
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.95) 18%,
+    #b2eb76 50%,
+    rgba(255, 255, 255, 0.95) 82%,
+    transparent 100%
+  );
+  box-shadow:
+    0 0 0 1px rgba(24, 40, 14, 0.12),
+    0 0 16px rgba(178, 235, 118, 0.55),
+    0 0 32px rgba(178, 235, 118, 0.2);
+  opacity: 0.95;
+  pointer-events: none;
 }
 
 .landing-spade .money-glyph-figure--active .money-glyph-mask--live {
@@ -651,35 +948,14 @@
       rgba(247, 249, 242, 0.14) 6px
     );
   background-size: 140% 100%, 100% 100%;
-  opacity: 0;
-  animation: none;
+  opacity: 0.1;
+  animation: money-glyph-cipher-scroll 5s linear infinite;
 }
 
 .landing-spade .money-glyph-figure--active .money-glyph-cipher {
   animation:
     money-glyph-cipher-opacity 2.6s ease-in-out forwards,
     money-glyph-cipher-scroll 0.18s linear infinite;
-}
-
-.landing-spade .money-glyph-fhe-beam {
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(178, 235, 118, 0.05) 42%,
-    rgba(88, 200, 120, 0.35) 49.5%,
-    rgba(247, 249, 242, 0.55) 50%,
-    rgba(88, 200, 120, 0.35) 50.5%,
-    rgba(178, 235, 118, 0.05) 58%,
-    transparent 100%
-  );
-  height: 20%;
-  opacity: 0;
-  filter: blur(0.5px);
-  animation: none;
-}
-
-.landing-spade .money-glyph-figure--active .money-glyph-fhe-beam {
-  animation: money-glyph-fhe-beam 2.6s ease-in-out forwards;
 }
 
 .landing-spade .money-glyph-seal-pulse {
@@ -702,11 +978,73 @@
     rgba(24, 40, 14, 0.05) 4px
   );
   mix-blend-mode: multiply;
-  animation: none;
+  opacity: 0.22;
+  animation: money-glyph-scan-idle 14s linear infinite;
 }
 
 .landing-spade .money-glyph-figure--active .money-glyph-scanlines {
   animation: money-glyph-scan-drift 2.6s linear forwards;
+  opacity: 0.7;
+}
+
+@keyframes money-glyph-idle-breathe {
+  0%,
+  100% {
+    filter: contrast(1.2) drop-shadow(0 12px 28px rgba(24, 40, 14, 0.14))
+      drop-shadow(0 2px 10px rgba(45, 107, 69, 0.28));
+    transform: scale(1);
+  }
+  50% {
+    filter: contrast(1.28) drop-shadow(0 14px 32px rgba(24, 40, 14, 0.16))
+      drop-shadow(0 4px 14px rgba(45, 107, 69, 0.34));
+    transform: scale(1.012);
+  }
+}
+
+@keyframes money-glyph-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.34;
+    transform: scale(1.02);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.045);
+  }
+}
+
+@keyframes money-glyph-scan-sweep {
+  0% {
+    --scan-line: 2%;
+  }
+  96% {
+    --scan-line: 98%;
+  }
+  100% {
+    --scan-line: 2%;
+  }
+}
+
+@keyframes money-glyph-scan-sweep-active {
+  0%,
+  42% {
+    --scan-line: 2%;
+  }
+  58% {
+    --scan-line: 98%;
+  }
+  100% {
+    --scan-line: 98%;
+  }
+}
+
+@keyframes money-glyph-scan-idle {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 48px;
+  }
 }
 
 @keyframes money-glyph-resolve {
@@ -753,26 +1091,6 @@
   }
   100% {
     background-position: 48px 0, 0 4px;
-  }
-}
-
-@keyframes money-glyph-fhe-beam {
-  0%,
-  44% {
-    transform: translateY(-130%);
-    opacity: 0;
-  }
-  48% {
-    opacity: 0.35;
-  }
-  54% {
-    transform: translateY(130%);
-    opacity: 0.95;
-  }
-  60%,
-  100% {
-    transform: translateY(130%);
-    opacity: 0;
   }
 }
 
@@ -907,11 +1225,15 @@
   background: linear-gradient(155deg, var(--chip-from), var(--chip-to));
 }
 
-.landing-spade .landing-vault .chip-emerald { --chip-from: #5ecf8a; --chip-to: #2d6b45; --chip-glow: rgb(45 107 69 / 0.55); }
-.landing-spade .landing-vault .chip-amber { --chip-from: #f5d06a; --chip-to: #a67c2e; --chip-glow: rgb(166 124 46 / 0.55); }
-.landing-spade .landing-vault .chip-violet { --chip-from: #b794f6; --chip-to: #5b3d8a; --chip-glow: rgb(91 61 138 / 0.55); }
-.landing-spade .landing-vault .chip-rose { --chip-from: #f0a0a8; --chip-to: #9e3d4a; --chip-glow: rgb(158 61 74 / 0.55); }
-.landing-spade .landing-vault .chip-sky { --chip-from: #7ec8f0; --chip-to: #3d6a9e; --chip-glow: rgb(61 106 158 / 0.55); }
+.landing-spade .landing-vault .chip-forest,
+.landing-spade .landing-vault .chip-emerald { --chip-from: #b2eb76; --chip-to: #2d6b45; --chip-glow: rgb(45 107 69 / 0.45); }
+.landing-spade .landing-vault .chip-lime,
+.landing-spade .landing-vault .chip-amber { --chip-from: #d4f5a8; --chip-to: #3d8f5c; --chip-glow: rgb(61 140 90 / 0.45); }
+.landing-spade .landing-vault .chip-moss,
+.landing-spade .landing-vault .chip-violet { --chip-from: #7dce96; --chip-to: #245a38; --chip-glow: rgb(36 90 56 / 0.45); }
+.landing-spade .landing-vault .chip-deep,
+.landing-spade .landing-vault .chip-sky { --chip-from: #5ecf8a; --chip-to: #18280e; --chip-glow: rgb(24 40 14 / 0.5); }
+.landing-spade .landing-vault .chip-rose { --chip-from: #9ed4a8; --chip-to: #1a4a2e; --chip-glow: rgb(45 107 69 / 0.4); }
 
 .landing-spade .landing-vault .bg-ink { background: var(--vault-ink); }
 .landing-spade .landing-vault .text-ink-fg { color: var(--vault-ink-fg); }
@@ -1117,9 +1439,16 @@
     filter: none !important;
   }
 
+  .landing-spade .money-glyph-mask--live,
+  .landing-spade .money-glyph-mask--boost,
+  .landing-spade .money-glyph-figure,
+  .landing-spade .money-glyph-encrypt-trail,
+  .landing-spade .money-glyph-digital-dots,
+  .landing-spade .money-glyph-cipher,
+  .landing-spade .money-glyph-scanlines,
+  .landing-spade .money-glyph-figure--active,
   .landing-spade .money-glyph-figure--active .money-glyph-mask--live,
   .landing-spade .money-glyph-figure--active .money-glyph-cipher,
-  .landing-spade .money-glyph-figure--active .money-glyph-fhe-beam,
   .landing-spade .money-glyph-figure--active .money-glyph-seal-pulse,
   .landing-spade .money-glyph-figure--active .money-glyph-scanlines {
     animation: none !important;

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Book, ExternalLink, Shield, Zap, Lock, FileText, Terminal, Layers, GitBranch, AlertTriangle, CheckCircle } from "lucide-react";
-import ObscuraFooter from "@/components/ObscuraFooter";
+import { Book, ExternalLink, Shield, Zap, Lock, Terminal, Layers, GitBranch, AlertTriangle, CheckCircle } from "lucide-react";
+import DocsShell, { DocsPanel } from "@/components/docs/DocsShell";
+import { cn } from "@/lib/utils";
 
 const sections = [
   { id: "overview", label: "Overview", icon: Book },
@@ -294,68 +295,63 @@ const DocsPage = () => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const sidebar = (
+    <div className="sticky top-24 space-y-1">
+      <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.24em] text-forest/45">
+        ▸ Documentation
+      </p>
+      {sections.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          onClick={() => scrollTo(s.id)}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-all",
+            activeSection === s.id
+              ? "border border-forest/12 bg-sage-2 font-medium text-forest"
+              : "text-forest/55 hover:bg-sage-2/80 hover:text-forest",
+          )}
+        >
+          <s.icon className="size-3.5 shrink-0" />
+          {s.label}
+        </button>
+      ))}
+
+      <div className="mt-8 space-y-1 border-t border-forest/10 pt-6">
+        <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.18em] text-forest/35">
+          Deployed contracts · {deployedContracts.length} live
+        </p>
+        {deployedContracts.map((c) => (
+          <a
+            key={c.name}
+            href={c.explorer}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block truncate text-[11px] text-forest/45 transition-colors hover:text-forest"
+          >
+            {c.name}
+          </a>
+        ))}
+        <p className="pt-2 font-mono text-[10px] text-forest/30">Arbitrum Sepolia · 421614</p>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-background">
-      <div className="pt-6 px-6 pb-16 max-w-[1400px] mx-auto">
-        <div className="grid lg:grid-cols-[240px_1fr] gap-8">
-          {/* Sidebar */}
-          <div className="hidden lg:block">
-            <div className="sticky top-24 space-y-1">
-              <div className="text-xs tracking-[0.2em] uppercase text-primary mb-4 text-glow-sm">
-                ◆ Documentation
-              </div>
-              {sections.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => scrollTo(s.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-md transition-all ${
-                    activeSection === s.id
-                      ? "text-primary bg-primary/5 border border-primary/20"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <s.icon className="w-3.5 h-3.5" />
-                  {s.label}
-                </button>
-              ))}
-
-              <div className="mt-8 pt-6 border-t border-border/30 space-y-1">
-                <div className="text-xs tracking-[0.15em] uppercase text-muted-foreground/40 mb-2">
-                  Deployed Contracts · 10 live
-                </div>
-                {deployedContracts.map((c) => (
-                  <a
-                    key={c.name}
-                    href={c.explorer}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block text-xs text-muted-foreground/50 hover:text-primary transition-colors"
-                  >
-                    {c.name}
-                  </a>
-                ))}
-                <div className="pt-2 text-[11px] text-muted-foreground/30">
-                  Arbitrum Sepolia · 421614
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Main content */}
-          <div className="space-y-20 min-w-0">
+    <DocsShell sidebar={sidebar}>
 
             {/* ── OVERVIEW ── */}
             <motion.section id="overview" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              <span className="text-xs tracking-[0.2em] uppercase text-primary text-glow-sm">
-                ◆ Official Documentation
-              </span>
-              <h1 className="font-display text-3xl md:text-4xl text-foreground tracking-tight mt-2 mb-4">
-                OBSCURA <span className="text-primary text-glow">Protocol</span>
-              </h1>
-              <p className="text-sm font-body text-muted-foreground leading-relaxed mb-3 max-w-2xl">
-                OBSCURA is the dark operating system for onchain organizations — a five-module privacy platform powered by <strong className="text-foreground">Fhenix CoFHE</strong> (Coprocessor Fully Homomorphic Encryption). All arithmetic executes directly on ciphertext. Data never decrypts on-chain. <em>See only what you're meant to.</em>
+              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-forest/45">
+                ▸ Official documentation
               </p>
-              <p className="text-sm font-body text-muted-foreground leading-relaxed mb-8 max-w-2xl">
+              <h1 className="mt-2 mb-4 font-display text-3xl tracking-tight text-forest md:text-4xl">
+                Obscura <span className="text-forest/65">Protocol</span>
+              </h1>
+              <p className="text-sm font-body text-forest/60 leading-relaxed mb-3 max-w-2xl">
+                Obscura is the private operating system for onchain organizations — a five-module privacy platform powered by <strong className="text-forest">Fhenix CoFHE</strong> (Coprocessor Fully Homomorphic Encryption). All arithmetic executes directly on ciphertext. Data never decrypts on-chain. <em>See only what you're meant to.</em>
+              </p>
+              <p className="text-sm font-body text-forest/60 leading-relaxed mb-8 max-w-2xl">
                 Waves 1–2 are live on Arbitrum Sepolia with 15+ deployed contracts: shielded stablecoins (ocUSDC), payroll streams to stealth addresses, confidential escrows, payroll insurance, cross-chain USDC bridging, coercion-resistant governance with treasury and voter rewards, and on-chain delegation. Waves 3–5 (Vault, Trust, Mind) extend the stack to MEV-protected DeFi, selective compliance, and privacy-preserving AI inference.
               </p>
 
@@ -377,55 +373,57 @@ const DocsPage = () => {
                     desc: "Users sign cryptographic permits to decrypt their own data. Auditors get scoped permits for aggregate views only. No trust — only cryptographic authorization.",
                   },
                 ].map((card) => (
-                  <div key={card.title} className="glass-panel rounded-md p-5">
-                    <card.icon className="w-5 h-5 text-primary mb-3" />
-                    <h3 className="font-display text-sm tracking-wider text-foreground mb-1.5">{card.title}</h3>
-                    <p className="text-xs font-body text-muted-foreground">{card.desc}</p>
-                  </div>
+                  <DocsPanel key={card.title} className="p-5">
+                    <card.icon className="mb-3 size-5 text-forest" />
+                    <h3 className="font-display text-sm tracking-wider text-forest mb-1.5">{card.title}</h3>
+                    <p className="text-xs font-body text-forest/60">{card.desc}</p>
+                  </DocsPanel>
                 ))}
               </div>
 
-              <div className="glass-panel rounded-md p-5 border-primary/20">
-                <div className="text-xs tracking-[0.2em] uppercase text-primary mb-4">◆ What OBSCURA Proves</div>
-                <div className="grid md:grid-cols-2 gap-x-8 gap-y-3 text-xs font-body text-muted-foreground">
-                  <p><span className="text-foreground">FHE on EVM is production-ready.</span> 12+ smart contracts deployed to Arbitrum Sepolia, processing real encrypted transactions with zero plaintext leakage across payments and governance.</p>
-                  <p><span className="text-foreground">Complex business logic works on ciphertext.</span> Payroll streams (FHE.add), escrow funding (FHE.gte), stealth addressing (FHE.asEaddress), silent authorization (FHE.select), and encrypted tallies (FHE.allowPublic) — all on encrypted data.</p>
-                  <p><span className="text-foreground">UX can abstract FHE complexity.</span> Async stepper, permit-gated decrypt buttons, and the &ldquo;What&rsquo;s Private?&rdquo; panel make encryption tangible. 8-tab PayPage + 5-tab VotePage with zero user exposure to ciphertext internals.</p>
-                  <p><span className="text-foreground">Five composable encrypted modules.</span> Pay funds escrows. Insurance protects payroll. Stealth hides recipients. Vote uses encrypted ballots. Vault, Trust, and Mind extend the stack to DeFi, compliance, and AI — all on the same FHE infrastructure.</p>
+              <DocsPanel className="border-lime-accent/30 p-5">
+                <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-forest/50">
+                  ▸ What Obscura proves
+                </p>
+                <div className="grid md:grid-cols-2 gap-x-8 gap-y-3 text-xs font-body text-forest/60">
+                  <p><span className="text-forest">FHE on EVM is production-ready.</span> 12+ smart contracts deployed to Arbitrum Sepolia, processing real encrypted transactions with zero plaintext leakage across payments and governance.</p>
+                  <p><span className="text-forest">Complex business logic works on ciphertext.</span> Payroll streams (FHE.add), escrow funding (FHE.gte), stealth addressing (FHE.asEaddress), silent authorization (FHE.select), and encrypted tallies (FHE.allowPublic) — all on encrypted data.</p>
+                  <p><span className="text-forest">UX can abstract FHE complexity.</span> Async stepper, permit-gated decrypt buttons, and the &ldquo;What&rsquo;s Private?&rdquo; panel make encryption tangible. 8-tab PayPage + 5-tab VotePage with zero user exposure to ciphertext internals.</p>
+                  <p><span className="text-forest">Five composable encrypted modules.</span> Pay funds escrows. Insurance protects payroll. Stealth hides recipients. Vote uses encrypted ballots. Vault, Trust, and Mind extend the stack to DeFi, compliance, and AI — all on the same FHE infrastructure.</p>
                 </div>
-              </div>
+              </DocsPanel>
             </motion.section>
 
             {/* ── WAVE 1 ── */}
             <section id="wave1">
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-xs tracking-[0.15em] uppercase text-primary text-glow-sm">
+                <span className="text-xs tracking-[0.15em] uppercase font-mono text-[10px] uppercase tracking-[0.22em] text-forest/50">
                   Live on Arbitrum Sepolia
                 </span>
               </div>
-              <h2 className="font-display text-2xl text-foreground tracking-tight mb-3">
-                ObscuraPay — <span className="text-primary text-glow">Complete Encrypted Payment Platform</span>
+              <h2 className="font-display text-2xl text-forest tracking-tight mb-3">
+                ObscuraPay — <span className="text-forest">Complete Encrypted Payment Platform</span>
               </h2>
-              <p className="text-sm font-body text-muted-foreground mb-8 max-w-2xl">
+              <p className="text-sm font-body text-forest/60 mb-8 max-w-2xl">
                 10+ Solidity contracts and a full-featured React frontend. Send encrypted cUSDC, stream payroll to stealth addresses, create escrows with resolver conditions, buy payroll insurance, bridge cross-chain — all fully encrypted. Arbiscan shows nothing.
               </p>
 
               <div className="space-y-5">
                 {wave1Features.map((section) => (
-                  <div key={section.category} className="glass-panel rounded-md overflow-hidden">
-                    <div className="p-4 border-b border-border/50 flex items-center justify-between">
+                  <div key={section.category} className="docs-panel rounded-xl overflow-hidden">
+                    <div className="p-4 border-b border-forest/10/50 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <CheckCircle className="w-4 h-4 text-primary" />
-                        <span className="font-display text-sm tracking-wider text-foreground">{section.category}</span>
+                        <CheckCircle className="w-4 h-4 text-forest" />
+                        <span className="font-display text-sm tracking-wider text-forest">{section.category}</span>
                       </div>
-                      <code className="font-mono text-xs text-muted-foreground/40 bg-secondary/50 px-2 py-0.5 rounded-md">
+                      <code className="font-mono text-xs text-forest/60/40 bg-sage-2 px-2 py-0.5 rounded-md">
                         {section.contract}
                       </code>
                     </div>
                     <ul className="p-4 space-y-2">
                       {section.items.map((item) => (
-                        <li key={item} className="flex items-start gap-2 text-xs font-body text-muted-foreground">
-                          <span className="text-primary/60 mt-0.5 flex-shrink-0">›</span>
+                        <li key={item} className="flex items-start gap-2 text-xs font-body text-forest/60">
+                          <span className="text-forest/60 mt-0.5 flex-shrink-0">›</span>
                           {item}
                         </li>
                       ))}
@@ -434,8 +432,8 @@ const DocsPage = () => {
                 ))}
               </div>
 
-              <div className="mt-6 glass-panel rounded-md p-5">
-                <div className="text-xs tracking-[0.15em] uppercase text-primary mb-4">◆ Frontend — 8-Tab PayPage</div>
+              <div className="mt-6 docs-panel rounded-xl p-5">
+                <div className="text-xs tracking-[0.15em] uppercase text-forest mb-4">▸ Frontend — 8-Tab PayPage</div>
                 <div className="grid md:grid-cols-4 gap-3">
                   {[
                     { tab: "Dashboard", desc: "ocUSDC balance, shield/unshield, authorize" },
@@ -447,16 +445,16 @@ const DocsPage = () => {
                     { tab: "Insurance", desc: "Buy coverage, file disputes, stake" },
                     { tab: "Stealth", desc: "Register meta-address, scan inbox" },
                   ].map((t) => (
-                    <div key={t.tab} className="bg-secondary/20 rounded-md p-3 border border-border/30">
-                      <div className="text-xs text-primary mb-1">{t.tab}</div>
-                      <div className="text-xs font-body text-muted-foreground">{t.desc}</div>
+                    <div key={t.tab} className="bg-sage-2 rounded-md p-3 border border-forest/10/30">
+                      <div className="text-xs text-forest mb-1">{t.tab}</div>
+                      <div className="text-xs font-body text-forest/60">{t.desc}</div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="mt-5 glass-panel rounded-md p-5">
-                <div className="text-xs tracking-[0.2em] uppercase text-primary mb-4">◆ Tech Stack</div>
+              <div className="mt-5 docs-panel rounded-xl p-5">
+                <div className="text-xs tracking-[0.2em] uppercase text-forest mb-4">▸ Tech Stack</div>
                 <div className="grid md:grid-cols-3 gap-3">
                   {[
                     ["Blockchain", "Arbitrum Sepolia · Chain ID 421614"],
@@ -466,9 +464,9 @@ const DocsPage = () => {
                     ["Wallet", "wagmi 3.6.0 · viem 2 · injected + WalletConnect"],
                     ["FHE Client", "@cofhe/sdk 0.4.0 · encrypt inputs, decrypt with permits"],
                   ].map(([label, value]) => (
-                    <div key={label} className="bg-secondary/20 rounded-md p-3 border border-border/20">
-                      <div className="text-xs tracking-[0.15em] uppercase text-muted-foreground/50 mb-1">{label}</div>
-                      <div className="text-sm text-foreground">{value}</div>
+                    <div key={label} className="bg-sage-2 rounded-md p-3 border border-forest/10/20">
+                      <div className="text-xs tracking-[0.15em] uppercase text-forest/60/50 mb-1">{label}</div>
+                      <div className="text-sm text-forest">{value}</div>
                     </div>
                   ))}
                 </div>
@@ -478,14 +476,14 @@ const DocsPage = () => {
             {/* ── WAVE 2 ── */}
             <section id="wave2">
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-xs tracking-[0.15em] uppercase text-primary text-glow-sm">
+                <span className="text-xs tracking-[0.15em] uppercase font-mono text-[10px] uppercase tracking-[0.22em] text-forest/50">
                   Live on Arbitrum Sepolia
                 </span>
               </div>
-              <h2 className="font-display text-2xl text-foreground tracking-tight mb-3">
-                ObscuraVote — <span className="text-primary text-glow">Full DAO Governance Stack</span>
+              <h2 className="font-display text-2xl text-forest tracking-tight mb-3">
+                ObscuraVote — <span className="text-forest">Full DAO Governance Stack</span>
               </h2>
-              <p className="text-sm font-body text-muted-foreground mb-8 max-w-2xl">
+              <p className="text-sm font-body text-forest/60 mb-8 max-w-2xl">
                 Three contracts and a full-featured 5-tab VotePage. Encrypted ballots, FHE-gated treasury, voter rewards, on-chain delegation, and a guided onboarding flow. Individual votes are never revealed — only the aggregate tally decrypts after finalization.
               </p>
 
@@ -528,20 +526,20 @@ const DocsPage = () => {
                     ],
                   },
                 ].map((section) => (
-                  <div key={section.title} className="glass-panel rounded-md overflow-hidden">
-                    <div className="p-4 border-b border-border/50 flex items-center justify-between">
+                  <div key={section.title} className="docs-panel rounded-xl overflow-hidden">
+                    <div className="p-4 border-b border-forest/10/50 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <CheckCircle className="w-4 h-4 text-primary" />
-                        <span className="font-display text-sm tracking-wider text-foreground">{section.title}</span>
+                        <CheckCircle className="w-4 h-4 text-forest" />
+                        <span className="font-display text-sm tracking-wider text-forest">{section.title}</span>
                       </div>
-                      <code className="font-mono text-xs text-muted-foreground/40 bg-secondary/50 px-2 py-0.5 rounded-md">
+                      <code className="font-mono text-xs text-forest/60/40 bg-sage-2 px-2 py-0.5 rounded-md">
                         {section.contract}
                       </code>
                     </div>
                     <ul className="p-4 space-y-2">
                       {section.items.map((item) => (
-                        <li key={item} className="flex items-start gap-2 text-xs font-body text-muted-foreground">
-                          <span className="text-primary/60 mt-0.5 flex-shrink-0">›</span>
+                        <li key={item} className="flex items-start gap-2 text-xs font-body text-forest/60">
+                          <span className="text-forest/60 mt-0.5 flex-shrink-0">›</span>
                           {item}
                         </li>
                       ))}
@@ -550,8 +548,8 @@ const DocsPage = () => {
                 ))}
               </div>
 
-              <div className="mt-6 glass-panel rounded-md p-5">
-                <div className="text-xs tracking-[0.15em] uppercase text-primary mb-4">◆ Frontend — 5-Tab VotePage</div>
+              <div className="mt-6 docs-panel rounded-xl p-5">
+                <div className="text-xs tracking-[0.15em] uppercase text-forest mb-4">▸ Frontend — 5-Tab VotePage</div>
                 <div className="grid md:grid-cols-5 gap-3">
                   {[
                     { tab: "Dashboard", desc: "Setup guide, stats, privacy model, FHE ops" },
@@ -560,9 +558,9 @@ const DocsPage = () => {
                     { tab: "Treasury", desc: "Attach spends, start/execute timelock, fund vault" },
                     { tab: "Participation", desc: "Claim voter rewards, request withdrawal" },
                   ].map((t) => (
-                    <div key={t.tab} className="bg-secondary/20 rounded-md p-3 border border-border/30">
-                      <div className="text-xs text-primary mb-1">{t.tab}</div>
-                      <div className="text-xs font-body text-muted-foreground">{t.desc}</div>
+                    <div key={t.tab} className="bg-sage-2 rounded-md p-3 border border-forest/10/30">
+                      <div className="text-xs text-forest mb-1">{t.tab}</div>
+                      <div className="text-xs font-body text-forest/60">{t.desc}</div>
                     </div>
                   ))}
                 </div>
@@ -577,10 +575,10 @@ const DocsPage = () => {
                   Live on Arbitrum Sepolia
                 </span>
               </div>
-              <h2 className="font-display text-2xl text-foreground tracking-tight mb-3">
-                Pay Wave 3 — <span className="text-primary text-glow">Privacy hardening + UX</span>
+              <h2 className="font-display text-2xl text-forest tracking-tight mb-3">
+                Pay Wave 3 — <span className="text-forest">Privacy hardening + UX</span>
               </h2>
-              <p className="text-sm font-body text-muted-foreground mb-8 max-w-2xl">
+              <p className="text-sm font-body text-forest/60 mb-8 max-w-2xl">
                 Wave 3 closes the metadata leaks that survived Wave 2. Recipient hints are now encrypted on-chain,
                 cycle commits use per-cycle salts, schedules accept jitter, and a rotation log lets a leaked viewing
                 key only expose one epoch. A new social resolver maps `@handle → meta-address` and a one-click
@@ -597,17 +595,17 @@ const DocsPage = () => {
                   { t: "ObscuraSocialResolver", b: "@handle → 33-byte spending+viewing keys (split as bytes32 X + uint8 prefix); selfRegister or registerWithEnsProof, transferable" },
                   { t: "ObscuraStealthRotation", b: "Append-only log of meta-address rotations; clients keep historyLength entries" },
                 ].map((c) => (
-                  <div key={c.t} className="glass-panel rounded-md p-4">
-                    <div className="text-[12.5px] text-foreground font-display mb-1">{c.t}</div>
-                    <p className="text-[12px] text-muted-foreground/75">{c.b}</p>
+                  <div key={c.t} className="docs-panel rounded-xl p-4">
+                    <div className="text-[12.5px] text-forest font-display mb-1">{c.t}</div>
+                    <p className="text-[12px] text-forest/60/75">{c.b}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-6 glass-panel rounded-md p-4">
-                <div className="text-[12px] text-foreground/85 mb-2">Privacy upgrades over Wave 2</div>
-                <ul className="text-[12px] text-muted-foreground/75 space-y-1.5 list-disc pl-4">
-                  <li>Recipient hint stored as <code className="text-primary/70">InEaddress</code>, not a plaintext address.</li>
+              <div className="mt-6 docs-panel rounded-xl p-4">
+                <div className="text-[12px] text-forest/85 mb-2">Privacy upgrades over Wave 2</div>
+                <ul className="text-[12px] text-forest/60/75 space-y-1.5 list-disc pl-4">
+                  <li>Recipient hint stored as <code className="text-forest/70">InEaddress</code>, not a plaintext address.</li>
                   <li>Each cycle's escrow commit uses a per-cycle salt, persisted client-side under <code>obscura.stream.salts.v1:&lt;addr&gt;:&lt;streamId&gt;</code>.</li>
                   <li>Stream tick supports a configurable jitter window (±seconds) so observers can't time the schedule.</li>
                   <li>Stealth meta-address rotation is append-only on chain; an attacker who learns one viewing key only sees one epoch.</li>
@@ -615,24 +613,24 @@ const DocsPage = () => {
                 </ul>
               </div>
 
-              <div className="mt-6 glass-panel rounded-md p-4 border border-violet-500/20 bg-violet-500/[0.03]">
-                <div className="text-[12px] text-foreground/85 mb-3">Invoice Full Stealth Privacy — Monero/Zcash model (Hotfix #8)</div>
-                <p className="text-[12px] text-muted-foreground/75 mb-3">
-                  Before Wave 3, <code className="text-primary/70">payInvoice()</code> transferred ocUSDC directly to the creator's real wallet address — visible in calldata. The InvoicePayCard also displayed it in plaintext. Wave 3 fixes both leaks with full ERC-5564 stealth routing.
+              <div className="mt-6 docs-panel rounded-xl p-4 border border-violet-500/20 bg-violet-500/[0.03]">
+                <div className="text-[12px] text-forest/85 mb-3">Invoice Full Stealth Privacy — Monero/Zcash model (Hotfix #8)</div>
+                <p className="text-[12px] text-forest/60/75 mb-3">
+                  Before Wave 3, <code className="text-forest/70">payInvoice()</code> transferred ocUSDC directly to the creator's real wallet address — visible in calldata. The InvoicePayCard also displayed it in plaintext. Wave 3 fixes both leaks with full ERC-5564 stealth routing.
                 </p>
-                <ul className="text-[12px] text-muted-foreground/75 space-y-1.5 list-disc pl-4 mb-3">
-                  <li><code className="text-primary/70">deriveStealthPayment(meta)</code> → fresh one-time <code>stealthAddr + ephemeralPubKey + viewTag</code></li>
-                  <li><code className="text-primary/70">ocUSDC.confidentialTransfer(stealthAddr, encAmt)</code> — amount FHE-encrypted, destination is the one-time address</li>
-                  <li><code className="text-primary/70">ObscuraPayStream.announce(ephemeralPubKey, viewTag, stealthAddr)</code> — on-chain stealth announcement for scanning</li>
+                <ul className="text-[12px] text-forest/60/75 space-y-1.5 list-disc pl-4 mb-3">
+                  <li><code className="text-forest/70">deriveStealthPayment(meta)</code> → fresh one-time <code>stealthAddr + ephemeralPubKey + viewTag</code></li>
+                  <li><code className="text-forest/70">ocUSDC.confidentialTransfer(stealthAddr, encAmt)</code> — amount FHE-encrypted, destination is the one-time address</li>
+                  <li><code className="text-forest/70">ObscuraPayStream.announce(ephemeralPubKey, viewTag, stealthAddr)</code> — on-chain stealth announcement for scanning</li>
                 </ul>
-                <div className="text-[11px] text-muted-foreground/55">
+                <div className="text-[11px] text-forest/60/55">
                   Payer sees <strong className="text-emerald-400/80">Private (stealth)</strong> badge — creator's real wallet never appears in calldata or UI. Falls back to direct 2-tx path if creator has no stealth meta registered.
                 </div>
               </div>
 
-              <div className="mt-6 glass-panel rounded-md p-4 border border-cyan-500/20 bg-cyan-500/[0.03]">
-                <div className="text-[12px] text-foreground/85 mb-3">Animated TxProgressPanel — real-time SVG transaction progress</div>
-                <p className="text-[12px] text-muted-foreground/75 mb-3">
+              <div className="mt-6 docs-panel rounded-xl p-4 border border-cyan-500/20 bg-cyan-500/[0.03]">
+                <div className="text-[12px] text-forest/85 mb-3">Animated TxProgressPanel — real-time SVG transaction progress</div>
+                <p className="text-[12px] text-forest/60/75 mb-3">
                   Every multi-step transaction in all pay features now renders an inline animated SVG panel, replacing plain spinners. Built with Framer Motion throughout.
                 </p>
                 <div className="grid grid-cols-2 gap-2 mb-3">
@@ -646,22 +644,22 @@ const DocsPage = () => {
                     { icon: "🏦", label: "Vault", desc: "Rotating dial + coin in/out (fund vs redeem)" },
                     { icon: "❌", label: "Error", desc: "Animated red X circle" },
                   ].map((item) => (
-                    <div key={item.label} className="bg-secondary/20 rounded p-2">
-                      <div className="text-[11px] text-foreground/80 mb-0.5">{item.icon} {item.label}</div>
-                      <div className="text-[10px] text-muted-foreground/60">{item.desc}</div>
+                    <div key={item.label} className="bg-sage-2 rounded p-2">
+                      <div className="text-[11px] text-forest/80 mb-0.5">{item.icon} {item.label}</div>
+                      <div className="text-[10px] text-forest/60/60">{item.desc}</div>
                     </div>
                   ))}
                 </div>
-                <ul className="text-[12px] text-muted-foreground/75 space-y-1 list-disc pl-4">
-                  <li>Step states: <code className="text-primary/70">idle</code> (number badge) → <code className="text-primary/70">active</code> (spinning halo) → <code className="text-primary/70">done</code> (spring checkmark) → <code className="text-primary/70">error</code> (×)</li>
+                <ul className="text-[12px] text-forest/60/75 space-y-1 list-disc pl-4">
+                  <li>Step states: <code className="text-forest/70">idle</code> (number badge) → <code className="text-forest/70">active</code> (spinning halo) → <code className="text-forest/70">done</code> (spring checkmark) → <code className="text-forest/70">error</code> (×)</li>
                   <li>Connecting lines grow from grey → cyan → emerald as steps complete</li>
                   <li>Overall progress bar 0→100% across all steps</li>
                   <li>Integrated into: InvoicePayCard (7-step stealth / 5-step direct), CUSDCEscrowForm (5-step), UnifiedSendForm, SubscriptionForm (5-step)</li>
                 </ul>
               </div>
 
-              <div className="mt-6 glass-panel rounded-md p-4">
-                <div className="text-[12px] text-foreground/85 mb-3">8 Production Hotfixes</div>
+              <div className="mt-6 docs-panel rounded-xl p-4">
+                <div className="text-[12px] text-forest/85 mb-3">8 Production Hotfixes</div>
                 <div className="space-y-2">
                   {[
                     { n: "#8", t: "Invoice stealth privacy", d: "3-tx ERC-5564 routing. Payer sees shield badge, never real wallet address." },
@@ -674,10 +672,10 @@ const DocsPage = () => {
                     { n: "#1", t: "Escrow selector mismatch", d: "Fixed interface to InEuint64 overload (0x7edb0e7d). Redeployed." },
                   ].map((h) => (
                     <div key={h.n} className="flex gap-3 text-[11.5px]">
-                      <span className="shrink-0 font-mono text-primary/60 w-6">{h.n}</span>
+                      <span className="shrink-0 font-mono text-forest/60 w-6">{h.n}</span>
                       <div>
-                        <span className="text-foreground/80">{h.t}</span>
-                        <span className="text-muted-foreground/55"> — {h.d}</span>
+                        <span className="text-forest/80">{h.t}</span>
+                        <span className="text-forest/60/55"> — {h.d}</span>
                       </div>
                     </div>
                   ))}
@@ -687,30 +685,30 @@ const DocsPage = () => {
 
             {/* ── DEPLOYED CONTRACTS ── */}
             <section id="contracts">
-              <h2 className="font-display text-2xl text-foreground tracking-tight mb-2">
-                Deployed <span className="text-primary text-glow">Contracts</span>
+              <h2 className="font-display text-2xl text-forest tracking-tight mb-2">
+                Deployed <span className="text-forest">Contracts</span>
               </h2>
-              <p className="text-xs text-muted-foreground mb-6">
+              <p className="text-xs text-forest/60 mb-6">
                 Network: Arbitrum Sepolia (421614) · Deployer:{" "}
-                <code className="font-mono text-primary/60">0xf76e6B0920e9332fF4410f6dD53F01722AbC71a3</code>
+                <code className="font-mono text-forest/60">0xf76e6B0920e9332fF4410f6dD53F01722AbC71a3</code>
               </p>
 
               <div className="space-y-3 mb-8">
                 {deployedContracts.map((c) => (
-                  <div key={c.name} className="glass-panel rounded-md p-4 flex flex-col md:flex-row md:items-center gap-3">
+                  <div key={c.name} className="docs-panel rounded-xl p-4 flex flex-col md:flex-row md:items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <Terminal className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                        <span className="text-sm text-foreground">{c.name}</span>
+                        <Terminal className="w-3.5 h-3.5 text-forest flex-shrink-0" />
+                        <span className="text-sm text-forest">{c.name}</span>
                       </div>
-                      <code className="font-mono text-sm text-primary/60 block mb-1 break-all">{c.address}</code>
-                      <p className="text-sm font-body text-muted-foreground">{c.purpose}</p>
+                      <code className="font-mono text-sm text-forest/60 block mb-1 break-all">{c.address}</code>
+                      <p className="text-sm font-body text-forest/60">{c.purpose}</p>
                     </div>
                     <a
                       href={c.explorer}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-muted-foreground/40 hover:text-primary transition-colors flex items-center gap-1 flex-shrink-0"
+                      className="text-xs text-forest/60/40 hover:text-forest transition-colors flex items-center gap-1 flex-shrink-0"
                     >
                       Arbiscan <ExternalLink className="w-2.5 h-2.5" />
                     </a>
@@ -768,11 +766,11 @@ FHE.allowThis(encryptedBalances[from]);       // contract modifies next tx`,
 }`,
                   },
                 ].map((contract) => (
-                  <div key={contract.name} className="glass-panel rounded-md overflow-hidden">
-                    <div className="p-3 border-b border-border/50">
-                      <span className="text-sm text-muted-foreground/60">{contract.name}</span>
+                  <div key={contract.name} className="docs-panel rounded-xl overflow-hidden">
+                    <div className="p-3 border-b border-forest/10/50">
+                      <span className="text-sm text-forest/60/60">{contract.name}</span>
                     </div>
-                    <pre className="p-4 overflow-x-auto bg-background/40"><code className="font-mono font-mono text-sm text-foreground/70 leading-relaxed">{contract.code}</code>
+                    <pre className="p-4 overflow-x-auto bg-[#0c1208]"><code className="font-mono text-sm text-lime-accent/80 leading-relaxed">{contract.code}</code>
                     </pre>
                   </div>
                 ))}
@@ -781,12 +779,12 @@ FHE.allowThis(encryptedBalances[from]);       // contract modifies next tx`,
 
             {/* ── FHE ARCHITECTURE ── */}
             <section id="architecture">
-              <h2 className="font-display text-2xl text-foreground tracking-tight mb-6">
-                FHE <span className="text-primary text-glow">Architecture</span>
+              <h2 className="font-display text-2xl text-forest tracking-tight mb-6">
+                FHE <span className="text-forest">Architecture</span>
               </h2>
 
-              <div className="glass-panel rounded-md p-6 mb-6">
-                <div className="text-xs tracking-[0.2em] uppercase text-primary mb-5">◆ Ciphertext Lifecycle</div>
+              <div className="docs-panel rounded-xl p-6 mb-6">
+                <div className="text-xs tracking-[0.2em] uppercase text-forest mb-5">▸ Ciphertext Lifecycle</div>
                 <div className="space-y-4">
                   {[
                     { step: "01", title: "Client Encrypts", desc: "User calls encryptInputs() in @cofhe/sdk. Produces an InEuint64 struct: { ctHash, securityZone, utype, signature }. Input leaves the browser as ciphertext — plaintext never touches the network." },
@@ -796,21 +794,21 @@ FHE.allowThis(encryptedBalances[from]);       // contract modifies next tx`,
                     { step: "05", title: "Threshold Decryption", desc: "User calls decryptForView(ctHash, FheTypes.Uint64).withPermit().execute() via @cofhe/sdk. The Threshold Network verifies the EIP-712 permit, collectively decrypts using multi-party computation, and returns the plaintext to the authorized caller only." },
                   ].map((step) => (
                     <div key={step.step} className="flex gap-4">
-                      <span className="text-primary text-xs w-6 flex-shrink-0 pt-0.5">{step.step}</span>
+                      <span className="text-forest text-xs w-6 flex-shrink-0 pt-0.5">{step.step}</span>
                       <div>
-                        <span className="text-xs text-foreground">{step.title}</span>
-                        <p className="text-xs font-body text-muted-foreground mt-0.5 leading-relaxed">{step.desc}</p>
+                        <span className="text-xs text-forest">{step.title}</span>
+                        <p className="text-xs font-body text-forest/60 mt-0.5 leading-relaxed">{step.desc}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="glass-panel rounded-md overflow-hidden">
-                <div className="p-4 border-b border-border/50">
-                  <span className="text-xs tracking-[0.2em] uppercase text-primary/60 font-mono">◆ Critical ACL Rules</span>
+              <div className="docs-panel rounded-xl overflow-hidden">
+                <div className="p-4 border-b border-forest/10/50">
+                  <span className="text-xs tracking-[0.2em] uppercase text-forest/60 font-mono">▸ Critical ACL Rules</span>
                 </div>
-                <pre className="p-4 overflow-x-auto bg-background/40"><code className="font-mono font-mono text-sm text-foreground/70 leading-relaxed">{`// Rule 1: Always call allowThis() for values used in future transactions
+                <pre className="p-4 overflow-x-auto bg-[#0c1208]"><code className="font-mono text-sm text-lime-accent/80 leading-relaxed">{`// Rule 1: Always call allowThis() for values used in future transactions
 FHE.allowThis(encryptedBalances[emp]);
 // If omitted: next transaction cannot read the handle -- silent reverts
 
@@ -834,15 +832,15 @@ resolverData = encodeAbiParameters(
 
             {/* ── FHE OPERATIONS ── */}
             <section id="fhe-ops">
-              <h2 className="font-display text-2xl text-foreground tracking-tight mb-3">
-                FHE <span className="text-primary text-glow">Operations</span>
+              <h2 className="font-display text-2xl text-forest tracking-tight mb-3">
+                FHE <span className="text-forest">Operations</span>
               </h2>
-              <p className="text-xs font-body text-muted-foreground mb-6">
+              <p className="text-xs font-body text-forest/60 mb-6">
                 All FHE operations used across the OBSCURA platform. Highlighted rows are currently active in deployed contracts.
               </p>
 
-              <div className="glass-panel rounded-md overflow-hidden">
-                <div className="grid grid-cols-[1.2fr_2.5fr_0.8fr] gap-4 p-3 border-b border-border/50 text-xs tracking-[0.15em] uppercase text-muted-foreground">
+              <div className="docs-panel rounded-xl overflow-hidden">
+                <div className="grid grid-cols-[1.2fr_2.5fr_0.8fr] gap-4 p-3 border-b border-forest/10/50 text-xs tracking-[0.15em] uppercase text-forest/60">
                   <span>Operation</span>
                   <span>Description</span>
                   <span>Status</span>
@@ -850,11 +848,11 @@ resolverData = encodeAbiParameters(
                 {fheOps.map((op, i) => (
                   <div
                     key={op.op}
-                    className={`grid grid-cols-[1.2fr_2.5fr_0.8fr] gap-4 p-3 items-center ${i % 2 === 0 ? "bg-secondary/10" : ""}`}
+                    className={`grid grid-cols-[1.2fr_2.5fr_0.8fr] gap-4 p-3 items-center ${i % 2 === 0 ? "bg-sage-1" : ""}`}
                   >
-                    <span className={`font-mono text-xs ${op.wave1 ? "text-primary" : "text-muted-foreground/60"}`}>{op.op}</span>
-                    <span className="text-xs font-body text-muted-foreground">{op.desc}</span>
-                    <span className={`text-[11px] px-2 py-0.5 rounded-md ${op.wave1 ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground/40"}`}>
+                    <span className={`font-mono text-xs ${op.wave1 ? "text-forest" : "text-forest/60/60"}`}>{op.op}</span>
+                    <span className="text-xs font-body text-forest/60">{op.desc}</span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-md ${op.wave1 ? "bg-lime-accent/15 text-forest" : "bg-sage-2 text-forest/60/40"}`}>
                       {op.wave1 ? "Active" : "Planned"}
                     </span>
                   </div>
@@ -864,31 +862,31 @@ resolverData = encodeAbiParameters(
 
             {/* ── ROADMAP ── */}
             <section id="roadmap">
-              <h2 className="font-display text-2xl text-foreground tracking-tight mb-3">
-                Product <span className="text-primary text-glow">Roadmap</span>
+              <h2 className="font-display text-2xl text-forest tracking-tight mb-3">
+                Product <span className="text-forest">Roadmap</span>
               </h2>
-              <p className="text-xs font-body text-muted-foreground mb-8 max-w-2xl">
+              <p className="text-xs font-body text-forest/60 mb-8 max-w-2xl">
                 Future encrypted modules planned for the OBSCURA platform. Each module deepens the privacy stack and composes with existing functionality.
               </p>
 
               <div className="space-y-4">
                 {/* Wave 1 — live */}
-                <div className="glass-panel rounded-md overflow-hidden border-primary/25">
-                  <div className="p-4 border-b border-border/50 bg-primary/5 flex items-center justify-between">
+                <div className="docs-panel rounded-xl overflow-hidden border-lime-accent/25">
+                  <div className="p-4 border-b border-forest/10/50 bg-lime-accent/10 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-xs bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-md">LIVE</span>
-                      <span className="font-display text-sm text-foreground tracking-wider">ObscuraPay + ObscuraVote</span>
-                      <span className="text-xs text-muted-foreground/50">Payments & Governance</span>
+                      <span className="text-xs bg-lime-accent/15 text-forest border border-lime-accent/25 px-2 py-0.5 rounded-md">LIVE</span>
+                      <span className="font-display text-sm text-forest tracking-wider">ObscuraPay + ObscuraVote</span>
+                      <span className="text-xs text-forest/60/50">Payments & Governance</span>
                     </div>
-                    <span className="text-xs text-primary text-glow-sm">✓ DEPLOYED</span>
+                    <span className="text-xs font-mono text-[10px] uppercase tracking-[0.22em] text-forest/50">✓ DEPLOYED</span>
                   </div>
                   <div className="p-4">
-                    <p className="text-xs font-body text-muted-foreground mb-3">
+                    <p className="text-xs font-body text-forest/60 mb-3">
                       10+ contracts deployed · encrypted cUSDC stablecoin · payroll streams to stealth addresses · confidential escrows with resolver hooks · payroll insurance · cross-chain USDC bridge · coercion-resistant governance · all values FHE ciphertexts
                     </p>
                     <div className="flex gap-2 flex-wrap">
                       {["asEuint64", "asEaddress", "asEbool", "add", "sub", "eq", "gte", "select", "and", "not", "allow", "allowThis", "isInitialized"].map((op) => (
-                        <span key={op} className="text-[11px] text-primary/60 bg-primary/5 border border-primary/10 px-1.5 py-0.5 rounded-md">{op}</span>
+                        <span key={op} className="text-[11px] text-forest/60 bg-lime-accent/10 border border-forest/10 px-1.5 py-0.5 rounded-md">{op}</span>
                       ))}
                     </div>
                   </div>
@@ -896,22 +894,22 @@ resolverData = encodeAbiParameters(
 
                 {/* Waves 2–5 */}
                 {roadmapWaves.map((wave) => (
-                  <div key={wave.wave} className="glass-panel rounded-md overflow-hidden">
-                    <div className="p-4 border-b border-border/50 flex items-center justify-between">
+                  <div key={wave.wave} className="docs-panel rounded-xl overflow-hidden">
+                    <div className="p-4 border-b border-forest/10/50 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground/40 bg-secondary/50 border border-border/30 px-2 py-0.5 rounded-md">
+                        <span className="text-xs text-forest/60/40 bg-sage-2 border border-forest/10/30 px-2 py-0.5 rounded-md">
                           PLANNED
                         </span>
-                        <span className="font-display text-sm text-foreground tracking-wider">{wave.name}</span>
-                        <span className="text-xs text-muted-foreground/40">{wave.category}</span>
+                        <span className="font-display text-sm text-forest tracking-wider">{wave.name}</span>
+                        <span className="text-xs text-forest/60/40">{wave.category}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground/30">○ Coming Soon</span>
+                      <span className="text-xs text-forest/60/30">○ Coming Soon</span>
                     </div>
                     <div className="p-4">
-                      <p className="text-xs font-body text-muted-foreground mb-3 leading-relaxed">{wave.description}</p>
+                      <p className="text-xs font-body text-forest/60 mb-3 leading-relaxed">{wave.description}</p>
                       <div className="flex gap-2 flex-wrap">
                         {wave.fheOps.map((op) => (
-                          <span key={op} className="text-[11px] text-muted-foreground/40 bg-secondary/20 border border-border/20 px-1.5 py-0.5 rounded-md">{op}</span>
+                          <span key={op} className="text-[11px] text-forest/60/40 bg-sage-2 border border-forest/10/20 px-1.5 py-0.5 rounded-md">{op}</span>
                         ))}
                       </div>
                     </div>
@@ -922,25 +920,25 @@ resolverData = encodeAbiParameters(
 
             {/* ── TROUBLESHOOTING ── */}
             <section id="troubleshooting">
-              <h2 className="font-display text-2xl text-foreground tracking-tight mb-6">
-                Known Issues <span className="text-primary text-glow">&amp; Fixes</span>
+              <h2 className="font-display text-2xl text-forest tracking-tight mb-6">
+                Known Issues <span className="text-forest">&amp; Fixes</span>
               </h2>
 
               <div className="space-y-6">
                 {/* Issue 1 */}
-                <div className="glass-panel rounded-md overflow-hidden">
-                  <div className="p-4 border-b border-border/50 bg-amber-500/5 flex items-center gap-3">
+                <div className="docs-panel rounded-xl overflow-hidden">
+                  <div className="p-4 border-b border-forest/10/50 bg-amber-500/5 flex items-center gap-3">
                     <AlertTriangle className="w-4 h-4 text-amber-400/70 flex-shrink-0" />
-                    <span className="text-sm text-foreground">MetaMask &ldquo;Network fee: Unavailable&rdquo; on FHE transactions</span>
+                    <span className="text-sm text-forest">MetaMask &ldquo;Network fee: Unavailable&rdquo; on FHE transactions</span>
                   </div>
                   <div className="p-4 space-y-4">
                     <div>
-                      <div className="text-xs tracking-[0.2em] uppercase text-muted-foreground/50 mb-1">Root Cause</div>
-                      <p className="text-xs font-body text-muted-foreground">The Arbitrum Sepolia RPC cannot simulate CoFHE coprocessor calls. <code className="font-mono font-mono">eth_estimateGas</code> fails for any transaction touching FHE operations. MetaMask falls back to &ldquo;Unavailable&rdquo; and blocks the transaction.</p>
+                      <div className="text-xs tracking-[0.2em] uppercase text-forest/60/50 mb-1">Root Cause</div>
+                      <p className="text-xs font-body text-forest/60">The Arbitrum Sepolia RPC cannot simulate CoFHE coprocessor calls. <code className="font-mono">eth_estimateGas</code> fails for any transaction touching FHE operations. MetaMask falls back to &ldquo;Unavailable&rdquo; and blocks the transaction.</p>
                     </div>
                     <div>
-                      <div className="text-xs tracking-[0.2em] uppercase text-primary/60 mb-2">Fix</div>
-                      <pre className="p-4 overflow-x-auto bg-background/40"><code className="font-mono font-mono text-sm text-foreground/70 leading-relaxed">{`// Add explicit gas: bigint to every writeContractAsync call
+                      <div className="text-xs tracking-[0.2em] uppercase text-forest/60 mb-2">Fix</div>
+                      <pre className="p-4 overflow-x-auto bg-[#0c1208]"><code className="font-mono text-sm text-lime-accent/80 leading-relaxed">{`// Add explicit gas: bigint to every writeContractAsync call
 const feeData = await publicClient.estimateFeesPerGas();
 const maxFeePerGas = feeData.maxFeePerGas
   ? (feeData.maxFeePerGas * 130n) / 100n  // 30% buffer
@@ -954,7 +952,7 @@ await writeContractAsync({
                       </pre>
                     </div>
                     <div>
-                      <div className="text-xs tracking-[0.2em] uppercase text-muted-foreground/50 mb-2">Gas Limits Per Operation</div>
+                      <div className="text-xs tracking-[0.2em] uppercase text-forest/60/50 mb-2">Gas Limits Per Operation</div>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-1">
                         {[
                           ["confidentialTransfer", "500_000n"],
@@ -967,9 +965,9 @@ await writeContractAsync({
                           ["mint / claimDaily", "400-500_000n"],
                           ["grantRole / revokeRole", "150_000n"],
                         ].map(([fn, gas]) => (
-                          <div key={fn} className="flex justify-between items-center text-xs bg-secondary/20 rounded-md px-2 py-1">
-                            <span className="text-muted-foreground">{fn}</span>
-                            <span className="text-primary">{gas}</span>
+                          <div key={fn} className="flex justify-between items-center text-xs bg-sage-2 rounded-md px-2 py-1">
+                            <span className="text-forest/60">{fn}</span>
+                            <span className="text-forest">{gas}</span>
                           </div>
                         ))}
                       </div>
@@ -978,21 +976,21 @@ await writeContractAsync({
                 </div>
 
                 {/* Issue 2 */}
-                <div className="glass-panel rounded-md overflow-hidden">
-                  <div className="p-4 border-b border-border/50 bg-amber-500/5 flex items-center gap-3">
+                <div className="docs-panel rounded-xl overflow-hidden">
+                  <div className="p-4 border-b border-forest/10/50 bg-amber-500/5 flex items-center gap-3">
                     <AlertTriangle className="w-4 h-4 text-amber-400/70 flex-shrink-0" />
-                    <span className="text-sm text-foreground">createEscrow with time-lock / approval condition reverts on-chain</span>
+                    <span className="text-sm text-forest">createEscrow with time-lock / approval condition reverts on-chain</span>
                   </div>
                   <div className="p-4 space-y-4">
                     <div>
-                      <div className="text-xs tracking-[0.2em] uppercase text-muted-foreground/50 mb-1">Root Cause</div>
-                      <p className="text-xs font-body text-muted-foreground">
-                        <code className="font-mono font-mono">encodePacked</code> (viem) is not compatible with Solidity <code className="font-mono font-mono">abi.decode</code>. The resolver expects standard ABI encoding (32 bytes per word = 64 bytes for uint8+uint256). <code className="font-mono font-mono">encodePacked</code> produces 33 bytes (tight-packed). Solidity cannot read a full word at offset 0 and reverts.
+                      <div className="text-xs tracking-[0.2em] uppercase text-forest/60/50 mb-1">Root Cause</div>
+                      <p className="text-xs font-body text-forest/60">
+                        <code className="font-mono">encodePacked</code> (viem) is not compatible with Solidity <code className="font-mono">abi.decode</code>. The resolver expects standard ABI encoding (32 bytes per word = 64 bytes for uint8+uint256). <code className="font-mono">encodePacked</code> produces 33 bytes (tight-packed). Solidity cannot read a full word at offset 0 and reverts.
                       </p>
                     </div>
                     <div>
-                      <div className="text-xs tracking-[0.2em] uppercase text-primary/60 mb-2">Fix</div>
-                      <pre className="p-4 overflow-x-auto bg-background/40"><code className="font-mono font-mono text-sm text-foreground/70 leading-relaxed">{`// Wrong -- tight-packed, breaks abi.decode
+                      <div className="text-xs tracking-[0.2em] uppercase text-forest/60 mb-2">Fix</div>
+                      <pre className="p-4 overflow-x-auto bg-[#0c1208]"><code className="font-mono text-sm text-lime-accent/80 leading-relaxed">{`// Wrong -- tight-packed, breaks abi.decode
 import { encodePacked } from "viem";
 resolverData = encodePacked(["uint8", "uint256"], [conditionType, deadline]);
 
@@ -1009,8 +1007,8 @@ resolverData = encodeAbiParameters(
                 </div>
 
                 {/* General gotchas */}
-                <div className="glass-panel rounded-md p-5">
-                  <div className="text-xs tracking-[0.2em] uppercase text-primary/60 mb-4">◆ General CoFHE Gotchas</div>
+                <div className="docs-panel rounded-xl p-5">
+                  <div className="text-xs tracking-[0.2em] uppercase text-forest/60 mb-4">▸ General CoFHE Gotchas</div>
                   <div className="space-y-3">
                     {[
                       ["Forget FHE.allowThis()", "Contract loses handle access on the next transaction. Always call allowThis() on every updated encrypted value."],
@@ -1021,7 +1019,7 @@ resolverData = encodeAbiParameters(
                     ].map(([err, fix]) => (
                       <div key={err} className="flex gap-3 text-xs items-start">
                         <code className="font-mono text-amber-400/60 flex-shrink-0 mt-0.5">{err}</code>
-                        <span className="font-body text-muted-foreground">{fix}</span>
+                        <span className="font-body text-forest/60">{fix}</span>
                       </div>
                     ))}
                   </div>
@@ -1031,8 +1029,8 @@ resolverData = encodeAbiParameters(
 
             {/* ── RESOURCES ── */}
             <section id="resources">
-              <h2 className="font-display text-2xl text-foreground tracking-tight mb-6">
-                Resource <span className="text-primary text-glow">Stack</span>
+              <h2 className="font-display text-2xl text-forest tracking-tight mb-6">
+                Resource <span className="text-forest">Stack</span>
               </h2>
 
               <div className="grid md:grid-cols-2 gap-3">
@@ -1046,24 +1044,19 @@ resolverData = encodeAbiParameters(
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.05 }}
-                    className="glass-panel rounded-md p-4 flex items-center justify-between group hover:border-primary/30 transition-all"
+                    className="docs-panel rounded-xl p-4 flex items-center justify-between group hover:border-forest/25 transition-all"
                   >
                     <div>
-                      <div className="text-xs text-foreground group-hover:text-primary transition-colors">{r.title}</div>
-                      <div className="text-xs text-muted-foreground/50 mt-0.5">{r.purpose}</div>
+                      <div className="text-xs text-forest group-hover:text-forest transition-colors">{r.title}</div>
+                      <div className="text-xs text-forest/60/50 mt-0.5">{r.purpose}</div>
                     </div>
-                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
+                    <ExternalLink className="w-3.5 h-3.5 text-forest/60/30 group-hover:text-forest transition-colors" />
                   </motion.a>
                 ))}
               </div>
             </section>
 
-          </div>
-        </div>
-      </div>
-
-      <ObscuraFooter />
-    </div>
+    </DocsShell>
   );
 };
 

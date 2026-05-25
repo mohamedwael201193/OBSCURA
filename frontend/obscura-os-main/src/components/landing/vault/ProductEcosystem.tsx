@@ -1,6 +1,10 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowUpRight, Wallet, LineChart, Vote } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import {
+  ObscuraFeatureIcon,
+  PRODUCT_MODULE_ICONS,
+} from "@/components/landing/ObscuraFeatureIcon";
 
 const PRODUCTS = [
   {
@@ -8,7 +12,6 @@ const PRODUCTS = [
     name: "Pay",
     tagline: "Private banking, onchain.",
     body: "Stealth sends, shielded payroll, encrypted streams. Settle in stable value, reveal only to who you choose.",
-    icon: Wallet,
     accent: "from-[oklch(0.96_0.05_150)] to-[oklch(0.92_0.06_150)]",
     accentDark: "dark:from-[oklch(0.3_0.06_150)] dark:to-[oklch(0.24_0.05_150)]",
     preview: <PayPreview />,
@@ -18,7 +21,6 @@ const PRODUCTS = [
     name: "Credit",
     tagline: "Encrypted lending terminal.",
     body: "Supply, borrow, and manage collateral with hidden positions. Public solvency, private balance sheet.",
-    icon: LineChart,
     accent: "from-[oklch(0.96_0.04_85)] to-[oklch(0.92_0.05_85)]",
     accentDark: "dark:from-[oklch(0.3_0.06_85)] dark:to-[oklch(0.24_0.05_85)]",
     preview: <CreditPreview />,
@@ -28,7 +30,6 @@ const PRODUCTS = [
     name: "Vote",
     tagline: "Coercion-resistant governance.",
     body: "Confidential ballots, weighted by encrypted stake. Aggregate tallies revealed only after finalization.",
-    icon: Vote,
     accent: "from-[oklch(0.96_0.04_290)] to-[oklch(0.92_0.05_290)]",
     accentDark: "dark:from-[oklch(0.3_0.06_290)] dark:to-[oklch(0.24_0.05_290)]",
     preview: <VotePreview />,
@@ -75,9 +76,10 @@ export function ProductEcosystem() {
                 <div className="p-7">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className={`chip-icon size-11 ${["chip-emerald","chip-amber","chip-violet"][i]}`}>
-                        <p.icon className="size-5" />
-                      </div>
+                      <ObscuraFeatureIcon
+                        icon={PRODUCT_MODULE_ICONS[i].icon}
+                        tone={PRODUCT_MODULE_ICONS[i].tone}
+                      />
                       <div>
                         <div className="font-display text-2xl tracking-tight">Obscura {p.name}</div>
                         <div className="text-sm text-muted-foreground">{p.tagline}</div>

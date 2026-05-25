@@ -1,6 +1,9 @@
+import { useRef } from "react";
 import { Link } from "react-router-dom";
+import { motion, useScroll, useSpring, useTransform, type MotionValue } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import ObscuraLogo from "@/components/brand/ObscuraLogo";
+import { cn } from "@/lib/utils";
 
 const USE_CASES = [
   { label: "Private payments", href: "/pay" },
@@ -38,12 +41,72 @@ const TICKER_ITEMS = [
   "SEALED BALLOTS",
 ];
 
-function FooterWireCoin({ className }: { className?: string }) {
+function FloatingFooterCoin({
+  className,
+  scrollY,
+}: {
+  className?: string;
+  scrollY: MotionValue<number>;
+}) {
   return (
-    <div
-      className={`footer-wire-coin pointer-events-none absolute opacity-90 ${className ?? ""}`}
+    <motion.div
+      style={{ y: scrollY }}
+      className={cn(
+        "footer-wire-coin pointer-events-none absolute will-change-transform",
+        className,
+      )}
       aria-hidden
     />
+  );
+}
+
+function FooterCtaBand() {
+  const bandRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: bandRef,
+    offset: ["start end", "end start"],
+  });
+
+  const smooth = useSpring(scrollYProgress, {
+    stiffness: 90,
+    damping: 28,
+    mass: 0.25,
+  });
+
+  const leftY = useTransform(smooth, [0, 0.33, 0.66, 1], [32, -8, -32, 8]);
+  const rightY = useTransform(smooth, [0, 0.33, 0.66, 1], [-28, 10, 28, -10]);
+
+  return (
+    <div
+      ref={bandRef}
+      className="relative overflow-hidden px-5 py-16 sm:px-8 md:py-20 lg:px-10 lg:py-24"
+    >
+      <FloatingFooterCoin
+        scrollY={leftY}
+        className="left-[2%] top-[8%] h-[clamp(100px,18vw,200px)] w-[clamp(100px,18vw,200px)] -rotate-12 opacity-90"
+      />
+      <FloatingFooterCoin
+        scrollY={rightY}
+        className="right-[3%] top-[32%] h-[clamp(130px,24vw,280px)] w-[clamp(130px,24vw,280px)] rotate-6 opacity-85"
+      />
+
+      <div className="relative z-10 mx-auto max-w-[1400px]">
+        <ObscuraLogo size="md" tone="dark" className="mb-8" />
+        <h2 className="max-w-3xl font-display text-[clamp(2rem,5vw,3.75rem)] font-normal leading-[1.08] tracking-tight">
+          Add <span className="text-lime-accent">privacy</span> to every layer of onchain finance
+        </h2>
+        <p className="mt-4 max-w-lg font-body text-sm leading-relaxed text-white/55 md:text-base">
+          One FHE engine for payments, credit, and governance — encrypted by default on public
+          chains.
+        </p>
+        <Link
+          to="/pay"
+          className="mt-8 inline-flex items-center justify-center rounded-full bg-lime-accent px-8 py-3.5 font-body text-sm font-semibold text-forest transition-transform hover:scale-[1.02] active:scale-[0.98]"
+        >
+          Open Obscura
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -71,29 +134,7 @@ function FooterScrollTicker() {
 export default function SpadeFooter() {
   return (
     <footer id="docs" className="relative overflow-hidden bg-forest text-white">
-      <div className="relative px-5 py-16 sm:px-8 md:py-20 lg:px-10 lg:py-24">
-        <FooterWireCoin className="left-[2%] top-[10%] h-[clamp(100px,18vw,200px)] w-[clamp(100px,18vw,200px)] -rotate-12" />
-        <FooterWireCoin className="right-[4%] top-[38%] h-[clamp(80px,14vw,160px)] w-[clamp(80px,14vw,160px)] rotate-6 opacity-70" />
-
-        <div className="relative z-10 mx-auto max-w-[1400px]">
-          <ObscuraLogo size="md" tone="dark" className="mb-8" />
-          <h2 className="max-w-3xl font-display text-[clamp(2rem,5vw,3.75rem)] font-normal leading-[1.08] tracking-tight">
-            Add{" "}
-            <span className="text-lime-accent">privacy</span> to every layer of onchain
-            finance
-          </h2>
-          <p className="mt-4 max-w-lg font-body text-sm leading-relaxed text-white/55 md:text-base">
-            One FHE engine for payments, credit, and governance — encrypted by default on
-            public chains.
-          </p>
-          <Link
-            to="/pay"
-            className="mt-8 inline-flex items-center justify-center rounded-full bg-lime-accent px-8 py-3.5 font-body text-sm font-semibold text-forest transition-transform hover:scale-[1.02] active:scale-[0.98]"
-          >
-            Open Obscura
-          </Link>
-        </div>
-      </div>
+      <FooterCtaBand />
 
       <div className="border-t border-white/10 px-5 py-14 sm:px-8 lg:px-10">
         <div className="mx-auto grid max-w-[1400px] gap-12 md:grid-cols-2 lg:grid-cols-4 lg:gap-10">

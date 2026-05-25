@@ -5,12 +5,13 @@ import NavRightSlot from "@/components/elite/NavRightSlot";
 import ObscuraLogo from "@/components/brand/ObscuraLogo";
 
 const NAV_LINKS = [
-  { label: "Pay", href: "/pay" },
-  { label: "Credit", href: "/credit" },
-  { label: "Vote", href: "/vote" },
-  { label: "How it works", href: "#how", anchor: true },
+  { label: "Home", href: "/" },
+  { label: "Privacy", href: "/privacy" },
   { label: "Docs", href: "/docs" },
 ] as const;
+
+const navLinkClass =
+  "text-sm font-bold text-black transition-opacity hover:opacity-65";
 
 export default function SpadeLandingNav() {
   const [scrolled, setScrolled] = useState(false);
@@ -34,26 +35,12 @@ export default function SpadeLandingNav() {
           <ObscuraLogo size="sm" tone="light" />
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex" aria-label="Main navigation">
-          {NAV_LINKS.map((link) =>
-            "anchor" in link && link.anchor ? (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-sm font-medium text-forest/70 transition-colors hover:text-forest"
-              >
-                {link.label}
-              </a>
-            ) : (
-              <Link
-                key={link.href}
-                to={link.href}
-                className="text-sm font-medium text-forest/70 transition-colors hover:text-forest"
-              >
-                {link.label}
-              </Link>
-            ),
-          )}
+        <nav className="flex items-center gap-6 sm:gap-8" aria-label="Main navigation">
+          {NAV_LINKS.map((link) => (
+            <Link key={link.href} to={link.href} className={navLinkClass}>
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
         <div className="flex items-center gap-3">

@@ -9,7 +9,14 @@ import {
   WalletWalletConnect,
   WalletLedger,
 } from "@web3icons/react";
-import { ShieldCheck, KeyRound, Lock, Eye, Fingerprint, Binary } from "lucide-react";
+import { TRAIT_ICONS } from "@/components/landing/ObscuraFeatureIcon";
+
+const CHIP_GRAD = {
+  forest: ["#b2eb76", "#2d6b45"],
+  lime: ["#d4f5a8", "#3d8f5c"],
+  moss: ["#7dce96", "#245a38"],
+  deep: ["#5ecf8a", "#18280e"],
+} as const;
 
 /**
  * Concept-aligned ecosystem: only rails that matter to a privacy operating system.
@@ -36,21 +43,21 @@ const FHE_GRAD = (id: string, from: string, to: string) => (
 
 const FhenixMark = () => (
   <svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-    <defs>{FHE_GRAD("fh", "#f97316", "#dc2626")}</defs>
+    <defs>{FHE_GRAD("fh", CHIP_GRAD.forest[0], CHIP_GRAD.forest[1])}</defs>
     <path d="M12 2 L20 7 V17 L12 22 L4 17 V7 Z" fill="url(#fh)" />
     <path d="M9 8 H15 M9 12 H14 M9 16 H12" stroke="white" strokeWidth="1.4" strokeLinecap="round" />
   </svg>
 );
 const ZamaMark = () => (
   <svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-    <defs>{FHE_GRAD("zm", "#fbbf24", "#f59e0b")}</defs>
+    <defs>{FHE_GRAD("zm", CHIP_GRAD.lime[0], CHIP_GRAD.lime[1])}</defs>
     <rect x="3" y="3" width="18" height="18" rx="5" fill="url(#zm)" />
     <path d="M8 9 L16 9 L8 15 L16 15" stroke="#1f2937" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
   </svg>
 );
 const IncoMark = () => (
   <svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-    <defs>{FHE_GRAD("ic", "#22d3ee", "#0e7490")}</defs>
+    <defs>{FHE_GRAD("ic", CHIP_GRAD.moss[0], CHIP_GRAD.moss[1])}</defs>
     <circle cx="12" cy="12" r="9" fill="url(#ic)" />
     <circle cx="12" cy="12" r="5" stroke="white" strokeWidth="1.6" fill="none" />
     <circle cx="12" cy="12" r="1.6" fill="white" />
@@ -58,7 +65,7 @@ const IncoMark = () => (
 );
 const CoFheMark = () => (
   <svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-    <defs>{FHE_GRAD("co", "#34d399", "#059669")}</defs>
+    <defs>{FHE_GRAD("co", CHIP_GRAD.deep[0], CHIP_GRAD.deep[1])}</defs>
     <path d="M4 6 H20 V18 H4 Z" fill="url(#co)" />
     <path d="M7 10 H10 M7 13 H12 M14 10 H17 M14 13 H17" stroke="white" strokeWidth="1.4" strokeLinecap="round" />
   </svg>
@@ -89,13 +96,13 @@ const ROW_B: Mark[] = [
   { label: "WalletConnect",        kind: "brand",  Icon: WalletWalletConnect },
   { label: "Ledger · HW signing",  kind: "brand",  Icon: WalletLedger },
   { label: "Rainbow",              kind: "brand",  Icon: WalletRainbow },
-  { label: "Trail of Bits · Audit", kind: "custom", Custom: <TraitMark icon={<ShieldCheck className="size-4" />} from="#0f172a" to="#334155" /> },
-  { label: "OpenZeppelin · Audit", kind: "custom", Custom: <TraitMark icon={<ShieldCheck className="size-4" />} from="#3b82f6" to="#1e40af" /> },
-  { label: "EIP-712 · Permits",    kind: "custom", Custom: <TraitMark icon={<KeyRound className="size-4" />} from="#a78bfa" to="#6d28d9" /> },
-  { label: "ZK Proofs",            kind: "custom", Custom: <TraitMark icon={<Binary className="size-4" />} from="#f472b6" to="#be185d" /> },
-  { label: "Biometric Permits",    kind: "custom", Custom: <TraitMark icon={<Fingerprint className="size-4" />} from="#fb923c" to="#c2410c" /> },
-  { label: "Threshold Decryption", kind: "custom", Custom: <TraitMark icon={<Lock className="size-4" />} from="#34d399" to="#047857" /> },
-  { label: "View Permits",         kind: "custom", Custom: <TraitMark icon={<Eye className="size-4" />} from="#22d3ee" to="#0e7490" /> },
+  { label: "Trail of Bits · Audit", kind: "custom", Custom: <TraitMark icon={<TRAIT_ICONS.audit className="size-4" strokeWidth={1.75} />} from={CHIP_GRAD.deep[0]} to={CHIP_GRAD.deep[1]} /> },
+  { label: "OpenZeppelin · Audit", kind: "custom", Custom: <TraitMark icon={<TRAIT_ICONS.audit className="size-4" strokeWidth={1.75} />} from={CHIP_GRAD.forest[0]} to={CHIP_GRAD.forest[1]} /> },
+  { label: "EIP-712 · Permits",    kind: "custom", Custom: <TraitMark icon={<TRAIT_ICONS.permit className="size-4" strokeWidth={1.75} />} from={CHIP_GRAD.lime[0]} to={CHIP_GRAD.lime[1]} /> },
+  { label: "ZK Proofs",            kind: "custom", Custom: <TraitMark icon={<TRAIT_ICONS.zk className="size-4" strokeWidth={1.75} />} from={CHIP_GRAD.moss[0]} to={CHIP_GRAD.moss[1]} /> },
+  { label: "Biometric Permits",    kind: "custom", Custom: <TraitMark icon={<TRAIT_ICONS.biometric className="size-4" strokeWidth={1.75} />} from={CHIP_GRAD.forest[0]} to={CHIP_GRAD.deep[1]} /> },
+  { label: "Threshold Decryption", kind: "custom", Custom: <TraitMark icon={<TRAIT_ICONS.threshold className="size-4" strokeWidth={1.75} />} from={CHIP_GRAD.lime[0]} to={CHIP_GRAD.lime[1]} /> },
+  { label: "View Permits",         kind: "custom", Custom: <TraitMark icon={<TRAIT_ICONS.view className="size-4" strokeWidth={1.75} />} from={CHIP_GRAD.deep[0]} to={CHIP_GRAD.deep[1]} /> },
 ];
 
 export function LogoStrip() {

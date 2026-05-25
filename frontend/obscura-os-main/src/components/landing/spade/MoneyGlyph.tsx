@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 /**
- * Luminance-masked wireframe $ — FHE encrypt cycle plays on hover only.
+ * Wireframe $ with vertical scan wipe — digital grid above, green wire below; FHE on hover.
  */
 export default function MoneyGlyph({ className }: { className?: string }) {
   const reduceMotion = useReducedMotion();
@@ -35,13 +35,27 @@ export default function MoneyGlyph({ className }: { className?: string }) {
       )}
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
-      whileHover={reduceMotion ? undefined : { y: -6, scale: 1.02 }}
+      whileHover={reduceMotion ? undefined : { scale: 1.03 }}
       transition={{
         opacity: { duration: 1.1, ease: [0.16, 1, 0.3, 1] },
         scale: { type: "spring", stiffness: 260, damping: 22 },
-        y: { type: "spring", stiffness: 300, damping: 24 },
       }}
     >
+      <motion.div
+        className="relative h-full w-full"
+        animate={
+          reduceMotion || encrypting
+            ? undefined
+            : {
+                y: [0, -14, 0],
+                rotate: [-2.5, 2.5, -2.5],
+              }
+        }
+        transition={{
+          y: { duration: 5.8, repeat: Infinity, ease: "easeInOut" },
+          rotate: { duration: 9.5, repeat: Infinity, ease: "easeInOut" },
+        }}
+      >
       <div
         className={cn(
           "pointer-events-none absolute inset-0 transition-opacity duration-500",
@@ -51,24 +65,19 @@ export default function MoneyGlyph({ className }: { className?: string }) {
         <div className="money-glyph-mask money-glyph-mask--boost absolute inset-[4%]" />
       </div>
 
-      <div className="relative h-full w-full">
         <div className="money-glyph-mask money-glyph-mask--live absolute inset-0" />
 
         {!reduceMotion ? (
           <>
+            <div className="money-glyph-encrypt-trail absolute inset-0" aria-hidden />
+            <div className="money-glyph-digital-dots absolute inset-0" aria-hidden />
+            <div className="money-glyph-scan-edge absolute inset-x-[-2%]" aria-hidden />
             <div className="money-glyph-cipher absolute inset-0" aria-hidden />
-            <div className="money-glyph-fhe-beam absolute inset-x-[-4%]" aria-hidden />
             <div className="money-glyph-seal-pulse absolute inset-[8%]" aria-hidden />
-            <div
-              className={cn(
-                "money-glyph-scanlines pointer-events-none absolute inset-0 transition-opacity duration-300",
-                encrypting ? "opacity-70" : "opacity-25",
-              )}
-              aria-hidden
-            />
+            <div className="money-glyph-scanlines pointer-events-none absolute inset-0" aria-hidden />
           </>
         ) : null}
-      </div>
+      </motion.div>
 
       {!reduceMotion ? (
         <span

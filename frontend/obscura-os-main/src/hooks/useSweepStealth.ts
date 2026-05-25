@@ -20,7 +20,7 @@ import { useAccount, usePublicClient, useWalletClient, useSendTransaction } from
 import { createWalletClient, http, parseEther, formatUnits } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { arbitrumSepolia } from "viem/chains";
-import { CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
+import { OBSCURA_PAY_OCUSDC_ADDRESS } from "@/config/payV3";
 import { stealthPrivateKey, loadStoredKeys, unlockStoredKeys } from "@/lib/stealth";
 import { initFHEClient, encryptAmount, resetFHEAccount } from "@/lib/fhe";
 import { estimateCappedFees } from "@/lib/gas";
@@ -96,7 +96,7 @@ export function useSweepStealth() {
 
   const sweep = useCallback(
     async (payment: ScannedPayment, amountOverride?: bigint) => {
-      if (!address || !publicClient || !walletClient || !CONFIDENTIAL_USDC_ADDRESS) {
+      if (!address || !publicClient || !walletClient || !OBSCURA_PAY_OCUSDC_ADDRESS) {
         setState({ step: "error", error: "Wallet not connected" });
         return;
       }
@@ -186,7 +186,7 @@ export function useSweepStealth() {
         const sweepFees = await estimateCappedFees(publicClient);
 
         const txHash = await stealthWalletClient.writeContract({
-          address: CONFIDENTIAL_USDC_ADDRESS,
+          address: OBSCURA_PAY_OCUSDC_ADDRESS,
           abi: CUSDC_TRANSFER_ABI,
           functionName: "confidentialTransfer",
           args: [address, inEuint64],

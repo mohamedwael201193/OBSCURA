@@ -18,7 +18,8 @@
  */
 import { useCallback } from "react";
 import { usePublicClient, useWalletClient, useWriteContract } from "wagmi";
-import { CONFIDENTIAL_TOKEN_ABI, CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
+import { CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
+import { OBSCURA_PAY_OCUSDC_ADDRESS } from "@/config/payV3";
 import { useFHEStatus } from "./useFHEStatus";
 import { FHEStepStatus } from "@/lib/constants";
 import { estimateCappedFees } from "@/lib/gas";
@@ -30,8 +31,8 @@ export function useShield(tokenAddress?: `0x${string}`) {
   const { writeContractAsync } = useWriteContract();
   const fhe = useFHEStatus();
 
-  // Fall back to the default cUSDC if no specific token is passed.
-  const address = tokenAddress ?? CONFIDENTIAL_USDC_ADDRESS;
+  // Fall back to the Wave 5 PAY ocUSDC if no specific token is passed.
+  const address = tokenAddress ?? OBSCURA_PAY_OCUSDC_ADDRESS;
 
   /**
    * Claim the 24h faucet drip. No prior ERC-20 approval needed.

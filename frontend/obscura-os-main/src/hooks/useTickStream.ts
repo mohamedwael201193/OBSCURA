@@ -6,7 +6,7 @@ import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
 } from "@/config/pay";
-import { CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
+import { OBSCURA_PAY_OCUSDC_ADDRESS } from "@/config/payV3";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
 import { deriveStealthPayment, type MetaAddress } from "@/lib/stealth";
 import { estimateCappedFees } from "@/lib/gas";
@@ -70,7 +70,7 @@ export function useTickStream() {
       if (
         !publicClient ||
         !walletClient ||
-        !CONFIDENTIAL_USDC_ADDRESS ||
+        !OBSCURA_PAY_OCUSDC_ADDRESS ||
         !OBSCURA_STEALTH_REGISTRY_ADDRESS
       ) {
         throw new Error("Wallet or contracts not configured");
@@ -94,7 +94,7 @@ export function useTickStream() {
         const fees1 = await withRateLimitRetry(() => estimateCappedFees(publicClient!));
 
         const txHash = await writeContractAsync({
-          address: CONFIDENTIAL_USDC_ADDRESS,
+          address: OBSCURA_PAY_OCUSDC_ADDRESS,
           abi: CUSDC_TRANSFER_ABI,
           functionName: "confidentialTransfer",
           args: [stealth.stealthAddress as `0x${string}`, inEuint64],

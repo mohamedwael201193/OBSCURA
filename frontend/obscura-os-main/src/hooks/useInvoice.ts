@@ -24,7 +24,8 @@ import {
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
   OBSCURA_STEALTH_REGISTRY_ABI,
 } from "@/config/pay";
-import { CONFIDENTIAL_USDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
+import { CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
+import { OBSCURA_PAY_OCUSDC_ADDRESS } from "@/config/payV3";
 import { deriveStealthPayment, type MetaAddress } from "@/lib/stealth";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
 import { withRateLimitRetry } from "@/lib/rateLimit";
@@ -148,7 +149,7 @@ export function useInvoice() {
       onProgress?: (id: string, status: "active" | "done" | "error", extra?: { txHash?: `0x${string}`; errorMsg?: string; countdownSec?: number }) => void,
     ) => {
       const emit = onProgress ?? (() => {});
-      if (!publicClient || !walletClient || !address || !OBSCURA_INVOICE_ADDRESS || !CONFIDENTIAL_USDC_ADDRESS) {
+      if (!publicClient || !walletClient || !address || !OBSCURA_INVOICE_ADDRESS || !OBSCURA_PAY_OCUSDC_ADDRESS) {
         throw new Error("Wallet not connected or contracts not configured");
       }
       await initFHEClient(publicClient, walletClient);
@@ -197,7 +198,7 @@ export function useInvoice() {
       emit("transfer", "active");
       const tFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
       const transferHash = await withRateLimitRetry(() => writeContractAsync({
-        address: CONFIDENTIAL_USDC_ADDRESS,
+        address: OBSCURA_PAY_OCUSDC_ADDRESS,
         abi: CONFIDENTIAL_TOKEN_ABI,
         functionName: "confidentialTransfer",
         args: [actualRecipient, transferEnc[0]],

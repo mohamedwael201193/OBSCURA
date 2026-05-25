@@ -6,7 +6,8 @@ import {
   OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS,
   OBSCURA_CONFIDENTIAL_ESCROW_ABI,
 } from '@/config/pay';
-import { CONFIDENTIAL_USDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from '@/config/credit';
+import { CONFIDENTIAL_TOKEN_ABI } from '@/config/credit';
+import { OBSCURA_PAY_OCUSDC_ADDRESS } from '@/config/payV3';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount, encryptAddressAndAmount } from '@/lib/fhe';
@@ -76,13 +77,13 @@ export function useOcUSDCEscrow() {
     if (
       !publicClient ||
       !address ||
-      !CONFIDENTIAL_USDC_ADDRESS ||
+      !OBSCURA_PAY_OCUSDC_ADDRESS ||
       !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS
     ) return;
 
     try {
       const isOp = await publicClient.readContract({
-        address: CONFIDENTIAL_USDC_ADDRESS,
+        address: OBSCURA_PAY_OCUSDC_ADDRESS,
         abi: CONFIDENTIAL_TOKEN_ABI,
         functionName: 'isOperator',
         args: [address, OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS],
@@ -94,7 +95,7 @@ export function useOcUSDCEscrow() {
     const fees = await estimateCappedFees(publicClient);
 
     const hash = await writeContractAsync({
-      address: CONFIDENTIAL_USDC_ADDRESS,
+      address: OBSCURA_PAY_OCUSDC_ADDRESS,
       abi: CONFIDENTIAL_TOKEN_ABI,
       functionName: 'setOperator',
       args: [OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, expiry],
@@ -147,7 +148,7 @@ export function useOcUSDCEscrow() {
       resolverData: `0x${string}` = '0x',
       expiryBlock: bigint = 0n
     ) => {
-      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS || !CONFIDENTIAL_USDC_ADDRESS) {
+      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS || !OBSCURA_PAY_OCUSDC_ADDRESS) {
         throw new Error('Wallet not connected or escrow contract not configured');
       }
 
@@ -229,7 +230,7 @@ export function useOcUSDCEscrow() {
           const transferEnc = await encryptAmount(amount, (step) => { if (import.meta.env.DEV) console.log('[FHE Escrow Encrypt #2 ocUSDC transfer]', step); });
           const transferFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
           const transferHash = await withRateLimitRetry(() => writeContractAsync({
-            address: CONFIDENTIAL_USDC_ADDRESS,
+            address: OBSCURA_PAY_OCUSDC_ADDRESS,
             abi: CONFIDENTIAL_TOKEN_ABI,
             functionName: 'confidentialTransfer',
             args: [OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, transferEnc[0]],
@@ -296,7 +297,7 @@ export function useOcUSDCEscrow() {
    */
   const fund = useCallback(
     async (escrowId: bigint, amount: bigint) => {
-      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS || !CONFIDENTIAL_USDC_ADDRESS) {
+      if (!publicClient || !walletClient || !OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS || !OBSCURA_PAY_OCUSDC_ADDRESS) {
         throw new Error('Wallet not connected or escrow contract not configured');
       }
       try {
@@ -308,7 +309,7 @@ export function useOcUSDCEscrow() {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
         const tFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
         const transferHash = await withRateLimitRetry(() => writeContractAsync({
-          address: CONFIDENTIAL_USDC_ADDRESS,
+          address: OBSCURA_PAY_OCUSDC_ADDRESS,
           abi: CONFIDENTIAL_TOKEN_ABI,
           functionName: 'confidentialTransfer',
           args: [OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, transferEnc[0]],

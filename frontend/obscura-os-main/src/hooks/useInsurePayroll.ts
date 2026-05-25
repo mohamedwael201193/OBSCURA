@@ -14,7 +14,7 @@ import {
   FHERC20_ABI,
   OBSCURA_PAYROLL_UNDERWRITER_ADDRESS,
 } from "@/config/pay";
-import { CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
+import { OBSCURA_PAY_OCUSDC_ADDRESS } from "@/config/payV3";
 import { initFHEClient, encryptAddressAndAmount } from "@/lib/fhe";
 import { estimateCappedFees } from "@/lib/gas";
 import { getJSON, setJSON, migrateGlobalKey } from "@/lib/scopedStorage";
@@ -83,7 +83,7 @@ export function useInsurePayroll() {
         !walletClient ||
         !address ||
         !INSURANCE_COVERAGE_MANAGER_ADDRESS ||
-        !CONFIDENTIAL_USDC_ADDRESS ||
+        !OBSCURA_PAY_OCUSDC_ADDRESS ||
         !OBSCURA_PAYROLL_UNDERWRITER_ADDRESS
       ) {
         throw new Error("Wallet or contracts not configured");
@@ -122,7 +122,7 @@ export function useInsurePayroll() {
         let needsOperator = true;
         try {
           const isOp = await publicClient.readContract({
-            address: CONFIDENTIAL_USDC_ADDRESS,
+            address: OBSCURA_PAY_OCUSDC_ADDRESS,
             abi: FHERC20_ABI,
             functionName: "isOperator",
             args: [address, INSURANCE_COVERAGE_MANAGER_ADDRESS],
@@ -137,7 +137,7 @@ export function useInsurePayroll() {
           );
 
           const authTx = await writeContractAsync({
-            address: CONFIDENTIAL_USDC_ADDRESS,
+            address: OBSCURA_PAY_OCUSDC_ADDRESS,
             abi: FHERC20_ABI,
             functionName: "setOperator",
             args: [INSURANCE_COVERAGE_MANAGER_ADDRESS, untilTs],

@@ -28,7 +28,6 @@ import {
 import { estimateCappedFees } from "@/lib/gas";
 import { ensureOperator } from "@/lib/operators";
 import { encryptAmount, initFHEClient } from "@/lib/fhe";
-import { CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
 
 // Prefer V2 if deployed; fall back to V1.
 const ACTIVE_INSURANCE_ADDRESS =
@@ -37,10 +36,8 @@ const ACTIVE_INSURANCE_ADDRESS =
 const ACTIVE_INSURANCE_ABI = OBSCURA_INSURANCE_SUBSCRIPTION_V2_ADDRESS
   ? OBSCURA_INSURANCE_SUBSCRIPTION_V2_ABI
   : OBSCURA_INSURANCE_SUBSCRIPTION_ABI;
-// Use PAY ocUSDC for V2 operator check; legacy V1 used CONFIDENTIAL_USDC_ADDRESS.
-const ACTIVE_CUSDC_ADDRESS = OBSCURA_INSURANCE_SUBSCRIPTION_V2_ADDRESS
-  ? OBSCURA_PAY_OCUSDC_ADDRESS
-  : CONFIDENTIAL_USDC_ADDRESS;
+// Always use PAY ocUSDC (V2 is deployed; V1 path is retired).
+const ACTIVE_CUSDC_ADDRESS = OBSCURA_PAY_OCUSDC_ADDRESS;
 
 export interface SubscriptionRow {
   subId: bigint;
@@ -132,8 +129,7 @@ export function useInsuranceSubscription() {
       setIsPending(true);
       setError(null);
       try {
-        // Operator authorization for the subscription contract (it pulls cUSDC).
-        // V2 uses PAY ocUSDC; V1 used CONFIDENTIAL_USDC_ADDRESS (same var for fallback).
+        // Operator authorization for the subscription contract (it pulls PAY ocUSDC).
         await ensureOperator(
           publicClient,
           walletClient,

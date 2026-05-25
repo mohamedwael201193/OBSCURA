@@ -18,7 +18,8 @@
  */
 import { useCallback } from "react";
 import { usePublicClient, useWalletClient, useWriteContract } from "wagmi";
-import { CONFIDENTIAL_TOKEN_ABI, CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
+import { CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
+import { OBSCURA_PAY_OCUSDC_ADDRESS } from "@/config/payV3";
 import { useFHEStatus } from "./useFHEStatus";
 import { FHEStepStatus } from "@/lib/constants";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
@@ -31,7 +32,7 @@ export function useUnshield(tokenAddress?: `0x${string}`) {
   const { writeContractAsync } = useWriteContract();
   const fhe = useFHEStatus();
 
-  const address = tokenAddress ?? CONFIDENTIAL_USDC_ADDRESS;
+  const address = tokenAddress ?? OBSCURA_PAY_OCUSDC_ADDRESS;
 
   /**
    * Unwrap `amtPlain` encrypted ocToken units back to the underlying ERC-20.

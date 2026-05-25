@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useWriteContract, usePublicClient, useWalletClient, useAccount } from 'wagmi';
-import { CONFIDENTIAL_USDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from '@/config/credit';
+import { CONFIDENTIAL_TOKEN_ABI } from '@/config/credit';
+import { OBSCURA_PAY_OCUSDC_ADDRESS } from '@/config/payV3';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount } from '@/lib/fhe';
@@ -41,7 +42,7 @@ export function useOcUSDCTransfer() {
 
   const transfer = useCallback(
     async (to: `0x${string}`, amount: bigint) => {
-      if (!publicClient || !walletClient || !CONFIDENTIAL_USDC_ADDRESS) {
+      if (!publicClient || !walletClient || !OBSCURA_PAY_OCUSDC_ADDRESS) {
         throw new Error('Wallet not connected or ocUSDC contract not configured');
       }
 
@@ -62,7 +63,7 @@ export function useOcUSDCTransfer() {
           : undefined;
 
         const hash = await writeContractAsync({
-          address: CONFIDENTIAL_USDC_ADDRESS,
+          address: OBSCURA_PAY_OCUSDC_ADDRESS,
           abi: CONFIDENTIAL_TOKEN_ABI,
           functionName: 'confidentialTransfer',
           args: [to, encryptedInputs[0]],
@@ -85,7 +86,7 @@ export function useOcUSDCTransfer() {
 
   const setOperator = useCallback(
     async (operator: `0x${string}`, expiry: number) => {
-      if (!CONFIDENTIAL_USDC_ADDRESS || !address) {
+      if (!OBSCURA_PAY_OCUSDC_ADDRESS || !address) {
         throw new Error('Wallet not connected or ocUSDC contract not configured');
       }
 
@@ -95,7 +96,7 @@ export function useOcUSDCTransfer() {
         : undefined;
 
       const hash = await writeContractAsync({
-        address: CONFIDENTIAL_USDC_ADDRESS,
+        address: OBSCURA_PAY_OCUSDC_ADDRESS,
         abi: CONFIDENTIAL_TOKEN_ABI,
         functionName: 'setOperator',
         args: [operator, expiry],

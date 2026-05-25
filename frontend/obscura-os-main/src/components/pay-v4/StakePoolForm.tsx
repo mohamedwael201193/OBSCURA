@@ -9,7 +9,7 @@ import {
   INSURANCE_POOL_ADDRESS,
   INSURANCE_POOL_ABI,
 } from "@/config/pay";
-import { CONFIDENTIAL_USDC_ADDRESS } from "@/config/credit";
+import { OBSCURA_PAY_OCUSDC_ADDRESS } from "@/config/payV3";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
 
 export default function StakePoolForm() {
@@ -25,7 +25,7 @@ export default function StakePoolForm() {
       toast.error("Connect wallet first");
       return;
     }
-    if (!INSURANCE_POOL_ADDRESS || !CONFIDENTIAL_USDC_ADDRESS) {
+    if (!INSURANCE_POOL_ADDRESS || !OBSCURA_PAY_OCUSDC_ADDRESS) {
       toast.error("Insurance pool not configured");
       return;
     }
@@ -51,7 +51,7 @@ export default function StakePoolForm() {
       const untilTimestamp = BigInt(Math.floor(Date.now() / 1000) + 30 * 86400);
 
       const authTx = await writeContractAsync({
-        address: CONFIDENTIAL_USDC_ADDRESS,
+        address: OBSCURA_PAY_OCUSDC_ADDRESS,
         abi: FHERC20_ABI,
         functionName: "setOperator",
         args: [INSURANCE_POOL_ADDRESS as `0x${string}`, untilTimestamp],

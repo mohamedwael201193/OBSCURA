@@ -166,7 +166,7 @@ export default function BuyCoverageForm() {
 
             <div className="space-y-2">
               <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
-                Coverage Amount (cUSDC)
+                Coverage Amount (ocUSDC)
               </label>
               <input
                 type="number"

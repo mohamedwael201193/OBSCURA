@@ -205,7 +205,7 @@ export default function UnifiedSendForm() {
         });
       } else if (mode === "stealth") {
         if (!resolved.meta) throw new Error("Recipient meta-address missing");
-        if (!CONFIDENTIAL_USDC_ADDRESS || !OBSCURA_STEALTH_REGISTRY_ADDRESS) {
+        if (!OBSCURA_PAY_OCUSDC_ADDRESS || !OBSCURA_STEALTH_REGISTRY_ADDRESS) {
           throw new Error("Stealth registry / ocUSDC not configured");
         }
         beginProgress([
@@ -494,7 +494,7 @@ export default function UnifiedSendForm() {
               <span>{resolved.warning}</span>
             </div>
           )}
-          <Label className="text-[11px] tracking-wide uppercase text-muted-foreground/70">Amount (cUSDC)</Label>
+          <Label className="text-[11px] tracking-wide uppercase text-muted-foreground/70">Amount (ocUSDC)</Label>
           <Input
             type="number"
             min="0"

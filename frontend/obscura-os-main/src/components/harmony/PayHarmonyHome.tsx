@@ -420,7 +420,7 @@ export function PayHarmonyHome({
   const { isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
-  const { decrypted } = useOcUSDCBalance();
+  const { decrypted, reveal, busy: revealBusy } = useOcUSDCBalance();
   const usdcBalance = useUSDCBalance();
   const inbox = useStealthInbox();
   const receipts = useReceipts();
@@ -689,7 +689,12 @@ export function PayHarmonyHome({
                   <VaultBalance
                     revealed={balanceRevealed}
                     display={ocDisplay}
-                    onToggle={() => setBalanceRevealed((v) => !v)}
+                    onToggle={async () => {
+                      if (!balanceRevealed && decrypted == null && !revealBusy) {
+                        try { await reveal(); } catch { /* error shown elsewhere */ }
+                      }
+                      setBalanceRevealed((v) => !v);
+                    }}
                   />
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1">

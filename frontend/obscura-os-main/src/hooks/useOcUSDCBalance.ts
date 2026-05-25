@@ -16,12 +16,13 @@ import {
   OBSCURA_PAY_STREAM_V2_ADDRESS,
 } from "@/config/payV2";
 import {
-  CONFIDENTIAL_USDC_ADDRESS,
   CONFIDENTIAL_TOKEN_ABI,
 } from "@/config/credit";
+import { OBSCURA_PAY_OCUSDC_ADDRESS } from "@/config/payV3";
 
 // ocUSDC balance hook — wraps/unwraps USDC ↔ ocUSDC.
-const OCUSDC_ADDRESS = CONFIDENTIAL_USDC_ADDRESS;
+// Uses the Wave 5 PAY ocUSDC wrapper (backed by Circle USDC).
+const OCUSDC_ADDRESS = OBSCURA_PAY_OCUSDC_ADDRESS;
 const OCUSDC_ABI = CONFIDENTIAL_TOKEN_ABI;
 import { initFHEClient, encryptAmount, decryptBalance, getOrCreatePermit } from "@/lib/fhe";
 import { withRateLimitRetry } from "@/lib/rateLimit";

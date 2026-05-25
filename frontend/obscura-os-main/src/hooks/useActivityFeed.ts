@@ -12,12 +12,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useAccount } from "wagmi";
 
-const SUPABASE_URL    = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_ANON   = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const SUPABASE_URL    = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const SUPABASE_ANON   = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 const POLL_INTERVAL   = 30_000;
 const PAGE_SIZE       = 20;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+// Lazy — only create client if env vars are present (Vercel must set these)
+const supabase = SUPABASE_URL && SUPABASE_ANON
+  ? createClient(SUPABASE_URL, SUPABASE_ANON)
+  : null;
 
 export type ActivityEventType =
   | "all"
@@ -74,12 +77,12 @@ export function useActivityFeed(): UseActivityFeedResult {
   const [page,      setPage]      = useState(0);
   const [hasMore,   setHasMore]   = useState(false);
 
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const channelRef = useRef<ReturnType<NonNullable<typeof supabase>["channel"]> | null>(null);
   const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Fetch page ─────────────────────────────────────────────────────────────
   const fetchPage = useCallback(async (pageIndex: number, replace: boolean) => {
-    if (!wallet) return;
+    if (!wallet || !supabase) return;
     setIsLoading(true);
     setError(null);
 
@@ -118,7 +121,7 @@ export function useActivityFeed(): UseActivityFeedResult {
 
   // ── Realtime subscription ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!wallet) return;
+    if (!wallet || !supabase) return;
 
     const channel = supabase
       .channel(`activity:${wallet}`)

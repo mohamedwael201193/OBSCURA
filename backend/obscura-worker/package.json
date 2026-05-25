@@ -11,11 +11,10 @@
   "dependencies": {
     "viem": "^2.21.0",
     "dotenv": "^16.4.5",
-    "@supabase/supabase-js": "^2.43.0"
-  },
-  "devDependencies": {
+    "@supabase/supabase-js": "^2.43.0",
     "@types/node": "^20.14.0",
     "typescript": "^5.4.5",
     "tsx": "^4.11.0"
-  }
+  },
+  "devDependencies": {}
 }

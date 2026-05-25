@@ -14,7 +14,7 @@
  */
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Repeat, CheckCircle2, Loader2, Calendar, ArrowRight } from "lucide-react";
+import { CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { isAddress, parseUnits } from "viem";
 import { toast } from "sonner";
 import { arbitrumSepolia } from "viem/chains";
@@ -32,8 +32,7 @@ import {
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
 } from "@/config/pay";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { HarmonyField, HarmonyFieldGrid, HarmonyPillGroup } from "@/components/harmony/harmony-ui";
 
 const MONTH_SECONDS = 2_592_000; // 30 days
 
@@ -192,108 +191,85 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-3">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
-          <Repeat className="w-4 h-4 text-foreground" />
-        </div>
-        <div className="min-w-0">
-          <div className="font-display text-[15px] font-semibold">Confidential subscription</div>
-          <p className="text-[12px] text-muted-foreground/70 mt-0.5 leading-relaxed">
-            Pay a fixed monthly amount privately. Each renewal goes through CoFHE-encrypted ocUSDC.
-            Cancel any time from Streams.
-          </p>
-        </div>
-      </div>
+      <p className="text-[12px] text-muted-foreground leading-relaxed">
+        Pay a fixed monthly amount privately. Each renewal is hidden on-chain. Cancel anytime from Streams.
+      </p>
 
-      {/* Merchant */}
-      <div className="space-y-1.5">
-        <Label className="text-[11px] tracking-[0.12em] uppercase text-muted-foreground/60">Merchant address</Label>
-        <Input
+      {/* Merchant (full row) */}
+      <HarmonyField label="Merchant address">
+        <input
           value={merchant}
           onChange={(e) => setMerchant(e.target.value)}
           placeholder="0x… (the wallet getting paid)"
-          className="font-mono"
+          className="pay-input"
         />
         {merchant && isAddress(merchant) && (
-          <div className="text-[10.5px] flex items-center gap-1.5 text-muted-foreground/65">
+          <div className="mt-1 text-[10.5px] flex items-center gap-1.5 text-muted-foreground/65">
             {recipientStatus === "registered" && (
-              <><CheckCircle2 className="w-3 h-3 text-foreground" /> stealth-ready merchant</>
+              <><CheckCircle2 className="w-3 h-3 text-foreground" /> Private receiving enabled</>
             )}
             {recipientStatus === "not-registered" && (
-              <><span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> merchant needs to register stealth meta-address first</>
+              <><span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Merchant must enable private receiving first</>
             )}
-            {recipientStatus === "checking" && <span>checking…</span>}
+            {recipientStatus === "checking" && <span>Checking…</span>}
           </div>
         )}
-      </div>
+      </HarmonyField>
 
-      {/* Monthly */}
-      <div className="space-y-1.5">
-        <Label className="text-[11px] tracking-[0.12em] uppercase text-muted-foreground/60">Monthly amount (ocUSDC)</Label>
-        <Input
-          inputMode="decimal"
-          value={monthly}
-          onChange={(e) => setMonthly(e.target.value)}
-          className="font-mono"
-        />
-        <div className="flex gap-1.5">
-          {QUICK_AMOUNTS.map((a) => (
-            <button
-              key={a}
-              type="button"
-              onClick={() => setMonthly(a)}
-              className={`px-3 py-1 rounded-md text-[11px] font-mono border ${
-                monthly === a
-                  ? "bg-emerald-500/10 border-emerald-500/35 text-[hsl(var(--success))]"
-                  : "hairline bg-card text-muted-foreground hover:bg-muted/50"
-              }`}
-            >
-              ${a}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Duration */}
-      <div className="space-y-1.5">
-        <Label className="text-[11px] tracking-[0.12em] uppercase text-muted-foreground/60 flex items-center gap-1.5">
-          <Calendar className="w-3 h-3" /> Duration
-        </Label>
-        <div className="grid grid-cols-4 gap-1.5">
-          {QUICK_DURATIONS.map((d) => (
-            <button
-              key={d.months}
-              type="button"
-              onClick={() => setMonths(String(d.months))}
-              className={`py-2 rounded-lg text-[11px] font-mono border ${
-                Number(months) === d.months
-                  ? "bg-emerald-500/10 border-emerald-500/35 text-[hsl(var(--success))]"
-                  : "hairline bg-card text-muted-foreground hover:bg-muted/50"
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Monthly + Duration — 2-col */}
+      <HarmonyFieldGrid>
+        <HarmonyField label="Monthly (USDC)">
+          <input
+            inputMode="decimal"
+            value={monthly}
+            onChange={(e) => setMonthly(e.target.value)}
+            className="pay-input pay-input-sm"
+          />
+          <div className="mt-2">
+            <HarmonyPillGroup
+              size="sm"
+              options={QUICK_AMOUNTS.map((a) => ({ value: a, label: `$${a}` }))}
+              value={monthly}
+              onChange={setMonthly}
+            />
+          </div>
+        </HarmonyField>
+        <HarmonyField label="Duration">
+          <input
+            type="number"
+            min="1"
+            value={months}
+            onChange={(e) => setMonths(e.target.value)}
+            className="pay-input pay-input-sm"
+          />
+          <div className="mt-2">
+            <HarmonyPillGroup
+              size="sm"
+              options={QUICK_DURATIONS.map((d) => ({ value: String(d.months), label: d.label }))}
+              value={months}
+              onChange={setMonths}
+            />
+          </div>
+        </HarmonyField>
+      </HarmonyFieldGrid>
 
       {/* Summary */}
-      <div className="rounded-xl hairline bg-card p-3.5 space-y-1.5">
+      <div className="rounded-xl border border-border bg-card p-3 space-y-1.5">
         <div className="flex items-center justify-between text-[12px]">
-          <span className="text-muted-foreground/65">Per month</span>
-          <span className="font-mono font-semibold">{monthly || "0"} ocUSDC</span>
+          <span className="text-muted-foreground">Per month</span>
+          <span className="font-mono">{monthly || "0"} USDC</span>
         </div>
         <div className="flex items-center justify-between text-[12px]">
-          <span className="text-muted-foreground/65">For</span>
+          <span className="text-muted-foreground">For</span>
           <span className="font-mono">{months || "0"} months</span>
         </div>
         <div className="h-px bg-border" />
         <div className="flex items-center justify-between text-[13px]">
-          <span className="text-foreground/85 font-display font-semibold">Lifetime cap</span>
-          <span className="font-mono font-bold text-[hsl(var(--success))]">{totalLifetime} ocUSDC</span>
+          <span className="text-foreground font-medium">Lifetime cap</span>
+          <span className="font-mono font-semibold">{totalLifetime} USDC</span>
         </div>
-        <p className="text-[10px] text-muted-foreground/45 leading-relaxed">
-          You only spend ocUSDC at each renewal. Each charge is encrypted end-to-end via CoFHE.
+        <p className="text-[10.5px] text-muted-foreground/60 leading-snug">
+          Charges happen only at each renewal. Amounts are hidden on-chain.
         </p>
       </div>
 
@@ -316,22 +292,23 @@ export default function SubscriptionForm({ onCreated }: { onCreated?: () => void
         )}
       </AnimatePresence>
 
-      <motion.button
-        onClick={submit}
-        disabled={submitting}
-        whileTap={{ scale: 0.99 }}
-        className="btn-pay btn-pay-emerald w-full py-2.5"
-      >
-        {submitting ? (
-          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Activating subscription…</>
-        ) : (
-          <>Start subscription <ArrowRight className="w-4 h-4 ml-2" /></>
-        )}
-      </motion.button>
+      <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-border/60">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={submitting}
+          className="btn-pay btn-pay-primary"
+        >
+          {submitting ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Activating…</>
+          ) : (
+            <>Start subscription <ArrowRight className="w-4 h-4" /></>
+          )}
+        </button>
+      </div>
 
-      <p className="text-[10.5px] text-muted-foreground/45 text-center leading-relaxed">
-        Renews every 30 days. Manage / pause / cancel from <strong className="text-foreground/70">Streams</strong>.
-        Use the "Pay all due cycles" button there to charge multiple subscriptions at once.
+      <p className="text-[10.5px] text-muted-foreground/55 text-center leading-snug">
+        Renews every 30 days. Manage from <strong className="text-foreground/70">Streams</strong>.
       </p>
     </div>
   );

@@ -55,7 +55,7 @@ export default function MyPolicies() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+        <div className="w-8 h-8 rounded-xl bg-muted hairline flex items-center justify-center shrink-0">
           <FileText className="w-3.5 h-3.5 text-foreground" />
         </div>
         <div className="min-w-0">
@@ -66,13 +66,13 @@ export default function MyPolicies() {
 
       <div className="space-y-2">
         {policies.map((p, i) => (
-          <div key={i} className="rounded-xl bg-white/[0.025] border border-white/[0.07] p-3 space-y-2">
+          <div key={i} className="rounded-xl bg-card hairline p-3 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-muted-foreground/50">Coverage ID:</span>
                 <code className="font-mono text-[12px] text-[hsl(var(--success))]">{p.coverageId}</code>
                 <button onClick={() => { navigator.clipboard.writeText(p.coverageId); toast.success("Coverage ID copied"); }}
-                  className="p-0.5 hover:bg-white/[0.05] rounded-md transition-colors">
+                  className="p-0.5 hover:bg-muted rounded-md transition-colors">
                   <Copy className="w-2.5 h-2.5 text-muted-foreground/40" />
                 </button>
               </div>

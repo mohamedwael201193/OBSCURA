@@ -247,181 +247,174 @@
 /* ─── Pay card — glass card with gradient top accent ─────────────────────── */
 .pay-card {
   position: relative;
-  background: linear-gradient(160deg, rgba(255,255,255,0.035) 0%, rgba(0,0,0,0.25) 100%);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   border-radius: 0.875rem;
   overflow: hidden;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
 }
-.pay-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg,
-    transparent 5%,
-    rgba(52, 211, 153, 0.65) 35%,
-    rgba(6, 182, 212, 0.65) 65%,
-    transparent 95%
-  );
-  pointer-events: none;
-}
+.pay-card::before { content: none; }
 
-/* ─── Pay card — cyan-accented variant ──────────────────────────────────── */
-.pay-card-cyan::before {
-  background: linear-gradient(90deg,
-    transparent 5%,
-    rgba(6, 182, 212, 0.65) 35%,
-    rgba(139, 92, 246, 0.55) 65%,
-    transparent 95%
-  );
-}
-/* ─── Pay card — amber-accented variant ─────────────────────────────────── */
-.pay-card-amber::before {
-  background: linear-gradient(90deg,
-    transparent 5%,
-    rgba(245, 158, 11, 0.55) 35%,
-    rgba(251, 191, 36, 0.45) 65%,
-    transparent 95%
-  );
-}
-/* ─── Pay card — violet-accented variant (bridge) ────────────────────────── */
-.pay-card-violet::before {
-  background: linear-gradient(90deg,
-    transparent 5%,
-    rgba(139, 92, 246, 0.6) 35%,
-    rgba(6, 182, 212, 0.5) 65%,
-    transparent 95%
-  );
-}
+/* Legacy accent variants neutralized to plain hairline (W5P1.9.1) */
+.pay-card-cyan::before,
+.pay-card-amber::before,
+.pay-card-violet::before { content: none; background: none; }
 
-/* ─── Form inputs ──────────────────────────────────────────────────────────── */
+/* ─── Form inputs (W5P1.9 ivory + compact) ───────────────────────────────── */
 .pay-input {
   width: 100%;
-  padding: 0.55rem 0.75rem;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.09);
+  padding: 0.5rem 0.7rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   border-radius: 0.5rem;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-family: 'JetBrains Mono', monospace;
   color: hsl(var(--foreground));
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   outline: none;
 }
-.pay-input::placeholder { color: rgba(255,255,255,0.18); }
-.pay-input:hover:not(:focus) { border-color: rgba(255,255,255,0.14); }
+.pay-input::placeholder { color: hsl(var(--muted-foreground)); opacity: 0.55; }
+.pay-input:hover:not(:focus) { border-color: hsl(var(--foreground) / 0.18); }
 .pay-input:focus {
-  border-color: rgba(52, 211, 153, 0.5);
-  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.09), inset 0 1px 0 rgba(255,255,255,0.03);
+  border-color: hsl(var(--foreground) / 0.4);
+  box-shadow: 0 0 0 3px hsl(var(--foreground) / 0.08);
 }
-/* Make datetime-local calendar/clock picker icons emerald instead of black */
+/* Compact variant for 2-col field grids inside drawers */
+.pay-input-sm {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+}
+/* Calendar/clock picker icon — neutral instead of emerald */
 .pay-input::-webkit-calendar-picker-indicator {
-  filter: invert(71%) sepia(62%) saturate(400%) hue-rotate(109deg) brightness(98%) contrast(95%);
   cursor: pointer;
-  opacity: 0.8;
+  opacity: 0.55;
 }
 .pay-input::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
 
-/* ─── Select dropdowns ─────────────────────────────────────────────────────── */
+/* ─── Select dropdowns (W5P1.9 ivory + compact) ──────────────────────────── */
 .pay-select {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  padding: 0.55rem 2rem 0.55rem 0.75rem;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.09);
+  padding: 0.5rem 2rem 0.5rem 0.7rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   border-radius: 0.5rem;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-family: 'JetBrains Mono', monospace;
   color: hsl(var(--foreground));
   cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   outline: none;
 }
 .pay-select:hover,
-.pay-select:focus { border-color: rgba(52, 211, 153, 0.45); }
+.pay-select:focus { border-color: hsl(var(--foreground) / 0.4); }
 .pay-select option {
-  background-color: #0d0d11;
-  color: #e8e8e8;
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
 }
 
-/* ─── Buttons ──────────────────────────────────────────────────────────────── */
+/* ─── Buttons (W5P1.9 compact, no uppercase, no neon) ────────────────────── */
 .btn-pay {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.375rem;
-  padding: 0.6rem 1.25rem;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  border-radius: 0.5rem;
+  height: 2.25rem;
+  /* Defeat any utility `py-*` override that ballooned the button in legacy code. */
+  min-height: 2.25rem !important;
+  max-height: 2.25rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  border-radius: 9999px;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
   white-space: nowrap;
   position: relative;
   overflow: hidden;
 }
 .btn-pay:disabled { opacity: 0.38; cursor: not-allowed !important; transform: none !important; box-shadow: none !important; }
 
+/* Small row-level variant — 28 px tall, used inside lists / drawers */
+.btn-pay-sm {
+  height: 1.75rem !important;
+  min-height: 1.75rem !important;
+  max-height: 1.75rem !important;
+  padding-left: 0.65rem;
+  padding-right: 0.65rem;
+  font-size: 0.75rem;
+}
+
+/* Text-link button — no border, no chrome, just text */
+.btn-pay-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: transparent;
+  border: none;
+  padding: 0;
+  height: auto;
+  font-size: 0.8125rem;
+  color: hsl(var(--foreground) / 0.7);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.btn-pay-link:hover { color: hsl(var(--foreground)); }
+
+/* Canonical primary — Mercury/Linear style: foreground on background */
+.btn-pay-primary {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+}
+.btn-pay-primary:hover:not(:disabled) { opacity: 0.9; }
+.btn-pay-primary:active:not(:disabled) { transform: translateY(0.5px); }
+
+/* Legacy color variants — kept for backwards compatibility, neutralized (no neon glow) */
 .btn-pay-emerald {
-  background: linear-gradient(135deg, #059669 0%, #34d399 100%);
-  color: #022c22;
-  box-shadow: 0 2px 10px rgba(52,211,153,0.18);
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
 }
-.btn-pay-emerald:hover:not(:disabled) {
-  box-shadow: 0 0 24px rgba(52,211,153,0.42), 0 4px 16px rgba(0,0,0,0.45);
-  transform: translateY(-1px);
-}
-.btn-pay-emerald:active:not(:disabled) { transform: translateY(0); }
+.btn-pay-emerald:hover:not(:disabled) { opacity: 0.9; }
+.btn-pay-emerald:active:not(:disabled) { transform: translateY(0.5px); }
 
 .btn-pay-cyan {
-  background: linear-gradient(135deg, #0284c7 0%, #22d3ee 100%);
-  color: #082f49;
-  box-shadow: 0 2px 10px rgba(6,182,212,0.18);
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
 }
-.btn-pay-cyan:hover:not(:disabled) {
-  box-shadow: 0 0 24px rgba(6,182,212,0.42), 0 4px 16px rgba(0,0,0,0.45);
-  transform: translateY(-1px);
-}
-.btn-pay-cyan:active:not(:disabled) { transform: translateY(0); }
+.btn-pay-cyan:hover:not(:disabled) { opacity: 0.9; }
+.btn-pay-cyan:active:not(:disabled) { transform: translateY(0.5px); }
 
 .btn-pay-amber {
-  background: linear-gradient(135deg, #b45309 0%, #fbbf24 100%);
-  color: #1c0a00;
-  box-shadow: 0 2px 10px rgba(251,191,36,0.18);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
 }
-.btn-pay-amber:hover:not(:disabled) {
-  box-shadow: 0 0 24px rgba(251,191,36,0.38), 0 4px 16px rgba(0,0,0,0.45);
-  transform: translateY(-1px);
-}
-.btn-pay-amber:active:not(:disabled) { transform: translateY(0); }
+.btn-pay-amber:hover:not(:disabled) { background: hsl(var(--muted)); }
+.btn-pay-amber:active:not(:disabled) { transform: translateY(0.5px); }
 
 .btn-pay-violet {
-  background: linear-gradient(135deg, #6d28d9 0%, #a78bfa 100%);
-  color: #1e0042;
-  box-shadow: 0 2px 10px rgba(167,139,250,0.18);
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
 }
-.btn-pay-violet:hover:not(:disabled) {
-  box-shadow: 0 0 24px rgba(167,139,250,0.42), 0 4px 16px rgba(0,0,0,0.45);
-  transform: translateY(-1px);
-}
-.btn-pay-violet:active:not(:disabled) { transform: translateY(0); }
+.btn-pay-violet:hover:not(:disabled) { opacity: 0.9; }
+.btn-pay-violet:active:not(:disabled) { transform: translateY(0.5px); }
 
 .btn-pay-ghost {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.09);
-  color: hsl(var(--muted-foreground));
+  background: transparent;
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 .btn-pay-ghost:hover:not(:disabled) {
-  background: rgba(255,255,255,0.07);
-  border-color: rgba(52,211,153,0.3);
-  color: hsl(var(--foreground));
+  background: hsl(var(--muted));
+  border-color: hsl(var(--foreground) / 0.2);
 }
 
 /* ─── Status badge ─────────────────────────────────────────────────────────── */

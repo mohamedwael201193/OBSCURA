@@ -138,17 +138,17 @@ export default function OcUSDCEscrowForm() {
       <div className="space-y-5">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-700/10 border border-emerald-500/25 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-muted border border-border flex items-center justify-center">
             <CheckCircle2 className="w-4 h-4 text-foreground" />
           </div>
           <div>
-            <h3 className="font-display text-lg text-[hsl(var(--success))]">Escrow #{lastEscrowId} Created &amp; Funded</h3>
-            <p className="text-[10px] text-muted-foreground/40 tracking-widest uppercase">ocUSDC · Encrypted</p>
+            <h3 className="font-display text-[15px] text-foreground leading-tight">Escrow #{lastEscrowId} ready</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Created and funded privately.</p>
           </div>
         </div>
 
         {/* PRIMARY: Share with recipient — most important action */}
-        <div className="rounded-xl bg-cyan-500/[0.08] border-2 border-cyan-500/35 p-4 space-y-3">
+        <div className="rounded-xl bg-card border border-border p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Link2 className="w-3.5 h-3.5 text-foreground shrink-0" />
             <span className="text-[11px] text-foreground font-semibold uppercase tracking-wider">Send to Recipient</span>
@@ -161,7 +161,7 @@ export default function OcUSDCEscrowForm() {
           <motion.button
             onClick={handleCopyLink}
             whileTap={{ scale: 0.99 }}
-            className="btn-pay btn-pay-emerald w-full py-3 text-sm"
+            className="btn-pay btn-pay-primary w-full"
           >
             {linkCopied ? (
               <><CheckCircle2 className="w-4 h-4" /> Link copied — paste it to your recipient!</>
@@ -173,7 +173,7 @@ export default function OcUSDCEscrowForm() {
             <span className="text-[11px] text-muted-foreground/40">or share the Escrow ID manually:</span>
             <button
               onClick={handleCopyId}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-white/[0.1] hover:bg-white/[0.05] transition-colors text-[11px] font-mono text-[hsl(var(--success))]"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border hover:bg-muted/50 transition-colors text-[11px] font-mono text-foreground"
             >
               #{lastEscrowId}
               {copied ? <CheckCircle2 className="w-3 h-3 text-foreground" /> : <Copy className="w-3 h-3 opacity-60" />}
@@ -183,23 +183,25 @@ export default function OcUSDCEscrowForm() {
 
         {/* TX link */}
         {txHash && (
-          <div className="flex items-center gap-2 px-3 py-2.5 bg-white/[0.025] border border-white/[0.07] rounded-lg">
-            <ExternalLink className="w-3 h-3 text-foreground shrink-0" />
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/40 border border-border rounded-lg">
+            <ExternalLink className="w-3 h-3 text-foreground/60 shrink-0" />
             <a
               href={`https://sepolia.arbiscan.io/tx/${txHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-[11px] text-foreground hover:text-cyan-200 transition-colors truncate"
+              className="font-mono text-[11px] text-foreground hover:text-foreground/70 transition-colors truncate"
             >
               {txHash.slice(0, 10)}…{txHash.slice(-8)}
             </a>
-            <span className="ml-auto text-[10px] text-muted-foreground/35 shrink-0">Arbiscan shows 0.0001 pUSDC — privacy placeholder</span>
+            <span className="ml-auto text-[10px] text-muted-foreground/55 shrink-0">Privacy placeholder</span>
           </div>
         )}
 
-        <motion.button onClick={reset} whileTap={{ scale: 0.99 }} className="btn-pay btn-pay-ghost w-full py-2.5">
-          Create Another Escrow
-        </motion.button>
+        <div className="flex justify-end">
+          <motion.button onClick={reset} whileTap={{ scale: 0.99 }} className="btn-pay btn-pay-ghost">
+            Create another
+          </motion.button>
+        </div>
       </div>
     );
   }
@@ -212,25 +214,23 @@ export default function OcUSDCEscrowForm() {
           <Lock className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-lg text-foreground leading-tight">Create Encrypted Escrow</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">ocUSDC · FHE Locked</p>
+          <div className="font-display text-[15px] text-foreground leading-tight">Create private escrow</div>
+          <p className="text-[11px] text-muted-foreground/70 mt-0.5">Owner and amount stay hidden on-chain.</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">ocUSDC</span>
+        <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-full bg-muted border border-border px-2 py-0.5 text-[10.5px] font-medium text-foreground/75">Private USDC</span>
       </div>
 
       {/* USDC balance pill */}
-      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#3e73c4]/10 border border-[#3e73c4]/25">
-        <UsdcIcon className="w-4 h-4 shrink-0" />
-        <span className="text-[11px] text-white/60 font-medium tracking-wide">USDC Balance</span>
-        <span className="ml-auto font-mono text-[14px] text-white font-semibold">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border">
+        <UsdcIcon className="w-3.5 h-3.5 shrink-0" />
+        <span className="text-[11px] text-muted-foreground">Plain USDC</span>
+        <span className="ml-auto font-mono text-[13px] text-foreground tabular-nums">
           {usdcBalance !== null ? usdcBalance : "—"}
         </span>
-        <span className="text-[10px] text-[#3e73c4] font-semibold uppercase tracking-wider">USDC</span>
       </div>
 
-      <p className="text-sm text-muted-foreground leading-relaxed">
-        Lock ocUSDC in an encrypted escrow. The owner address and locked amount are both encrypted on-chain.
-        You must have enough ocUSDC balance (shield USDC first in the Send tab).
+      <p className="text-[12px] text-muted-foreground leading-relaxed">
+        Lock private USDC in an escrow. Owner and amount are encrypted on-chain. You'll need private USDC first (Send tab).
       </p>
 
       {!isProcessing && (
@@ -271,8 +271,8 @@ export default function OcUSDCEscrowForm() {
                   onClick={() => setExpiryDays(opt.days)}
                   className={`px-2 py-1.5 rounded-lg text-[11px] border transition-colors ${
                     expiryDays === opt.days
-                      ? "bg-emerald-500/12 border-emerald-500/40 text-[hsl(var(--success))]"
-                      : "bg-white/[0.02] border-white/[0.08] text-muted-foreground/60 hover:text-foreground/80"
+                      ? "bg-foreground text-background border-foreground font-medium"
+                      : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   }`}
                 >
                   {opt.label}
@@ -312,11 +312,13 @@ export default function OcUSDCEscrowForm() {
       )}
 
       {!isDone && (
-        <motion.button onClick={handleCreate} disabled={isProcessing || isTxPending} whileTap={{ scale: 0.99 }}
-          className="btn-pay btn-pay-emerald w-full py-2.5">
-          <Plus className="w-3.5 h-3.5" />
-          {isProcessing ? "Creating & Funding…" : "+ Create & Fund Escrow"}
-        </motion.button>
+        <div className="flex items-center justify-end gap-2 pt-3 mt-2 border-t border-border/60">
+          <motion.button onClick={handleCreate} disabled={isProcessing || isTxPending} whileTap={{ scale: 0.99 }}
+            className="btn-pay btn-pay-primary">
+            <Plus className="w-3.5 h-3.5" />
+            {isProcessing ? "Creating…" : "Create & fund escrow"}
+          </motion.button>
+        </div>
       )}
     </div>
   );

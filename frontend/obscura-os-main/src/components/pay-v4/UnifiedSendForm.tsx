@@ -348,7 +348,7 @@ export default function UnifiedSendForm() {
                     <div className="flex items-center gap-2">
                       <span className="text-[13px] font-medium text-foreground">{m.title}</span>
                       {m.tag && (
-                        <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-foreground border border-emerald-500/25 font-semibold">
+                        <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-muted text-foreground border border-border font-semibold">
                           {m.tag}
                         </span>
                       )}
@@ -483,8 +483,8 @@ export default function UnifiedSendForm() {
       {/* Step 4 — success */}
       {step === 4 && successHash && (
         <div className="text-center py-6">
-          <div className="inline-flex w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 items-center justify-center mb-3">
-            <CheckCircle2 className="w-6 h-6 text-[hsl(var(--success))]" />
+          <div className="inline-flex w-12 h-12 rounded-full bg-muted border border-border items-center justify-center mb-3">
+            <CheckCircle2 className="w-6 h-6 text-foreground" />
           </div>
           <h3 className="font-display text-lg text-foreground mb-1">Payment sent</h3>
           <p className="text-[12px] text-muted-foreground/70 mb-4">
@@ -493,7 +493,7 @@ export default function UnifiedSendForm() {
               href={`https://sepolia.arbiscan.io/tx/${successHash}`}
               target="_blank"
               rel="noreferrer"
-              className="font-mono text-[hsl(var(--success))] hover:underline"
+              className="font-mono text-foreground/70 hover:underline"
             >
               {successHash.slice(0, 10)}…{successHash.slice(-6)}
             </a>

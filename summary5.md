@@ -25,6 +25,40 @@ the full read path (market → oracle → Chainlink adapter → HF math) works.
 
 ---
 
+## ✅ W5P1.9 — Premium Fintech UX Refinement — SHIPPED
+
+After W5P1.8 fixed IA, pages still felt crypto-admin. W5P1.9 brings
+Stripe/Mercury/Linear-grade polish: state-driven Mission Control, drawer-based
+creation, compact density, single dominant CTA per surface.
+
+- **New Harmony primitives**: `HarmonyDrawer` (right slide-in), `HarmonyMissionHero` (state-driven hero w/ ONE primary CTA + progress dots), `HarmonyActionTile` (quick-action), `HarmonyMetricRow` (compact summary strip), `HarmonyActivityRow` (single-line dense row), `HarmonyWorkspaceHeader` (workspace title + "+ New")
+- **Home → Mission Control**: PayHarmonyHome rewritten. Single primary CTA driven by 8 onboarding stages (not-connected → active). Sections: Hero → 4 quick-action tiles → compact metric row → 5 recent activity rows → collapsed `<details>` "How encrypted payments work". No more 12-col balance hero, no 5-banner stack.
+- **Automations workspace UX**: 3-level pattern — sub-nav (categories) → workspace view (summary + list) → drawer (creation). Each sub-tab (Streams · Escrows · Subscriptions · Payroll) now opens a right-side drawer for the create-form instead of stacking it inline.
+- **Density + ivory pass**: `.pay-input` and `.btn-pay` rewritten — ivory `bg-card` + hairline border, 36 px button height, no uppercase, no letter-spacing, no neon glow. New canonical `.btn-pay-primary` (foreground bg). Legacy color buttons neutralized.
+- **No contract / hook / FHE / route changes**. Build: `✓ built in 12.84s` — 0 TS errors.
+- Full details in `memory_pay_5.md` § W5P1.9
+
+---
+
+## ✅ W5P1.8 — Pay UX Rearchitecture (Sub-Navigation) — SHIPPED
+
+Top-level tabs no longer render stacked workflow cards. Each tab now renders a
+`HarmonySubNav` chip strip + ONE active workspace panel (Stripe/Mercury pattern).
+
+- **New primitive**: `HarmonySubNav<T>` in `src/components/harmony/harmony-ui.tsx`
+- **Sub-nav layout**:
+  - `pay` → Send · Make private · Bridge
+  - `getpaid` → Inbox · Setup · Request · Inbound streams (smart default: Inbox if stealth-registered, else Setup)
+  - `automations` → Streams · Escrows · Subscriptions · Payroll
+  - `settings` → Preferences · Privacy · Contacts · Data · Legacy
+- **URL convention**: `/pay?tab=<top>&sub=<sub>` via `history.replaceState` (no reload)
+- **Legacy URL aliases preserved**: `?tab=send|receive|escrow|streams|receivables|insurance|contacts|advanced`
+- `SettingsCards` split into `SettingsPrefsCard` / `SettingsPrivacyCard` / `SettingsDataCard`
+- **No contract / hook / FHE changes**. Build: `✓ built in 16.47s` — 0 TS errors
+- Full details in `memory_pay_5.md` § W5P1.8
+
+---
+
 > **Purpose**: Single source of truth for the Wave-5 cross-product execution.
 > Every phase started in this stream is logged here with: what was found,
 > what was shipped, what was deferred, what the user must run next.
@@ -1464,3 +1498,107 @@ Covers:
 - Pay ↔ Credit ↔ Vote integration (IEncryptedScore bridge, LLTV boost, ObscuraGovernor, TreasuryStreamer, credit keeper bot)
 - Deployment & environment architecture (complete annotated `.env`, timeline, deploy scripts, ABI sources)
 - Future roadmap (P0–P2 items, mainnet gate, all Wave 5 phases with ✅/DEFERRED/BLOCKED status)
+
+---
+
+## W5P1 � Harmony Design System Migration (? COMPLETE)
+
+### What was built
+
+Full migration of Pay frontend from dark-glass / neon-gradient aesthetic to the
+Harmony design system (ivory backgrounds, deep-green accent, editorial typography).
+
+#### Track A � Core primitives + routing
+- **`harmony-ui.tsx`**: Added 5 new exported primitives:
+  `HarmonySelect`, `HarmonyStatusBanner`, `HarmonyFreshnessStrip`,
+  `HarmonyRevealChip`, `HarmonySuccessChip`
+- **`PayPage.tsx`**: Replaced `PrettySelect` ? `HarmonySelect`; swapped tab
+  `"insurance"` ? `"receivables"`; added `<ReceivablesHub>` routing case
+- **`PayHarmonyTabShell.tsx`**: Added `"receivables"` tab type + metadata
+- **`MyPolicies.tsx`**: Removed dark-glass patterns (icon containers, card bg)
+- **`SubscriptionForm.tsx`**: Plain-language copy ("Recurring payment", not "Confidential subscription")
+
+#### Track B � Dashboard rebuild
+- **`PayHarmonyHome.tsx`**: Full rewrite �
+  - Time-aware greeting (`getGreeting()` ? Good morning/afternoon/evening)
+  - Network mismatch detection + `HarmonyStatusBanner` ("Switch to Arbitrum Sepolia")
+  - CoFHE degradation banner (dismissible amber warning, off by default)
+  - `HarmonyFreshnessStrip` with `checkedAt` state + `handleRefreshActivity`
+  - Quick-send card fixed: removed inverted dark bg, step pills use `bg-muted`
+  - Benefit-first lifecycle copy (plain English, no ZKPoK/CoFHE/Threshold jargon)
+  - Inbox action button shows when `unread > 0`
+
+#### Track C � Component polish
+- **`PayHomeDashboard.tsx`**: Full rewrite � 3-step onboarding checklist,
+  7-day auto-hide (localStorage), clean Harmony card styles, no more
+  "Quick actions"/"How it works"/"Receipts" sections (moved to parent)
+- **`StreamsDashboard.tsx`**: Removed neon glow shadow from active tab class
+- **`HarmonyEncryptedValue.tsx`**: Added 5-minute reveal session timer with
+  `HarmonyRevealChip` countdown chip; auto-hides at 0; cleans up on unmount
+
+### Dark patterns removed
+- `bg-[#0a0d12]` on PrettySelect options
+- `shadow-[0_0_10px_rgba(52,211,153,0.08)]` neon glow
+- `bg-white/[0.025]` dark glass on MyPolicies cards
+- Inverted `bg-foreground text-background` card in quick-send section
+
+### Technical jargon removed from UI copy
+- "CoFHE-encrypted" ? "encrypted"
+- "ZKPoK / FHE.transfer / Threshold network" ? plain lifecycle step names
+- "Confidential subscription" ? "Recurring payment"
+
+---
+
+## W5P2 � Receivables Hub (? COMPLETE)
+
+### What was built
+
+**`ReceivablesHub.tsx`** (`src/components/pay-v4/ReceivablesHub.tsx`)
+
+Unified Receivables tab that replaces the old Insurance tab. Accordion-style
+layout with four collapsible sections:
+
+1. **Recurring payments** � live subscription list from `useInsuranceSubscription`,
+   shows cycle progress bar, last consumed date, active/inactive badge, refresh
+   button, and empty state with CTA to Streams tab
+2. **New recurring payment** � inline `<SubscriptionForm />`
+3. **Coverage & policies** � `<BuyCoverageForm />` + `<MyPolicies />` with
+   section eyebrow labels
+4. **Dispute & liquidity** � `<DisputeForm />` + `<StakePoolForm />` with LP
+   yield framing
+
+All sections use Harmony primitives: `rounded-2xl hairline bg-card`, `bg-muted`
+icon containers, no dark-glass patterns, no FHE jargon.
+
+### Build result
+
+`? built in 56.27s` � zero TypeScript errors, zero warnings (except expected
+chunk size advisory on large vendor bundles).
+
+---
+
+
+## W5P1.9.1 � Full-Width Button & Neon Token Sweep ?
+
+All 18 pay component files audited. Removed w-full from .btn-pay* usages, replaced neon/dark tokens with Harmony equivalents (g-card, hairline, g-muted), standardised CTA footer to lex justify-end pt-3 border-t border-border/60.
+
+**Build**: ? built in 13.16s � zero TS errors.
+
+---
+
+## W5P1.9.2 � Privacy Mission Control Overview Redesign ?
+
+PayHarmonyHome.tsx fully rewritten. New design:
+
+- **Privacy posture chip strip** at top of hero card (Lock / Send / Inbox)
+- **Embedded CipherBalanceDisplay** inside hero � large cipher-shimmer ������ with AnimatePresence reveal toggle; NO auto-decrypt on mount
+- **5-step onboarding rail** card with individual step rows, progress bar, active-step CTAs
+- **4 quick-action tiles** (Send / Request / Automate / Make private)
+- **Activity feed** � recent 5 rows with empty state
+- Removed: HarmonyMissionHero, HarmonyMetricRow, HarmonyPrivacyPosture, "How it works" collapsible, learnOpen state
+- Tighter density: space-y-4
+- New inline primitives: PostureChip, CipherBalanceDisplay, OnboardingStepRow
+
+**Build**: ? built in 13.16s � zero TS errors.
+
+---

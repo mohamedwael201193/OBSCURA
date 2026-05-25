@@ -154,7 +154,51 @@ export function HarmonyAppShell({
             </div>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1300px] px-4 py-10 md:px-8 md:py-14">{children}</main>
+        <main className="mx-auto w-full max-w-[1300px] px-4 py-10 md:px-8 md:py-14 pb-24 md:pb-14">{children}</main>
+
+        {/* Mobile bottom nav — visible only on small screens */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex h-16 items-stretch border-t border-border bg-background">
+          {sidebar.slice(0, 5).map((item) => {
+            const inner = (
+              <div className="flex flex-col items-center gap-0.5">
+                <span
+                  className={cn(
+                    "h-6 w-6 rounded-full flex items-center justify-center",
+                    item.active ? "bg-foreground/10" : "",
+                  )}
+                >
+                  <span className={cn("text-[10px] font-medium", item.active ? "text-foreground" : "text-muted-foreground/60")}>
+                    {item.label.slice(0, 2)}
+                  </span>
+                </span>
+                <span className={cn("text-[10px]", item.active ? "text-foreground font-medium" : "text-muted-foreground/60")}>
+                  {item.label}
+                </span>
+                {item.badge && (
+                  <span className="absolute top-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground">
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+            );
+            const btnClass = cn(
+              "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-center transition-colors",
+              item.active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            );
+            if (item.href) {
+              return (
+                <Link key={item.key} to={item.href} className={btnClass}>
+                  {inner}
+                </Link>
+              );
+            }
+            return (
+              <button key={item.key} type="button" onClick={item.onClick} className={btnClass}>
+                {inner}
+              </button>
+            );
+          })}
+        </nav>
       </div>
     </div>
   );

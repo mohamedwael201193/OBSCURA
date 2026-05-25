@@ -42,7 +42,7 @@ function BurnTxBanner({ hash }: { hash: string }) {
         href={`https://sepolia.etherscan.io/tx/${hash}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="font-mono text-[11px] text-foreground hover:text-[hsl(var(--success))] transition-colors truncate"
+        className="font-mono text-[11px] text-foreground hover:text-foreground/70 transition-colors truncate"
       >
         {short}
       </a>
@@ -160,7 +160,7 @@ export default function CrossChainFundForm() {
               href={`https://sepolia.etherscan.io/tx/${burnTxHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-[11px] text-foreground hover:text-[hsl(var(--success))] transition-colors"
+              className="inline-flex items-center gap-1.5 text-[11px] text-foreground hover:text-foreground/70 transition-colors"
             >
               <ExternalLink className="w-3 h-3" />
               View burn tx on Etherscan
@@ -171,9 +171,9 @@ export default function CrossChainFundForm() {
         <motion.button
           onClick={() => { reset(); setAmount(""); }}
           whileTap={{ scale: 0.99 }}
-          className="btn-pay btn-pay-ghost w-full py-2.5"
+          className="btn-pay btn-pay-ghost"
         >
-          Bridge More
+          Bridge more
         </motion.button>
       </div>
     );
@@ -190,17 +190,17 @@ export default function CrossChainFundForm() {
           <h3 className="font-display text-lg text-foreground leading-tight">Bridge USDC From Ethereum</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">CCTP · Cross-chain</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">CCTP V1</span>
+        <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-full bg-muted border border-border px-2 py-0.5 text-[10.5px] font-medium text-foreground/75">CCTP V1</span>
       </div>
 
       {/* Arb USDC balance pill (what you can wrap after bridging) */}
-      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-[#3e73c4]/10 border border-[#3e73c4]/25">
+      <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-muted border border-border">
         <UsdcIcon className="w-4 h-4 shrink-0" />
-        <span className="text-[11px] text-white/60 font-medium tracking-wide">Arb USDC Balance</span>
-        <span className="ml-auto font-mono text-[14px] text-white font-semibold">
-          {usdcBalance !== null ? usdcBalance : "—"}
+        <span className="text-[11px] text-muted-foreground font-medium tracking-wide">Arb USDC Balance</span>
+        <span className="ml-auto font-mono text-[14px] text-foreground font-semibold">
+          {usdcBalance !== null ? usdcBalance : "\u2014"}
         </span>
-        <span className="text-[10px] text-[#3e73c4] font-semibold uppercase tracking-wider">USDC</span>
+        <span className="text-[10px] text-foreground/50 font-semibold uppercase tracking-wider">USDC</span>
       </div>
 
       <p className="text-sm text-muted-foreground leading-relaxed">
@@ -255,7 +255,7 @@ export default function CrossChainFundForm() {
                   onClick={submitRecover}
                   disabled={isPending}
                   whileTap={{ scale: 0.99 }}
-                  className="btn-pay btn-pay-ghost w-full py-2.5"
+                  className="btn-pay btn-pay-ghost"
                 >
                   {isPending
                     ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking…</>
@@ -284,17 +284,19 @@ export default function CrossChainFundForm() {
               Circle attestation received! Click below to mint <span className="font-semibold">{displayAmount} USDC</span> on Arbitrum Sepolia.
             </p>
           </div>
-          <motion.button
-            onClick={submitClaim}
-            disabled={isPending}
-            whileTap={{ scale: 0.99 }}
-            className="btn-pay btn-pay-emerald w-full py-2.5"
-          >
-            {isPending
-              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Claiming…</>
-              : <><CheckCircle2 className="w-3.5 h-3.5" /> Claim {displayAmount} USDC on Arb Sepolia</>
-            }
-          </motion.button>
+          <div className="flex justify-end pt-3 border-t border-border/60">
+            <motion.button
+              onClick={submitClaim}
+              disabled={isPending}
+              whileTap={{ scale: 0.99 }}
+              className="btn-pay btn-pay-primary disabled:opacity-50"
+            >
+              {isPending
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Claiming…</>
+                : <><CheckCircle2 className="w-3.5 h-3.5" /> Claim {displayAmount} USDC</>
+              }
+            </motion.button>
+          </div>
           <button
             onClick={() => { reset(); setAmount(""); }}
             className="w-full py-1.5 text-[11px] text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
@@ -311,25 +313,24 @@ export default function CrossChainFundForm() {
       )}
 
       {step === "idle" && (
-        <motion.button
-          onClick={submit}
-          disabled={isPending}
-          whileTap={{ scale: 0.99 }}
-          className="btn-pay btn-pay-emerald w-full py-2.5"
-        >
-          <ArrowRightLeft className="w-3.5 h-3.5" />
-          Bridge USDC
-        </motion.button>
+        <div className="flex justify-end pt-3 border-t border-border/60">
+          <motion.button
+            onClick={submit}
+            disabled={isPending}
+            whileTap={{ scale: 0.99 }}
+            className="btn-pay btn-pay-primary disabled:opacity-50"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            Bridge USDC
+          </motion.button>
+        </div>
       )}
 
       {step !== "idle" && step !== "ready-to-claim" && step !== "done" && (
-        <motion.button
-          disabled
-          className="btn-pay btn-pay-emerald w-full py-2.5 opacity-50"
-        >
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          Processing…
-        </motion.button>
+        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-card border border-border">
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground shrink-0" />
+          <span className="text-[12px] text-muted-foreground">Processing…</span>
+        </div>
       )}
     </div>
   );

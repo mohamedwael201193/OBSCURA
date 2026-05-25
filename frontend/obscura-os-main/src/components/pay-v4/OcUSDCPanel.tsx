@@ -1,15 +1,36 @@
-import { Coins, Eye, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Loader2 } from "lucide-react";
+import { Coins, Eye, ArrowDownToLine, ArrowUpFromLine, ShieldCheck, Loader2, Timer } from "lucide-react";
 import UsdcIcon from "@/components/shared/UsdcIcon";
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
 import { toast } from "sonner";
 import { HarmonyMaskedBalance, HarmonyPrivacyBadge } from "@/components/harmony/harmony-ui";
+
+const RATE_LIMIT_COOLDOWN_S = 35;
+
+function isRateLimited(e: unknown): boolean {
+  const msg = (e instanceof Error ? e.message : String(e)).toLowerCase();
+  return msg.includes("rate limit") || msg.includes("rate-limit");
+}
 
 export default function OcUSDCPanel() {
   const { handle, decrypted, usdcBalance, trackedCusdc, reveal, wrap, unwrap, approveStream, busy, error } = useOcUSDCBalance();
   const [wrapAmount, setWrapAmount] = useState("");
   const [unwrapAmount, setUnwrapAmount] = useState("");
   const [maxApprove, setMaxApprove] = useState("30");
+  const [shieldCooldown, setShieldCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startCooldown = useCallback(() => {
+    setShieldCooldown(RATE_LIMIT_COOLDOWN_S);
+    cooldownRef.current = setInterval(() => {
+      setShieldCooldown((s) => {
+        if (s <= 1) { clearInterval(cooldownRef.current!); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+  }, []);
+
+  useEffect(() => () => { if (cooldownRef.current) clearInterval(cooldownRef.current); }, []);
 
   const displayBalance = decrypted !== null
     ? `${(Number(decrypted) / 1_000_000).toFixed(6)}`
@@ -113,6 +134,7 @@ export default function OcUSDCPanel() {
             <button
               type="button"
               onClick={async () => {
+                if (shieldCooldown > 0) return;
                 try {
                   toast.info("Step 1: Approving USDC spend…");
                   const toastId = toast.loading("Making private…");
@@ -120,11 +142,22 @@ export default function OcUSDCPanel() {
                   toast.dismiss(toastId);
                   toast.success("Done — your USDC is now private.");
                   setWrapAmount("");
-                } catch (e) { toast.error((e as Error).message); }
+                } catch (e) {
+                  if (isRateLimited(e)) {
+                    toast.error("CoFHE rate limited — wait ~30 s then retry.", { duration: 8000 });
+                    startCooldown();
+                  } else {
+                    toast.error((e as Error).message || "Shield failed");
+                  }
+                }
               }}
+              disabled={busy || shieldCooldown > 0}
               className="btn-pay btn-pay-primary shrink-0"
             >
-              Make private
+              {shieldCooldown > 0
+                ? <><Timer className="w-3 h-3" /> {shieldCooldown}s</>
+                : "Make private"
+              }
             </button>
           </div>
           <p className="text-[10.5px] text-muted-foreground/60">

@@ -78,7 +78,7 @@ services:
       - key: VAPID_PRIVATE_KEY
         sync: false
       - key: VAPID_CONTACT_EMAIL
-        sync: false
+        value: "noreply@obscura.finance"
       # Resend API key for email notifications
       - key: RESEND_API_KEY
         sync: false

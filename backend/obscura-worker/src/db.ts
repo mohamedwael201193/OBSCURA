@@ -1,0 +1,57 @@
+/**
+ * db.ts — shared Supabase client for obscura-worker
+ */
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+
+const SUPABASE_URL         = process.env.SUPABASE_URL ?? "";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  throw new Error("[worker] SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars are required");
+}
+
+export const db: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+  auth: { persistSession: false },
+});
+
+// ─── Activity record shape ────────────────────────────────────────────────────
+export interface ActivityRecord {
+  chain_id:         number;
+  block_number:     bigint;
+  tx_hash:          string;
+  log_index:        number;
+  contract_address: string;
+  event_name:       string;
+  wallet:           string;
+  participants:     string[];
+  args:             Record<string, unknown>;
+}
+
+/** Upsert an on-chain event (idempotent via tx_hash + log_index unique constraint) */
+export async function insertActivity(record: ActivityRecord): Promise<void> {
+  const { error } = await db
+    .from("obscura_activity")
+    .upsert(
+      { ...record, block_number: record.block_number.toString() },
+      { onConflict: "tx_hash,log_index", ignoreDuplicates: true }
+    );
+
+  if (error) {
+    console.error("[db] Failed to insert activity:", error.message);
+    throw error;
+  }
+}
+
+/** Get the last indexed block for a given contract address */
+export async function getLastIndexedBlock(contractAddress: string): Promise<bigint> {
+  const { data, error } = await db
+    .from("obscura_activity")
+    .select("block_number")
+    .eq("contract_address", contractAddress.toLowerCase())
+    .order("block_number", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) return 0n;
+  return BigInt(data.block_number as string);
+}

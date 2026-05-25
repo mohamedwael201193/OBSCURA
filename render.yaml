@@ -1,88 +1,92 @@
 ###############################################################################
-# Obscura Pay — Render Deployment Config
-# Services: pay-relay (web), pay-indexer (worker), pay-notifications (web)
+# Obscura — Render Deployment Config  (FREE TIER)
 #
-# Deploy: Connect repo to Render, it auto-reads this file.
-# Docs:   https://render.com/docs/yaml-spec
+# 2 services — both FREE web services (no paid workers):
+#   obscura-api    — ERC-4337 relay + Web Push notifications
+#   obscura-worker — on-chain event indexer + credit keeper (with /health endpoint)
+#
+# Free tier note: services sleep after 15 min of no traffic.
+# The worker wakes on its own health-check ping. Use UptimeRobot (free) to
+# ping /health every 5 min to keep both services awake.
+#
+# Deploy: Connect repo on render.com → New → Blueprint → select this repo.
 ###############################################################################
 
 services:
-  # ── pay-relay ──────────────────────────────────────────────────────────────
-  # ERC-4337 UserOp relay — accepts PackedUserOps from frontend, forwards to bundler
+  # ── obscura-api ─────────────────────────────────────────────────────────────
   - type: web
-    name: obscura-pay-relay
+    name: obscura-api
     runtime: node
-    rootDir: packages/pay-relay
+    plan: free
+    rootDir: backend/obscura-api
     buildCommand: npm install && npm run build
     startCommand: node dist/index.js
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: "3701"
-      # ERC-4337 bundler (Alchemy or Pimlico) — set in Render dashboard
-      - key: BUNDLER_URL
-        sync: false
-      # Deployed paymaster address — set in Render dashboard
+        value: "3000"
+      - key: ALLOWED_ORIGINS
+        value: "https://obscura-os-nine.vercel.app"
       - key: PAYMASTER_ADDRESS
         value: "0x9B1F61A65467F11339A8d0834349Be32EB2CF878"
-      # Frontend origin — set to Vercel deployment URL
-      - key: ALLOWED_ORIGINS
-        value: "https://obscura-os-nine.vercel.app"
-    autoDeploy: true
-
-  # ── pay-indexer ─────────────────────────────────────────────────────────────
-  # On-chain event indexer — backfills + watches live events, writes to Supabase
-  - type: worker
-    name: obscura-pay-indexer
-    runtime: node
-    rootDir: packages/pay-indexer
-    buildCommand: npm install && npm run build
-    startCommand: node dist/index.js
-    envVars:
-      - key: NODE_ENV
-        value: production
-      # Supabase connection — set in Render dashboard (use service role key)
+      - key: BUNDLER_URL
+        value: "https://arb-sepolia.g.alchemy.com/v2/g89_KwJ9ARUpVNY0upgCk"
+      - key: BUNDLER_URL_FALLBACK
+        value: "https://api.pimlico.io/v2/421614/rpc?apikey=pim_bXTiDpX8oPrJjZ4GY5vAmU"
       - key: SUPABASE_URL
-        value: "https://woqfefgrkpleedsuxavd.supabase.co"
+        value: "https://quoovjkjwgtdqwdofubh.supabase.co"
       - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      # RPC endpoint for Arbitrum Sepolia — set in Render dashboard
-      - key: RPC_URL
-        value: "https://sepolia-rollup.arbitrum.io/rpc"
-    autoDeploy: true
+        value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1b292amtqd2d0ZHF3ZG9mdWJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTczMDk0NCwiZXhwIjoyMDk1MzA2OTQ0fQ.NNhLHy7tp_dWg6miDwl9EOtSRSk3yOkh_zUol94U4Mk"
+      - key: VAPID_CONTACT_EMAIL
+        value: "noreply@obscura.finance"
+      - key: VAPID_PUBLIC_KEY
+        value: "BIgVcwUhCL93WVMnDdRT9KqySwDS4Sm9C-fSLg4dWJRdddSuLbyDv_M9R5FmDi2F8NwDuKuMtvNiZAwZQ0RH86o"
+      - key: VAPID_PRIVATE_KEY
+        value: "WqDC2gqeKfnK0Z-2rD6l1_XR8i05bvKJdQRu04x7gKM"
+      - key: RESEND_API_KEY
+        value: "re_NQ3xf87J_Kt9LgMXGAUz82Ng6qDcuxnFD"
 
-  # ── pay-notifications ────────────────────────────────────────────────────────
-  # Web Push + email notification dispatcher — listens to Supabase Realtime
+  # ── obscura-worker ───────────────────────────────────────────────────────────
+  # Runs as a FREE web service (not a paid worker).
+  # Has GET /health → 200 so Render healthchecks pass.
   - type: web
-    name: obscura-pay-notifications
+    name: obscura-worker
     runtime: node
-    rootDir: packages/pay-notifications
+    plan: free
+    rootDir: backend/obscura-worker
     buildCommand: npm install && npm run build
     startCommand: node dist/index.js
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: "3702"
-      # Supabase — set in Render dashboard
+        value: "3001"
+      - key: RPC_URL
+        value: "https://arb-sepolia.g.alchemy.com/v2/g89_KwJ9ARUpVNY0upgCk"
       - key: SUPABASE_URL
-        value: "https://woqfefgrkpleedsuxavd.supabase.co"
+        value: "https://quoovjkjwgtdqwdofubh.supabase.co"
       - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      # VAPID keys — generate once: node packages/pay-notifications/dist/generate-vapid.js
-      - key: VAPID_PUBLIC_KEY
-        sync: false
-      - key: VAPID_PRIVATE_KEY
-        sync: false
-      - key: VAPID_CONTACT_EMAIL
-        value: "noreply@obscura.finance"
-      # Resend API key for email notifications
-      - key: RESEND_API_KEY
-        sync: false
-      # Frontend origin — set to Vercel deployment URL
-      - key: ALLOWED_ORIGINS
-        value: "https://obscura-os-nine.vercel.app"
-    autoDeploy: true
+        value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1b292amtqd2d0ZHF3ZG9mdWJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTczMDk0NCwiZXhwIjoyMDk1MzA2OTQ0fQ.NNhLHy7tp_dWg6miDwl9EOtSRSk3yOkh_zUol94U4Mk"
+      - key: CHAINLINK_ETHUSD_ADAPTER
+        value: "0xe3E388b421bfcF558FD46a18eE3b1c27aD1D36B3"
+      - key: CHAINLINK_USDCUSD_ADAPTER
+        value: "0xc65e85926Cb29aaEC74f99cF1591CBa65daa2c4A"
+      - key: KEEPER_AUCTION
+        value: "0x205FfC0A3b8207B645c1a6B1b4805eb3FfC828F0"
+      - key: KEEPER_MARKETS
+        value: "0x269f59672F3fd7f95bF440941e618b54Ebc5717A,0xcf98d97934F37Ac9A05bc037437E43cb6788eC8b,0x0b645441D65A0CCb91A82b5a2eE3156C1c89207B,0x05e58B8D96Bbd752A72Fa02921A0eE31eCB9035d"
+      - key: KEEPER_DRY_RUN
+        value: "false"
+      - key: KEEPER_POLL_MS
+        value: "30000"
+      - key: KEEPER_HF_THRESHOLD_BPS
+        value: "10000"
+      - key: KEEPER_MAX_GAS_GWEI
+        value: "2"
+      - key: KEEPER_PRIVATE_KEY
+        value: "0x712995dec8a4722687e19ea9592e2e6fe28ee8a258286c5151be05b297791f6f"

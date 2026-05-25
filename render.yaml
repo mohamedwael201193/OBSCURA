@@ -27,9 +27,9 @@ services:
       # Deployed paymaster address — set in Render dashboard
       - key: PAYMASTER_ADDRESS
         value: "0x9B1F61A65467F11339A8d0834349Be32EB2CF878"
-      # Allow frontend origin — set in Render dashboard
+      # Frontend origin — set to Vercel deployment URL
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: "https://obscura-os-nine.vercel.app"
     autoDeploy: true
 
   # ── pay-indexer ─────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ services:
       # Resend API key for email notifications
       - key: RESEND_API_KEY
         sync: false
-      # Allow frontend origin
+      # Frontend origin — set to Vercel deployment URL
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: "https://obscura-os-nine.vercel.app"
     autoDeploy: true

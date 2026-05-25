@@ -5,6 +5,98 @@ from PAY_MASTER_EXECUTION_PLAN.md phases. Updated after each phase completes.
 
 ---
 
+## W5-BUG-SESSION — Rate-Limit Fixes + Full Infra Map ✅
+
+**Completed**: 2026-05-26 — commits `321f3ba`, `7aa212b`, `b33f415`
+
+### Two rate-limit types (critical distinction)
+
+| Error | Source | Fix pattern |
+|---|---|---|
+| `"Request is being rate limited"` | **FHE coprocessor** — per-wallet CoFHE op quota | Friendly message + countdown UX; wait ~30 s |
+| `"RPC submit: Request is being rate limited"` | **Alchemy RPC 429** — receipt polling drains budget | `sleep(2500)` between receipt + announce; show Retry button |
+
+`writeContractAsync` **cannot** be auto-retried (MetaMask re-prompts per attempt).
+Only pure read calls (e.g. `estimateCappedFees`) can use `withRateLimitRetry`.
+
+### Files changed
+
+| File | Commit | Change |
+|---|---|---|
+| `src/hooks/useOcUSDCBalance.ts` | `321f3ba` | Switch `OCUSDC_ADDRESS` from `CONFIDENTIAL_USDC_ADDRESS` (v3.15) to `OBSCURA_PAY_OCUSDC_ADDRESS` (Wave 5) |
+| `src/components/harmony/PayHarmonyHome.tsx` | `321f3ba` | Wire `reveal()` on toggle — was flipping local bool only |
+| `src/components/pay-v4/OcUSDCPanel.tsx` | `7aa212b` | `isRateLimited()` helper, friendly error copy, 35 s countdown on shield button |
+| `src/components/pay-v4/UnifiedSendForm.tsx` | `b33f415` | Correct ocUSDC contract, `sleep(2500)` before announce, retryable `pendingAnnounce` state + Retry button |
+
+### Correct contract addresses for Pay operations
+
+```
+OBSCURA_PAY_OCUSDC_ADDRESS = 0xEd46020Df8abe7BB1E096f27d089F4326D223a53  ← Wave 5 PAY wrapper ✅
+CONFIDENTIAL_USDC_ADDRESS  = 0xEFab856b903C4106769B14798deDE21C6923d7d2  ← old v3.15 credit ❌ (do NOT use in Pay hooks)
+```
+
+### Key patterns added
+
+```typescript
+// isRateLimited — detect both FHE + RPC variants
+function isRateLimited(e: unknown): boolean {
+  const msg = ((e as { message?: string })?.message ?? String(e)).toLowerCase();
+  return msg.includes("rate limit") || msg.includes("rate-limit");
+}
+
+// sleep — RPC cooldown between heavy receipt poll and next tx
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// pendingAnnounce state pattern — store announce params for independent retry
+const [pendingAnnounce, setPendingAnnounce] = useState<{
+  stealthAddress: `0x${string}`;
+  ephemeralPubKey: `0x${string}`;
+  viewTag: `0x${string}`;
+  metadata: `0x${string}`;
+} | null>(null);
+```
+
+### Stealth send flow (corrected — 4 steps)
+
+1. **Derive stealth keys** — `deriveStealthPayment(spendKey, viewKey)` (offline)
+2. **FHE encrypt** — `encryptAmount(amount)` → `InEuint64`
+3. **`confidentialTransfer`** → `OBSCURA_PAY_OCUSDC_ADDRESS` (Wave 5) → receipt
+4. **`await sleep(2500)`** — let Alchemy rate-limit window reset
+5. **`announce()`** → wrapped in try/catch; on rate-limit sets `pendingAnnounce` state instead of throwing
+
+### Infrastructure — deployed services
+
+| Service | URL | Notes |
+|---|---|---|
+| Frontend | `https://obscura-os-nine.vercel.app` | Vercel, auto-deploy on `main` push |
+| API | `https://obscura-api-n62v.onrender.com` | Render free (cold-start ~30 s after idle) |
+| Worker | `https://obscura-worker-0ppj.onrender.com` | Render free |
+| GitHub | `https://github.com/mohamedwael201193/OBSCURA` | `main` branch |
+
+#### Vercel setup
+- Root dir: `frontend/obscura-os-main`
+- Build: `npm run build` → `dist/`
+- Env vars: all `VITE_*` set manually in Vercel dashboard (NOT auto-synced from `.env`)
+- Auto-deploy: every push to `main`
+
+#### Render setup
+- Config: `render.yaml` at repo root (secrets NOT stored there — in Render dashboard)
+- API service: `packages/pay-402/`
+- Worker: background job processor
+
+#### Supabase
+- RLS on receipts table — users read only own rows
+- Frontend: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (safe to expose)
+- API writes: `SUPABASE_SERVICE_KEY` (server-only, in Render env)
+
+#### Chain + RPC
+- Network: Arbitrum Sepolia (chainId `421614`)
+- Read RPC pool (`src/config/wagmi.ts`): publicnode → drpc → omniatech → arb-official → tenderly
+- Write RPC: MetaMask (its own — not wagmi transport)
+- Explorer: `https://sepolia.arbiscan.io`
+
+---
+
 ## W5P1 — Harmony Design System Migration ✅
 
 **Completed**: Session 2 (continuation after session 1 hit token limit)
@@ -435,3 +527,89 @@ Events.ts: correct signatures matching deployed contracts (CycleSettled not Stre
 
 ### Build result (this session)
 `✓ built in 14.56s` — zero TypeScript errors, `@supabase/supabase-js` installed
+
+---
+
+## W5P5 — UI Bug Fixes: CONFIDENTIAL_USDC_ADDRESS + Label Corrections ✅
+
+**Completed**: commit `82568aa`
+
+### Problem
+Three UI components crashed or used the wrong contract address because they
+still referenced `CONFIDENTIAL_USDC_ADDRESS` (old v3.15 credit contract,
+**not exported** in `@/config/payV3`), or showed `cUSDC` instead of `ocUSDC`.
+
+### Files fixed
+
+| File | Change |
+|------|--------|
+| `src/components/pay-v4/UnifiedSendForm.tsx` | Replaced `CONFIDENTIAL_USDC_ADDRESS` stealth guard with `OBSCURA_PAY_OCUSDC_ADDRESS` import; label `Amount (cUSDC)` → `Amount (ocUSDC)` |
+| `src/components/pay-v4/StakePoolForm.tsx` | Replaced import + 2 usages of `CONFIDENTIAL_USDC_ADDRESS` with `OBSCURA_PAY_OCUSDC_ADDRESS` from `@/config/payV3` |
+| `src/components/pay-v4/BuyCoverageForm.tsx` | Label `Coverage Amount (cUSDC)` → `Coverage Amount (ocUSDC)` |
+
+### Root cause
+`CONFIDENTIAL_USDC_ADDRESS` was the old v3.15 credit contract address. All Pay
+UI components must use `OBSCURA_PAY_OCUSDC_ADDRESS = 0xEd46020Df8abe7BB1E096f27d089F4326D223a53`.
+
+---
+
+## W5P6 — Auto-Stealth Setup: Embedded Key Generation in Get Paid ✅
+
+**Completed**: current session (follows 82568aa)
+
+### Problem
+New users visiting Get Paid → Inbox saw a static "No meta-address yet" card
+with no action button. They had to navigate to the Setup sub-tab manually.
+Users with keys on a different device saw confusing "—" display with no guidance.
+
+### Solution: Embedded setup flow in StealthInboxV2
+
+`StealthInboxV2.tsx` now embeds the full stealth key setup inside the inbox:
+- When `!meta.keysMeta`: renders a hero card with 3-step explainer + "Enable private receiving" button
+- Single click triggers `meta.generateAndPublish()` (2 MetaMask interactions: sign to encrypt + on-chain tx)
+- `useRef` + `useEffect` auto-triggers `inbox.refresh()` as soon as keys appear
+- `toast.success(...)` on completion
+- Graceful error display below the button
+
+### RegisterMetaAddressForm redesign (4 states)
+
+| State | Condition | UX |
+|-------|-----------|-----|
+| A | No local keys, not registered | "Enable private receiving" hero + 3-step explainer + CTA |
+| B | No local keys, on-chain meta exists | "Keys missing from this browser" amber warning + on-chain pubkeys + "Generate new keys" |
+| C | Local keys, not published | Blue note "Not yet on-chain" + "Publish to chain" CTA |
+| D | Both local + on-chain | Green "Active" confirmation + key display + collapsible "Rotate keys" flow |
+
+### PayPage.tsx auto-navigate after registration
+
+Added `useRef` + `useEffect` to `PayPage.tsx`:
+- Watches `onboarding.isStealthRegistered` transition from `false → true`
+- On first registration: automatically switches `getPaidSub` from `"setup"` to `"inbox"`
+- Only fires on the `false → true` transition (not on every re-render)
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `src/components/pay-v4/StealthInboxV2.tsx` | Embedded setup flow; `useState`, `useRef`, `useEffect`, `motion`, `KeyRound`, `Sparkles`, `toast` added; `cUSDC` → `ocUSDC` in amount display |
+| `src/components/pay-v4/RegisterMetaAddressForm.tsx` | Complete redesign — 4-state component replacing single-form |
+| `src/pages/PayPage.tsx` | `useState` → `useState, useRef, useEffect`; auto-navigate effect after registration |
+
+### UX flow after these changes
+
+1. User connects wallet → visits **Get Paid**
+2. Inbox shows "Enable private receiving" with 3 steps explained
+3. Click "Enable" → MetaMask: sign message (AES key) → MetaMask: send tx (setMetaAddress)
+4. Keys stored encrypted in localStorage; on-chain meta published
+5. Auto-scan fires immediately (refresh called when `keysMeta` becomes non-null)
+6. PayPage auto-navigates to inbox; user sees any incoming payments
+7. **Setup tab** now shows "Active" state with key display + optional rotate
+
+### Key technical detail
+`useStealthScan` requires local private viewing key to decrypt announcements.
+If user had on-chain meta from another device but cleared localStorage, they
+CANNOT claim old stealth payments. The inbox correctly shows this as State B
+and warns: "payments sent to old address need original private keys to claim."
+
+### Build result
+No TypeScript errors in all 3 changed files.

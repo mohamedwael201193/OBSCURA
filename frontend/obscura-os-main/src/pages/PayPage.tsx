@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAccount } from "wagmi";
 import {
@@ -448,6 +448,16 @@ const PayPage = () => {
   // Sub-nav change handlers (with URL sync)
   const onPaySub = (next: PaySub) => { setPaySub(next); writeUrl("pay", next); };
   const onGetPaidSub = (next: GetPaidSub) => { setGetPaidSub(next); writeUrl("getpaid", next); };
+
+  // Auto-switch to inbox the first time stealth registration is confirmed
+  const prevStealthRegisteredRef = useRef(onboarding.isStealthRegistered);
+  useEffect(() => {
+    const was = prevStealthRegisteredRef.current;
+    prevStealthRegisteredRef.current = onboarding.isStealthRegistered;
+    if (!was && onboarding.isStealthRegistered && !onboarding.stealthLoading) {
+      setGetPaidSub("inbox");
+    }
+  }, [onboarding.isStealthRegistered, onboarding.stealthLoading]);
   const onAutoSub = (next: AutoSub) => { setAutoSub(next); writeUrl("automations", next); };
   const onSettingsSub = (next: SettingsSub) => { setSettingsSub(next); writeUrl("settings", next); };
 

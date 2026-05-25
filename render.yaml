@@ -1,15 +1,10 @@
 ###############################################################################
 # Obscura — Render Deployment Config  (FREE TIER)
 #
-# 2 services — both FREE web services (no paid workers):
-#   obscura-api    — ERC-4337 relay + Web Push notifications
-#   obscura-worker — on-chain event indexer + credit keeper (with /health endpoint)
+# SECURITY: All secret values use `sync: false` — they are set manually
+# in the Render dashboard and NEVER committed to source control.
 #
-# Free tier note: services sleep after 15 min of no traffic.
-# The worker wakes on its own health-check ping. Use UptimeRobot (free) to
-# ping /health every 5 min to keep both services awake.
-#
-# Deploy: Connect repo on render.com → New → Blueprint → select this repo.
+# Non-secret config (contract addresses, ports, flags) is safe to store here.
 ###############################################################################
 
 services:
@@ -24,6 +19,7 @@ services:
     healthCheckPath: /health
     autoDeploy: true
     envVars:
+      # ── Non-secret config (safe to commit) ──────────────────────────────────
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -32,26 +28,25 @@ services:
         value: "https://obscura-os-nine.vercel.app"
       - key: PAYMASTER_ADDRESS
         value: "0x9B1F61A65467F11339A8d0834349Be32EB2CF878"
-      - key: BUNDLER_URL
-        value: "https://arb-sepolia.g.alchemy.com/v2/g89_KwJ9ARUpVNY0upgCk"
-      - key: BUNDLER_URL_FALLBACK
-        value: "https://api.pimlico.io/v2/421614/rpc?apikey=pim_bXTiDpX8oPrJjZ4GY5vAmU"
       - key: SUPABASE_URL
         value: "https://quoovjkjwgtdqwdofubh.supabase.co"
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1b292amtqd2d0ZHF3ZG9mdWJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTczMDk0NCwiZXhwIjoyMDk1MzA2OTQ0fQ.NNhLHy7tp_dWg6miDwl9EOtSRSk3yOkh_zUol94U4Mk"
       - key: VAPID_CONTACT_EMAIL
         value: "noreply@obscura.finance"
       - key: VAPID_PUBLIC_KEY
         value: "BIgVcwUhCL93WVMnDdRT9KqySwDS4Sm9C-fSLg4dWJRdddSuLbyDv_M9R5FmDi2F8NwDuKuMtvNiZAwZQ0RH86o"
+      # ── Secrets — set in Render dashboard, never in YAML ────────────────────
+      - key: BUNDLER_URL
+        sync: false
+      - key: BUNDLER_URL_FALLBACK
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
       - key: VAPID_PRIVATE_KEY
-        value: "WqDC2gqeKfnK0Z-2rD6l1_XR8i05bvKJdQRu04x7gKM"
+        sync: false
       - key: RESEND_API_KEY
-        value: "re_NQ3xf87J_Kt9LgMXGAUz82Ng6qDcuxnFD"
+        sync: false
 
   # ── obscura-worker ───────────────────────────────────────────────────────────
-  # Runs as a FREE web service (not a paid worker).
-  # Has GET /health → 200 so Render healthchecks pass.
   - type: web
     name: obscura-worker
     runtime: node
@@ -62,16 +57,13 @@ services:
     healthCheckPath: /health
     autoDeploy: true
     envVars:
+      # ── Non-secret config (safe to commit) ──────────────────────────────────
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "3001"
-      - key: RPC_URL
-        value: "https://arb-sepolia.g.alchemy.com/v2/g89_KwJ9ARUpVNY0upgCk"
       - key: SUPABASE_URL
         value: "https://quoovjkjwgtdqwdofubh.supabase.co"
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1b292amtqd2d0ZHF3ZG9mdWJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3OTczMDk0NCwiZXhwIjoyMDk1MzA2OTQ0fQ.NNhLHy7tp_dWg6miDwl9EOtSRSk3yOkh_zUol94U4Mk"
       - key: CHAINLINK_ETHUSD_ADAPTER
         value: "0xe3E388b421bfcF558FD46a18eE3b1c27aD1D36B3"
       - key: CHAINLINK_USDCUSD_ADAPTER
@@ -86,7 +78,14 @@ services:
         value: "30000"
       - key: KEEPER_HF_THRESHOLD_BPS
         value: "10000"
+      - key: KEEPER_BID_DISCOUNT_BPS
+        value: "200"
       - key: KEEPER_MAX_GAS_GWEI
         value: "2"
+      # ── Secrets — set in Render dashboard, never in YAML ────────────────────
+      - key: RPC_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
       - key: KEEPER_PRIVATE_KEY
-        value: "0x712995dec8a4722687e19ea9592e2e6fe28ee8a258286c5151be05b297791f6f"
+        sync: false

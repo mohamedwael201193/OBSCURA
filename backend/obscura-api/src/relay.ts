@@ -119,6 +119,15 @@ interface NormalizedUserOperationGasPrice {
   standard: UserOperationGasPriceTier;
 }
 
+interface BundlerGasEstimateResult {
+  preVerificationGas?: string;
+  verificationGasLimit?: string;
+  verificationGas?: string;
+  callGasLimit?: string;
+  paymasterVerificationGasLimit?: string;
+  paymasterPostOpGasLimit?: string;
+}
+
 function normalizeUserOperationGasPrice(
   raw?: UserOperationGasPriceResult,
   source: "bundler" | "fallback" = "fallback",
@@ -234,6 +243,21 @@ async function getBundlerUserOperationGasPrice(): Promise<NormalizedUserOperatio
   return normalizeUserOperationGasPrice(undefined, "fallback");
 }
 
+async function estimateUserOperationGas(op: PackedUserOperation): Promise<BundlerGasEstimateResult> {
+  const urls = [BUNDLER_URL, BUNDLER_URL_FALLBACK].filter(Boolean);
+  const rpcOp = unpackForBundler(op);
+
+  for (const url of urls) {
+    try {
+      return await bundlerRpc<BundlerGasEstimateResult>(url, "eth_estimateUserOperationGas", [rpcOp, ENTRY_POINT]);
+    } catch (err) {
+      console.warn(`[relay] UserOp gas estimate unavailable from bundler: ${(err as Error).message}`);
+    }
+  }
+
+  throw new Error("Bundler gas estimation unavailable");
+}
+
 async function sendToBundler(url: string, op: PackedUserOperation): Promise<string> {
   const rpcOp = unpackForBundler(op);
   return bundlerRpc<string>(url, "eth_sendUserOperation", [rpcOp, ENTRY_POINT]);
@@ -286,6 +310,24 @@ relayRouter.get("/userop-gas-price", async (_req: Request, res: Response) => {
   } catch (err) {
     const msg = (err as Error).message;
     console.error(`[relay] Gas price error: ${msg}`);
+    res.status(400).json({ error: msg });
+  }
+});
+
+relayRouter.post("/estimate-userop-gas", async (req: Request, res: Response) => {
+  const ip = req.ip ?? "unknown";
+
+  try {
+    if (!rateCheck(ip)) {
+      res.status(429).json({ error: "Rate limit exceeded. Max 20 requests per minute per IP." });
+      return;
+    }
+
+    const { userOp } = req.body as { userOp: unknown };
+    res.json(await estimateUserOperationGas(validateUserOp(userOp)));
+  } catch (err) {
+    const msg = (err as Error).message;
+    console.error(`[relay] Estimate error: ${msg}`);
     res.status(400).json({ error: msg });
   }
 });

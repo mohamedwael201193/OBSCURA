@@ -1189,6 +1189,59 @@ Only top-ups or deployments should use the private deployer key. The per-user tr
 
 ---
 
+## W5P9.7 — UserOp preVerificationGas Fix ✅
+
+**Completed**: current session — fixes relay error after passkey prompt:
+
+```
+Relay error 400: {"error":"Bundler error: preVerificationGas is not enough, required: 67500, got: 50000"}
+```
+
+### Root cause
+
+The passkey/WebAuthn route was working and the UserOp reached the bundler, but `frontend/obscura-os-main/src/lib/userop.ts` still used a hard-coded `PRE_VERIFICATION = 50_000n`.
+
+That was too low for the real v0.7 UserOp calldata size, especially after the WebAuthn fix made signatures much larger:
+
+```
+0x01 || abi.encode(bytes authenticatorData, bytes clientDataJSON, uint256 challengeOffset, bytes32 r, bytes32 s)
+```
+
+Pimlico docs confirm the correct path is `eth_estimateUserOperationGas`, which returns `preVerificationGas` for the UserOperation. Docs also note the signature can be dummy for estimation as long as it is well-formed, because many account implementations require a correctly shaped signature payload.
+
+### Fix
+
+| File | Change |
+|------|--------|
+| `frontend/obscura-os-main/src/lib/userop.ts` | Raised fallback `PRE_VERIFICATION` from `50_000n` to `100_000n`; added a well-formed dummy WebAuthn signature; calls the relay `/estimate-userop-gas` endpoint before passkey signing; applies a 20% safety margin to returned gas fields; signs only after final gas fields are set. |
+| `backend/obscura-api/src/relay.ts` | Added `POST /estimate-userop-gas`; relay unpacks the v0.7 packed UserOp and calls bundler `eth_estimateUserOperationGas`; tries primary bundler then fallback. |
+
+### Why this must happen before passkey signing
+
+`preVerificationGas`, `accountGasLimits`, `gasFees`, and `paymasterAndData` are all part of the signed ERC-4337 UserOp hash. The relay must not mutate them after the passkey signature is produced or AA24/signature validation will fail again.
+
+Correct flow now:
+
+1. Build unsigned UserOp with conservative initial gas fields.
+2. Attach well-formed dummy WebAuthn signature for estimation only.
+3. Relay calls `eth_estimateUserOperationGas` using the unpacked v0.7 UserOp.
+4. Frontend applies returned gas values + safety margin.
+5. Frontend computes final UserOp hash.
+6. User approves passkey once for the final hash.
+7. Relay submits the signed UserOp unchanged.
+
+### Fallback behavior
+
+If production relay is not yet deployed or bundler estimation is unavailable, frontend still uses the new `100_000n` preVerificationGas floor, which is above the observed required `67_500`.
+
+### Verification
+
+- Editor diagnostics: no errors in `frontend/obscura-os-main/src/lib/userop.ts` or `backend/obscura-api/src/relay.ts` ✅
+- `npm run build` in `frontend/obscura-os-main` ✅ (`✓ built in 13.86s`)
+- `npm run build` in `backend/obscura-api` ✅
+
+---
+
 ## W5P10 — Smart Mode Full Routing (All Pay Features) ✅
 
 **Completed**: commits `1ac0a5d` (UI toggle), `fdb83fa` (all components fixed)

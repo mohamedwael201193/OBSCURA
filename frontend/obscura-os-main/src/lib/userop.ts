@@ -9,7 +9,7 @@
  *   • Nonce is fetched from the EntryPoint (not the account itself)
  */
 
-import { encodeAbiParameters, parseAbiParameters, encodeFunctionData, concat, pad, toHex } from "viem";
+import { encodeAbiParameters, parseAbiParameters, encodeFunctionData, concat, pad, stringToHex, toHex } from "viem";
 import type { PublicClient, Hex, Address } from "viem";
 import { ENTRY_POINT_V07, ENTRY_POINT_ABI, PAYMASTER_ADDRESS, RELAY_URL } from "@/config/smartAccount";
 
@@ -50,7 +50,8 @@ export interface RelayResult {
 // ─── Gas constants (conservative for Arbitrum Sepolia) ───────────────────────
 const VERIFICATION_GAS  = 200_000n;
 const CALL_GAS          = 500_000n;
-const PRE_VERIFICATION  = 50_000n;
+const PRE_VERIFICATION  = 100_000n;
+const PAYMASTER_VERIFICATION_GAS = 200_000n;
 const PAYMASTER_POST_OP = 100_000n;   // postOpGasLimit in paymasterAndData
 const MIN_PRIORITY_FEE_PER_GAS = 120_000n;
 const FALLBACK_MAX_FEE_PER_GAS = 100_000_000n;
@@ -62,6 +63,14 @@ interface RelayGasPriceTier {
 
 interface RelayGasPriceResponse {
   standard?: RelayGasPriceTier;
+}
+
+interface RelayGasEstimateResponse {
+  callGasLimit?: string;
+  verificationGasLimit?: string;
+  preVerificationGas?: string;
+  paymasterVerificationGasLimit?: string | null;
+  paymasterPostOpGasLimit?: string | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -82,13 +91,62 @@ function normalizeGasFees(maxFeePerGas: bigint | undefined, maxPriorityFeePerGas
   return { maxFeePerGas: maxFee, maxPriorityFeePerGas: priorityFee };
 }
 
-function parseOptionalBigInt(value: string | undefined): bigint | undefined {
+function parseOptionalBigInt(value: string | null | undefined): bigint | undefined {
   if (!value) return undefined;
   try {
     return BigInt(value);
   } catch {
     return undefined;
   }
+}
+
+function withGasMargin(value: bigint): bigint {
+  return (value * 120n + 99n) / 100n;
+}
+
+function maxGas(floor: bigint, estimated: bigint | undefined): bigint {
+  return estimated === undefined ? floor : floor > withGasMargin(estimated) ? floor : withGasMargin(estimated);
+}
+
+function buildPaymasterAndData(
+  usePaymaster: boolean,
+  paymasterVerificationGas: bigint,
+  paymasterPostOpGas: bigint,
+): Hex {
+  if (!usePaymaster || !PAYMASTER_ADDRESS) return "0x";
+
+  const verificationGasBytes = pad(toHex(paymasterVerificationGas), { size: 16 });
+  const postOpGasBytes = pad(toHex(paymasterPostOpGas), { size: 16 });
+  return concat([PAYMASTER_ADDRESS, verificationGasBytes, postOpGasBytes]);
+}
+
+function dummyWebAuthnSignature(): Hex {
+  const challenge = "A".repeat(43);
+  const clientDataJSON = `{"type":"webauthn.get","challenge":"${challenge}","origin":"https://obscura-os-nine.vercel.app","crossOrigin":false}`;
+  const challengeOffset = BigInt(clientDataJSON.indexOf(challenge));
+  const authenticatorData = `0x${"00".repeat(32)}01${"00".repeat(4)}` as Hex;
+  const zero32 = `0x${"00".repeat(32)}` as Hex;
+
+  const payload = encodeAbiParameters(
+    parseAbiParameters("bytes authenticatorData, bytes clientDataJSON, uint256 challengeOffset, bytes32 r, bytes32 s"),
+    [authenticatorData, stringToHex(clientDataJSON), challengeOffset, zero32, zero32],
+  );
+
+  return concat(["0x01", payload]);
+}
+
+function serializeUserOp(op: PackedUserOperation) {
+  return {
+    sender:             op.sender,
+    nonce:              toHex(op.nonce),
+    initCode:           op.initCode,
+    callData:           op.callData,
+    accountGasLimits:   op.accountGasLimits,
+    preVerificationGas: toHex(op.preVerificationGas),
+    gasFees:            op.gasFees,
+    paymasterAndData:   op.paymasterAndData,
+    signature:          op.signature,
+  };
 }
 
 async function fetchRelayUserOperationGasPrice() {
@@ -101,6 +159,21 @@ async function fetchRelayUserOperationGasPrice() {
       parseOptionalBigInt(json.standard?.maxFeePerGas),
       parseOptionalBigInt(json.standard?.maxPriorityFeePerGas),
     );
+  } catch {
+    return null;
+  }
+}
+
+async function fetchRelayUserOperationGasEstimate(op: PackedUserOperation) {
+  try {
+    const response = await fetch(`${RELAY_URL}/estimate-userop-gas`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userOp: serializeUserOp(op) }),
+    });
+    if (!response.ok) return null;
+
+    return await response.json() as RelayGasEstimateResponse;
   } catch {
     return null;
   }
@@ -169,21 +242,42 @@ export async function buildUserOp(opts: UserOpBuildOptions): Promise<PackedUserO
     localFeeData?.maxPriorityFeePerGas,
   );
 
-  // accountGasLimits = verificationGasLimit(128) | callGasLimit(128)
-  const accountGasLimits = pack128(VERIFICATION_GAS, CALL_GAS);
-
-  // gasFees = maxPriorityFeePerGas(128) | maxFeePerGas(128)
-  const gasFees = pack128(maxPriorityFeePerGas, maxFeePerGas);
-
   // Build account callData (wrap in execute)
   const accountCallData = encodeExecuteCall(target, value, callData);
 
-  // paymasterAndData (ERC-4337 v0.7): paymasterAddr(20) + paymasterVerificationGasLimit(16) + paymasterPostOpGasLimit(16)
-  let paymasterAndData: Hex = "0x";
-  if (usePaymaster && PAYMASTER_ADDRESS) {
-    const verificationGasBytes = pad(toHex(VERIFICATION_GAS),  { size: 16 });
-    const postOpGasBytes       = pad(toHex(PAYMASTER_POST_OP), { size: 16 });
-    paymasterAndData = concat([PAYMASTER_ADDRESS, verificationGasBytes, postOpGasBytes]);
+  let verificationGasLimit = VERIFICATION_GAS;
+  let callGasLimit = CALL_GAS;
+  let preVerificationGas = PRE_VERIFICATION;
+  let paymasterVerificationGas = PAYMASTER_VERIFICATION_GAS;
+  let paymasterPostOpGas = PAYMASTER_POST_OP;
+
+  const gasFees = pack128(maxPriorityFeePerGas, maxFeePerGas);
+  let accountGasLimits = pack128(verificationGasLimit, callGasLimit);
+  let paymasterAndData = buildPaymasterAndData(usePaymaster, paymasterVerificationGas, paymasterPostOpGas);
+
+  const gasEstimate = await fetchRelayUserOperationGasEstimate({
+    sender,
+    nonce,
+    initCode,
+    callData: accountCallData,
+    accountGasLimits,
+    preVerificationGas,
+    gasFees,
+    paymasterAndData,
+    signature: dummyWebAuthnSignature(),
+  });
+
+  if (gasEstimate) {
+    verificationGasLimit = maxGas(VERIFICATION_GAS, parseOptionalBigInt(gasEstimate.verificationGasLimit));
+    callGasLimit = maxGas(CALL_GAS, parseOptionalBigInt(gasEstimate.callGasLimit));
+    preVerificationGas = maxGas(PRE_VERIFICATION, parseOptionalBigInt(gasEstimate.preVerificationGas));
+    paymasterVerificationGas = maxGas(
+      PAYMASTER_VERIFICATION_GAS,
+      parseOptionalBigInt(gasEstimate.paymasterVerificationGasLimit),
+    );
+    paymasterPostOpGas = maxGas(PAYMASTER_POST_OP, parseOptionalBigInt(gasEstimate.paymasterPostOpGasLimit));
+    accountGasLimits = pack128(verificationGasLimit, callGasLimit);
+    paymasterAndData = buildPaymasterAndData(usePaymaster, paymasterVerificationGas, paymasterPostOpGas);
   }
 
   return {
@@ -192,7 +286,7 @@ export async function buildUserOp(opts: UserOpBuildOptions): Promise<PackedUserO
     initCode,
     callData: accountCallData,
     accountGasLimits,
-    preVerificationGas: PRE_VERIFICATION,
+    preVerificationGas,
     gasFees,
     paymasterAndData,
     signature: "0x",
@@ -207,15 +301,7 @@ export async function buildUserOp(opts: UserOpBuildOptions): Promise<PackedUserO
 export async function submitUserOp(op: PackedUserOperation): Promise<RelayResult> {
   const body = {
     userOp: {
-      sender:             op.sender,
-      nonce:              toHex(op.nonce),
-      initCode:           op.initCode,
-      callData:           op.callData,
-      accountGasLimits:   op.accountGasLimits,
-      preVerificationGas: toHex(op.preVerificationGas),
-      gasFees:            op.gasFees,
-      paymasterAndData:   op.paymasterAndData,
-      signature:          op.signature,
+      ...serializeUserOp(op),
     },
   };
 

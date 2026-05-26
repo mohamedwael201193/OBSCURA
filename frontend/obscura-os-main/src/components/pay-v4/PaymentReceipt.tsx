@@ -3,9 +3,10 @@
  * `<ReceiptList>` shows the most recent receipts on the Pay home zone /
  * Receipts modal.
  */
+import { useState } from "react";
 import { Card } from "@/components/elite/Layout";
 import { Button } from "@/components/ui/button";
-import { Download, Trash2, ExternalLink, FileSpreadsheet } from "lucide-react";
+import { Download, Eye, EyeOff, Lock, Trash2, ExternalLink, FileSpreadsheet } from "lucide-react";
 import { useReceipts, type Receipt } from "@/hooks/useReceipts";
 import { toCsv, downloadCsv } from "@/lib/exportCsv";
 
@@ -26,7 +27,7 @@ const KIND_LABEL: Record<Receipt["kind"], string> = {
   "stealth-rotate": "Meta rotated",
 };
 
-export function ReceiptRow({ r, onRemove }: { r: Receipt; onRemove: (id: string) => void }) {
+export function ReceiptRow({ r, onRemove, showAmount = false }: { r: Receipt; onRemove: (id: string) => void; showAmount?: boolean }) {
   const ts = new Date(r.timestamp);
   return (
     <div className="flex items-start gap-3 p-3 rounded-xl hairline bg-muted/40 text-[12px]">
@@ -36,9 +37,17 @@ export function ReceiptRow({ r, onRemove }: { r: Receipt; onRemove: (id: string)
           {r.recipientLabel && (
             <span className="text-muted-foreground/70"> · {r.recipientLabel}</span>
           )}
-          {r.amount && (
-            <span className="text-[hsl(var(--success))]/80 font-mono"> · {r.amount} ocUSDC</span>
-          )}
+          <span className="font-mono text-muted-foreground/60">
+            {" · "}
+            {r.amount && showAmount ? (
+              <span className="text-[hsl(var(--success))]/80">{r.amount} ocUSDC</span>
+            ) : (
+              <span className="inline-flex items-center gap-0.5">
+                <Lock className="inline h-[9px] w-[9px] opacity-40" />
+                <span className="opacity-50">••••• ocUSDC</span>
+              </span>
+            )}
+          </span>
         </div>
         <div className="text-[10px] text-muted-foreground/55 font-mono truncate">
           {ts.toLocaleString()} · chain {r.chainId}
@@ -66,6 +75,7 @@ export function ReceiptRow({ r, onRemove }: { r: Receipt; onRemove: (id: string)
 
 export function ReceiptList({ limit }: { limit?: number }) {
   const { receipts, remove, exportJSON } = useReceipts();
+  const [showAmounts, setShowAmounts] = useState(false);
   const shown = typeof limit === "number" ? receipts.slice(0, limit) : receipts;
 
   if (receipts.length === 0) {
@@ -83,6 +93,18 @@ export function ReceiptList({ limit }: { limit?: number }) {
           Recent receipts ({receipts.length})
         </div>
         <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setShowAmounts((v) => !v)}
+            title={showAmounts ? "Hide amounts" : "Reveal amounts"}
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[9px] font-mono uppercase tracking-[0.1em] text-muted-foreground/50 transition-colors hover:text-foreground hairline"
+          >
+            {showAmounts ? (
+              <><EyeOff className="h-3 w-3" /> Hide</>
+            ) : (
+              <><Eye className="h-3 w-3" /> Reveal</>
+            )}
+          </button>
           <Button
             variant="outline"
             size="sm"
@@ -120,7 +142,7 @@ export function ReceiptList({ limit }: { limit?: number }) {
       </div>
       <div className="space-y-2">
         {shown.map((r) => (
-          <ReceiptRow key={r.id} r={r} onRemove={remove} />
+          <ReceiptRow key={r.id} r={r} onRemove={remove} showAmount={showAmounts} />
         ))}
       </div>
     </Card>

@@ -439,6 +439,7 @@ export function PayHarmonyHome({
       : null;
 
   const [balanceRevealed, setBalanceRevealed] = useState(false);
+  const [showActivityAmounts, setShowActivityAmounts] = useState(false);
   const greeting = getGreeting();
 
   const openFaucet = useCallback(
@@ -606,8 +607,8 @@ export function PayHarmonyHome({
       : r.txHash
         ? `${r.txHash.slice(0, 6)}…${r.txHash.slice(-4)}`
         : "",
-    value: r.amount ? `${r.amount} USDC` : "••••• ocUSDC",
-    encrypted: !r.amount,
+    value: r.amount ? `${r.amount} ocUSDC` : null,
+    encrypted: true,
     time: formatRelativeTime((r as { timestamp?: number }).timestamp),
   }));
 
@@ -877,13 +878,27 @@ export function PayHarmonyHome({
             )}
           </p>
           {activity.length > 0 && (
-            <button
-              type="button"
-              onClick={() => onNavigate("activity")}
-              className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/50 transition-colors hover:text-foreground"
-            >
-              View all →
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowActivityAmounts((v) => !v)}
+                title={showActivityAmounts ? "Hide amounts" : "Reveal amounts"}
+                className="flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground/40 transition-colors hover:text-muted-foreground/70 hairline"
+              >
+                {showActivityAmounts ? (
+                  <><EyeOff className="h-[9px] w-[9px]" /> Hide</>  
+                ) : (
+                  <><Eye className="h-[9px] w-[9px]" /> Reveal</>  
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigate("activity")}
+                className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/50 transition-colors hover:text-foreground"
+              >
+                View all →
+              </button>
+            </div>
           )}
         </header>
         {activity.length === 0 ? (
@@ -919,15 +934,8 @@ export function PayHarmonyHome({
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p
-                      className={cn(
-                        "font-mono text-[12px] tabular-nums",
-                        r.encrypted
-                          ? "text-muted-foreground/60"
-                          : "text-foreground",
-                      )}
-                    >
-                      {r.value}
+                    <p className="font-mono text-[12px] tabular-nums text-muted-foreground/60">
+                      {showActivityAmounts && r.value ? r.value : "••••• ocUSDC"}
                     </p>
                     <p className="font-mono text-[10px] text-muted-foreground/40">
                       {r.time}

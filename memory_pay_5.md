@@ -613,3 +613,56 @@ and warns: "payments sent to old address need original private keys to claim."
 
 ### Build result
 No TypeScript errors in all 3 changed files.
+
+---
+
+## W5P7 — Privacy UI Audit + Activity Amount Masking ✅
+
+**Completed**: current session (follows 3d7ea13)
+
+### Problem
+1. **"2 USDC" bug**: Overview "Recent Activity" showed `${r.amount} USDC` — wrong token label for private receipts.
+2. **No amount masking**: Activity amounts (local receipts) were shown in plaintext with no option to hide.
+3. **Wrong `encrypted` flag**: Only receipts WITHOUT an amount were marked `encrypted: true` — receipts WITH amounts were shown in normal text color as if public.
+
+### Research finding (ERC-5564 UX patterns)
+Reviewed Umbra.cash, nerolation.github.io, ERC-5564 spec.
+**Key insight** (nerolation.github.io): Deterministic stealth key derivation via signed constant message → keys are derived every time, no storage needed. This is exactly what Obscura already implements. No change needed to key gen flow — the current StealthInboxV2 embedded setup is the correct approach.
+
+Top apps (Umbra): `sign message → derive keys → publish on-chain` — same as Obscura's current flow. Auto-generation on wallet connect is the right UX and Obscura already does this in the inbox embedded setup. No further changes needed.
+
+### Files fixed
+
+| File | Change |
+|------|--------|
+| `src/components/harmony/PayHarmonyHome.tsx` | `"USDC"` → `"ocUSDC"` in activity label; `encrypted: true` for all activity items (not just those without amounts); `value: r.amount ? \`${r.amount} ocUSDC\` : null`; `showActivityAmounts` state (default: `false`); Eye/EyeOff reveal toggle in activity section header; activity row always shows `"••••• ocUSDC"` unless `showActivityAmounts` is true |
+| `src/components/pay-v4/PaymentReceipt.tsx` | Added `useState` + `Eye`/`EyeOff`/`Lock` imports; `showAmount?: boolean` prop on `ReceiptRow`; Lock icon + `"••••• ocUSDC"` when hidden; `showAmounts` state (default: `false`) in `ReceiptList`; reveal/hide toggle button in receipt list header |
+
+### Privacy posture after these changes
+
+| Context | Before | After |
+|---------|--------|-------|
+| Recent Activity amount | `2 USDC` (plaintext, wrong label) | `••••• ocUSDC` by default, `2 ocUSDC` on reveal |
+| Receipt list amount | `2 ocUSDC` (always plaintext) | `••••• ocUSDC` by default, `2 ocUSDC` on reveal |
+| Balance (hero) | `• • • • • •` with Reveal ✅ | unchanged ✅ |
+| Activity on-chain feed | no amounts shown ✅ | unchanged ✅ |
+| PayHarmonySendBar ocUSDC | `reveal` button, no auto-decrypt ✅ | unchanged ✅ |
+
+### Full privacy audit result
+All remaining `USDC` occurrences in pay pages are correct — they refer to the PUBLIC Circle USDC token (bridge form, escrow form, plain balance display). No other privacy gaps found.
+
+### Design pattern (session-level reveal toggle)
+```tsx
+const [showAmounts, setShowAmounts] = useState(false);
+// In header:
+<button onClick={() => setShowAmounts(v => !v)}>
+  {showAmounts ? <EyeOff /> : <Eye />}
+</button>
+// In row:
+{showAmounts && r.value ? r.value : "••••• ocUSDC"}
+```
+- `showAmounts` is session-only (not persisted) — resets on page refresh for maximum privacy
+- Default is `false` (amounts hidden) — privacy-first default
+
+### TypeScript errors
+Zero errors in both changed files (`get_errors` confirmed clean).

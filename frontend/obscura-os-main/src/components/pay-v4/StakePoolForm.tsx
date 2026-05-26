@@ -1,8 +1,7 @@
 import { motion } from "framer-motion";
 import { Landmark, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
-import { arbitrumSepolia } from "viem/chains";
+import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { toast } from "sonner";
 import {
   FHERC20_ABI,
@@ -11,12 +10,13 @@ import {
 } from "@/config/pay";
 import { OBSCURA_PAY_OCUSDC_ADDRESS } from "@/config/payV3";
 import { initFHEClient, encryptAmount } from "@/lib/fhe";
+import { useUnifiedWrite } from "@/hooks/useUnifiedWrite";
 
 export default function StakePoolForm() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
-  const { writeContractAsync } = useWriteContract();
+  const { write } = useUnifiedWrite();
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -46,41 +46,32 @@ export default function StakePoolForm() {
 
       // 2. Authorize the pool as operator (time-bounded, 30 days)
       toast.info("Step 1/2: Authorizing pool as operator…");
-      const feeData = await publicClient.estimateFeesPerGas();
-      const maxFee = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
       const untilTimestamp = BigInt(Math.floor(Date.now() / 1000) + 30 * 86400);
 
-      const authTx = await writeContractAsync({
+      const authTx = await write({
         address: OBSCURA_PAY_OCUSDC_ADDRESS,
         abi: FHERC20_ABI,
         functionName: "setOperator",
         args: [INSURANCE_POOL_ADDRESS as `0x${string}`, untilTimestamp],
-        account: address,
-        chain: arbitrumSepolia,
-        maxFeePerGas: maxFee,
         gas: 100_000n,
+        mode: "eoa", // operator approval must always be EOA
       });
-      await publicClient.waitForTransactionReceipt({ hash: authTx });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash: authTx });
 
       // Wait to avoid RPC rate-limit
       await new Promise((r) => setTimeout(r, 2000));
 
       // 3. Stake into the pool
       toast.info("Step 2/2: Staking into insurance pool…");
-      const feeData2 = await publicClient.estimateFeesPerGas();
-      const maxFee2 = feeData2.maxFeePerGas ? (feeData2.maxFeePerGas * 130n) / 100n : undefined;
 
-      const stakeTx = await writeContractAsync({
+      const stakeTx = await write({
         address: INSURANCE_POOL_ADDRESS as `0x${string}`,
         abi: INSURANCE_POOL_ABI,
         functionName: "stake",
         args: [encrypted[0]],
-        account: address,
-        chain: arbitrumSepolia,
-        maxFeePerGas: maxFee2,
         gas: 800_000n,
       });
-      await publicClient.waitForTransactionReceipt({ hash: stakeTx });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash: stakeTx });
 
       toast.success(`Staked ${parsed} cUSDC into insurance pool!`);
       setAmount("");

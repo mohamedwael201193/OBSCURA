@@ -14,10 +14,10 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ShieldCheck, Loader2, AlertTriangle, UserPlus, X } from "lucide-react";
 import { isAddress } from "viem";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
-import { arbitrumSepolia } from "viem/chains";
+import { useAccount, usePublicClient } from "wagmi";
 import { toast } from "sonner";
 import { OBSCURA_INVOICE_ADDRESS, OBSCURA_INVOICE_ABI } from "@/config/pay";
+import { useUnifiedWrite } from "@/hooks/useUnifiedWrite";
 
 export default function AuditorGrantPanel({
   invoiceId,
@@ -28,7 +28,7 @@ export default function AuditorGrantPanel({
 }) {
   const { address } = useAccount();
   const publicClient = usePublicClient();
-  const { writeContractAsync } = useWriteContract();
+  const { write } = useUnifiedWrite();
 
   const [open, setOpen] = useState(defaultOpen);
   const [auditor, setAuditor] = useState("");
@@ -66,16 +66,14 @@ export default function AuditorGrantPanel({
     }
     setBusy(true);
     try {
-      const hash = await writeContractAsync({
+      const hash = await write({
         address: OBSCURA_INVOICE_ADDRESS,
         abi: OBSCURA_INVOICE_ABI,
         functionName: "grantAuditor",
         args: [BigInt(invoiceId), auditor as `0x${string}`],
-        account: address,
-        chain: arbitrumSepolia,
         gas: 300_000n,
       });
-      await publicClient!.waitForTransactionReceipt({ hash });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
       toast.success(`Auditor ${auditor.slice(0, 10)}… granted decrypt access to invoice #${invoiceId}`);
       setAuditor("");
       await refresh();

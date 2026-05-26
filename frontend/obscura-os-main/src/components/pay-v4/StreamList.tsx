@@ -1,13 +1,14 @@
-﻿import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+﻿import { useAccount, usePublicClient } from "wagmi";
 import { isAddress, parseUnits } from "viem";
 import { motion } from "framer-motion";
 import { useStreamList, type StreamSummary } from "@/hooks/useStreamList";
 import { useTickStream } from "@/hooks/useTickStream";
 import { useOcUSDCTransfer } from "@/hooks/useOcUSDCTransfer";
+import { useUnifiedWrite } from "@/hooks/useUnifiedWrite";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { Play, Clock, Ban, Timer, CheckCircle2, XCircle, Check, Pause, PlayCircle, Shield, Zap, PencilLine } from "lucide-react";
-import { arbitrumSepolia } from "viem/chains";
+import { toast } from "sonner";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
@@ -86,7 +87,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
   const { streams, isLoading, refresh } = useStreamList(filter);
   const { tick, isTicking } = useTickStream();
   const { transfer: directTransfer } = useOcUSDCTransfer();
-  const { writeContractAsync } = useWriteContract();
+  const { write } = useUnifiedWrite();
 
   const TICK_AMOUNT_KEY = "obscura.streams.tickAmount.v1";
   const [tickAmount, setTickAmount] = useState(() => getString(TICK_AMOUNT_KEY, undefined) ?? "");
@@ -394,10 +395,8 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                       if (!publicClient || !OBSCURA_PAY_STREAM_V3_ADDRESS) return;
                       setStreamAction(key);
                       try {
-                        const feeData = await publicClient.estimateFeesPerGas();
-                        const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
-                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "setPaused", args: [s.id, true], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
-                        await publicClient.waitForTransactionReceipt({ hash });
+                        const hash = await write({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "setPaused", args: [s.id, true], gas: 200_000n });
+                        if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
                         toast.success(`Stream #${key} paused`);
                         refresh();
                       } catch (e) { toast.error((e as Error).message || "Pause failed"); } finally { setStreamAction(null); }
@@ -410,10 +409,8 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                       if (!publicClient || !OBSCURA_PAY_STREAM_V3_ADDRESS) return;
                       setStreamAction(key);
                       try {
-                        const feeData = await publicClient.estimateFeesPerGas();
-                        const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
-                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "cancelStream", args: [s.id], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
-                        await publicClient.waitForTransactionReceipt({ hash });
+                        const hash = await write({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "cancelStream", args: [s.id], gas: 200_000n });
+                        if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
                         toast.success(`Stream #${key} cancelled`);
                         refresh();
                       } catch (e) { toast.error((e as Error).message || "Cancel failed"); } finally { setStreamAction(null); }
@@ -432,10 +429,8 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                       if (!publicClient || !OBSCURA_PAY_STREAM_V3_ADDRESS) return;
                       setStreamAction(key);
                       try {
-                        const feeData = await publicClient.estimateFeesPerGas();
-                        const maxFeePerGas = feeData.maxFeePerGas ? (feeData.maxFeePerGas * 130n) / 100n : undefined;
-                        const hash = await writeContractAsync({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "setPaused", args: [s.id, false], account: address, chain: arbitrumSepolia, maxFeePerGas, gas: 200_000n });
-                        await publicClient.waitForTransactionReceipt({ hash });
+                        const hash = await write({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "setPaused", args: [s.id, false], gas: 200_000n });
+                        if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
                         toast.success(`Stream #${key} resumed`);
                         refresh();
                       } catch (e) { toast.error((e as Error).message || "Resume failed"); } finally { setStreamAction(null); }

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Gavel, Search, CheckCircle, XCircle, Clock, User } from "lucide-react";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
-import { arbitrumSepolia } from "viem/chains";
+import { useAccount, usePublicClient } from "wagmi";
 import {
   OBSCURA_PAYROLL_RESOLVER_ABI,
   OBSCURA_PAYROLL_RESOLVER_ADDRESS,
 } from "@/config/pay";
+import { useUnifiedWrite } from "@/hooks/useUnifiedWrite";
 import { toast } from "sonner";
 
 interface CycleInfo {
@@ -20,7 +20,7 @@ interface CycleInfo {
 export default function ResolverManager() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
-  const { writeContractAsync } = useWriteContract();
+  const { write } = useUnifiedWrite();
   const [escrowId, setEscrowId] = useState("");
   const [cycleInfo, setCycleInfo] = useState<CycleInfo | null>(null);
   const [conditionMet, setConditionMet] = useState<boolean | null>(null);
@@ -77,21 +77,14 @@ export default function ResolverManager() {
     if (!publicClient || !OBSCURA_PAYROLL_RESOLVER_ADDRESS || !parsedId) return;
     setActionBusy("approve");
     try {
-      const feeData = await publicClient.estimateFeesPerGas();
-      const maxFeePerGas = feeData.maxFeePerGas
-        ? (feeData.maxFeePerGas * 130n) / 100n
-        : undefined;
-      const hash = await writeContractAsync({
+      const hash = await write({
         address: OBSCURA_PAYROLL_RESOLVER_ADDRESS,
         abi: OBSCURA_PAYROLL_RESOLVER_ABI,
         functionName: "approve",
         args: [parsedId],
-        account: address,
-        chain: arbitrumSepolia,
-        maxFeePerGas,
         gas: 200_000n,
       });
-      await publicClient.waitForTransactionReceipt({ hash });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
       toast.success(`Escrow #${escrowId} approved for release`);
       await fetchCycle();
     } catch (e) {
@@ -105,21 +98,14 @@ export default function ResolverManager() {
     if (!publicClient || !OBSCURA_PAYROLL_RESOLVER_ADDRESS || !parsedId) return;
     setActionBusy("cancel");
     try {
-      const feeData = await publicClient.estimateFeesPerGas();
-      const maxFeePerGas = feeData.maxFeePerGas
-        ? (feeData.maxFeePerGas * 130n) / 100n
-        : undefined;
-      const hash = await writeContractAsync({
+      const hash = await write({
         address: OBSCURA_PAYROLL_RESOLVER_ADDRESS,
         abi: OBSCURA_PAYROLL_RESOLVER_ABI,
         functionName: "cancel",
         args: [parsedId],
-        account: address,
-        chain: arbitrumSepolia,
-        maxFeePerGas,
         gas: 200_000n,
       });
-      await publicClient.waitForTransactionReceipt({ hash });
+      if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
       toast.success(`Escrow #${escrowId} cancelled by resolver`);
       await fetchCycle();
     } catch (e) {

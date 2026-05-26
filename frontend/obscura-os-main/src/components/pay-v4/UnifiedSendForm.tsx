@@ -33,7 +33,7 @@ import TxProgressPanel from "@/components/shared/TxProgressPanel";
 import type { TxStep } from "@/hooks/useTxProgress";
 
 import ContactPicker from "./ContactPicker";
-import { useOcUSDCTransfer } from "@/hooks/useOcUSDCTransfer";
+import { SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE, useOcUSDCTransfer } from "@/hooks/useOcUSDCTransfer";
 import { useRecipientResolver, type ResolvedRecipient } from "@/hooks/useRecipientResolver";
 import { useReceipts } from "@/hooks/useReceipts";
 import { usePreferences, type SendMode } from "@/contexts/PreferencesContext";
@@ -96,7 +96,7 @@ export default function UnifiedSendForm() {
   const { decrypted, trackedCusdc } = useOcUSDCBalance();
 
   // Smart account + payment mode
-  const { mode: paymentMode, smartAccountAddress, isSmartAvailable } = usePaymentMode();
+  const { mode: paymentMode, setMode: setPaymentMode, smartAccountAddress, isSmartAvailable } = usePaymentMode();
   const { accountAddress, isDeployed, sendUserOp } = useSmartAccount();
   const isSmartRequested = paymentMode === "smart";
   const smartAddress = (accountAddress ?? smartAccountAddress) as `0x${string}` | null;
@@ -181,6 +181,7 @@ export default function UnifiedSendForm() {
 
       if (mode === "direct") {
         if (!resolved.address) throw new Error("Recipient address missing");
+        if (isSmartRequested) throw new Error(SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE);
         beginProgress(isSmartRequested
           ? [
               "Initialize FHE encryption client",
@@ -225,6 +226,7 @@ export default function UnifiedSendForm() {
         });
       } else if (mode === "stealth") {
         if (!resolved.meta) throw new Error("Recipient meta-address missing");
+        if (isSmartRequested) throw new Error(SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE);
         if (!OBSCURA_PAY_OCUSDC_ADDRESS || !OBSCURA_STEALTH_REGISTRY_ADDRESS) {
           throw new Error("Stealth registry / ocUSDC not configured");
         }
@@ -562,6 +564,21 @@ export default function UnifiedSendForm() {
               <span>{resolved.warning}</span>
             </div>
           )}
+          {isSmartRequested && (
+            <div className="mb-3 flex items-start justify-between gap-3 text-[12px] text-amber-800 bg-amber-500/[0.08] border border-amber-500/25 p-3 rounded-xl">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>{SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPaymentMode("wallet")}
+                className="shrink-0 rounded-full border border-amber-700/30 px-2.5 py-1 text-[11px] font-medium text-amber-900 hover:bg-amber-500/15 transition-colors"
+              >
+                Use Wallet Mode
+              </button>
+            </div>
+          )}
           <Label className="text-[11px] tracking-wide uppercase text-muted-foreground/70">Amount (ocUSDC)</Label>
           <Input
             type="number"
@@ -626,7 +643,7 @@ export default function UnifiedSendForm() {
           )}
           <div className="flex justify-between mt-5">
             <Button variant="outline" onClick={() => setStep(2)} disabled={isSending} className="text-[12px]">← Back</Button>
-            <Button onClick={() => void submit()} disabled={!amountWei || isSending} className="text-[12px]">
+            <Button onClick={() => void submit()} disabled={!amountWei || isSending || isSmartRequested} className="text-[12px]">
               {isSending ? (
                 <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Sending…</>
               ) : (

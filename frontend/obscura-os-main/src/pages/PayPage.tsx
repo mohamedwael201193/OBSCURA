@@ -87,7 +87,6 @@ import { useAddressBook } from "@/hooks/useAddressBook";
 import { Input } from "@/components/ui/input";
 import { useNotificationPrefs } from "@/hooks/useNotificationPrefs";
 import { useSmartAccount } from "@/hooks/useSmartAccount";
-import { useOcUSDCTransfer } from "@/hooks/useOcUSDCTransfer";
 import { PasskeyEnrollModal } from "@/components/harmony/PasskeyEnrollModal";
 import { PaymentModeProvider } from "@/contexts/PaymentModeContext";
 import { PaymentModeBar } from "@/components/harmony/PaymentModeBar";
@@ -311,51 +310,15 @@ const SettingsNotificationsCard = () => {
 
 const SettingsSmartAccountCard = () => {
   const { accountAddress, isDeployed, hasPasskey, status, error } = useSmartAccount();
-  const { checkIsOperator, approveSmartOperator } = useOcUSDCTransfer();
   const [enrollOpen, setEnrollOpen] = useState(false);
-  const [operatorApproved, setOperatorApproved] = useState<boolean | null>(null);
-  const [operatorBusy, setOperatorBusy] = useState(false);
-  const [operatorError, setOperatorError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isDeployed || !hasPasskey || !accountAddress) {
-      setOperatorApproved(null);
-      return;
-    }
-
-    let cancelled = false;
-    checkIsOperator(accountAddress)
-      .then((approved) => {
-        if (!cancelled) setOperatorApproved(approved);
-      })
-      .catch(() => {
-        if (!cancelled) setOperatorApproved(null);
-      });
-
-    return () => { cancelled = true; };
-  }, [isDeployed, hasPasskey, accountAddress, checkIsOperator]);
-
-  const handleApproveOperator = async () => {
-    if (!accountAddress) return;
-    setOperatorBusy(true);
-    setOperatorError(null);
-    try {
-      await approveSmartOperator(accountAddress);
-      setOperatorApproved(true);
-    } catch (e) {
-      setOperatorError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setOperatorBusy(false);
-    }
-  };
 
   return (
     <>
       <HarmonyFormCard title="Smart account" eyebrow="ERC-4337 · Passkey">
         <div className="space-y-4">
           <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
-            Enable a gasless smart account secured by a device passkey (WebAuthn). Once enrolled, you can send
-            transactions without managing gas fees.
+            Enable a gasless smart account secured by a device passkey (WebAuthn). Supported actions can be
+            signed without managing gas fees. Encrypted ocUSDC sends still use Wallet Mode.
           </p>
 
           <div className="grid grid-cols-[1fr_auto] gap-y-3 items-center text-[12px]">
@@ -377,17 +340,12 @@ const SettingsSmartAccountCard = () => {
             <span className="text-foreground/80">Status</span>
             <span className="capitalize text-muted-foreground/60">{status}</span>
 
-            <span className="text-foreground/80">ocUSDC smart sends</span>
-            <span className={operatorApproved ? "text-[#2D6A4F]" : "text-muted-foreground/55"}>
-              {operatorApproved === null ? "—" : operatorApproved ? "Enabled" : "Needs approval"}
-            </span>
+            <span className="text-foreground/80">Encrypted ocUSDC sends</span>
+            <span className="text-muted-foreground/55">Wallet Mode</span>
           </div>
 
           {error && (
             <p className="text-[11px] text-destructive">{error}</p>
-          )}
-          {operatorError && (
-            <p className="text-[11px] text-destructive">{operatorError}</p>
           )}
 
           {!isDeployed && (
@@ -409,18 +367,6 @@ const SettingsSmartAccountCard = () => {
             >
               <KeyRound className="w-3.5 h-3.5" />
               Add passkey to existing account
-            </button>
-          )}
-
-          {isDeployed && hasPasskey && operatorApproved === false && (
-            <button
-              type="button"
-              onClick={() => void handleApproveOperator()}
-              disabled={operatorBusy}
-              className="btn-pay btn-pay-primary"
-            >
-              {operatorBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-              Enable ocUSDC smart sends
             </button>
           )}
         </div>

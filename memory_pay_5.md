@@ -1242,6 +1242,86 @@ If production relay is not yet deployed or bundler estimation is unavailable, fr
 
 ---
 
+## W5P9.8 — AA False Success + CoFHE InvalidSigner Fix ✅
+
+**Completed**: current session — fixes the case where the UI showed `Payment sent`, but Arbiscan showed the Account Abstraction transaction failed and the ocUSDC balance stayed unchanged.
+
+### Observed failed transaction
+
+| Field | Value |
+|------|-------|
+| AA / UserOp hash | `0x609482501566a699b5156c84a12fd0be1cb7ce32fd74827175b2e801f234fd18` |
+| Bundle tx hash | `0xb83a874899ea4f686a9cbafd5d15c8b4a3371128e901476d0a72fe1a72943511` |
+| Bundle tx status | Success (`status: 0x1`) |
+| UserOp execution | Failed (`success=false` in EntryPoint AA event / Arbiscan AA page) |
+| Revert selector | `0x7ba5ffb5` = CoFHE `InvalidSigner(address,address)` |
+
+### Root cause 1 — UI treated bundler acceptance as payment success
+
+`frontend/obscura-os-main/src/lib/userop.ts` returned success immediately after `eth_sendUserOperation` returned a `userOpHash`.
+
+That only means the bundler accepted the UserOp. It does **not** mean the target call succeeded. EntryPoint can later emit a failed UserOperation while the bundle transaction itself still has status `0x1`.
+
+This caused:
+
+1. Relay accepted UserOp.
+2. Frontend returned hash.
+3. `UnifiedSendForm` saved a local receipt.
+4. UI showed `Payment sent`.
+5. EntryPoint execution actually failed, so balance stayed unchanged.
+
+### Root cause 2 — encrypted ocUSDC sends cannot be forwarded through the Smart Account
+
+The direct Smart Mode path called:
+
+```typescript
+smartAccount.execute(
+  ocUSDC,
+  0,
+  confidentialTransferFrom(eoa, recipient, InEuint64)
+)
+```
+
+But `InEuint64` proofs are signed/authorized by the connected wallet. When the token consumes the encrypted input, the immediate caller is the Smart Account, not the EOA, so CoFHE rejects it with:
+
+```
+InvalidSigner(address,address) selector 0x7ba5ffb5
+```
+
+This is the same forwarding restriction already documented in:
+
+- `contracts-hardhat/contracts/ObscuraConfidentialEscrow.sol`
+- `frontend/obscura-os-main/src/config/payV3.ts`
+
+Operator approval (`setOperator`) is not enough. It authorizes the Smart Account to spend, but it does not make the EOA-signed encrypted proof valid when forwarded by the Smart Account.
+
+### Fix
+
+| File | Change |
+|------|--------|
+| `backend/obscura-api/src/relay.ts` | Added `GET /userop-receipt/:userOpHash`, which calls bundler `eth_getUserOperationReceipt`. |
+| `frontend/obscura-os-main/src/lib/userop.ts` | `submitUserOp()` now polls the relay for the actual UserOperation receipt and throws if `success !== true`; special-cases `0x7ba5ffb5` with a clear encrypted-send message. |
+| `frontend/obscura-os-main/src/hooks/useOcUSDCTransfer.ts` | Blocks Smart Mode encrypted ocUSDC transfer before submission; EOA path now waits for receipt before `READY`. |
+| `frontend/obscura-os-main/src/components/pay-v4/UnifiedSendForm.tsx` | Shows a Smart Mode warning on encrypted send review, disables Send while Smart Mode is active, and provides a `Use Wallet Mode` button. |
+| `frontend/obscura-os-main/src/components/harmony/PasskeyEnrollModal.tsx` | Removed misleading one-time ocUSDC operator approval during passkey enrollment. |
+| `frontend/obscura-os-main/src/pages/PayPage.tsx` | Replaced `ocUSDC smart sends` status with `Encrypted ocUSDC sends: Wallet Mode`. |
+| `frontend/obscura-os-main/src/components/harmony/PaymentModeBar.tsx` + `PayHarmonyHome.tsx` | Updated Smart Mode copy to `supported actions`; no longer promises gasless encrypted ocUSDC transfers. |
+
+### Current rule
+
+Smart Mode/passkey is valid for supported non-FHE-forwarding actions. Encrypted ocUSDC sends that consume `InEuint64` must use Wallet Mode until a future contract architecture can consume the encrypted proof without forwarding it through the Smart Account.
+
+The private deployer key/paymaster cannot fix this. It is not a funding problem; it is an encrypted input signer/caller constraint.
+
+### Verification
+
+- Bundle receipt inspected through Arbitrum Sepolia RPC ✅
+- Editor diagnostics: no errors in touched frontend/backend files ✅
+- `npm run build` in `frontend/obscura-os-main` ✅ (`✓ built in 15.43s`)
+- `npm run build` in `backend/obscura-api` ✅
+
+---
+
 ## W5P10 — Smart Mode Full Routing (All Pay Features) ✅
 
 **Completed**: commits `1ac0a5d` (UI toggle), `fdb83fa` (all components fixed)

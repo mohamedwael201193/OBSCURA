@@ -128,6 +128,23 @@ interface BundlerGasEstimateResult {
   paymasterPostOpGasLimit?: string;
 }
 
+interface BundlerUserOperationReceipt {
+  userOpHash?: Hex;
+  sender?: Hex;
+  nonce?: string;
+  paymaster?: Hex;
+  actualGasCost?: string;
+  actualGasUsed?: string;
+  success?: boolean;
+  reason?: string;
+  logs?: unknown[];
+  receipt?: {
+    transactionHash?: Hex;
+    status?: string;
+    blockNumber?: string;
+  };
+}
+
 function normalizeUserOperationGasPrice(
   raw?: UserOperationGasPriceResult,
   source: "bundler" | "fallback" = "fallback",
@@ -258,6 +275,24 @@ async function estimateUserOperationGas(op: PackedUserOperation): Promise<Bundle
   throw new Error("Bundler gas estimation unavailable");
 }
 
+async function getUserOperationReceipt(userOpHash: Hex): Promise<BundlerUserOperationReceipt | null> {
+  const urls = [BUNDLER_URL, BUNDLER_URL_FALLBACK].filter(Boolean);
+
+  for (const url of urls) {
+    try {
+      return await bundlerRpc<BundlerUserOperationReceipt | null>(url, "eth_getUserOperationReceipt", [userOpHash]);
+    } catch (err) {
+      console.warn(`[relay] UserOp receipt unavailable from bundler: ${(err as Error).message}`);
+    }
+  }
+
+  throw new Error("Bundler UserOp receipt unavailable");
+}
+
+function isUserOpHash(v: unknown): v is Hex {
+  return isHex(v) && /^0x[0-9a-fA-F]{64}$/.test(v);
+}
+
 async function sendToBundler(url: string, op: PackedUserOperation): Promise<string> {
   const rpcOp = unpackForBundler(op);
   return bundlerRpc<string>(url, "eth_sendUserOperation", [rpcOp, ENTRY_POINT]);
@@ -328,6 +363,22 @@ relayRouter.post("/estimate-userop-gas", async (req: Request, res: Response) => 
   } catch (err) {
     const msg = (err as Error).message;
     console.error(`[relay] Estimate error: ${msg}`);
+    res.status(400).json({ error: msg });
+  }
+});
+
+relayRouter.get("/userop-receipt/:userOpHash", async (req: Request, res: Response) => {
+  try {
+    const { userOpHash } = req.params;
+    if (!isUserOpHash(userOpHash)) {
+      res.status(400).json({ error: "Invalid userOpHash" });
+      return;
+    }
+
+    res.json({ receipt: await getUserOperationReceipt(userOpHash) });
+  } catch (err) {
+    const msg = (err as Error).message;
+    console.error(`[relay] Receipt error: ${msg}`);
     res.status(400).json({ error: msg });
   }
 });

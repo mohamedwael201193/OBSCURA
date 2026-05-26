@@ -532,11 +532,11 @@ export function PayHarmonyHome({
     },
     {
       num: 6,
-      title: "Enable biometric payments",
+      title: "Enable passkey signing",
       hint: isSmartAvailable
-        ? "Smart Mode active — no MetaMask popups"
-        : "Passkey-secured, gasless transactions",
-      privacyNote: "Signed by your device, not your wallet app",
+        ? "Smart Mode available for supported actions"
+        : "Passkey-secured sponsored actions",
+      privacyNote: "Encrypted sends still use Wallet Mode",
       done: isSmartAvailable,
       active: onboarding.hasActivity && !isSmartAvailable,
       actionLabel: isSmartDeployed && !isSmartEnrolled ? "Add passkey" : "Set up",
@@ -904,7 +904,7 @@ export function PayHarmonyHome({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-medium text-foreground leading-none">
-                {isSmartAvailable ? "Smart Mode available" : "Biometric payments"}
+                {isSmartAvailable ? "Smart Mode available" : "Passkey signing"}
               </p>
               <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/45">
                 {isSmartAvailable ? "ERC-4337 · Passkey secured" : "ERC-4337 · Setup required"}
@@ -943,10 +943,10 @@ export function PayHarmonyHome({
 
           <div className="flex flex-wrap gap-x-5 gap-y-1.5 px-5 py-3">
             {[
-              { label: "No MetaMask popups", ok: isSmartAvailable },
-              { label: "Gas covered by paymaster", ok: isSmartAvailable },
+              { label: "Passkey UserOps", ok: isSmartAvailable },
+              { label: "Gas covered on supported actions", ok: isSmartAvailable },
               { label: "Fingerprint / Face ID signing", ok: isSmartEnrolled },
-              { label: "Auto-fallback to wallet", ok: true },
+              { label: "Encrypted sends use Wallet Mode", ok: true },
             ].map((feat) => (
               <span
                 key={feat.label}

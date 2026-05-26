@@ -45,6 +45,7 @@ export interface UserOpBuildOptions {
 
 export interface RelayResult {
   userOpHash: Hex;
+  transactionHash?: Hex;
 }
 
 // ─── Gas constants (conservative for Arbitrum Sepolia) ───────────────────────
@@ -55,6 +56,8 @@ const PAYMASTER_VERIFICATION_GAS = 200_000n;
 const PAYMASTER_POST_OP = 100_000n;   // postOpGasLimit in paymasterAndData
 const MIN_PRIORITY_FEE_PER_GAS = 120_000n;
 const FALLBACK_MAX_FEE_PER_GAS = 100_000_000n;
+const USER_OP_RECEIPT_POLL_MS = 4_000;
+const USER_OP_RECEIPT_ATTEMPTS = 30;
 
 interface RelayGasPriceTier {
   maxFeePerGas: string;
@@ -71,6 +74,21 @@ interface RelayGasEstimateResponse {
   preVerificationGas?: string;
   paymasterVerificationGasLimit?: string | null;
   paymasterPostOpGasLimit?: string | null;
+}
+
+interface RelayUserOperationReceipt {
+  userOpHash?: Hex;
+  success?: boolean;
+  reason?: string;
+  receipt?: {
+    transactionHash?: Hex;
+    status?: string;
+  };
+}
+
+interface RelayUserOperationReceiptResponse {
+  receipt?: RelayUserOperationReceipt | null;
+  error?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -106,6 +124,10 @@ function withGasMargin(value: bigint): bigint {
 
 function maxGas(floor: bigint, estimated: bigint | undefined): bigint {
   return estimated === undefined ? floor : floor > withGasMargin(estimated) ? floor : withGasMargin(estimated);
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
 function buildPaymasterAndData(
@@ -177,6 +199,39 @@ async function fetchRelayUserOperationGasEstimate(op: PackedUserOperation) {
   } catch {
     return null;
   }
+}
+
+async function fetchRelayUserOperationReceipt(userOpHash: Hex) {
+  const response = await fetch(`${RELAY_URL}/userop-receipt/${userOpHash}`, { method: "GET" });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Relay receipt error ${response.status}: ${text.slice(0, 300)}`);
+  }
+
+  const json = await response.json() as RelayUserOperationReceiptResponse;
+  if (json.error) throw new Error(`Relay receipt: ${json.error}`);
+  return json.receipt ?? null;
+}
+
+async function waitForRelayUserOperationReceipt(userOpHash: Hex) {
+  for (let attempt = 0; attempt < USER_OP_RECEIPT_ATTEMPTS; attempt++) {
+    if (attempt > 0) await sleep(USER_OP_RECEIPT_POLL_MS);
+    const receipt = await fetchRelayUserOperationReceipt(userOpHash);
+    if (receipt) return receipt;
+  }
+
+  throw new Error("Relay accepted the UserOp, but no execution receipt was available yet. Check the transaction before retrying.");
+}
+
+function formatUserOperationFailure(receipt: RelayUserOperationReceipt) {
+  const reason = receipt.reason ?? "";
+  if (reason.includes("0x7ba5ffb5")) {
+    return "Smart account execution failed: encrypted ocUSDC inputs cannot be relayed through the smart account yet. Switch to Wallet Mode for this encrypted send.";
+  }
+
+  const txHash = receipt.receipt?.transactionHash;
+  const suffix = txHash ? ` Bundle tx: ${txHash}` : "";
+  return `Smart account execution failed.${reason ? ` ${reason}` : ""}${suffix}`;
 }
 
 /** Encode the execute(address,uint256,bytes) callData for the smart account */
@@ -320,5 +375,13 @@ export async function submitUserOp(op: PackedUserOperation): Promise<RelayResult
   if (json.error) throw new Error(`Relay: ${json.error}`);
   if (!json.userOpHash) throw new Error("Relay returned no userOpHash");
 
-  return { userOpHash: json.userOpHash };
+  const receipt = await waitForRelayUserOperationReceipt(json.userOpHash);
+  if (receipt.success !== true) {
+    throw new Error(formatUserOperationFailure(receipt));
+  }
+
+  return {
+    userOpHash: json.userOpHash,
+    transactionHash: receipt.receipt?.transactionHash,
+  };
 }

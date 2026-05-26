@@ -131,7 +131,7 @@ export function PaymentModeBar({ onSetupSmart, className }: PaymentModeBarProps)
           dimmed={!isSmartAvailable}
           icon={Fingerprint}
           label="Smart Mode"
-          description="Biometric · Gasless payments"
+          description="Biometric · Sponsored actions"
           badge={isSmartAvailable ? undefined : "Setup →"}
           onClick={
             isSmartAvailable
@@ -152,7 +152,7 @@ export function PaymentModeBar({ onSetupSmart, className }: PaymentModeBarProps)
             className="overflow-hidden border-t border-border/40 bg-muted/20 px-5 py-2"
           >
             <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/45">
-              Signed by your device · gas covered after one-time ocUSDC authorization
+              Signed by your device · encrypted ocUSDC sends use Wallet Mode
             </p>
           </motion.div>
         )}

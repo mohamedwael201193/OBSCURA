@@ -18,7 +18,6 @@ import {
 import { cn } from "@/lib/utils";
 import { payHarmony } from "./payHarmonyClasses";
 import { useSmartAccount } from "@/hooks/useSmartAccount";
-import { useOcUSDCTransfer } from "@/hooks/useOcUSDCTransfer";
 import { isPasskeySupported } from "@/lib/passkey";
 
 interface PasskeyEnrollModalProps {
@@ -40,14 +39,13 @@ const FEATURES = [
   {
     icon: Zap,
     title: "Sponsored gas",
-    desc: "Obscura covers transaction fees on supported actions",
+    desc: "Obscura covers fees on supported actions",
   },
 ];
 
 export function PasskeyEnrollModal({ onClose, onSuccess }: PasskeyEnrollModalProps) {
   const { deploy, status, error, accountAddress } = useSmartAccount();
-  const { checkIsOperator, approveSmartOperator } = useOcUSDCTransfer();
-  const [step, setStep] = useState<"intro" | "enrolling" | "authorizing" | "done" | "unsupported">("intro");
+  const [step, setStep] = useState<"intro" | "enrolling" | "done" | "unsupported">("intro");
   const [localError, setLocalError] = useState<string | null>(null);
 
   const handleEnroll = useCallback(async () => {
@@ -56,12 +54,7 @@ export function PasskeyEnrollModal({ onClose, onSuccess }: PasskeyEnrollModalPro
     if (!supported) { setStep("unsupported"); return; }
     setStep("enrolling");
     try {
-      const smartAddress = await deploy();
-      setStep("authorizing");
-      const isOperator = await checkIsOperator(smartAddress);
-      if (!isOperator) {
-        await approveSmartOperator(smartAddress);
-      }
+      await deploy();
       setStep("done");
       onSuccess?.();
       setTimeout(onClose, 2_200);
@@ -69,7 +62,7 @@ export function PasskeyEnrollModal({ onClose, onSuccess }: PasskeyEnrollModalPro
       setLocalError(e instanceof Error ? e.message : String(e));
       setStep("intro");
     }
-  }, [deploy, checkIsOperator, approveSmartOperator, onClose, onSuccess]);
+  }, [deploy, onClose, onSuccess]);
 
   const displayError = localError ?? error;
 
@@ -169,21 +162,17 @@ export function PasskeyEnrollModal({ onClose, onSuccess }: PasskeyEnrollModalPro
             )}
 
             {/* ENROLLING */}
-            {(step === "enrolling" || step === "authorizing") && (
+            {step === "enrolling" && (
               <div className="space-y-4">
                 <div className="rounded-xl bg-accent/5 ring-1 ring-accent/20 px-4 py-4">
                   <div className="flex items-center gap-3">
                     <Loader2 className="h-5 w-5 animate-spin text-accent shrink-0" />
                     <div>
                       <p className="text-sm font-medium text-foreground">
-                        {step === "authorizing"
-                          ? "Authorizing private USDC sends…"
-                          : status === "deploying" ? "Deploying smart account…" : "Waiting for passkey…"}
+                        {status === "deploying" ? "Deploying smart account…" : "Waiting for passkey…"}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {step === "authorizing"
-                          ? "Confirm the one-time wallet approval. Future Smart Mode sends use your passkey."
-                          : status === "deploying"
+                        {status === "deploying"
                             ? "Confirm the transaction in your wallet"
                             : "Authenticate with your device biometrics"}
                       </p>
@@ -207,7 +196,7 @@ export function PasskeyEnrollModal({ onClose, onSuccess }: PasskeyEnrollModalPro
                   <div>
                     <p className="text-sm font-medium text-foreground">Smart account ready</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Your actions will now use gasless UserOps
+                      Supported actions can now use gasless UserOps
                     </p>
                   </div>
                 </div>

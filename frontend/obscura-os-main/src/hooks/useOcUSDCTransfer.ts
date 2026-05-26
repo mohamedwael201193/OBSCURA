@@ -1,14 +1,16 @@
 import { useState, useCallback } from 'react';
 import { useWriteContract, usePublicClient, useWalletClient, useAccount } from 'wagmi';
-import { encodeFunctionData, type Hex } from 'viem';
+import { type Hex } from 'viem';
 import { CONFIDENTIAL_TOKEN_ABI } from '@/config/credit';
 import { OBSCURA_PAY_OCUSDC_ADDRESS } from '@/config/payV3';
 import { FHEStepStatus } from '@/lib/constants';
 import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount } from '@/lib/fhe';
 import { arbitrumSepolia } from 'viem/chains';
-import { useSmartAccount } from './useSmartAccount';
 import { usePaymentMode } from '@/contexts/PaymentModeContext';
+
+export const SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE =
+  'Smart Mode cannot send encrypted ocUSDC yet. Encrypted amounts must be authorized by the wallet that owns them, so switch to Wallet Mode for this send.';
 
 /** Retry helper for RPC rate-limit errors — exponential backoff */
 async function withRateLimitRetry<T>(
@@ -42,9 +44,7 @@ export function useOcUSDCTransfer() {
   const [txHash, setTxHash] = useState<string | null>(null);
   const { writeContractAsync, isPending: isTxPending } = useWriteContract();
 
-  // Smart account
-  const { accountAddress, isDeployed, sendUserOp } = useSmartAccount();
-  const { mode: paymentMode, smartAccountAddress, isSmartAvailable } = usePaymentMode();
+  const { mode: paymentMode } = usePaymentMode();
 
   /**
    * Check whether the smart account is an approved operator on the Pay ocUSDC.
@@ -105,7 +105,10 @@ export function useOcUSDCTransfer() {
       }
 
       const isSmartRequested = paymentMode === 'smart';
-      const smartAddress = (accountAddress ?? smartAccountAddress) as `0x${string}` | null;
+
+      if (isSmartRequested) {
+        throw new Error(SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE);
+      }
 
       try {
         fheStatus.setStep(FHEStepStatus.ENCRYPTING);
@@ -119,46 +122,24 @@ export function useOcUSDCTransfer() {
 
         let hash: Hex;
 
-        if (isSmartRequested) {
-          // ── Smart Account path ──
-          if (!address) throw new Error('Wallet not connected');
-          if (!smartAddress) throw new Error('Smart account address is still loading');
-          if (!isSmartAvailable && !isDeployed) {
-            throw new Error('Smart account is not ready. Finish Smart Account setup before sending.');
-          }
+        const feeData = await withRateLimitRetry(() => publicClient.estimateFeesPerGas());
+        const maxFeePerGas = feeData.maxFeePerGas
+          ? (feeData.maxFeePerGas * 130n) / 100n
+          : undefined;
 
-          // Ensure smart account is approved as operator (one-time, EOA signs)
-          const isOp = await checkIsOperator(smartAddress);
-          if (!isOp) {
-            await approveSmartOperator(smartAddress);
-          }
+        hash = await writeContractAsync({
+          address: OBSCURA_PAY_OCUSDC_ADDRESS,
+          abi: CONFIDENTIAL_TOKEN_ABI,
+          functionName: 'confidentialTransfer',
+          args: [to, encryptedInputs[0]],
+          account: address,
+          chain: arbitrumSepolia,
+          maxFeePerGas,
+          gas: 500_000n,
+        });
 
-          // Route through sendUserOp → confidentialTransferFrom(eoaAddr, to, enc)
-          const callData = encodeFunctionData({
-            abi: CONFIDENTIAL_TOKEN_ABI,
-            functionName: 'confidentialTransferFrom',
-            args: [address, to, encryptedInputs[0]],
-          }) as Hex;
-
-          hash = await sendUserOp(OBSCURA_PAY_OCUSDC_ADDRESS, callData);
-        } else {
-          // ── EOA path ──
-          const feeData = await withRateLimitRetry(() => publicClient.estimateFeesPerGas());
-          const maxFeePerGas = feeData.maxFeePerGas
-            ? (feeData.maxFeePerGas * 130n) / 100n
-            : undefined;
-
-          hash = await writeContractAsync({
-            address: OBSCURA_PAY_OCUSDC_ADDRESS,
-            abi: CONFIDENTIAL_TOKEN_ABI,
-            functionName: 'confidentialTransfer',
-            args: [to, encryptedInputs[0]],
-            account: address,
-            chain: arbitrumSepolia,
-            maxFeePerGas,
-            gas: 500_000n,
-          });
-        }
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status === 'reverted') throw new Error('ocUSDC transfer reverted');
 
         setTxHash(hash);
         fheStatus.setStep(FHEStepStatus.READY);
@@ -170,8 +151,7 @@ export function useOcUSDCTransfer() {
     },
     [
       publicClient, walletClient, writeContractAsync, address, fheStatus,
-      paymentMode, isDeployed, accountAddress, smartAccountAddress, isSmartAvailable, sendUserOp,
-      checkIsOperator, approveSmartOperator,
+      paymentMode,
     ]
   );
 

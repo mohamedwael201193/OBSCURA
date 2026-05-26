@@ -15,6 +15,8 @@ const BUNDLER_URL_FALLBACK = process.env.BUNDLER_URL_FALLBACK ?? "";
 const PAYMASTER_ADDR      = process.env.PAYMASTER_ADDRESS ?? "";
 const ENTRY_POINT         = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";
 const MAX_BODY_BYTES      = 16_384; // 16 KB hard cap on request body
+const MIN_PRIORITY_FEE_PER_GAS = 120_000n;
+const FALLBACK_MAX_FEE_PER_GAS = 100_000_000n;
 
 if (!BUNDLER_URL) {
   console.error("[relay] BUNDLER_URL env var is required");
@@ -99,6 +101,44 @@ interface BundlerUserOp {
   signature:                     Hex;
 }
 
+interface UserOperationGasPriceTier {
+  maxFeePerGas: string;
+  maxPriorityFeePerGas: string;
+}
+
+interface UserOperationGasPriceResult {
+  slow?: UserOperationGasPriceTier;
+  standard?: UserOperationGasPriceTier;
+  fast?: UserOperationGasPriceTier;
+  maxFeePerGas?: string;
+  maxPriorityFeePerGas?: string;
+}
+
+interface NormalizedUserOperationGasPrice {
+  source: "bundler" | "fallback";
+  standard: UserOperationGasPriceTier;
+}
+
+function normalizeUserOperationGasPrice(
+  raw?: UserOperationGasPriceResult,
+  source: "bundler" | "fallback" = "fallback",
+): NormalizedUserOperationGasPrice {
+  const tier = raw?.standard ?? raw?.fast ?? raw?.slow ?? raw;
+  let maxPriorityFeePerGas = tier?.maxPriorityFeePerGas ? BigInt(tier.maxPriorityFeePerGas) : MIN_PRIORITY_FEE_PER_GAS;
+  let maxFeePerGas = tier?.maxFeePerGas ? BigInt(tier.maxFeePerGas) : FALLBACK_MAX_FEE_PER_GAS;
+
+  if (maxPriorityFeePerGas < MIN_PRIORITY_FEE_PER_GAS) maxPriorityFeePerGas = MIN_PRIORITY_FEE_PER_GAS;
+  if (maxFeePerGas < maxPriorityFeePerGas) maxFeePerGas = maxPriorityFeePerGas;
+
+  return {
+    source,
+    standard: {
+      maxFeePerGas: toHex(maxFeePerGas),
+      maxPriorityFeePerGas: toHex(maxPriorityFeePerGas),
+    },
+  };
+}
+
 function unpackForBundler(op: PackedUserOperation): BundlerUserOp {
   // Unpack accountGasLimits: high128 = verificationGasLimit, low128 = callGasLimit
   const gasLimits = BigInt(op.accountGasLimits);
@@ -156,16 +196,15 @@ function unpackForBundler(op: PackedUserOperation): BundlerUserOp {
 }
 
 // ─── Bundler call ─────────────────────────────────────────────────────────────
-async function sendToBundler(url: string, op: PackedUserOperation): Promise<string> {
-  const rpcOp = unpackForBundler(op);
+async function bundlerRpc<T>(url: string, method: string, params: unknown[] = []): Promise<T> {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       jsonrpc: "2.0",
       id: 1,
-      method: "eth_sendUserOperation",
-      params: [rpcOp, ENTRY_POINT],
+      method,
+      params,
     }),
   });
 
@@ -174,10 +213,30 @@ async function sendToBundler(url: string, op: PackedUserOperation): Promise<stri
     throw new Error(`Bundler HTTP ${response.status}: ${text.slice(0, 200)}`);
   }
 
-  const json = await response.json() as { result?: string; error?: { message: string } };
+  const json = await response.json() as { result?: T; error?: { message: string } };
   if (json.error) throw new Error(`Bundler error: ${json.error.message}`);
-  if (!json.result) throw new Error("Bundler returned no result");
+  if (json.result === undefined) throw new Error(`Bundler returned no result for ${method}`);
   return json.result;
+}
+
+async function getBundlerUserOperationGasPrice(): Promise<NormalizedUserOperationGasPrice> {
+  const urls = [BUNDLER_URL, BUNDLER_URL_FALLBACK].filter(Boolean);
+
+  for (const url of urls) {
+    try {
+      const raw = await bundlerRpc<UserOperationGasPriceResult>(url, "pimlico_getUserOperationGasPrice");
+      return normalizeUserOperationGasPrice(raw, "bundler");
+    } catch (err) {
+      console.warn(`[relay] UserOp gas price unavailable from bundler: ${(err as Error).message}`);
+    }
+  }
+
+  return normalizeUserOperationGasPrice(undefined, "fallback");
+}
+
+async function sendToBundler(url: string, op: PackedUserOperation): Promise<string> {
+  const rpcOp = unpackForBundler(op);
+  return bundlerRpc<string>(url, "eth_sendUserOperation", [rpcOp, ENTRY_POINT]);
 }
 
 // ─── Router ───────────────────────────────────────────────────────────────────
@@ -217,6 +276,16 @@ relayRouter.post("/relay", async (req: Request, res: Response) => {
   } catch (err) {
     const msg = (err as Error).message;
     console.error(`[relay] Error: ${msg}`);
+    res.status(400).json({ error: msg });
+  }
+});
+
+relayRouter.get("/userop-gas-price", async (_req: Request, res: Response) => {
+  try {
+    res.json(await getBundlerUserOperationGasPrice());
+  } catch (err) {
+    const msg = (err as Error).message;
+    console.error(`[relay] Gas price error: ${msg}`);
     res.status(400).json({ error: msg });
   }
 });

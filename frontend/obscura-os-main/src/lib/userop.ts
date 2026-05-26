@@ -5,7 +5,7 @@
  *   • accountGasLimits = verificationGasLimit(128) | callGasLimit(128)  — packed as bytes32
  *   • gasFees          = maxPriorityFeePerGas(128) | maxFeePerGas(128)  — packed as bytes32
  *   • preVerificationGas is a flat overhead estimate (not packed)
- *   • paymasterAndData = paymasterAddress + 20-byte postOpGasLimit + 20-byte verificationGasLimit
+ *   • paymasterAndData = paymasterAddress + 16-byte verificationGasLimit + 16-byte postOpGasLimit
  *   • Nonce is fetched from the EntryPoint (not the account itself)
  */
 
@@ -52,6 +52,17 @@ const VERIFICATION_GAS  = 200_000n;
 const CALL_GAS          = 500_000n;
 const PRE_VERIFICATION  = 50_000n;
 const PAYMASTER_POST_OP = 100_000n;   // postOpGasLimit in paymasterAndData
+const MIN_PRIORITY_FEE_PER_GAS = 120_000n;
+const FALLBACK_MAX_FEE_PER_GAS = 100_000_000n;
+
+interface RelayGasPriceTier {
+  maxFeePerGas: string;
+  maxPriorityFeePerGas: string;
+}
+
+interface RelayGasPriceResponse {
+  standard?: RelayGasPriceTier;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 /** Pack two 128-bit values into a bytes32 (big-endian) */
@@ -59,6 +70,40 @@ function pack128(high: bigint, low: bigint): Hex {
   const h = BigInt.asUintN(128, high);
   const l = BigInt.asUintN(128, low);
   return toHex((h << 128n) | l, { size: 32 });
+}
+
+function normalizeGasFees(maxFeePerGas: bigint | undefined, maxPriorityFeePerGas: bigint | undefined) {
+  let priorityFee = maxPriorityFeePerGas ?? MIN_PRIORITY_FEE_PER_GAS;
+  let maxFee = maxFeePerGas ?? FALLBACK_MAX_FEE_PER_GAS;
+
+  if (priorityFee < MIN_PRIORITY_FEE_PER_GAS) priorityFee = MIN_PRIORITY_FEE_PER_GAS;
+  if (maxFee < priorityFee) maxFee = priorityFee;
+
+  return { maxFeePerGas: maxFee, maxPriorityFeePerGas: priorityFee };
+}
+
+function parseOptionalBigInt(value: string | undefined): bigint | undefined {
+  if (!value) return undefined;
+  try {
+    return BigInt(value);
+  } catch {
+    return undefined;
+  }
+}
+
+async function fetchRelayUserOperationGasPrice() {
+  try {
+    const response = await fetch(`${RELAY_URL}/userop-gas-price`, { method: "GET" });
+    if (!response.ok) return null;
+
+    const json = await response.json() as RelayGasPriceResponse;
+    return normalizeGasFees(
+      parseOptionalBigInt(json.standard?.maxFeePerGas),
+      parseOptionalBigInt(json.standard?.maxPriorityFeePerGas),
+    );
+  } catch {
+    return null;
+  }
 }
 
 /** Encode the execute(address,uint256,bytes) callData for the smart account */
@@ -115,10 +160,14 @@ export async function buildUserOp(opts: UserOpBuildOptions): Promise<PackedUserO
     args: [sender, 0n],
   });
 
-  // Fetch current gas prices
-  const feeData = await publicClient.estimateFeesPerGas();
-  const maxFeePerGas         = feeData.maxFeePerGas         ?? 1_000_000_000n;
-  const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? 100_000_000n;
+  // Fetch current UserOp gas prices before signing. Some Arbitrum RPCs return
+  // maxPriorityFeePerGas=0, but Pimlico requires a non-zero bundler priority fee.
+  const relayGasFees = await fetchRelayUserOperationGasPrice();
+  const localFeeData = relayGasFees ? null : await publicClient.estimateFeesPerGas();
+  const { maxFeePerGas, maxPriorityFeePerGas } = relayGasFees ?? normalizeGasFees(
+    localFeeData?.maxFeePerGas,
+    localFeeData?.maxPriorityFeePerGas,
+  );
 
   // accountGasLimits = verificationGasLimit(128) | callGasLimit(128)
   const accountGasLimits = pack128(VERIFICATION_GAS, CALL_GAS);

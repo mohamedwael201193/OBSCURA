@@ -1150,6 +1150,45 @@ Frontend changes:
 
 ---
 
+## W5P9.6 — UserOp Priority Fee Fix ✅
+
+**Completed**: current session — fixes relay error after passkey prompt:
+
+```
+Relay error 400: {"error":"Bundler error: maxPriorityFeePerGas must be at least 120000 (current maxPriorityFeePerGas: 0) - use pimlico_getUserOperationGasPrice to get the current gas price"}
+```
+
+### Root cause
+
+Smart Mode routing and WebAuthn signature verification were working: the user saw the passkey prompt, then the relay submitted a signed UserOp. The bundler rejected the signed UserOp because `src/lib/userop.ts` built `gasFees` from `publicClient.estimateFeesPerGas()`. On Arbitrum Sepolia that RPC path can return `maxPriorityFeePerGas = 0n`; the old nullish fallback did not catch real zero values.
+
+This is **not** a paymaster funding/private-key problem. The paymaster deposit pays sponsored UserOps after bundler validation. This error happens earlier because the signed UserOp gas field itself is invalid.
+
+### Fix
+
+| File | Change |
+|------|--------|
+| `frontend/obscura-os-main/src/lib/userop.ts` | Before signing, fetches `/userop-gas-price` from the relay and packs non-zero UserOp gas fees. Local RPC fallback now clamps `maxPriorityFeePerGas >= 120000` and ensures `maxFeePerGas >= maxPriorityFeePerGas`. Also corrected stale `paymasterAndData` comment. |
+| `backend/obscura-api/src/relay.ts` | Added `GET /userop-gas-price`, which calls `pimlico_getUserOperationGasPrice` on configured bundlers and normalizes the result. If bundlers do not expose the method, it returns a safe fallback with the same non-zero minimum. |
+
+### Gas sponsorship note
+
+Do **not** use the frontend wallet or private key to pay every Smart Account user transaction. The model is:
+
+1. Governance/deployer key funds `ObscuraPaymaster` EntryPoint deposit when needed.
+2. User signs UserOps with passkey.
+3. Paymaster sponsors whitelisted Obscura Pay calls from its EntryPoint deposit.
+
+Only top-ups or deployments should use the private deployer key. The per-user transaction path should remain passkey + relay + paymaster.
+
+### Verification
+
+- Editor diagnostics: no errors in `src/lib/userop.ts` or `backend/obscura-api/src/relay.ts` ✅
+- `npm run build` in `frontend/obscura-os-main` ✅ (`✓ built in 14.05s`)
+- `npm run build` in `backend/obscura-api` ✅
+
+---
+
 ## W5P10 — Smart Mode Full Routing (All Pay Features) ✅
 
 **Completed**: commits `1ac0a5d` (UI toggle), `fdb83fa` (all components fixed)

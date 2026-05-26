@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
 import { arbitrumSepolia } from "viem/chains";
-import { encodeAbiParameters, parseUnits } from "viem";
+import { encodeAbiParameters, encodeFunctionData, parseUnits, type Hex } from "viem";
 import {
   Send,
   Eye,
@@ -38,6 +38,8 @@ import { useRecipientResolver, type ResolvedRecipient } from "@/hooks/useRecipie
 import { useReceipts } from "@/hooks/useReceipts";
 import { usePreferences, type SendMode } from "@/contexts/PreferencesContext";
 import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
+import { usePaymentMode } from "@/contexts/PaymentModeContext";
+import { useSmartAccount } from "@/hooks/useSmartAccount";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
@@ -92,6 +94,11 @@ export default function UnifiedSendForm() {
   const resolver = useRecipientResolver();
   const receipts = useReceipts();
   const { decrypted, trackedCusdc } = useOcUSDCBalance();
+
+  // Smart account + payment mode
+  const { mode: paymentMode } = usePaymentMode();
+  const { accountAddress, isDeployed, sendUserOp } = useSmartAccount();
+  const isSmartMode = paymentMode === "smart" && isDeployed && !!accountAddress && !!address;
 
   const cusdc = decrypted !== null
     ? (Number(decrypted) / 1_000_000).toFixed(6)
@@ -230,19 +237,37 @@ export default function UnifiedSendForm() {
           advanceProgress(2, "done");
 
           advanceProgress(3, "active");
-          const fees = await estimateCappedFees(publicClient);
-          hash = await writeContractAsync({
-            address: OBSCURA_PAY_OCUSDC_ADDRESS,
-            abi: CONFIDENTIAL_TOKEN_ABI,
-            functionName: "confidentialTransfer",
-            args: [stealth.stealthAddress, enc[0]],
-            account: address,
-            chain: arbitrumSepolia,
-            maxFeePerGas: fees.maxFeePerGas,
-            maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
-            gas: 500_000n,
-          });
-          await publicClient.waitForTransactionReceipt({ hash });
+
+          if (isSmartMode) {
+            // ── Smart mode: route confidentialTransferFrom via passkey UserOp ──
+            // useOcUSDCTransfer handles operator approval internally; here we
+            // call the stealth variant directly via sendUserOp.
+            const isOp = await transfer.checkIsOperator(accountAddress!);
+            if (!isOp) {
+              await transfer.approveSmartOperator(accountAddress!);
+            }
+            const transferCallData = encodeFunctionData({
+              abi: CONFIDENTIAL_TOKEN_ABI,
+              functionName: "confidentialTransferFrom",
+              args: [address, stealth.stealthAddress, enc[0]],
+            }) as Hex;
+            hash = await sendUserOp(OBSCURA_PAY_OCUSDC_ADDRESS, transferCallData);
+          } else {
+            // ── EOA mode ──
+            const fees = await estimateCappedFees(publicClient);
+            hash = await writeContractAsync({
+              address: OBSCURA_PAY_OCUSDC_ADDRESS,
+              abi: CONFIDENTIAL_TOKEN_ABI,
+              functionName: "confidentialTransfer",
+              args: [stealth.stealthAddress, enc[0]],
+              account: address,
+              chain: arbitrumSepolia,
+              maxFeePerGas: fees.maxFeePerGas,
+              maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+              gas: 500_000n,
+            });
+            await publicClient.waitForTransactionReceipt({ hash });
+          }
           advanceProgress(3, "done", `${hash.slice(0, 10)}…`);
 
           // Cool down after heavy receipt polling to avoid RPC 429 on announce
@@ -261,19 +286,30 @@ export default function UnifiedSendForm() {
           };
           let annHash: `0x${string}`;
           try {
-            const annFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-            annHash = await writeContractAsync({
-              address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
-              abi: OBSCURA_STEALTH_REGISTRY_ABI,
-              functionName: "announce",
-              args: [announceParams.stealthAddress, announceParams.ephemeralPubKey, announceParams.viewTag, announceParams.metadata],
-              account: address,
-              chain: arbitrumSepolia,
-              maxFeePerGas: annFees.maxFeePerGas,
-              maxPriorityFeePerGas: annFees.maxPriorityFeePerGas,
-              gas: 250_000n,
-            });
-            await publicClient.waitForTransactionReceipt({ hash: annHash });
+            if (isSmartMode) {
+              // ── Smart mode: announce via passkey UserOp ──
+              const announceCallData = encodeFunctionData({
+                abi: OBSCURA_STEALTH_REGISTRY_ABI,
+                functionName: "announce",
+                args: [announceParams.stealthAddress, announceParams.ephemeralPubKey, announceParams.viewTag, announceParams.metadata],
+              }) as Hex;
+              annHash = await sendUserOp(OBSCURA_STEALTH_REGISTRY_ADDRESS, announceCallData);
+            } else {
+              // ── EOA mode ──
+              const annFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+              annHash = await writeContractAsync({
+                address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+                abi: OBSCURA_STEALTH_REGISTRY_ABI,
+                functionName: "announce",
+                args: [announceParams.stealthAddress, announceParams.ephemeralPubKey, announceParams.viewTag, announceParams.metadata],
+                account: address,
+                chain: arbitrumSepolia,
+                maxFeePerGas: annFees.maxFeePerGas,
+                maxPriorityFeePerGas: annFees.maxPriorityFeePerGas,
+                gas: 250_000n,
+              });
+              await publicClient.waitForTransactionReceipt({ hash: annHash });
+            }
             advanceProgress(4, "done", `${annHash.slice(0, 10)}…`);
           } catch (annErr) {
             if (isRateLimited(annErr)) {
@@ -327,19 +363,29 @@ export default function UnifiedSendForm() {
     setError(null);
     try {
       await sleep(1500);
-      const annFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-      const annHash = await writeContractAsync({
-        address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
-        abi: OBSCURA_STEALTH_REGISTRY_ABI,
-        functionName: "announce",
-        args: [pendingAnnounce.stealthAddress, pendingAnnounce.ephemeralPubKey, pendingAnnounce.viewTag, pendingAnnounce.metadata],
-        account: address,
-        chain: arbitrumSepolia,
-        maxFeePerGas: annFees.maxFeePerGas,
-        maxPriorityFeePerGas: annFees.maxPriorityFeePerGas,
-        gas: 250_000n,
-      });
-      await publicClient.waitForTransactionReceipt({ hash: annHash });
+      let annHash: `0x${string}`;
+      if (isSmartMode) {
+        const announceCallData = encodeFunctionData({
+          abi: OBSCURA_STEALTH_REGISTRY_ABI,
+          functionName: "announce",
+          args: [pendingAnnounce.stealthAddress, pendingAnnounce.ephemeralPubKey, pendingAnnounce.viewTag, pendingAnnounce.metadata],
+        }) as Hex;
+        annHash = await sendUserOp(OBSCURA_STEALTH_REGISTRY_ADDRESS!, announceCallData);
+      } else {
+        const annFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+        annHash = await writeContractAsync({
+          address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+          abi: OBSCURA_STEALTH_REGISTRY_ABI,
+          functionName: "announce",
+          args: [pendingAnnounce.stealthAddress, pendingAnnounce.ephemeralPubKey, pendingAnnounce.viewTag, pendingAnnounce.metadata],
+          account: address,
+          chain: arbitrumSepolia,
+          maxFeePerGas: annFees.maxFeePerGas,
+          maxPriorityFeePerGas: annFees.maxPriorityFeePerGas,
+          gas: 250_000n,
+        });
+        await publicClient.waitForTransactionReceipt({ hash: annHash });
+      }
       setPendingAnnounce(null);
       advanceProgress(4, "done", `${annHash.slice(0, 10)}…`);
     } catch (e) {

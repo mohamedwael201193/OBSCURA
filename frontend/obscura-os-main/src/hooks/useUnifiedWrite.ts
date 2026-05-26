@@ -1,23 +1,18 @@
 /**
- * useUnifiedWrite.ts — Route contract writes through EOA or Smart Account based on user mode.
+ * useUnifiedWrite.ts — Route any contract write through EOA or Smart Account
+ * based on the current PaymentModeContext.
  *
- * In EOA mode (default): standard wagmi writeContract flow
- * In AA mode: wrap call in execute() UserOp + passkey signature
- *
- * Mode resolution order:
- *   1. opts.mode if explicitly set
- *   2. PaymentModeContext global mode
- *   3. Falls back to "eoa" if smart account not available
- *
- * Automatic fallback: if smart account write fails, retries as EOA and
- * sets `usedFallback: true` on the returned object.
+ * Returns a single `write(opts)` callable. When Smart Mode is active and the
+ * smart account is deployed, calls are routed through `sendUserOp` (passkey
+ * signed, no MetaMask). Otherwise falls back to standard `writeContractAsync`.
  *
  * Usage:
- *   const { write, isPending, hash } = useUnifiedWrite({ abi, address, functionName, args });
+ *   const { write } = useUnifiedWrite();
+ *   const hash = await write({ abi, address, functionName, args, gas });
  */
 
-import { useState, useCallback } from "react";
-import { useWriteContract, usePublicClient, useAccount } from "wagmi";
+import { useCallback } from "react";
+import { useWriteContract, useAccount } from "wagmi";
 import { encodeFunctionData, type Abi, type Address, type Hex } from "viem";
 import { arbitrumSepolia } from "viem/chains";
 import { useSmartAccount } from "./useSmartAccount";
@@ -25,121 +20,75 @@ import { usePaymentMode } from "@/contexts/PaymentModeContext";
 
 export type WriteMode = "eoa" | "smart-account";
 
-export interface UnifiedWriteOptions {
+export interface UnifiedWriteOpts {
   abi: Abi;
   address: Address;
   functionName: string;
   args?: readonly unknown[];
   value?: bigint;
-  /** Force a specific mode. Defaults to "eoa". */
-  mode?: WriteMode;
-  /** Gas override for EOA mode */
+  /** Gas override for EOA mode (ignored in smart account mode). */
   gas?: bigint;
+  /**
+   * Override the global mode for this specific call.
+   * "eoa" → always use MetaMask/wallet
+   * "smart-account" → always use passkey UserOp (falls back to EOA if unavailable)
+   */
+  mode?: WriteMode;
 }
 
-export interface UnifiedWriteReturn {
-  write: () => Promise<Hex>;
-  isPending: boolean;
-  hash: Hex | null;
-  mode: WriteMode;
-  error: string | null;
-  /** True if smart account write failed and the call was retried as EOA */
-  usedFallback: boolean;
-}
-
-export function useUnifiedWrite(opts: UnifiedWriteOptions): UnifiedWriteReturn {
+/**
+ * Route a contract write through EOA or smart account depending on the current
+ * payment mode. Returns an async `write(opts)` function.
+ *
+ * Smart account is used when:
+ *   - opts.mode === "smart-account", OR contextMode === "smart"
+ *   - AND the smart account is deployed + passkey enrolled
+ *
+ * Falls back silently to EOA if the smart account is unavailable.
+ */
+export function useUnifiedWrite() {
   const { address: eoaAddress } = useAccount();
-  const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
-  const { accountAddress, isDeployed, sendUserOp, status: aaStatus } = useSmartAccount();
+  const { accountAddress, isDeployed, sendUserOp } = useSmartAccount();
   const { mode: contextMode } = usePaymentMode();
 
-  // Resolve effective write mode:
-  // explicit opts.mode > PaymentModeContext > "eoa"
-  const resolvedMode: WriteMode = (() => {
-    const preferred =
-      opts.mode ??
-      (contextMode === "smart" ? "smart-account" : "eoa");
-    // Only use smart-account if the account is actually ready
-    return preferred === "smart-account" && isDeployed && !!accountAddress
-      ? "smart-account"
-      : "eoa";
-  })();
+  const write = useCallback(
+    async (opts: UnifiedWriteOpts): Promise<Hex> => {
+      const preferSmart =
+        opts.mode !== undefined
+          ? opts.mode === "smart-account"
+          : contextMode === "smart";
 
-  const [hash, setHash] = useState<Hex | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [usedFallback, setUsedFallback] = useState(false);
+      const isSmartReady = preferSmart && isDeployed && !!accountAddress;
 
-  const isPending =
-    resolvedMode === "smart-account"
-      ? aaStatus === "signing" || aaStatus === "submitting"
-      : false;
-
-  const writeAsEoa = useCallback(async (): Promise<Hex> => {
-    if (!eoaAddress) throw new Error("Wallet not connected");
-    const txHash = await writeContractAsync({
-      abi: opts.abi,
-      address: opts.address,
-      functionName: opts.functionName,
-      args: opts.args,
-      value: opts.value,
-      account: eoaAddress,
-      chain: arbitrumSepolia,
-      gas: opts.gas,
-    });
-    return txHash;
-  }, [eoaAddress, opts.abi, opts.address, opts.functionName, opts.args, opts.value, opts.gas, writeContractAsync]);
-
-  const write = useCallback(async (): Promise<Hex> => {
-    setError(null);
-    setUsedFallback(false);
-
-    try {
-      if (resolvedMode === "smart-account" && accountAddress) {
-        // Attempt smart account write
-        try {
-          const callData = encodeFunctionData({
-            abi: opts.abi,
-            functionName: opts.functionName,
-            args: opts.args ?? [],
-          }) as Hex;
-
-          const userOpHash = await sendUserOp(opts.address, callData, opts.value ?? 0n);
-          setHash(userOpHash);
-          return userOpHash;
-        } catch (aaErr) {
-          // Auto-fallback to EOA on smart account failure
-          console.warn("[useUnifiedWrite] Smart account write failed, falling back to EOA:", aaErr);
-          setUsedFallback(true);
-          const txHash = await writeAsEoa();
-          setHash(txHash);
-          return txHash;
-        }
+      if (isSmartReady) {
+        // ── Smart Account path — passkey UserOp, no MetaMask ──
+        const callData = encodeFunctionData({
+          abi: opts.abi,
+          functionName: opts.functionName,
+          args: opts.args ?? [],
+        }) as Hex;
+        return await sendUserOp(opts.address, callData, opts.value ?? 0n);
       } else {
-        // Standard EOA write
-        const txHash = await writeAsEoa();
-        setHash(txHash);
-        return txHash;
+        // ── EOA path — standard wallet confirmation ──
+        if (!eoaAddress) throw new Error("Wallet not connected");
+        return await writeContractAsync({
+          abi: opts.abi,
+          address: opts.address,
+          functionName: opts.functionName,
+          args: opts.args,
+          value: opts.value,
+          account: eoaAddress,
+          chain: arbitrumSepolia,
+          gas: opts.gas,
+        });
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg);
-      throw e;
-    }
-  }, [
-    resolvedMode,
-    accountAddress,
-    opts.abi,
-    opts.address,
-    opts.functionName,
-    opts.args,
-    opts.value,
-    sendUserOp,
-    writeAsEoa,
-  ]);
+    },
+    [eoaAddress, writeContractAsync, accountAddress, isDeployed, sendUserOp, contextMode]
+  );
 
-  // Suppress unused import warning — publicClient may be used in future gas estimation
-  void publicClient;
+  /** Whether the smart account is ready and global mode is "smart". */
+  const isSmartActive = contextMode === "smart" && isDeployed && !!accountAddress;
 
-  return { write, isPending, hash, mode: resolvedMode, error, usedFallback };
+  return { write, isSmartActive };
 }

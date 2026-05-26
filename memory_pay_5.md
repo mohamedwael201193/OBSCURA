@@ -666,3 +666,191 @@ const [showAmounts, setShowAmounts] = useState(false);
 
 ### TypeScript errors
 Zero errors in both changed files (`get_errors` confirmed clean).
+
+---
+
+## W5P8 — Settings Tabs Fix + E2E Test Suite ✅
+
+**Completed**: commit `a684324`
+
+### Bug fixed: PasskeyEnrollModal blank Smart Account tab
+
+**Root cause**: `PasskeyEnrollModal` renders unconditionally when mounted — it has no internal `open` prop.
+The old code was:
+```tsx
+<PasskeyEnrollModal open={enrollOpen} onOpenChange={setEnrollOpen} />
+```
+Both props are wrong: `open` is ignored, `onOpenChange` does not exist (`onClose` is the correct prop).
+Since the component renders immediately, it covered the entire Settings page, making the tab appear blank.
+
+**Fix**:
+```tsx
+{enrollOpen && <PasskeyEnrollModal onClose={() => setEnrollOpen(false)} />}
+```
+Wrap in a condition so the component is only mounted when the enroll button is clicked.
+
+**PasskeyEnrollModal correct interface** (confirmed from source):
+```tsx
+interface Props { onClose: () => void; onSuccess?: () => void }
+// NO `open` prop, NO `onOpenChange`
+// Renders unconditionally — ALWAYS wrap in {condition && <PasskeyEnrollModal />}
+```
+
+### New Settings sub-tabs added
+
+| Sub-tab key | Component | Hook |
+|-------------|-----------|------|
+| `notifications` | `SettingsNotificationsCard` | `useNotificationPrefs()` |
+| `account` | `SettingsSmartAccountCard` | `useSmartAccount()` |
+
+`HarmonySubNav` updated with:
+- "Notifications" (Mail icon) at `notifications` key
+- "Smart Account" (KeyRound icon) at `account` key
+
+`SettingsSub` type extended: `"prefs" | "privacy" | "contacts" | "notifications" | "account" | "data" | "legacy"`
+
+### New Supabase project (ACTIVE)
+
+The backend was migrated to a NEW Supabase project (confirmed working via test suite):
+
+| Field | Value |
+|-------|-------|
+| Project ID | `quoovjkjwgtdqwdofubh` |
+| URL | `https://quoovjkjwgtdqwdofubh.supabase.co` |
+| Anon key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1b292amtqd2d0ZHF3ZG9mdWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MzA5NDQsImV4cCI6MjA5NTMwNjk0NH0.P_BJou89rzDWK-eIgUH3sd2TeV0GZB1WHBD35lSnWNg` |
+| Tables | `obscura_activity`, `obscura_push_subscriptions`, `obscura_notification_prefs` — all HTTP 200 |
+| Realtime | Publication configured (tables already in `supabase_realtime`) |
+
+Previous project (`woqfefgrkpleedsuxavd` "veil-strike") is deprecated — use the new project.
+
+### New backend URLs (production)
+
+| Service | URL |
+|---------|-----|
+| API (relay + notifications) | `https://obscura-api-n62v.onrender.com` |
+| Worker (indexer) | `https://obscura-worker-0ppj.onrender.com` |
+
+Old `render.yaml` service names (`obscura-pay-relay`, `obscura-pay-notifications`, `obscura-pay-indexer`) are replaced
+by `obscura-api` and `obscura-worker`.
+
+### Service worker
+
+- `frontend/obscura-os-main/public/sw.js` — created/confirmed. Handles: `push`, `notificationclick`, `install` (skipWaiting), `activate` (clients.claim)
+- `src/main.tsx` — registers `/sw.js` on `window.load`
+- Served at `https://obscura-os-nine.vercel.app/sw.js` — 2034 bytes, HTTP 200 (confirmed)
+
+### E2E test suite
+
+File: `scripts/test-e2e.ps1`
+Run: `powershell -ExecutionPolicy Bypass -File .\scripts\test-e2e.ps1`
+
+**Full results (this session)**:
+```
+[PASS] API /health  entryPoint=0x0000000071727De22E5E9d8BAf0edAc6f37da032
+[PASS] Worker /health
+[PASS] VAPID key present
+[PASS] Table obscura_activity HTTP 200
+[PASS] Table obscura_push_subscriptions HTTP 200
+[PASS] Table obscura_notification_prefs HTTP 200
+[WARN] obscura_activity empty (no on-chain events indexed yet)
+[PASS] /prefs/0x000...001 404 (expected for unknown wallet)
+[PASS] Frontend HTTP 200
+[PASS] /sw.js 2034 bytes HTTP 200
+PASS=9  WARN=1  FAIL=0
+```
+
+The single WARN (empty activity table) is expected — the worker needs `RPC_URL` + `SUPABASE_SERVICE_ROLE_KEY`
+set in Render dashboard, and at least one on-chain transaction to index.
+
+### Render secrets (set in dashboard, NOT render.yaml)
+
+| Var | Service | Notes |
+|-----|---------|-------|
+| `RPC_URL` | obscura-worker | Arbitrum Sepolia RPC (Alchemy/Infura) |
+| `SUPABASE_SERVICE_ROLE_KEY` | obscura-worker, obscura-api | Supabase Settings > API > service_role |
+| `VAPID_PRIVATE_KEY` | obscura-api | Must match the public key `BIgVcwUhCL93WVMnDdRT...` |
+| `BUNDLER_URL` | obscura-api | ERC-4337 bundler endpoint |
+| `RESEND_API_KEY` | obscura-api | Email notifications (optional) |
+
+### Vercel env vars (set in Vercel dashboard)
+
+| Var | Value |
+|-----|-------|
+| `VITE_SUPABASE_URL` | `https://quoovjkjwgtdqwdofubh.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1b292amtqd2d0ZHF3ZG9mdWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MzA5NDQsImV4cCI6MjA5NTMwNjk0NH0.P_BJou89rzDWK-eIgUH3sd2TeV0GZB1WHBD35lSnWNg` |
+| `VITE_RELAY_URL` | `https://obscura-api-n62v.onrender.com` |
+| `VITE_NOTIFICATIONS_URL` | `https://obscura-api-n62v.onrender.com` |
+| `VITE_SMART_ACCOUNT_FACTORY_ADDRESS` | `0xbe8dC1d4Dcc368e0dBb6c7A5BDFfac2Fe72AFd05` |
+| `VITE_PAYMASTER_ADDRESS` | `0x9B1F61A65467F11339A8d0834349Be32EB2CF878` |
+
+### Commits this session
+
+| Commit | Change |
+|--------|--------|
+| `a684324` | Fix PasskeyEnrollModal blank tab bug + add Notifications/Smart Account settings tabs |
+
+---
+
+## W5P9 — Passkey P-256 Bug Fix + Modal Polish ✅
+
+**Completed**: commits `eab0822` (modal redesign), `5c2b5d1` (key fix + backdrop)
+
+### Root cause of passkey enrollment loop
+
+**Symptom**: Browser shows "Passkey saved" ✓ but app immediately throws:
+```
+Invalid P-256 public key — expected 32-byte x/y coordinates
+```
+→ user stuck in loop; passkey exists in browser's password manager but not in our IndexedDB.
+
+**Root cause**: `AuthenticatorAttestationResponse.getPublicKey()` returns the public key in
+**SubjectPublicKeyInfo (SPKI/DER) format**, NOT COSE/CBOR. The old `parseCOSEPublicKey` was a
+manual CBOR parser — it tried to read SPKI bytes as CBOR and failed because they have completely
+different structure.
+
+### Fix: Web Crypto SPKI extraction
+
+Replaced the CBOR parser with a WebCrypto-native approach:
+
+```typescript
+async function extractP256XY(spkiBytes: ArrayBuffer): Promise<{ x: bigint; y: bigint }> {
+  // Import the SPKI key using the Web Crypto API
+  const cryptoKey = await crypto.subtle.importKey(
+    "spki", spkiBytes,
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,   // extractable
+    ["verify"],
+  );
+  // Export as raw uncompressed point: 0x04 || x(32) || y(32) = 65 bytes
+  const raw = new Uint8Array(await crypto.subtle.exportKey("raw", cryptoKey));
+  return {
+    x: BigInt(bytesToHex(raw.slice(1, 33))),
+    y: BigInt(bytesToHex(raw.slice(33, 65))),
+  };
+}
+```
+
+Updated `registerPasskey` to call `await extractP256XY(pkBytes)` instead.
+
+**Key insight**: `getPublicKey()` is WebAuthn Level 2 API that returns SPKI/DER (not COSE).
+Never manually parse CBOR from `getPublicKey()` — use `importKey("spki")` + `exportKey("raw")`.
+
+### Modal backdrop improved
+
+Changed from heavy dark overlay `bg-black/40 backdrop-blur-sm` (takes full screen, looks bad)
+to light tint `bg-foreground/10` (no blur). The modal itself is unchanged — just the backdrop
+opacity/blur was reduced to let the underlying page show through clearly.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `src/lib/passkey.ts` | Replaced `parseCOSEPublicKey` (CBOR) with `extractP256XY` (WebCrypto SPKI) |
+| `src/components/harmony/PasskeyEnrollModal.tsx` | Backdrop: `bg-black/40 backdrop-blur-sm` → `bg-foreground/10` |
+
+### Commits
+
+| Commit | Change |
+|--------|--------|
+| `eab0822` | PasskeyEnrollModal redesign (bottom-sheet → centered dialog) |
+| `5c2b5d1` | P-256 key extraction fix + lighter modal backdrop |

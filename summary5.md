@@ -1,5 +1,147 @@
 # WAVE 5 — Obscura Ecosystem Execution Memory (`summary5.md`)
 
+---
+
+## ✅ W5-BUG-SESSION — Rate-Limit Bug Fixes + Infrastructure — 2026-05-26
+
+Three bug-fix commits shipped (commits `321f3ba`, `7aa212b`, `b33f415`).
+Full infrastructure (Render API + Worker, Vercel frontend, Supabase DB) documented below.
+
+### Bug 1 — Shield hits wrong contract → FHE rate-limit (`321f3ba`)
+
+**Root cause**: `useOcUSDCBalance.ts` line 23 used `CONFIDENTIAL_USDC_ADDRESS`
+(old v3.15 credit contract, `0xEFab856b903C4106769B14798deDE21C6923d7d2`) for
+all shield/unshield/balance operations. The v3.15 contract is rate-limited by
+the CoFHE coprocessor. The correct Wave-5 PAY wrapper is
+`OBSCURA_PAY_OCUSDC_ADDRESS` (`0xEd46020Df8abe7BB1E096f27d089F4326D223a53`).
+
+**Fix** — `src/hooks/useOcUSDCBalance.ts`:
+```typescript
+// BEFORE
+const OCUSDC_ADDRESS = CONFIDENTIAL_USDC_ADDRESS;          // old v3.15
+// AFTER
+const OCUSDC_ADDRESS = OBSCURA_PAY_OCUSDC_ADDRESS;         // Wave 5 PAY wrapper
+```
+
+### Bug 2 — Reveal on Overview does nothing (`321f3ba`)
+
+**Root cause**: `PayHarmonyHome.tsx` `onToggle` just flipped a local boolean —
+never called `reveal()` from `useOcUSDCBalance`. The FHE decrypt was never
+triggered.
+
+**Fix** — `src/components/harmony/PayHarmonyHome.tsx`:
+```typescript
+// Added reveal() call before showing decrypted value
+const { decrypted, reveal, busy: revealBusy } = useOcUSDCBalance();
+const onToggle = async () => {
+  if (!showBalance && decrypted === null) await reveal();
+  setShowBalance((v) => !v);
+};
+```
+
+### Bug 3 — Shield shows raw viem stack dump on FHE rate-limit (`7aa212b`)
+
+**Root cause**: `OcUSDCPanel.tsx` caught errors and showed `(e as Error).message`
+raw — the full viem technical string dumps. CoFHE rate-limits are real on
+testnet (per-wallet FHE op quota); retrying fast makes it worse.
+
+**Fix** — `src/components/pay-v4/OcUSDCPanel.tsx`:
+- `isRateLimited(e)` helper detects CoFHE quota string
+- Friendly message: *"CoFHE rate limited — wait ~30 s then retry."*
+- `shieldCooldown` state: 35-second countdown, button disabled + shows `⏱ Ns`
+- `startCooldown()` sets interval, auto-clears at 0
+
+### Bug 4 — Stealth send: wrong contract + announce RPC 429 (`b33f415`)
+
+**Root cause (triple)**:
+1. Stealth `confidentialTransfer` still used `CONFIDENTIAL_USDC_ADDRESS` (v3.15)
+2. `waitForTransactionReceipt` polls RPC ~20 times → exhausts Alchemy free-tier
+   budget → immediately-following `announce()` gets a 429 from Alchemy
+3. On announce failure, entire multi-step flow dies with no recovery path
+
+**Fix** — `src/components/pay-v4/UnifiedSendForm.tsx`:
+- Import `OBSCURA_PAY_OCUSDC_ADDRESS` from `payV3` (remove `CONFIDENTIAL_USDC_ADDRESS`)
+- Add `isRateLimited()` and `sleep()` helpers at module level
+- Add `withRateLimitRetry` import from `@/lib/rateLimit`
+- `await sleep(2500)` between receipt and announce (lets Alchemy rate window reset)
+- Announce wrapped in try/catch: on rate-limit, stores params in `pendingAnnounce` state
+- New `retryAnnounce()` function: one MetaMask popup just for the announce step
+- "Retry Announcement" button rendered in the error block when `pendingAnnounce !== null`
+- `reset()` clears `pendingAnnounce`
+
+### Two rate-limit types (important distinction)
+
+| Error text | Source | Cause | Fix |
+|---|---|---|---|
+| `"Request is being rate limited"` | FHE coprocessor | Per-wallet FHE op quota | Cooldown UX + friendly message |
+| `"RPC submit: Request is being rate limited"` | Alchemy RPC 429 | Receipt polling exhausts budget | 2.5 s sleep + retryable announce |
+
+`writeContractAsync` (MetaMask) **cannot** be silently retried — each retry
+requires a new MetaMask popup. Only read calls (`estimateCappedFees`) can use
+`withRateLimitRetry`. The UI pattern is: show a Retry button, let the user
+re-approve when ready.
+
+---
+
+## ✅ Infrastructure — Full Deployment Map (2026-05-26)
+
+### Live URLs
+
+| Service | URL | Platform |
+|---|---|---|
+| Frontend | `https://obscura-os-nine.vercel.app` | Vercel |
+| API Server | `https://obscura-api-n62v.onrender.com` | Render (free) |
+| Worker | `https://obscura-worker-0ppj.onrender.com` | Render (free) |
+| GitHub repo | `https://github.com/mohamedwael201193/OBSCURA` | GitHub (main branch) |
+
+### Vercel (Frontend)
+
+- **Project**: `obscura-os` → deploys `frontend/obscura-os-main`
+- **Framework**: Vite + React (auto-detected)
+- **Root directory**: `frontend/obscura-os-main`
+- **Build command**: `npm run build`
+- **Output**: `dist/`
+- **Auto-deploy**: every push to `main` branch
+- **Env vars**: set manually in Vercel dashboard under Project → Settings → Environment Variables
+  - All `VITE_*` prefixed vars from `.env` must be added in Vercel
+  - Key vars: `VITE_OBSCURA_PAY_OCUSDC_ADDRESS`, `VITE_ALCHEMY_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, etc.
+
+### Render (API + Worker)
+
+- **Configured in**: `render.yaml` at repo root
+- **API service**: Node.js server in `packages/pay-402/`
+- **Worker service**: background job processor (receipt indexer, keeper pings)
+- **Deploy trigger**: auto on push to `main`
+- **Secrets**: stored in Render dashboard → Environment (NOT in render.yaml — secrets were removed from render.yaml in a prior session)
+- **Free tier note**: services spin down after 15 min idle → first request is slow (~30 s cold start)
+
+### Supabase (Database)
+
+- **Project**: linked to Obscura workspace
+- **Schema**: stores receipt history, stealth inbox index, user preferences
+- **Client**: `@supabase/supabase-js` in `packages/pay-402/`
+- **RLS**: Row-Level Security enabled — users can only read their own receipts
+- **Frontend reads**: via `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (public anon key, safe to expose)
+- **API writes**: via `SUPABASE_SERVICE_KEY` (server-only, stored in Render env)
+
+### Chain
+
+- **Network**: Arbitrum Sepolia, chainId `421614`
+- **RPC (reads)**: fallback pool in `src/config/wagmi.ts` — publicnode → drpc → omniatech → arb-official → tenderly
+- **RPC (writes)**: MetaMask uses its own configured RPC (not wagmi transport)
+- **Explorer**: `https://sepolia.arbiscan.io`
+
+### Key contract addresses (Wave 5)
+
+| Contract | Address |
+|---|---|
+| `OBSCURA_PAY_OCUSDC` (Wave 5 PAY wrapper) | `0xEd46020Df8abe7BB1E096f27d089F4326D223a53` |
+| `CONFIDENTIAL_USDC` (old v3.15 credit — do not use for Pay) | `0xEFab856b903C4106769B14798deDE21C6923d7d2` |
+| `ObscuraStealthRegistry` | see `deployments/arb-sepolia.json` |
+| `ObscuraCreditScoreV2` | `0xe5B0c6c06C0B1fd7d7CD5D2e93997693863d3D4D` |
+
+---
+
 ## ✅ WAVE 5 LIVE ON ARB SEPOLIA — 2026-05-23
 
 All Phase 1/2/3/4/5 contracts deployed, wired, and verified end-to-end. Frontend
@@ -1578,27 +1720,27 @@ chunk size advisory on large vendor bundles).
 ---
 
 
-## W5P1.9.1 � Full-Width Button & Neon Token Sweep ?
+## W5P1.9.1 � Full-Width Button & Neon Token Sweep ?
 
 All 18 pay component files audited. Removed w-full from .btn-pay* usages, replaced neon/dark tokens with Harmony equivalents (g-card, hairline, g-muted), standardised CTA footer to lex justify-end pt-3 border-t border-border/60.
 
-**Build**: ? built in 13.16s � zero TS errors.
+**Build**: ? built in 13.16s � zero TS errors.
 
 ---
 
-## W5P1.9.2 � Privacy Mission Control Overview Redesign ?
+## W5P1.9.2 � Privacy Mission Control Overview Redesign ?
 
 PayHarmonyHome.tsx fully rewritten. New design:
 
 - **Privacy posture chip strip** at top of hero card (Lock / Send / Inbox)
-- **Embedded CipherBalanceDisplay** inside hero � large cipher-shimmer ������ with AnimatePresence reveal toggle; NO auto-decrypt on mount
+- **Embedded CipherBalanceDisplay** inside hero � large cipher-shimmer ������ with AnimatePresence reveal toggle; NO auto-decrypt on mount
 - **5-step onboarding rail** card with individual step rows, progress bar, active-step CTAs
 - **4 quick-action tiles** (Send / Request / Automate / Make private)
-- **Activity feed** � recent 5 rows with empty state
+- **Activity feed** � recent 5 rows with empty state
 - Removed: HarmonyMissionHero, HarmonyMetricRow, HarmonyPrivacyPosture, "How it works" collapsible, learnOpen state
 - Tighter density: space-y-4
 - New inline primitives: PostureChip, CipherBalanceDisplay, OnboardingStepRow
 
-**Build**: ? built in 13.16s � zero TS errors.
+**Build**: ? built in 13.16s � zero TS errors.
 
 ---

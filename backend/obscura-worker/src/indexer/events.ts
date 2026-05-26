@@ -1,24 +1,16 @@
 /**
  * events.ts — ABI fragments for all Obscura Pay events to index
+ * Event signatures verified against deployed contracts on Arbitrum Sepolia.
  */
 
+// ObscuraPay (Wave 1 payroll) — 0x91CdD9a481C732bEB09Ce039da23DC11e83547a4
 export const PAY_EVENTS = [
   {
     type: "event" as const,
-    name: "PaymentSent",
+    name: "EmployeePaid",
     inputs: [
-      { name: "from",  type: "address", indexed: true },
-      { name: "to",    type: "address", indexed: true },
-      { name: "txId",  type: "bytes32", indexed: true },
-    ],
-  },
-  {
-    type: "event" as const,
-    name: "PaymentReceived",
-    inputs: [
-      { name: "from",  type: "address", indexed: true },
-      { name: "to",    type: "address", indexed: true },
-      { name: "txId",  type: "bytes32", indexed: true },
+      { name: "employer", type: "address", indexed: true },
+      { name: "employee", type: "address", indexed: true },
     ],
   },
 ] as const;
@@ -60,9 +52,10 @@ export const INVOICE_EVENTS = [
     type: "event" as const,
     name: "InvoiceCreated",
     inputs: [
-      { name: "invoiceId", type: "uint256", indexed: true },
-      { name: "issuer",    type: "address", indexed: true },
-      { name: "payer",     type: "address", indexed: true },
+      { name: "invoiceId",   type: "uint256", indexed: true },
+      { name: "creator",     type: "address", indexed: true },
+      { name: "memoHash",    type: "bytes32", indexed: false },
+      { name: "expiryBlock", type: "uint256", indexed: false },
     ],
   },
   {
@@ -78,26 +71,43 @@ export const INVOICE_EVENTS = [
 export const ESCROW_EVENTS = [
   {
     type: "event" as const,
-    name: "EscrowDeposited",
+    name: "EscrowCreated",
     inputs: [
       { name: "escrowId",  type: "uint256", indexed: true },
-      { name: "depositor", type: "address", indexed: true },
+      { name: "creator",   type: "address", indexed: true },
+      { name: "resolver",  type: "address", indexed: true },
     ],
   },
   {
     type: "event" as const,
-    name: "EscrowReleased",
+    name: "EscrowFunded",
     inputs: [
-      { name: "escrowId",    type: "uint256", indexed: true },
-      { name: "beneficiary", type: "address", indexed: true },
+      { name: "escrowId", type: "uint256", indexed: true },
+      { name: "payer",    type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "EscrowRedeemed",
+    inputs: [
+      { name: "escrowId", type: "uint256", indexed: true },
+      { name: "caller",   type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "EscrowCancelled",
+    inputs: [
+      { name: "escrowId", type: "uint256", indexed: true },
+      { name: "creator",  type: "address", indexed: true },
     ],
   },
   {
     type: "event" as const,
     name: "EscrowRefunded",
     inputs: [
-      { name: "escrowId",  type: "uint256", indexed: true },
-      { name: "depositor", type: "address", indexed: true },
+      { name: "escrowId", type: "uint256", indexed: true },
+      { name: "caller",   type: "address", indexed: true },
     ],
   },
 ] as const;
@@ -132,13 +142,29 @@ export const INSURANCE_EVENTS = [
   },
 ] as const;
 
+// ObscuraStealthRegistry — 0xa36e791a611D36e2C817a7DA0f41547D30D4917d
+// Announcement: emitted on every stealth send so wallets can scan with view-tag filter
+// MetaAddressSet: emitted when a user registers/updates their meta-address
 export const STEALTH_EVENTS = [
   {
     type: "event" as const,
-    name: "StealthAddressRegistered",
+    name: "Announcement",
     inputs: [
-      { name: "owner",          type: "address", indexed: true },
-      { name: "stealthAddress", type: "address", indexed: false },
+      { name: "schemeId",       type: "uint256", indexed: true },
+      { name: "stealthAddress", type: "address", indexed: true },
+      { name: "caller",         type: "address", indexed: true },
+      { name: "ephemeralPubKey", type: "bytes",  indexed: false },
+      { name: "viewTag",        type: "bytes1",  indexed: false },
+      { name: "metadata",       type: "bytes",   indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "MetaAddressSet",
+    inputs: [
+      { name: "user",           type: "address", indexed: true },
+      { name: "spendingPubKey", type: "bytes",   indexed: false },
+      { name: "viewingPubKey",  type: "bytes",   indexed: false },
     ],
   },
 ] as const;

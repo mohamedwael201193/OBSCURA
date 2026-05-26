@@ -85,6 +85,9 @@ import { useStealthRotation } from "@/hooks/useStealthRotation";
 import { useReceipts } from "@/hooks/useReceipts";
 import { useAddressBook } from "@/hooks/useAddressBook";
 import { Input } from "@/components/ui/input";
+import { useNotificationPrefs } from "@/hooks/useNotificationPrefs";
+import { useSmartAccount } from "@/hooks/useSmartAccount";
+import { PasskeyEnrollModal } from "@/components/harmony/PasskeyEnrollModal";
 
 // W5P1.5 — IA refactor: 9 tabs collapsed to 6 user-intent tabs
 type Tab =
@@ -223,6 +226,149 @@ const SettingsDataCard = () => {
       </div>
       </div>
     </HarmonyFormCard>
+  );
+};
+
+const SettingsNotificationsCard = () => {
+  const { prefs, isLoading, pushSupported, enable, disable, savePrefs } = useNotificationPrefs();
+  const [email, setEmail] = useState(prefs?.email ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const handleEmailSave = async () => {
+    setSaving(true);
+    try { await savePrefs({ email, email_enabled: !!email }); } finally { setSaving(false); }
+  };
+
+  return (
+    <>
+      <HarmonyFormCard title="Push notifications" eyebrow="Browser">
+        <div className="space-y-4">
+          {!pushSupported && (
+            <p className="text-[12px] text-muted-foreground/60">
+              Your browser does not support Web Push. Use Chrome, Edge, or Firefox desktop.
+            </p>
+          )}
+          {pushSupported && (
+            <div className="grid grid-cols-[1fr_auto] gap-y-3 items-center">
+              <label className="text-[12px] text-foreground/80">Push alerts</label>
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              ) : (
+                <button
+                  type="button"
+                  onClick={prefs?.push_enabled ? disable : enable}
+                  className={`btn-pay ${prefs?.push_enabled ? "btn-pay-primary" : "btn-pay-ghost"}`}
+                >
+                  {prefs?.push_enabled ? "Enabled" : "Enable"}
+                </button>
+              )}
+            </div>
+          )}
+          {prefs?.push_enabled && (
+            <p className="text-[11px] text-muted-foreground/55">
+              You will receive push notifications for on-chain activity linked to your wallet.
+            </p>
+          )}
+        </div>
+      </HarmonyFormCard>
+
+      <HarmonyFormCard title="Email notifications" eyebrow="Optional">
+        <div className="space-y-3">
+          <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
+            Receive email summaries for payments received. Your email is stored server-side and never shared.
+          </p>
+          <div className="flex gap-2 items-center">
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pay-input flex-1"
+            />
+            <button
+              type="button"
+              disabled={saving || !email}
+              onClick={handleEmailSave}
+              className="btn-pay btn-pay-ghost"
+            >
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              Save
+            </button>
+          </div>
+          {prefs?.email_enabled && prefs.email && (
+            <p className="text-[11px] text-[#2D6A4F]">
+              Email alerts active · {prefs.email}
+            </p>
+          )}
+        </div>
+      </HarmonyFormCard>
+    </>
+  );
+};
+
+const SettingsSmartAccountCard = () => {
+  const { accountAddress, isDeployed, hasPasskey, status, error } = useSmartAccount();
+  const [enrollOpen, setEnrollOpen] = useState(false);
+
+  return (
+    <>
+      <HarmonyFormCard title="Smart account" eyebrow="ERC-4337 · Passkey">
+        <div className="space-y-4">
+          <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
+            Enable a gasless smart account secured by a device passkey (WebAuthn). Once enrolled, you can send
+            transactions without managing gas fees.
+          </p>
+
+          <div className="grid grid-cols-[1fr_auto] gap-y-3 items-center text-[12px]">
+            <span className="text-foreground/80">Account address</span>
+            <span className="font-mono text-[11px] text-muted-foreground/60 truncate max-w-[160px]">
+              {accountAddress ? `${accountAddress.slice(0, 8)}…${accountAddress.slice(-6)}` : "—"}
+            </span>
+
+            <span className="text-foreground/80">Deployed</span>
+            <span className={isDeployed ? "text-[#2D6A4F]" : "text-muted-foreground/55"}>
+              {isDeployed ? "Yes" : "No"}
+            </span>
+
+            <span className="text-foreground/80">Passkey</span>
+            <span className={hasPasskey ? "text-[#2D6A4F]" : "text-muted-foreground/55"}>
+              {hasPasskey ? "Enrolled" : "Not enrolled"}
+            </span>
+
+            <span className="text-foreground/80">Status</span>
+            <span className="capitalize text-muted-foreground/60">{status}</span>
+          </div>
+
+          {error && (
+            <p className="text-[11px] text-destructive">{error}</p>
+          )}
+
+          {!isDeployed && (
+            <button
+              type="button"
+              onClick={() => setEnrollOpen(true)}
+              className="btn-pay btn-pay-primary"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              Enroll passkey &amp; deploy account
+            </button>
+          )}
+
+          {isDeployed && !hasPasskey && (
+            <button
+              type="button"
+              onClick={() => setEnrollOpen(true)}
+              className="btn-pay btn-pay-ghost"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              Add passkey to existing account
+            </button>
+          )}
+        </div>
+      </HarmonyFormCard>
+
+      <PasskeyEnrollModal open={enrollOpen} onOpenChange={setEnrollOpen} />
+    </>
   );
 };
 
@@ -386,7 +532,7 @@ const PayPage = () => {
   type PaySub = "send" | "convert" | "bridge";
   type GetPaidSub = "inbox" | "setup" | "request" | "inbound";
   type AutoSub = "streams" | "escrows" | "subscriptions" | "payroll";
-  type SettingsSub = "prefs" | "privacy" | "contacts" | "data" | "legacy";
+  type SettingsSub = "prefs" | "privacy" | "contacts" | "notifications" | "account" | "data" | "legacy";
 
   const [paySub, setPaySub] = useState<PaySub>(
     initial.tab === "pay" && (initial.sub === "send" || initial.sub === "convert" || initial.sub === "bridge")
@@ -406,7 +552,7 @@ const PayPage = () => {
       : "streams",
   );
   const [settingsSub, setSettingsSub] = useState<SettingsSub>(
-    initial.tab === "settings" && (initial.sub === "prefs" || initial.sub === "privacy" || initial.sub === "contacts" || initial.sub === "data" || initial.sub === "legacy")
+    initial.tab === "settings" && (initial.sub === "prefs" || initial.sub === "privacy" || initial.sub === "contacts" || initial.sub === "notifications" || initial.sub === "account" || initial.sub === "data" || initial.sub === "legacy")
       ? (initial.sub as SettingsSub)
       : "prefs",
   );
@@ -744,6 +890,8 @@ const PayPage = () => {
                 { key: "prefs", label: "Preferences", icon: SettingsIcon },
                 { key: "privacy", label: "Privacy", icon: Shield },
                 { key: "contacts", label: "Contacts", icon: BookUser },
+                { key: "notifications", label: "Notifications", icon: Mail },
+                { key: "account", label: "Smart Account", icon: KeyRound },
                 { key: "data", label: "Data", icon: Database },
                 { key: "legacy", label: "Legacy", icon: Wrench },
               ]}
@@ -751,6 +899,8 @@ const PayPage = () => {
             {settingsSub === "prefs" && <SettingsPrefsCard />}
             {settingsSub === "privacy" && <SettingsPrivacyCard />}
             {settingsSub === "contacts" && <ContactsSection />}
+            {settingsSub === "notifications" && <SettingsNotificationsCard />}
+            {settingsSub === "account" && <SettingsSmartAccountCard />}
             {settingsSub === "data" && <SettingsDataCard />}
             {settingsSub === "legacy" && (
               <HarmonyFormCard title="Legacy tools" eyebrow="Advanced · V1">

@@ -129,12 +129,12 @@ export async function buildUserOp(opts: UserOpBuildOptions): Promise<PackedUserO
   // Build account callData (wrap in execute)
   const accountCallData = encodeExecuteCall(target, value, callData);
 
-  // paymasterAndData: paymasterAddr(20) + postOpGasLimit(16) + verificationGasLimit(16)
+  // paymasterAndData (ERC-4337 v0.7): paymasterAddr(20) + paymasterVerificationGasLimit(16) + paymasterPostOpGasLimit(16)
   let paymasterAndData: Hex = "0x";
   if (usePaymaster && PAYMASTER_ADDRESS) {
-    const postOpGasBytes      = pad(toHex(PAYMASTER_POST_OP), { size: 16 });
     const verificationGasBytes = pad(toHex(VERIFICATION_GAS),  { size: 16 });
-    paymasterAndData = concat([PAYMASTER_ADDRESS, postOpGasBytes, verificationGasBytes]);
+    const postOpGasBytes       = pad(toHex(PAYMASTER_POST_OP), { size: 16 });
+    paymasterAndData = concat([PAYMASTER_ADDRESS, verificationGasBytes, postOpGasBytes]);
   }
 
   return {

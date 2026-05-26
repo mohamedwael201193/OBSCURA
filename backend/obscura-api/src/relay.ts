@@ -7,6 +7,7 @@
  * Supports dual bundler: Alchemy (primary) + Pimlico (fallback).
  */
 import { Router, Request, Response } from "express";
+import { toHex } from "viem";
 import type { Hex } from "viem";
 
 const BUNDLER_URL         = process.env.BUNDLER_URL ?? "";
@@ -70,8 +71,93 @@ function rateCheck(ip: string): boolean {
   return rec.count <= MAX_PER_IP;
 }
 
+// ─── Unpack packed UserOp → ERC-4337 v0.7 JSON-RPC format ───────────────────
+/**
+ * Bundlers expect the v0.7 JSON-RPC format with individual gas fields.
+ * We store/transmit the packed on-chain struct; this unpacks it before submission.
+ *
+ * accountGasLimits (bytes32): high128 = verificationGasLimit, low128 = callGasLimit
+ * gasFees          (bytes32): high128 = maxPriorityFeePerGas, low128 = maxFeePerGas
+ * initCode        → factory (20 bytes) + factoryData (rest)
+ * paymasterAndData → paymaster(20) + paymasterVerificationGasLimit(16) + paymasterPostOpGasLimit(16) + paymasterData
+ */
+interface BundlerUserOp {
+  sender:                        Hex;
+  nonce:                         string;
+  factory:                       Hex | null;
+  factoryData:                   Hex | null;
+  callData:                      Hex;
+  callGasLimit:                  string;
+  verificationGasLimit:          string;
+  preVerificationGas:            string;
+  maxFeePerGas:                  string;
+  maxPriorityFeePerGas:          string;
+  paymaster:                     Hex | null;
+  paymasterVerificationGasLimit: string | null;
+  paymasterPostOpGasLimit:       string | null;
+  paymasterData:                 Hex | null;
+  signature:                     Hex;
+}
+
+function unpackForBundler(op: PackedUserOperation): BundlerUserOp {
+  // Unpack accountGasLimits: high128 = verificationGasLimit, low128 = callGasLimit
+  const gasLimits = BigInt(op.accountGasLimits);
+  const verificationGasLimit = toHex(gasLimits >> 128n);
+  const callGasLimit = toHex(gasLimits & ((1n << 128n) - 1n));
+
+  // Unpack gasFees: high128 = maxPriorityFeePerGas, low128 = maxFeePerGas
+  const gasFeesVal = BigInt(op.gasFees);
+  const maxPriorityFeePerGas = toHex(gasFeesVal >> 128n);
+  const maxFeePerGas = toHex(gasFeesVal & ((1n << 128n) - 1n));
+
+  // Split initCode → factory (20 bytes) + factoryData (rest)
+  let factory: Hex | null = null;
+  let factoryData: Hex | null = null;
+  if (op.initCode && op.initCode.length > 2) {
+    factory = `0x${op.initCode.slice(2, 42)}` as Hex;
+    factoryData = `0x${op.initCode.slice(42)}` as Hex;
+  }
+
+  // Split paymasterAndData:
+  //   paymaster(20 bytes) + paymasterVerificationGasLimit(16 bytes) + paymasterPostOpGasLimit(16 bytes) + paymasterData
+  let paymaster: Hex | null = null;
+  let paymasterVerificationGasLimit: string | null = null;
+  let paymasterPostOpGasLimit: string | null = null;
+  let paymasterData: Hex | null = null;
+  if (op.paymasterAndData && op.paymasterAndData.length >= 42) {
+    paymaster = `0x${op.paymasterAndData.slice(2, 42)}` as Hex;  // 20 bytes
+    if (op.paymasterAndData.length >= 106) {
+      // bytes 20-36: verificationGasLimit (16 bytes = 32 hex chars)
+      paymasterVerificationGasLimit = `0x${op.paymasterAndData.slice(42, 74)}`;
+      // bytes 36-52: postOpGasLimit (16 bytes = 32 hex chars)
+      paymasterPostOpGasLimit = `0x${op.paymasterAndData.slice(74, 106)}`;
+      const rest = op.paymasterAndData.slice(106);
+      paymasterData = rest.length > 0 ? `0x${rest}` as Hex : "0x";
+    }
+  }
+
+  return {
+    sender:                        op.sender,
+    nonce:                         op.nonce,
+    factory,
+    factoryData,
+    callData:                      op.callData,
+    callGasLimit,
+    verificationGasLimit,
+    preVerificationGas:            op.preVerificationGas,
+    maxFeePerGas,
+    maxPriorityFeePerGas,
+    paymaster,
+    paymasterVerificationGasLimit,
+    paymasterPostOpGasLimit,
+    paymasterData,
+    signature:                     op.signature,
+  };
+}
+
 // ─── Bundler call ─────────────────────────────────────────────────────────────
 async function sendToBundler(url: string, op: PackedUserOperation): Promise<string> {
+  const rpcOp = unpackForBundler(op);
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -79,7 +165,7 @@ async function sendToBundler(url: string, op: PackedUserOperation): Promise<stri
       jsonrpc: "2.0",
       id: 1,
       method: "eth_sendUserOperation",
-      params: [op, ENTRY_POINT],
+      params: [rpcOp, ENTRY_POINT],
     }),
   });
 

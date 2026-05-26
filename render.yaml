@@ -90,6 +90,20 @@ services:
         value: "200"
       - key: KEEPER_MAX_GAS_GWEI
         value: "2"
+      - key: INDEXER_GETLOGS_CHUNK_BLOCKS
+        value: "10"
+      - key: INDEXER_GETLOGS_RETRIES
+        value: "3"
+      - key: INDEXER_GETLOGS_RETRY_BASE_MS
+        value: "1000"
+      - key: INDEXER_LIVE_POLL_MS
+        value: "5000"
+      - key: INDEXER_LIVE_RETRY_MAX_MS
+        value: "30000"
+      - key: INDEXER_STARTUP_RECENT_BLOCKS
+        value: "5000"
+      - key: INDEXER_BACKGROUND_BACKFILL_DELAY_MS
+        value: "15000"
       # ── Secrets — set in Render dashboard, never in YAML ────────────────────
       - key: RPC_URL
         sync: false

@@ -1791,3 +1791,79 @@ Behavior:
 - No decrypt-on-mount behavior was added.
 - Push payloads include event name, tx hash, activity id, and wallet only; encrypted amounts remain encrypted and are not revealed in notifications.
 
+---
+
+## W5P15 — Worker Crash Recovery + Real Push Env Fix
+
+**Completed**: 2026-05-26 — recovery patch after W5P14 regression.
+
+### Regression root cause
+
+After the notification changes, `obscura-worker` restarted and the old startup backfill called `eth_getLogs` across a very large block range. Alchemy free-tier RPC rejects ranges over 10 blocks, so the worker crashed before live indexing and new rows stopped appearing in `obscura_activity`.
+
+### Worker fix
+
+- `backend/obscura-worker/src/indexer/index.ts` now chunks every `getLogs` request to `<= 10` blocks.
+- Each chunk retries with exponential backoff and logs `attempt`, `from`, `to`, phase, and failure reason.
+- Per-log indexing failures are caught and logged; one bad log no longer kills the whole worker.
+- Notification dispatch after `insertActivity()` is non-fatal, so push failures cannot stop indexing.
+- Live indexing no longer depends on `client.watchEvent`; it uses chunked polling so the same provider limit applies to startup catch-up and live operation.
+- Live pollers start immediately from a recent safety window (`INDEXER_STARTUP_RECENT_BLOCKS=5000`) while older deep backfill runs in the background after a delay.
+- If the first startup block-number request fails, the poller recovers the recent-window start on the next successful poll instead of falling forward to latest only.
+
+### Real env correction
+
+The real worker env file `backend/obscura-worker/.env` was updated, not just `.env.example`:
+
+- Added real indexer safety values.
+- Copied the actual VAPID contact/public/private values from `backend/obscura-api/.env` into `backend/obscura-worker/.env` without printing the secret values.
+- `backend/obscura-worker/.env.example` and `render.yaml` now list the same required worker settings.
+
+### Required Render env for `obscura-worker`
+
+Non-secret values from `render.yaml`:
+
+```env
+NODE_ENV=production
+PORT=3001
+SUPABASE_URL=https://quoovjkjwgtdqwdofubh.supabase.co
+FRONTEND_URL=https://obscura-os-nine.vercel.app
+VAPID_CONTACT_EMAIL=noreply@obscura.finance
+VAPID_PUBLIC_KEY=BIgVcwUhCL93WVMnDdRT9KqySwDS4Sm9C-fSLg4dWJRdddSuLbyDv_M9R5FmDi2F8NwDuKuMtvNiZAwZQ0RH86o
+INDEXER_GETLOGS_CHUNK_BLOCKS=10
+INDEXER_GETLOGS_RETRIES=3
+INDEXER_GETLOGS_RETRY_BASE_MS=1000
+INDEXER_LIVE_POLL_MS=5000
+INDEXER_LIVE_RETRY_MAX_MS=30000
+INDEXER_STARTUP_RECENT_BLOCKS=5000
+INDEXER_BACKGROUND_BACKFILL_DELAY_MS=15000
+```
+
+Secrets that must be set manually in Render dashboard:
+
+```env
+RPC_URL=<Arbitrum Sepolia RPC URL>
+SUPABASE_SERVICE_ROLE_KEY=<quoovjkjwgtdqwdofubh service_role key>
+VAPID_PRIVATE_KEY=<same VAPID private key used by obscura-api>
+KEEPER_PRIVATE_KEY=<credit keeper bot key, only if keeper should run>
+```
+
+### Verification this session
+
+- Worker build passed: `npm run build` in `backend/obscura-worker`.
+- Local fixed indexer started and processed chunked live ranges without fatal crash loops; provider hiccups produced retries/recovery logs instead of process exit.
+- Latest reported tx was inserted into production `obscura_activity`:
+  - tx: `0x826b0fb6c4e0dc017ceda88f68edb5e1e3cea97a2e5ea990010bd4689fb171f7`
+  - event: `ObscuraStealthRegistry.Announcement`
+  - block: `271316979`
+  - activity id: `3`
+- Production API debug push test succeeded:
+  - `POST https://obscura-api-n62v.onrender.com/debug/push-test`
+  - result: `attempted: 1`, `sent: 1`, `failed: 0`, `staleRemoved: 0`
+
+### Honest remaining state
+
+- Code and local env are fixed, but Render production worker must be redeployed before claiming the deployed worker is alive on the new chunked code.
+- Browser notification appearance still requires observing the browser/device notification after redeploy or a manual debug push confirmation from the subscribed browser.
+- Do not claim full final success until Render worker health is stable, a new post-redeploy event indexes into `obscura_activity`, worker logs show notification dispatch, and the browser notification appears.
+

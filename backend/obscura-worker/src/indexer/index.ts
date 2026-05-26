@@ -19,6 +19,30 @@ import { dispatchActivityNotification } from "../notifications";
 
 const RPC_URL  = process.env.RPC_URL ?? "https://sepolia-rollup.arbitrum.io/rpc";
 const CHAIN_ID = 421614;
+const MAX_GET_LOGS_BLOCKS = 10;
+const GET_LOGS_CHUNK_BLOCKS = Math.min(
+  MAX_GET_LOGS_BLOCKS,
+  Math.max(1, Number.parseInt(process.env.INDEXER_GETLOGS_CHUNK_BLOCKS ?? "10", 10) || 10),
+);
+const GET_LOGS_RETRIES = Math.max(1, Number.parseInt(process.env.INDEXER_GETLOGS_RETRIES ?? "3", 10) || 3);
+const GET_LOGS_RETRY_BASE_MS = Math.max(250, Number.parseInt(process.env.INDEXER_GETLOGS_RETRY_BASE_MS ?? "1000", 10) || 1000);
+const LIVE_POLL_MS = Math.max(2000, Number.parseInt(process.env.INDEXER_LIVE_POLL_MS ?? "5000", 10) || 5000);
+const LIVE_RETRY_MAX_MS = Math.max(5000, Number.parseInt(process.env.INDEXER_LIVE_RETRY_MAX_MS ?? "30000", 10) || 30000);
+const STARTUP_RECENT_BLOCKS = Math.max(10, Number.parseInt(process.env.INDEXER_STARTUP_RECENT_BLOCKS ?? "5000", 10) || 5000);
+const BACKGROUND_BACKFILL_DELAY_MS = Math.max(0, Number.parseInt(process.env.INDEXER_BACKGROUND_BACKFILL_DELAY_MS ?? "15000", 10) || 15000);
+
+type IndexedEvent = {
+  readonly type: "event";
+  readonly name: string;
+  readonly inputs: readonly { readonly name: string; readonly type: string; readonly indexed?: boolean }[];
+};
+
+interface ContractConfig {
+  contractName: string;
+  address: Address;
+  events: readonly IndexedEvent[];
+  live: boolean;
+}
 
 // ─── Contracts ────────────────────────────────────────────────────────────────
 const CONTRACTS = {
@@ -33,10 +57,43 @@ const CONTRACTS = {
   ObscuraInsuranceSubscription:   "0x0CCE5DA9E447e7B4A400fC53211dd29C51CA8102" as Address,
 } as const;
 
+const INDEXER_CONTRACTS: readonly ContractConfig[] = [
+  { contractName: "ObscuraPay",                     address: CONTRACTS.ObscuraPay,                     events: PAY_EVENTS,       live: true  },
+  { contractName: "ObscuraPayStreamV3",             address: CONTRACTS.ObscuraPayStreamV3,             events: PAYSTREAM_EVENTS, live: true  },
+  { contractName: "ObscuraInvoice",                 address: CONTRACTS.ObscuraInvoice,                 events: INVOICE_EVENTS,   live: true  },
+  { contractName: "ObscuraConfidentialEscrow",      address: CONTRACTS.ObscuraConfidentialEscrow,      events: ESCROW_EVENTS,    live: true  },
+  { contractName: "ObscuraInsuranceSubscriptionV2", address: CONTRACTS.ObscuraInsuranceSubscriptionV2, events: INSURANCE_EVENTS, live: true  },
+  { contractName: "ObscuraStealthRegistry",         address: CONTRACTS.ObscuraStealthRegistry,         events: STEALTH_EVENTS,   live: true  },
+  { contractName: "ObscuraPayStreamV2",             address: CONTRACTS.ObscuraPayStreamV2,             events: PAYSTREAM_EVENTS, live: false },
+  { contractName: "ObscuraInsuranceSubscription",   address: CONTRACTS.ObscuraInsuranceSubscription,   events: INSURANCE_EVENTS, live: false },
+] as const;
+
 const client = createPublicClient({
   chain: arbitrumSepolia,
   transport: http(RPC_URL),
 });
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryDelay(attempt: number): number {
+  return Math.min(LIVE_RETRY_MAX_MS, GET_LOGS_RETRY_BASE_MS * 2 ** Math.max(0, attempt - 1));
+}
+
+function chunkEnd(fromBlock: bigint, toBlock: bigint): bigint {
+  const maxEnd = fromBlock + BigInt(GET_LOGS_CHUNK_BLOCKS - 1);
+  return maxEnd < toBlock ? maxEnd : toBlock;
+}
+
+function maxBlock(a: bigint, b: bigint): bigint {
+  return a > b ? a : b;
+}
+
+function errorMessage(error: unknown): string {
+  const err = error as { shortMessage?: string; message?: string };
+  return err.shortMessage ?? err.message ?? String(error);
+}
 
 // ─── Log handler ─────────────────────────────────────────────────────────────
 function extractWallets(args: Record<string, unknown>): string[] {
@@ -74,78 +131,219 @@ async function handleLog(
   if (!activity) return;
 
   console.log(`[indexer] event indexed ${contractName}.${log.eventName} block=${log.blockNumber} tx=${log.transactionHash?.slice(0, 12)}...`);
-  await dispatchActivityNotification(activity);
+  try {
+    await dispatchActivityNotification(activity);
+  } catch (e) {
+    console.error(`[indexer] notification dispatch error event=${contractName}.${log.eventName} tx=${log.transactionHash?.slice(0, 12)}... error=${errorMessage(e)}`);
+  }
+}
+
+async function getLogsChunk(
+  contractName: string,
+  address: Address,
+  events: readonly IndexedEvent[],
+  fromBlock: bigint,
+  toBlock: bigint,
+  phase: "backfill" | "live",
+): Promise<boolean> {
+  for (let attempt = 1; attempt <= GET_LOGS_RETRIES; attempt++) {
+    try {
+      console.log(`[indexer] ${phase} chunk ${contractName} from=${fromBlock} to=${toBlock} attempt=${attempt}/${GET_LOGS_RETRIES}`);
+      const logs = await client.getLogs({
+        address,
+        events: events as never,
+        fromBlock,
+        toBlock,
+      });
+
+      let failedLogs = 0;
+      for (const log of logs) {
+        const indexedLog = log as Log & { eventName: string; args: Record<string, unknown> };
+        try {
+          await handleLog(contractName, address, indexedLog);
+        } catch (e) {
+          failedLogs++;
+          console.error(`[indexer] handleLog error phase=${phase} contract=${contractName} block=${indexedLog.blockNumber} tx=${indexedLog.transactionHash?.slice(0, 12)}... error=${errorMessage(e)}`);
+        }
+      }
+
+      if (failedLogs > 0) {
+        throw new Error(`${failedLogs}/${logs.length} logs failed to index`);
+      }
+
+      console.log(`[indexer] ${phase} chunk complete ${contractName} from=${fromBlock} to=${toBlock} logs=${logs.length}`);
+      return true;
+    } catch (e) {
+      const message = errorMessage(e);
+      if (attempt >= GET_LOGS_RETRIES) {
+        console.error(`[indexer] ${phase} chunk failed ${contractName} from=${fromBlock} to=${toBlock} attempts=${attempt} error=${message}`);
+        return false;
+      }
+
+      const delay = retryDelay(attempt);
+      console.warn(`[indexer] ${phase} chunk retry ${contractName} from=${fromBlock} to=${toBlock} nextAttempt=${attempt + 1}/${GET_LOGS_RETRIES} backoffMs=${delay} error=${message}`);
+      await sleep(delay);
+    }
+  }
+
+  return false;
 }
 
 // ─── Backfill ─────────────────────────────────────────────────────────────────
 async function backfill(
   contractName: string,
   address: Address,
-  events: readonly { readonly type: "event"; readonly name: string; readonly inputs: readonly { readonly name: string; readonly type: string; readonly indexed?: boolean }[] }[],
-): Promise<void> {
-  const fromBlock = await getLastIndexedBlock(address.toLowerCase());
-  if (fromBlock === 0n) return;
+  events: readonly IndexedEvent[],
+  stopBlock?: bigint,
+): Promise<bigint | undefined> {
+  const lastIndexedBlock = await getLastIndexedBlock(address.toLowerCase());
+  const currentBlock = stopBlock ?? await client.getBlockNumber();
 
-  const currentBlock = await client.getBlockNumber();
-  if (fromBlock >= currentBlock) return;
-
-  console.log(`[indexer] Backfilling ${contractName} from block ${fromBlock} to ${currentBlock}`);
-
-  const logs = await client.getLogs({
-    address,
-    events: events as never,
-    fromBlock,
-    toBlock: currentBlock,
-  });
-
-  for (const log of logs) {
-    await handleLog(contractName, address, log as never);
+  if (lastIndexedBlock === 0n) {
+    console.log(`[indexer] No previous rows for ${contractName}; backfill skipped and live indexing starts at block ${currentBlock + 1n}`);
+    return currentBlock + 1n;
   }
+
+  let fromBlock = lastIndexedBlock + 1n;
+  if (fromBlock > currentBlock) {
+    console.log(`[indexer] ${contractName} already indexed through block ${lastIndexedBlock}; live starts at ${currentBlock + 1n}`);
+    return currentBlock + 1n;
+  }
+
+  console.log(`[indexer] Backfilling ${contractName} from block ${fromBlock} to ${currentBlock} chunkSize=${GET_LOGS_CHUNK_BLOCKS}`);
+
+  while (fromBlock <= currentBlock) {
+    const toBlock = chunkEnd(fromBlock, currentBlock);
+    const ok = await getLogsChunk(contractName, address, events, fromBlock, toBlock, "backfill");
+    if (!ok) {
+      console.warn(`[indexer] Backfill paused for ${contractName}; live poller will retry from block ${fromBlock}`);
+      return fromBlock;
+    }
+
+    fromBlock = toBlock + 1n;
+  }
+
+  return currentBlock + 1n;
 }
 
 // ─── Live watchers ────────────────────────────────────────────────────────────
 function watchContract(
   contractName: string,
   address: Address,
-  events: readonly object[],
+  events: readonly IndexedEvent[],
+  startBlock?: bigint,
 ): () => void {
-  return client.watchEvent({
-    address,
-    events: events as never,
-    onLogs: (logs) => {
-      for (const log of logs) {
-        handleLog(contractName, address, log as never).catch((e) =>
-          console.error(`[indexer] handleLog error: ${(e as Error).message}`)
-        );
+  let stopped = false;
+  let running = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let nextBlock = startBlock;
+  let failureCount = 0;
+
+  const schedule = (delayMs: number) => {
+    if (stopped) return;
+    timer = setTimeout(() => {
+      void poll();
+    }, delayMs);
+  };
+
+  const poll = async () => {
+    if (stopped || running) return;
+    running = true;
+
+    try {
+      const currentBlock = await client.getBlockNumber();
+      if (nextBlock === undefined) {
+        nextBlock = maxBlock(1n, currentBlock - BigInt(STARTUP_RECENT_BLOCKS) + 1n);
+        console.log(`[indexer] ${contractName} recovered startup block; live catch-up starts at ${nextBlock}`);
       }
-    },
-    onError: (e) => console.error(`[indexer] watchEvent error on ${contractName}: ${e.message}`),
-  });
+
+      if (nextBlock <= currentBlock) {
+        while (!stopped && nextBlock <= currentBlock) {
+          const fromBlock = nextBlock;
+          const toBlock = chunkEnd(fromBlock, currentBlock);
+          const ok = await getLogsChunk(contractName, address, events, fromBlock, toBlock, "live");
+          if (!ok) {
+            failureCount++;
+            const delay = Math.min(LIVE_RETRY_MAX_MS, retryDelay(failureCount));
+            console.warn(`[indexer] live recovery scheduled ${contractName} from=${fromBlock} retryInMs=${delay} failures=${failureCount}`);
+            schedule(delay);
+            return;
+          }
+
+          nextBlock = toBlock + 1n;
+        }
+
+        failureCount = 0;
+      }
+
+      schedule(LIVE_POLL_MS);
+    } catch (e) {
+      failureCount++;
+      const delay = Math.min(LIVE_RETRY_MAX_MS, retryDelay(failureCount));
+      console.error(`[indexer] live poll error ${contractName} retryInMs=${delay} failures=${failureCount} error=${errorMessage(e)}`);
+      schedule(delay);
+    } finally {
+      running = false;
+    }
+  };
+
+  console.log(`[indexer] Watching ${contractName} from block ${startBlock ?? "latest"} pollMs=${LIVE_POLL_MS} chunkSize=${GET_LOGS_CHUNK_BLOCKS}`);
+  schedule(0);
+
+  return () => {
+    stopped = true;
+    if (timer) clearTimeout(timer);
+  };
 }
 
 // ─── Entry ────────────────────────────────────────────────────────────────────
 export async function startIndexer(): Promise<() => void> {
-  console.log(`[indexer] Starting — RPC: ${RPC_URL}`);
+  console.log(`[indexer] Starting RPC=${RPC_URL} chunkSize=${GET_LOGS_CHUNK_BLOCKS} retries=${GET_LOGS_RETRIES} livePollMs=${LIVE_POLL_MS} startupRecentBlocks=${STARTUP_RECENT_BLOCKS}`);
 
-  await backfill("ObscuraPay",                     CONTRACTS.ObscuraPay,                     PAY_EVENTS);
-  await backfill("ObscuraPayStreamV3",             CONTRACTS.ObscuraPayStreamV3,             PAYSTREAM_EVENTS);
-  await backfill("ObscuraInvoice",                 CONTRACTS.ObscuraInvoice,                 INVOICE_EVENTS);
-  await backfill("ObscuraConfidentialEscrow",      CONTRACTS.ObscuraConfidentialEscrow,      ESCROW_EVENTS);
-  await backfill("ObscuraInsuranceSubscriptionV2", CONTRACTS.ObscuraInsuranceSubscriptionV2, INSURANCE_EVENTS);
-  await backfill("ObscuraStealthRegistry",         CONTRACTS.ObscuraStealthRegistry,         STEALTH_EVENTS);
-  await backfill("ObscuraPayStreamV2",             CONTRACTS.ObscuraPayStreamV2,             PAYSTREAM_EVENTS);
-  await backfill("ObscuraInsuranceSubscription",   CONTRACTS.ObscuraInsuranceSubscription,   INSURANCE_EVENTS);
+  let startupBlock: bigint | undefined;
+  try {
+    startupBlock = await client.getBlockNumber();
+  } catch (e) {
+    console.error(`[indexer] startup block fetch failed; live watchers will start at latest once RPC recovers. error=${errorMessage(e)}`);
+  }
 
-  const unwatchers = [
-    watchContract("ObscuraPay",                     CONTRACTS.ObscuraPay,                     PAY_EVENTS),
-    watchContract("ObscuraPayStreamV3",             CONTRACTS.ObscuraPayStreamV3,             PAYSTREAM_EVENTS),
-    watchContract("ObscuraInvoice",                 CONTRACTS.ObscuraInvoice,                 INVOICE_EVENTS),
-    watchContract("ObscuraConfidentialEscrow",      CONTRACTS.ObscuraConfidentialEscrow,      ESCROW_EVENTS),
-    watchContract("ObscuraInsuranceSubscriptionV2", CONTRACTS.ObscuraInsuranceSubscriptionV2, INSURANCE_EVENTS),
-    watchContract("ObscuraStealthRegistry",         CONTRACTS.ObscuraStealthRegistry,         STEALTH_EVENTS),
-  ];
+  const recentStartBlock = startupBlock === undefined
+    ? undefined
+    : maxBlock(1n, startupBlock - BigInt(STARTUP_RECENT_BLOCKS) + 1n);
+
+  const liveContracts = INDEXER_CONTRACTS.filter((contract) => contract.live);
+  const unwatchers = liveContracts.map((contract) =>
+    watchContract(
+      contract.contractName,
+      contract.address,
+      contract.events,
+      recentStartBlock,
+    )
+  );
 
   console.log(`[indexer] Watching ${unwatchers.length} contracts for live events`);
+
+  void (async () => {
+    if (BACKGROUND_BACKFILL_DELAY_MS > 0) {
+      console.log(`[indexer] Background backfill delayed ${BACKGROUND_BACKFILL_DELAY_MS}ms so live catch-up can run first`);
+      await sleep(BACKGROUND_BACKFILL_DELAY_MS);
+    }
+
+    const deepBackfillStopBlock = recentStartBlock === undefined ? undefined : recentStartBlock - 1n;
+    for (const contract of INDEXER_CONTRACTS) {
+      try {
+        const stopBlock = contract.live ? deepBackfillStopBlock : undefined;
+        if (stopBlock !== undefined && stopBlock < 1n) {
+          console.log(`[indexer] Deep backfill skipped ${contract.contractName}; recent live window covers all startup blocks`);
+          continue;
+        }
+        await backfill(contract.contractName, contract.address, contract.events, stopBlock);
+      } catch (e) {
+        console.error(`[indexer] background backfill error ${contract.contractName}; worker remains alive. error=${errorMessage(e)}`);
+      }
+    }
+    console.log("[indexer] Background backfill pass complete");
+  })();
 
   return () => unwatchers.forEach((u) => u());
 }

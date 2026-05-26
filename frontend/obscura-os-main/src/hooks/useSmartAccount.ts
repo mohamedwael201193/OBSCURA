@@ -179,8 +179,8 @@ export function useSmartAccount(): UseSmartAccountReturn {
 
     setPartial({ status: "deploying", error: null });
     try {
-      // Register passkey (shows browser dialog)
-      const passkey = await registerPasskey(eoaAddress);
+      // Reuse the stored passkey when deploying against a new factory; otherwise enroll one.
+      const passkey = await getPasskey(eoaAddress) ?? await registerPasskey(eoaAddress);
 
       // Predict account address
       const accountAddress = await publicClient.readContract({

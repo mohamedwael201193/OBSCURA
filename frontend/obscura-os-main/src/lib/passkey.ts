@@ -4,12 +4,15 @@
  * Signing flow:
  *   register()   → generates WebAuthn credential, stores in IndexedDB
  *   getKey()     → retrieves stored key info (public key x/y coords)
- *   sign(hash)   → WebAuthn authentication assertion, returns P-256 sig bytes
+ *   sign(hash)   → WebAuthn assertion, returns typed contract signature bytes
  *
- * Contract signature format for P-256:
- *   [0x01, r(32 bytes), s(32 bytes)] = 65 bytes
- *   prehash: false — the raw UserOpHash is signed directly
+ * Contract signature format for passkeys:
+ *   0x01 || abi.encode(authenticatorData, clientDataJSON, challengeOffset, r, s)
+ *   The contract checks clientDataJSON.challenge == base64url(UserOpHash), then
+ *   verifies P-256 over sha256(authenticatorData || sha256(clientDataJSON)).
  */
+
+import { concat, encodeAbiParameters, parseAbiParameters, type Hex } from "viem";
 
 // ─── IndexedDB key ────────────────────────────────────────────────────────────
 const DB_NAME    = "obscura-passkeys";
@@ -51,8 +54,19 @@ function bytesToBase64url(buf: ArrayBuffer | Uint8Array): string {
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-function bytesToHex(buf: Uint8Array): `0x${string}` {
-  return ("0x" + Array.from(buf).map((b) => b.toString(16).padStart(2, "0")).join("")) as `0x${string}`;
+function bytesToHex(buf: Uint8Array): Hex {
+  return ("0x" + Array.from(buf).map((b) => b.toString(16).padStart(2, "0")).join("")) as Hex;
+}
+
+function indexOfBytes(haystack: Uint8Array, needle: Uint8Array): number {
+  if (needle.length === 0 || needle.length > haystack.length) return -1;
+  outer: for (let i = 0; i <= haystack.length - needle.length; i++) {
+    for (let j = 0; j < needle.length; j++) {
+      if (haystack[i + j] !== needle[j]) continue outer;
+    }
+    return i;
+  }
+  return -1;
 }
 
 // ─── Extract P-256 (x, y) from SPKI/DER bytes ────────────────────────────────
@@ -195,21 +209,20 @@ export async function getPasskey(ownerAddress: string): Promise<StoredPasskey | 
 }
 
 /**
- * Sign a 32-byte hash with the stored passkey.
- * Returns a 65-byte signature: [0x01, r(32), s(32)]
- * for the contract's P-256 validation path.
- *
- * prehash: false — the hash is signed directly (not double-hashed).
+ * Sign a 32-byte UserOp hash with the stored passkey.
+ * WebAuthn signs authenticatorData || sha256(clientDataJSON), while the
+ * UserOp hash is embedded as the base64url challenge inside clientDataJSON.
  */
 export async function signWithPasskey(
   ownerAddress: string,
-  hash: `0x${string}`,
-): Promise<`0x${string}`> {
+  hash: Hex,
+): Promise<Hex> {
   const stored = await getPasskey(ownerAddress);
   if (!stored) throw new Error("No passkey registered for this address. Please enroll first.");
 
   // Decode the hex UserOpHash directly to bytes — no base64 round-trip needed.
   const hashBytes = Uint8Array.from(hash.slice(2).match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+  const expectedChallenge = bytesToBase64url(hashBytes);
 
   const assertion = await navigator.credentials.get({
     publicKey: {
@@ -228,14 +241,28 @@ export async function signWithPasskey(
 
   const authResponse = assertion.response as AuthenticatorAssertionResponse;
   const { r, s } = parseDERSignature(authResponse.signature);
+  const authenticatorData = new Uint8Array(authResponse.authenticatorData);
+  const clientDataJSON = new Uint8Array(authResponse.clientDataJSON);
 
-  // Build 65-byte sig: type byte 0x01 + r (32 bytes) + s (32 bytes)
-  const sig = new Uint8Array(65);
-  sig[0] = 0x01;
-  sig.set(bigintTo32Bytes(r), 1);
-  sig.set(bigintTo32Bytes(s), 33);
+  const challengePrefix = '"challenge":"';
+  const challengeMarker = new TextEncoder().encode(`${challengePrefix}${expectedChallenge}`);
+  const markerOffset = indexOfBytes(clientDataJSON, challengeMarker);
+  if (markerOffset === -1) {
+    throw new Error("Passkey response challenge did not match the UserOp hash");
+  }
 
-  return bytesToHex(sig);
+  const payload = encodeAbiParameters(
+    parseAbiParameters("bytes authenticatorData, bytes clientDataJSON, uint256 challengeOffset, bytes32 r, bytes32 s"),
+    [
+      bytesToHex(authenticatorData),
+      bytesToHex(clientDataJSON),
+      BigInt(markerOffset + challengePrefix.length),
+      bytesToHex(bigintTo32Bytes(r)),
+      bytesToHex(bigintTo32Bytes(s)),
+    ],
+  );
+
+  return concat(["0x01", payload]);
 }
 
 /** True if the browser supports WebAuthn platform authenticators */

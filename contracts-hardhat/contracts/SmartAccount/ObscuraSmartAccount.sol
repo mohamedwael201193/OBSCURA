@@ -5,15 +5,14 @@ import "./IEntryPointV07.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /// @title ObscuraSmartAccount — ERC-4337 v0.7 account for Obscura Pay
-/// @notice Supports two signer modes, discriminated by signature length:
-///   - EOA (ECDSA): 65-byte signature → ecrecover against userOpHash
-///   - Passkey (P-256): 64-byte r‖s + 1-byte flag (0x01) = 65 bytes total,
-///     but prefixed with 0x00 flag in some modes. We discriminate by flag byte:
-///     sig[0] == 0x00 → EOA fallback, sig[0] == 0x01 → P-256 via RIP-7212 precompile.
+/// @notice Supports two signer modes, discriminated by the first signature byte:
+///   - sig[0] == 0x00 → EOA fallback via ecrecover against userOpHash
+///   - sig[0] == 0x01 → WebAuthn/P-256 via RIP-7212 precompile
 ///     This allows future signature type extensibility.
 /// @dev Security notes:
 ///   - The P-256 precompile (0x100) returns (1) on success, (0) on failure.
-///   - We pass `prehash: false` — the userOpHash is used directly, NOT re-hashed.
+///   - Browser WebAuthn assertions sign sha256(authenticatorData || sha256(clientDataJSON)).
+///     The userOpHash is carried as the WebAuthn challenge and checked on-chain.
 ///   - ERC-1271 has a length guard so EOA / P-256 cannot be confused.
 ///   - Only the EntryPoint can call validateUserOp.
 ///   - Re-entrancy guard on `execute` and `executeBatch`.
@@ -138,10 +137,9 @@ contract ObscuraSmartAccount is IAccount {
             if (sig.length != 65) return SIG_VALIDATION_FAILURE;
             return _validateEOA(userOpHash, sig[1:65]) ? SIG_VALIDATION_SUCCESS : SIG_VALIDATION_FAILURE;
         } else if (sigType == 0x01) {
-            // P-256 passkey path — r‖s, 64 bytes (0x01 + r[32] + s[32])
-            if (sig.length != 65) return SIG_VALIDATION_FAILURE;
+            // WebAuthn P-256 passkey path.
             if (!passkeyEnabled) return SIG_VALIDATION_FAILURE;
-            return _validateP256(userOpHash, sig[1:65]) ? SIG_VALIDATION_SUCCESS : SIG_VALIDATION_FAILURE;
+            return _validateWebAuthn(userOpHash, sig[1:]) ? SIG_VALIDATION_SUCCESS : SIG_VALIDATION_FAILURE;
         }
 
         return SIG_VALIDATION_FAILURE;
@@ -156,8 +154,8 @@ contract ObscuraSmartAccount is IAccount {
 
         if (sigType == 0x00 && signature.length == 65) {
             if (_validateEOA(hash, signature[1:65])) return 0x1626ba7e;
-        } else if (sigType == 0x01 && signature.length == 65 && passkeyEnabled) {
-            if (_validateP256(hash, signature[1:65])) return 0x1626ba7e;
+        } else if (sigType == 0x01 && passkeyEnabled) {
+            if (_validateWebAuthn(hash, signature[1:])) return 0x1626ba7e;
         }
         return bytes4(0xffffffff);
     }
@@ -235,20 +233,91 @@ contract ObscuraSmartAccount is IAccount {
         return recovered == owner;
     }
 
-    /// @dev Validate a P-256 signature via RIP-7212 precompile.
-    ///      sig must be 64 bytes: r[32] ‖ s[32].
-    ///      The precompile input: hash(32) ‖ r(32) ‖ s(32) ‖ x(32) ‖ y(32)
-    ///      Returns 32 bytes: 0x...01 on success.
-    function _validateP256(bytes32 hash, bytes calldata sig) internal view returns (bool) {
+    /// @dev Validate a browser WebAuthn assertion via RIP-7212.
+    ///      Encoded signature payload after the 0x01 type byte:
+    ///      abi.encode(bytes authenticatorData, bytes clientDataJSON, uint256 challengeOffset, bytes32 r, bytes32 s)
+    function _validateWebAuthn(bytes32 expectedChallenge, bytes calldata encodedSig) internal view returns (bool) {
         if (!passkeyEnabled) return false;
-        if (sig.length != 64) return false;
+        if (encodedSig.length < 160) return false;
 
-        bytes32 r = bytes32(sig[:32]);
-        bytes32 s = bytes32(sig[32:64]);
+        (
+            bytes memory authenticatorData,
+            bytes memory clientDataJSON,
+            uint256 challengeOffset,
+            bytes32 r,
+            bytes32 s
+        ) = abi.decode(encodedSig, (bytes, bytes, uint256, bytes32, bytes32));
 
-        bytes memory input = abi.encodePacked(hash, r, s, passkeyX, passkeyY);
+        if (!_validateClientDataChallenge(clientDataJSON, expectedChallenge, challengeOffset)) return false;
+        if (authenticatorData.length < 37) return false;
+        // Require User Present (UP) bit. UV can remain browser/user-config dependent.
+        if ((uint8(authenticatorData[32]) & 0x01) != 0x01) return false;
+
+        bytes32 clientDataHash = sha256(clientDataJSON);
+        bytes32 webAuthnDigest = sha256(bytes.concat(authenticatorData, abi.encodePacked(clientDataHash)));
+
+        return _verifyP256Digest(webAuthnDigest, r, s);
+    }
+
+    function _verifyP256Digest(bytes32 digest, bytes32 r, bytes32 s) internal view returns (bool) {
+        bytes memory input = abi.encodePacked(digest, r, s, passkeyX, passkeyY);
         (bool ok, bytes memory result) = P256_VERIFIER.staticcall(input);
         if (!ok || result.length == 0) return false;
         return abi.decode(result, (uint256)) == 1;
+    }
+
+    function _validateClientDataChallenge(
+        bytes memory clientDataJSON,
+        bytes32 expectedChallenge,
+        uint256 challengeOffset
+    ) internal pure returns (bool) {
+        bytes memory typePrefix = bytes('{"type":"webauthn.get"');
+        if (!_startsWith(clientDataJSON, typePrefix)) return false;
+
+        bytes memory challengeKey = bytes('"challenge":"');
+        if (challengeOffset < challengeKey.length) return false;
+        if (!_bytesEqualAt(clientDataJSON, challengeOffset - challengeKey.length, challengeKey)) return false;
+
+        bytes memory expected = _base64UrlEncode32(expectedChallenge);
+        if (!_bytesEqualAt(clientDataJSON, challengeOffset, expected)) return false;
+        if (challengeOffset + expected.length >= clientDataJSON.length) return false;
+        if (clientDataJSON[challengeOffset + expected.length] != bytes1('"')) return false;
+
+        return true;
+    }
+
+    function _startsWith(bytes memory data, bytes memory prefix) internal pure returns (bool) {
+        if (data.length < prefix.length) return false;
+        return _bytesEqualAt(data, 0, prefix);
+    }
+
+    function _bytesEqualAt(bytes memory data, uint256 offset, bytes memory expected) internal pure returns (bool) {
+        if (offset + expected.length > data.length) return false;
+        for (uint256 i = 0; i < expected.length; i++) {
+            if (data[offset + i] != expected[i]) return false;
+        }
+        return true;
+    }
+
+    function _base64UrlEncode32(bytes32 value) internal pure returns (bytes memory out) {
+        bytes memory table = bytes("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_");
+        bytes memory input = abi.encodePacked(value);
+        out = new bytes(43);
+        uint256 j = 0;
+
+        for (uint256 i = 0; i < 30; i += 3) {
+            uint24 triple = (uint24(uint8(input[i])) << 16)
+                | (uint24(uint8(input[i + 1])) << 8)
+                | uint24(uint8(input[i + 2]));
+            out[j++] = table[uint256(triple >> 18) & 0x3f];
+            out[j++] = table[uint256(triple >> 12) & 0x3f];
+            out[j++] = table[uint256(triple >> 6) & 0x3f];
+            out[j++] = table[uint256(triple) & 0x3f];
+        }
+
+        uint24 last = (uint24(uint8(input[30])) << 16) | (uint24(uint8(input[31])) << 8);
+        out[j++] = table[uint256(last >> 18) & 0x3f];
+        out[j++] = table[uint256(last >> 12) & 0x3f];
+        out[j++] = table[uint256(last >> 6) & 0x3f];
     }
 }

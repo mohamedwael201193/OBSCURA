@@ -446,31 +446,33 @@ changes. Focus on hierarchy, density, onboarding, workspace UX.
 
 | Contract | Address |
 |----------|---------|
-| `ObscuraSmartAccountFactory` | `0xbe8dC1d4Dcc368e0dBb6c7A5BDFfac2Fe72AFd05` |
-| `ObscuraSmartAccount` (impl) | `0xe3c51Bb4BBCde1Ac6DBb590b2bc3fAdb7F99cd1B` |
+| `ObscuraSmartAccountFactory` | `0xFaC683D8AB872cCf5eBfaE1659a9CD44C6FB4feB` |
+| `ObscuraSmartAccount` (impl) | `0x0415945e442C4C5533367Fbb6f0D40528e0D7809` |
 | `ObscuraPaymaster` | `0x9B1F61A65467F11339A8d0834349Be32EB2CF878` |
 | ERC-4337 EntryPoint v0.7 | `0x0000000071727De22E5E9d8BAf0edAc6f37da032` |
 
 Paymaster funded: 0.5 ETH via EntryPoint deposit.
 All 10 Obscura Pay contracts whitelisted.
 Tests: 40/40 passing.
+Old raw-UserOpHash factory archived: `0xbe8dC1d4Dcc368e0dBb6c7A5BDFfac2Fe72AFd05`.
 
 ### Frontend files (no TS errors)
 
 | File | Purpose |
 |------|---------|
 | `src/config/smartAccount.ts` | Factory/paymaster addresses + chain config |
-| `src/lib/passkey.ts` | P-256 WebAuthn create/get, `prehash: false` always |
+| `src/lib/passkey.ts` | P-256 WebAuthn create/get, full assertion payload signing |
 | `src/lib/userop.ts` | Build + sign + submit PackedUserOperation v0.7 |
 | `src/hooks/useSmartAccount.ts` | Account address derivation + passkey enrollment state |
 | `src/hooks/useUnifiedWrite.ts` | Route to EOA or SmartAccount based on enrollment |
 | `src/components/harmony/PasskeyEnrollModal.tsx` | Enrollment UX — no auto-decrypt on mount |
 
 ### Critical constants
-- `prehash: false` — ALWAYS on all P-256 signatures (RIP-7212 precompile `0x0000000000000000000000000000000000000100`)
+- Browser passkeys sign `authenticatorData || sha256(clientDataJSON)`, NOT raw `userOpHash`
+- Contract verifies `clientDataJSON.challenge == base64url(userOpHash)` before RIP-7212
 - ERC-4337 v0.7 uses `PackedUserOperation` (not v0.6 struct)
 - Factory function must NOT be named `getAddress` (Solidity reserved)
-- `VITE_SMART_ACCOUNT_FACTORY_ADDRESS=0xbe8dC1d4Dcc368e0dBb6c7A5BDFfac2Fe72AFd05`
+- `VITE_SMART_ACCOUNT_FACTORY_ADDRESS=0xFaC683D8AB872cCf5eBfaE1659a9CD44C6FB4feB`
 - `VITE_PAYMASTER_ADDRESS=0x9B1F61A65467F11339A8d0834349Be32EB2CF878`
 
 ---
@@ -854,3 +856,362 @@ opacity/blur was reduced to let the underlying page show through clearly.
 |--------|--------|
 | `eab0822` | PasskeyEnrollModal redesign (bottom-sheet → centered dialog) |
 | `5c2b5d1` | P-256 key extraction fix + lighter modal backdrop |
+
+---
+
+## W5P9.2 — Bundler 400 "callGasLimit undefined" fix ✅
+
+**Completed**: commit `b4b667c`
+
+### Bug
+
+**Symptom**: Smart mode send → passkey signs → relay returns 400:
+```
+Bundler error: Validation error: Invalid input: expected string, received undefined at "params[0].userOp.callGasLimit"
+```
+
+### Root cause (two issues)
+
+**Issue 1 — Relay forwarded packed on-chain struct to bundler's JSON-RPC endpoint**
+
+The on-chain ERC-4337 v0.7 struct uses packed fields:
+- `accountGasLimits` (bytes32): `verificationGasLimit(128-bit) | callGasLimit(128-bit)`
+- `gasFees` (bytes32): `maxPriorityFeePerGas(128-bit) | maxFeePerGas(128-bit)`
+
+But the bundler's `eth_sendUserOperation` JSON-RPC API expects the **unpacked** v0.7 format:
+- `callGasLimit`, `verificationGasLimit`, `maxFeePerGas`, `maxPriorityFeePerGas` — as individual hex strings
+- `factory` + `factoryData` instead of `initCode`
+- `paymaster` + `paymasterVerificationGasLimit` + `paymasterPostOpGasLimit` + `paymasterData` instead of `paymasterAndData`
+
+The relay was forwarding `op` (packed) directly → bundler couldn't find `callGasLimit` → 400.
+
+**Fix** — added `unpackForBundler(op)` in `backend/obscura-api/src/relay.ts`:
+```typescript
+const gasLimits = BigInt(op.accountGasLimits);
+const verificationGasLimit = toHex(gasLimits >> 128n);
+const callGasLimit         = toHex(gasLimits & ((1n << 128n) - 1n));
+
+const gasFeesVal = BigInt(op.gasFees);
+const maxPriorityFeePerGas = toHex(gasFeesVal >> 128n);
+const maxFeePerGas         = toHex(gasFeesVal & ((1n << 128n) - 1n));
+// + initCode → factory/factoryData split
+// + paymasterAndData → paymaster/paymasterVerificationGasLimit/paymasterPostOpGasLimit/paymasterData split
+```
+
+**Issue 2 — `paymasterAndData` byte order was reversed in frontend**
+
+ERC-4337 v0.7 spec: `paymaster(20) + paymasterVerificationGasLimit(16) + paymasterPostOpGasLimit(16)`
+
+Frontend was building: `paymaster(20) + postOpGasLimit(16) + verificationGasLimit(16)` (SWAPPED).
+
+**Fix** in `frontend/obscura-os-main/src/lib/userop.ts`:
+```typescript
+// Before (wrong):
+paymasterAndData = concat([PAYMASTER_ADDRESS, postOpGasBytes, verificationGasBytes]);
+// After (correct):
+paymasterAndData = concat([PAYMASTER_ADDRESS, verificationGasBytes, postOpGasBytes]);
+```
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `backend/obscura-api/src/relay.ts` | Added `unpackForBundler()`, `BundlerUserOp` interface; `toHex` import; `sendToBundler` now uses unpacked format |
+| `frontend/obscura-os-main/src/lib/userop.ts` | Fixed `paymasterAndData` byte order: verification before postOp |
+
+
+---
+
+## W5P9.1 — `atob` crash fix in signWithPasskey ✅
+
+**Completed**: commit `00d0c23`
+
+### Bug
+
+**Symptom**: User selects Smart Mode → sends ocUSDC → MetaMask popup appears (expected: one-time operator approval) → user confirms → app throws:
+```
+Failed to execute 'atob' on 'Window': The string to be decoded is not correctly encoded.
+```
+
+### Root cause (two issues in `passkey.ts`)
+
+**Issue 1 — Wrong base64url padding formula**
+
+Old code:
+```typescript
+const padded = b64.replace(/-/g, "+").replace(/_/g, "/") + "==".slice((b64.length + 3) & 3);
+```
+
+The `& 3` formula produces wrong padding for non-multiples of 4:
+| `length % 4` | Chars needed | Formula gives | Correct |
+|---|---|---|---|
+| 0 | 0 | `"==".slice(3)` = `""` | ✓ |
+| 2 | 2 | `"==".slice(1)` = `"="` | ✗ (gave 1 instead of 2) |
+| 3 | 1 | `"==".slice(2)` = `""` | ✗ (gave 0 instead of 1) |
+
+A 32-byte hash encoded as base64url = 43 chars. `43 % 4 = 3` → needs `"="` but got `""` → `atob` received an unpadded string → crash.
+
+**Fixed formula**:
+```typescript
+const base64 = b64.replace(/-/g, "+").replace(/_/g, "/");
+const padded = base64 + "===".slice(0, (4 - base64.length % 4) % 4);
+// (4 - len%4) % 4: 0→0, 2→2, 3→1  ✓
+```
+
+**Issue 2 — Unnecessary base64url round-trip**
+
+Old `signWithPasskey`:
+```typescript
+const hashBytes = base64urlToBytes(
+  bytesToBase64url(Uint8Array.from(hash.slice(2).match(/.{2}/g)!.map(...)))
+);
+```
+hex → bytes → base64url → `atob()` → bytes: the `atob` call is what failed.
+
+Fixed — decode hex directly, no round-trip:
+```typescript
+const hashBytes = Uint8Array.from(hash.slice(2).match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+```
+
+### Expected UX after fix
+
+1. Smart Mode selected → Send clicked
+2. FHE encrypt runs
+3. **First send only**: MetaMask popup (EOA approves smart account as FHERC20 operator) — expected, one-time
+4. User confirms MetaMask
+5. **Passkey prompt appears** (browser biometric) — was crashing before fix
+6. User approves passkey → UserOp submitted via bundler
+7. Transfer completes — no more MetaMask after step 3
+
+### File changed
+
+| File | Change |
+|------|--------|
+| `src/lib/passkey.ts` | Fix `base64urlToBytes` padding formula; remove `atob` round-trip in `signWithPasskey` |
+
+
+---
+
+## W5P9.3 — AA33 Paymaster TargetNotWhitelisted Fix ✅
+
+**Completed**: current session — script `contracts-hardhat/scripts/addPaymasterWhitelist.ts`
+
+### Bug
+
+**Symptom**: Smart mode send (passkey enrolled, operator approved) → relay submits UserOp → bundler returns:
+```
+AA33 reverted: 0x47ccabe7000000000000000000000000ed46020df8abe7bb1e096f27d089f4326d223a53
+```
+Error selector `0x47ccabe7` = `TargetNotWhitelisted(address)` from `ObscuraPaymaster.sol`.
+
+### Root cause
+
+`ObscuraPaymaster.validatePaymasterUserOp` extracts the call target from
+`UserOp.callData` (reading the first argument of `execute(address,uint256,bytes)`
+selector `0xb61d27f6`), then checks `whitelistedTargets[callTarget]`.
+
+The paymaster was deployed and initially configured in `deploySmartAccount.ts`
+with 10 whitelisted contracts — **but `ocUSDC_Pay` was NOT included**.
+Additionally, three Wave 5 v3 contracts (PayStreamV3, InsuranceSubscriptionV2,
+PayrollResolverV3) replaced their v2 predecessors after the paymaster was already
+deployed, so they were also absent from the whitelist.
+
+### Fix
+
+Script `contracts-hardhat/scripts/addPaymasterWhitelist.ts` calls `whitelistTarget(addr, true)`
+from the governance wallet for each missing contract. All 4 transactions confirmed on Arbitrum Sepolia.
+
+### Contracts whitelisted (on-chain, confirmed)
+
+| Contract | Address |
+|----------|---------|
+| `ocUSDC_Pay` | `0xEd46020Df8abe7BB1E096f27d089F4326D223a53` |
+| `ObscuraPayStreamV3` | `0xE4328F139F03138D63f7fdF90A8Ef240e04653fA` |
+| `ObscuraInsuranceSubscriptionV2` | `0xEA9Fc5800F41d090dFB90f9735F4CF3824d6743D` |
+| `ObscuraPayrollResolverV3` | `0xB077c231448EF2252060E4B4dD404078DBD94180` |
+
+Governance wallet: `0xD208aC8327e6479967693Af2F2216e1612D0171A`
+Paymaster: `0x9B1F61A65467F11339A8d0834349Be32EB2CF878`
+
+### How to add future contracts
+
+Run: `npx hardhat run scripts/addPaymasterWhitelist.ts --network arb-sepolia`
+(script is idempotent — skips already-whitelisted targets).
+
+Or add to `TO_WHITELIST` array and rerun. Must be called from governance wallet.
+
+---
+
+## W5P9.4 — AA24 WebAuthn Signature Fix ✅
+
+**Completed**: current session — final factory `0xFaC683D8AB872cCf5eBfaE1659a9CD44C6FB4feB`
+
+### Bug
+
+**Symptom**: Smart Mode direct ocUSDC send shows the browser passkey prompt; after user clicks Continue, relay returns:
+```
+Relay error 400: {"error":"Bundler error: UserOperation reverted with reason: AA24 signature error"}
+```
+
+### Root cause
+
+The old smart account treated passkey signatures as raw P-256 signatures over `userOpHash`:
+```solidity
+_validateP256(userOpHash, sig[1:65])
+```
+
+Browser WebAuthn never signs the raw challenge. It signs:
+```
+sha256(authenticatorData || sha256(clientDataJSON))
+```
+where `clientDataJSON.challenge` contains `base64url(userOpHash)`. The frontend was returning only `0x01 || r || s`, so the contract verified the wrong digest and EntryPoint rejected with AA24.
+
+### Fix
+
+`src/lib/passkey.ts` now returns:
+```
+0x01 || abi.encode(bytes authenticatorData, bytes clientDataJSON, uint256 challengeOffset, bytes32 r, bytes32 s)
+```
+
+`ObscuraSmartAccount.sol` now:
+- decodes the WebAuthn assertion payload
+- verifies `clientDataJSON` starts with `{"type":"webauthn.get"`
+- verifies exact challenge match: `base64url(userOpHash)` followed by closing quote
+- requires the WebAuthn User Present flag in `authenticatorData`
+- verifies RIP-7212 P-256 over `sha256(authenticatorData || sha256(clientDataJSON))`
+
+### Deployment
+
+Old clones are immutable EIP-1167 accounts, so contract logic required a new factory.
+
+| Contract | Address |
+|----------|---------|
+| Old raw-hash factory | `0xbe8dC1d4Dcc368e0dBb6c7A5BDFfac2Fe72AFd05` |
+| New WebAuthn factory | `0xFaC683D8AB872cCf5eBfaE1659a9CD44C6FB4feB` |
+| New implementation | `0x0415945e442C4C5533367Fbb6f0D40528e0D7809` |
+| Existing paymaster | `0x9B1F61A65467F11339A8d0834349Be32EB2CF878` |
+
+Deploy script: `contracts-hardhat/scripts/deploySmartAccountFactoryWebAuthn.ts`.
+Frontend `.env`: `VITE_SMART_ACCOUNT_FACTORY_ADDRESS=0xFaC683D8AB872cCf5eBfaE1659a9CD44C6FB4feB`.
+Frontend guard: `src/config/smartAccount.ts` falls back to the final WebAuthn factory if Vercel/local env still contains a known deprecated factory (`0xbe8d...` raw-hash or `0x1736...` loose-challenge).
+
+### User migration note
+
+Existing smart accounts from the old factory cannot be upgraded. Users must deploy a smart account from the new factory. The frontend now reuses the stored passkey when deploying against a new factory, so users do not need a duplicate passkey unless they choose to re-enroll.
+
+### Verification
+
+- `npx hardhat compile` ✅
+- `npx hardhat test test/ObscuraSmartAccount.test.ts` → 40 passing ✅
+- `npm run build` in `frontend/obscura-os-main` ✅
+
+---
+
+## W5P10 — Smart Mode Full Routing (All Pay Features) ✅
+
+**Completed**: commits `1ac0a5d` (UI toggle), `fdb83fa` (all components fixed)
+
+### Problem
+PaymentModeBar toggle built in prior session, but every feature still opened MetaMask in Smart Mode.
+Root cause: every hook/component called `writeContractAsync` directly from `useWriteContract`, bypassing `useSmartAccount` entirely.
+
+### Solution architecture
+
+#### `useUnifiedWrite.ts` — rewritten to dynamic callable API
+
+```typescript
+export function useUnifiedWrite() {
+  const { write } = useUnifiedWrite();
+  // Dynamic call (no static opts at hook init):
+  const hash = await write({
+    abi, address, functionName, args, gas?,
+    mode?: "eoa" | "smart-account"  // override mode; default = PaymentModeContext
+  });
+}
+```
+
+- Smart path: `encodeFunctionData(...)` → `sendUserOp(target, callData, value?)`
+- EOA path: `writeContractAsync({ abi, address, functionName, args, account: eoaAddress, chain: arbitrumSepolia, gas })`
+- Mode check: `opts.mode` override → else `contextMode === "smart"`
+- Smart active: `isDeployed && !!accountAddress`
+
+#### `useOcUSDCTransfer.ts` — FHE operator approval pattern
+
+FHERC20 `confidentialTransfer(to, enc)` can ONLY be called by the token holder (EOA).
+Smart account cannot call it directly.
+
+**Solution**: EOA approves smart account as operator (one-time MetaMask), then smart account calls `confidentialTransferFrom(eoaAddr, to, enc)`.
+
+```typescript
+// One-time setup (one MetaMask popup)
+const approveSmartOperator = async (smartAddr: Address) => {
+  const expiry = BigInt(Math.floor(Date.now() / 1000) + 365 * 24 * 3600);
+  const hash = await writeContractAsync({
+    address: OBSCURA_PAY_OCUSDC_ADDRESS, abi: CONFIDENTIAL_TOKEN_ABI,
+    functionName: 'setOperator', args: [smartAddr, expiry],  // expiry is uint48
+    account: address, chain: arbitrumSepolia
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+};
+
+// Check before each send (read-only)
+const checkIsOperator = async (smartAddr: Address): Promise<boolean> => {
+  return await publicClient.readContract({
+    address: OBSCURA_PAY_OCUSDC_ADDRESS, abi: CONFIDENTIAL_TOKEN_ABI,
+    functionName: 'isOperator', args: [address, smartAddr],  // (holder, spender)
+  }) as boolean;
+};
+
+// Smart transfer via sendUserOp
+const callData = encodeFunctionData({
+  abi: CONFIDENTIAL_TOKEN_ABI,
+  functionName: 'confidentialTransferFrom',
+  args: [address, to, encryptedInputs[0]]  // (from=EOA, to, InEuint64)
+}) as Hex;
+await sendUserOp(OBSCURA_PAY_OCUSDC_ADDRESS, callData);
+```
+
+**Critical ABI facts**:
+- `isOperator(holder: address, spender: address) → bool` — args: holder=EOA, spender=smartAccount
+- `setOperator(operator: address, until: uint48)` — uint48 not uint256
+- `confidentialTransferFrom(from: address, to: address, encryptedAmount: InEuint64)`
+
+#### StakePoolForm.tsx — operator approval is always EOA
+
+For `setOperator` in stake flow, use `mode: "eoa"` override to force EOA even in smart mode:
+```typescript
+await write({ ..., functionName: "setOperator", mode: "eoa" });
+```
+This prevents the smart account from trying to approve itself as its own operator.
+
+### Files changed
+
+| File | Commits | Change |
+|------|---------|--------|
+| `src/hooks/useUnifiedWrite.ts` | `1ac0a5d` | Rewritten: static-opts init → dynamic `write(opts)` callable |
+| `src/hooks/useOcUSDCTransfer.ts` | `1ac0a5d` | Smart mode + `checkIsOperator` + `approveSmartOperator` + `confidentialTransferFrom` path |
+| `src/components/pay-v4/UnifiedSendForm.tsx` | `1ac0a5d` | Direct send, stealth transfer, announce, retryAnnounce — all smart-mode aware |
+| `src/contexts/PaymentModeContext.tsx` | prior | Global `wallet | smart` mode, `usePaymentMode()` |
+| `src/components/harmony/PaymentModeBar.tsx` | prior | UI toggle: Wallet Mode / Smart Mode segmented control |
+| `src/components/pay-v4/StreamList.tsx` | `fdb83fa` | 3 `writeContractAsync` calls → `write()` from `useUnifiedWrite` |
+| `src/components/pay-v4/ResolverManager.tsx` | `fdb83fa` | 2 `writeContractAsync` calls → `write()` from `useUnifiedWrite` |
+| `src/components/pay-v4/AuditorGrantPanel.tsx` | `fdb83fa` | 1 `writeContractAsync` call → `write()` from `useUnifiedWrite` |
+| `src/components/pay-v4/StakePoolForm.tsx` | `fdb83fa` | 2 calls → `write()`; `setOperator` uses `mode: "eoa"` |
+
+### User experience after these changes
+
+| Feature | EOA mode | Smart mode |
+|---------|----------|-----------|
+| Direct send (ocUSDC) | MetaMask | Passkey (after first-time operator approval) |
+| Stealth transfer | MetaMask | Passkey |
+| Stealth announce | MetaMask | Passkey |
+| Stream pause/cancel/resume | MetaMask | Passkey |
+| Payroll approve/cancel cycle | MetaMask | Passkey |
+| Auditor grant | MetaMask | Passkey |
+| Stake to pool | MetaMask (always — operator approval) | Passkey for stake tx only |
+
+**First send in smart mode**: One MetaMask popup (EOA approves smart account as FHERC20 operator). All subsequent sends use passkey — no MetaMask.
+
+### Build result
+`✓ build succeeded` — zero TypeScript errors, all chunk size warnings are expected.
+

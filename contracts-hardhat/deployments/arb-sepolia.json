@@ -103,7 +103,11 @@
     "ObscuraPayrollResolverV2_superseded": "0x0f130a6Fe6C200F1F8cc1594a8448AE45A3d7bBF",
     "ObscuraInsuranceSubscription_broken": "0x0CCE5DA9E447e7B4A400fC53211dd29C51CA8102",
     "ocUSDC_Pay_v1_superseded": "0xEFab856b903C4106769B14798deDE21C6923d7d2",
-    "ObscuraConfidentialEscrow_v1": "0x5b988CBf9f1b5B479763A5008f52987AA1Af5041"
+    "ObscuraConfidentialEscrow_v1": "0x5b988CBf9f1b5B479763A5008f52987AA1Af5041",
+    "ObscuraSmartAccountFactory_rawUserOpHash": "0xbe8dC1d4Dcc368e0dBb6c7A5BDFfac2Fe72AFd05",
+    "ObscuraSmartAccountImplementation_rawUserOpHash": "0xe3c51Bb4BBCde1Ac6DBb590b2bc3fAdb7F99cd1B",
+    "ObscuraSmartAccountFactory_webAuthnLooseChallenge": "0x1736e58aDD613C9Dc1b4576681E48918eCf37F51",
+    "ObscuraSmartAccountImplementation_webAuthnLooseChallenge": "0x94b71fF948952869421026aae7E08812B6321268"
   },
   "ObscuraConfidentialUSDCWrapper": "0xEFab856b903C4106769B14798deDE21C6923d7d2",
   "ocUSDC_Pay": "0xEd46020Df8abe7BB1E096f27d089F4326D223a53",
@@ -111,7 +115,9 @@
   "ObscuraPayStreamV3": "0xE4328F139F03138D63f7fdF90A8Ef240e04653fA",
   "ObscuraInsuranceSubscriptionV2": "0xEA9Fc5800F41d090dFB90f9735F4CF3824d6743D",
   "wave5PayMigrationDeployedAt": "2026-05-23T23:39:05.559Z",
-  "ObscuraSmartAccountFactory": "0xbe8dC1d4Dcc368e0dBb6c7A5BDFfac2Fe72AFd05",
+  "ObscuraSmartAccountFactory": "0xFaC683D8AB872cCf5eBfaE1659a9CD44C6FB4feB",
   "ObscuraPaymaster": "0x9B1F61A65467F11339A8d0834349Be32EB2CF878",
-  "wave5Phase3DeployedAt": "2026-05-25T18:24:43.071Z"
+  "wave5Phase3DeployedAt": "2026-05-25T18:24:43.071Z",
+  "ObscuraSmartAccountImplementation": "0x0415945e442C4C5533367Fbb6f0D40528e0D7809",
+  "wave5PayAA24WebAuthnFactoryDeployedAt": "2026-05-26T03:39:24.406Z"
 }

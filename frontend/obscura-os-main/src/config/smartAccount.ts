@@ -3,8 +3,17 @@ export const ENTRY_POINT_V07 = "0x0000000071727De22E5E9d8BAf0edAc6f37da032" as c
 export const RELAY_URL = import.meta.env.VITE_RELAY_URL ?? "http://localhost:3701";
 
 // ─── Contract addresses ───────────────────────────────────────────────────────
+const WEB_AUTHN_SMART_ACCOUNT_FACTORY = "0xFaC683D8AB872cCf5eBfaE1659a9CD44C6FB4feB" as const;
+const DEPRECATED_SMART_ACCOUNT_FACTORIES = new Set([
+  "0xbe8dc1d4dcc368e0dbb6c7a5bdffac2fe72afd05",
+  "0x1736e58add613c9dc1b4576681e48918ecf37f51",
+]);
+
+const configuredFactory = (import.meta.env.VITE_SMART_ACCOUNT_FACTORY_ADDRESS ?? "") as string;
 export const SMART_ACCOUNT_FACTORY_ADDRESS = (
-  import.meta.env.VITE_SMART_ACCOUNT_FACTORY_ADDRESS ?? ""
+  configuredFactory && !DEPRECATED_SMART_ACCOUNT_FACTORIES.has(configuredFactory.toLowerCase())
+    ? configuredFactory
+    : WEB_AUTHN_SMART_ACCOUNT_FACTORY
 ) as `0x${string}`;
 
 export const PAYMASTER_ADDRESS = (

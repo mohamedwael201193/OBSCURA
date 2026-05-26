@@ -14,6 +14,8 @@ self.addEventListener("push", function (event) {
     data = { title: "Obscura Pay", body: event.data ? event.data.text() : "New activity" };
   }
 
+  const nestedData = data && typeof data.data === "object" && data.data !== null ? data.data : {};
+  const targetUrl = data.url || nestedData.url || "https://obscura-os-nine.vercel.app/pay";
   const title   = data.title   || "Obscura Pay";
   const options = {
     body:    data.body    || "You have new activity on Obscura Pay.",
@@ -22,12 +24,22 @@ self.addEventListener("push", function (event) {
     tag:     data.tag     || "obscura-pay",
     renotify: true,
     data: {
-      url: data.url || "https://obscura-os-nine.vercel.app/pay",
+      ...nestedData,
+      url: targetUrl,
     },
   };
 
+  console.info("[SW] push received", {
+    title,
+    tag: options.tag,
+    eventName: options.data.eventName,
+    txHash: options.data.txHash,
+  });
+
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    self.registration.showNotification(title, options).catch(function (err) {
+      console.error("[SW] showNotification failed", err);
+    })
   );
 });
 

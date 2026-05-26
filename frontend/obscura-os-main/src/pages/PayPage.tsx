@@ -434,10 +434,25 @@ const SettingsNotificationsCard = () => {
   const { prefs, isLoading, pushSupported, enable, disable, savePrefs } = useNotificationPrefs();
   const [email, setEmail] = useState(prefs?.email ?? "");
   const [saving, setSaving] = useState(false);
+  const [pushSaving, setPushSaving] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
 
   const handleEmailSave = async () => {
     setSaving(true);
     try { await savePrefs({ email, email_enabled: !!email }); } finally { setSaving(false); }
+  };
+
+  const handlePushToggle = async () => {
+    setPushSaving(true);
+    setPushError(null);
+    try {
+      if (prefs?.push_enabled) await disable();
+      else await enable();
+    } catch (err) {
+      setPushError((err as Error).message || "Push notification setup failed");
+    } finally {
+      setPushSaving(false);
+    }
   };
 
   return (
@@ -452,12 +467,12 @@ const SettingsNotificationsCard = () => {
           {pushSupported && (
             <div className="grid grid-cols-[1fr_auto] gap-y-3 items-center">
               <label className="text-[12px] text-foreground/80">Push alerts</label>
-              {isLoading ? (
+              {isLoading || pushSaving ? (
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
               ) : (
                 <button
                   type="button"
-                  onClick={prefs?.push_enabled ? disable : enable}
+                  onClick={handlePushToggle}
                   className={`btn-pay ${prefs?.push_enabled ? "btn-pay-primary" : "btn-pay-ghost"}`}
                 >
                   {prefs?.push_enabled ? "Enabled" : "Enable"}
@@ -469,6 +484,9 @@ const SettingsNotificationsCard = () => {
             <p className="text-[11px] text-muted-foreground/55">
               You will receive push notifications for on-chain activity linked to your wallet.
             </p>
+          )}
+          {pushError && (
+            <p className="text-[11px] text-red-400">{pushError}</p>
           )}
         </div>
       </HarmonyFormCard>

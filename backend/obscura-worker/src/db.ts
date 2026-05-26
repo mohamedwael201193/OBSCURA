@@ -27,19 +27,44 @@ export interface ActivityRecord {
   args:             Record<string, unknown>;
 }
 
+export interface StoredActivityRecord {
+  id:               number;
+  chain_id:         number;
+  block_number:     string;
+  tx_hash:          string;
+  log_index:        number;
+  contract_address: string;
+  event_name:       string;
+  wallet:           string;
+  participants:     string[];
+  args:             Record<string, unknown>;
+  created_at:       string;
+}
+
 /** Upsert an on-chain event (idempotent via tx_hash + log_index unique constraint) */
-export async function insertActivity(record: ActivityRecord): Promise<void> {
-  const { error } = await db
+export async function insertActivity(record: ActivityRecord): Promise<StoredActivityRecord | null> {
+  const { data, error } = await db
     .from("obscura_activity")
     .upsert(
       { ...record, block_number: record.block_number.toString() },
       { onConflict: "tx_hash,log_index", ignoreDuplicates: true }
-    );
+    )
+    .select("*")
+    .maybeSingle();
 
   if (error) {
     console.error("[db] Failed to insert activity:", error.message);
     throw error;
   }
+
+  if (!data) {
+    console.log(`[db] activity duplicate skipped event=${record.event_name} tx=${record.tx_hash.slice(0, 12)}... log=${record.log_index}`);
+    return null;
+  }
+
+  const stored = data as StoredActivityRecord;
+  console.log(`[db] event indexed id=${stored.id} event=${stored.event_name} wallet=${stored.wallet.slice(0, 6)}...${stored.wallet.slice(-4)} tx=${stored.tx_hash.slice(0, 12)}...`);
+  return stored;
 }
 
 /** Get the last indexed block for a given contract address */

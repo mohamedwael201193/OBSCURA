@@ -15,6 +15,7 @@ import {
   INSURANCE_EVENTS,
 } from "./events";
 import { insertActivity, getLastIndexedBlock } from "../db";
+import { dispatchActivityNotification } from "../notifications";
 
 const RPC_URL  = process.env.RPC_URL ?? "https://sepolia-rollup.arbitrum.io/rpc";
 const CHAIN_ID = 421614;
@@ -53,7 +54,7 @@ async function handleLog(
   const wallets = extractWallets(args);
   const primaryWallet = wallets[0] ?? contractAddress.toLowerCase();
 
-  await insertActivity({
+  const activity = await insertActivity({
     chain_id:         CHAIN_ID,
     block_number:     log.blockNumber ?? 0n,
     tx_hash:          log.transactionHash ?? "0x",
@@ -69,7 +70,11 @@ async function handleLog(
       ])
     ),
   });
-  console.log(`[indexer] ${contractName}.${log.eventName} block=${log.blockNumber} tx=${log.transactionHash?.slice(0, 12)}`);
+
+  if (!activity) return;
+
+  console.log(`[indexer] event indexed ${contractName}.${log.eventName} block=${log.blockNumber} tx=${log.transactionHash?.slice(0, 12)}...`);
+  await dispatchActivityNotification(activity);
 }
 
 // ─── Backfill ─────────────────────────────────────────────────────────────────

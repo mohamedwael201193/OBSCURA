@@ -1656,3 +1656,138 @@ Critical rule preserved: encrypted `ocUSDC` transfers are never routed through t
 
 The first W5P13 frontend build caught a JSX literal `>` in the new Public Overview `View all ->` button. It was fixed by replacing the text arrow with the existing `ChevronRight` icon, then the production build passed.
 
+---
+
+## W5P14 — Push Notification Delivery Fix ✅
+
+**Completed**: current session — fixes the browser push delivery pipeline for indexed Obscura Pay activity.
+
+### Pipeline traced
+
+Contract event → `obscura-worker` viem watcher → `insertActivity()` upsert into `obscura_activity` → notification dispatcher → `webpush.sendNotification()` → `/sw.js` push handler → browser notification.
+
+### Root cause
+
+The saved Web Push subscription and VAPID pair were valid, but the old delivery architecture only dispatched from `obscura-api` via a Supabase Realtime listener on `obscura_activity` inserts. On Render free tier, the API can sleep or miss a Realtime insert, while the worker still indexes events. The old dispatcher also had silent stop paths:
+
+- no log when an activity was received from Realtime,
+- no log when prefs were missing or event prefs skipped a row,
+- no log when no subscription existed,
+- `webpush.sendNotification()` errors were swallowed unless the status was `410`,
+- no manual endpoint existed to prove browser push delivery from saved subscriptions.
+
+Live trace before the fix:
+
+- `obscura_activity` had 2 rows: `ObscuraPayStreamV3.StreamCreated` and `ObscuraStealthRegistry.Announcement`.
+- API `/prefs/0xf76e...71a3` returned `push_enabled: true`, `events: ["*"]`.
+- The stealth announcement participants included `0xf76e...71a3`, so event filtering was not the blocker.
+- A direct debug send with the saved subscription returned `sent: 1`, proving VAPID + subscription + browser push path were valid. The stop was dispatch triggering / observability, not cryptographic push config.
+
+### Final architecture
+
+- `obscura-api` still owns browser registration and preferences:
+  - `GET /vapid-public-key`
+  - `POST /subscribe`
+  - `DELETE /subscribe`
+  - `POST /prefs`
+  - `GET /prefs/:wallet`
+- `obscura-api` still keeps the Supabase Realtime listener as a fallback/background dispatcher.
+- `obscura-worker` now dispatches Web Push immediately after a fresh `obscura_activity` insert. This makes delivery follow the reliable path that is already awake when an event is indexed.
+- Duplicate event upserts do not dispatch again; `insertActivity()` returns `null` for duplicates and returns the stored row for fresh inserts.
+- Both API and worker log every critical stage:
+  - event indexed,
+  - notification queued,
+  - skipped no prefs,
+  - skipped event prefs,
+  - skipped no subscription,
+  - notification sent,
+  - notification failed,
+  - stale subscription removed.
+
+### Debug endpoint
+
+Temporary endpoint added on `obscura-api`:
+
+```http
+POST /debug/push-test
+Content-Type: application/json
+
+{
+  "wallet": "0x...",
+  "title": "Obscura Push Test",
+  "body": "Debug notification"
+}
+```
+
+Also supports `GET /debug/push-test?wallet=0x...`.
+
+Behavior:
+
+- If `wallet` is provided, it sends to that wallet's saved subscription.
+- If no wallet is provided, it sends to the latest saved subscriptions, capped at 25.
+- Returns attempted/sent/failed/staleRemoved/targets/errors.
+- In-memory rate limit: 5 debug requests per IP per minute.
+- Logs endpoint hashes only, never full push endpoints or keys.
+
+### Frontend fixes
+
+- `useNotificationPrefs.enable()` now explicitly calls `Notification.requestPermission()`.
+- VAPID key fetch, `/subscribe`, and `/prefs` saves now check HTTP status and throw on failure.
+- Existing browser push subscriptions are reused instead of blindly creating another subscription.
+- Settings UI shows push setup errors instead of making failed setup look enabled.
+- `/sw.js` now preserves nested payload data, opens the intended URL, and logs push receipt / `showNotification()` failure in the browser console.
+- `useActivityFeed()` Realtime now filters inserted rows client-side by `participants[]` as well as `wallet`, matching the polling query and the worker's indexed participant model.
+- Activity filters/labels now include the actual V3 event names indexed by the worker.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `backend/obscura-api/src/notifications.ts` | Structured dispatch summary, DB error handling, detailed logs, stale subscription cleanup, `/debug/push-test` |
+| `backend/obscura-worker/src/notifications.ts` | New worker-side Web Push dispatcher using saved subscriptions/prefs |
+| `backend/obscura-worker/src/db.ts` | `insertActivity()` returns the inserted row or `null` for duplicates; logs event indexed |
+| `backend/obscura-worker/src/indexer/index.ts` | Calls worker dispatcher after fresh activity inserts |
+| `backend/obscura-worker/package.json` + lockfile | Added `web-push` and types |
+| `render.yaml` | Added `FRONTEND_URL`; added worker VAPID public/contact config and `VAPID_PRIVATE_KEY` secret slot |
+| `frontend/obscura-os-main/src/hooks/useNotificationPrefs.ts` | Permission request + response validation + default `events: ["*"]` safety |
+| `frontend/obscura-os-main/src/pages/PayPage.tsx` | Push setup busy/error UI in Settings → Notifications |
+| `frontend/obscura-os-main/public/sw.js` | Browser-side push receipt/showNotification logging and payload data handling |
+| `frontend/obscura-os-main/src/hooks/useActivityFeed.ts` | Participant-aware Realtime handling and current indexed event filters |
+| `frontend/obscura-os-main/src/components/harmony/ActivityFeed.tsx` | Labels for current indexed event names |
+
+### Verification
+
+- API build: `npm run build` in `backend/obscura-api` ✅
+- Worker lockfile updated: `npm install --package-lock-only` in `backend/obscura-worker` ✅
+- Worker dependency installed locally: `npm install` in `backend/obscura-worker` ✅
+- Worker build: `npm run build` in `backend/obscura-worker` ✅
+- Frontend build: `npm run build` in `frontend/obscura-os-main` ✅ (`✓ built in 46.62s`)
+- Editor diagnostics on changed files: clean ✅
+- Existing production smoke: `scripts/test-e2e.ps1` ✅ (`PASS=10 WARN=0 FAIL=0`)
+- Local API debug endpoint test against saved subscription:
+  - `POST http://localhost:3000/debug/push-test`
+  - result: `attempted: 1`, `sent: 1`, `failed: 0`, `staleRemoved: 0` ✅
+  - log: `notification sent source=debug-push-test wallet=0xf76e...71a3 endpoint=953fe9b5155a` ✅
+- Local compiled worker dispatcher test against existing activity row `id=2`:
+  - queued wallets: `2`
+  - sent: `1`
+  - skipped no prefs: `1` for the stealth address participant
+  - failed: `0` ✅
+
+### Deployment steps
+
+1. Redeploy `obscura-api` on Render so `/debug/push-test` and dispatcher logging are live.
+2. Redeploy `obscura-worker` on Render so worker-side dispatch runs after new inserts.
+3. In Render `obscura-worker`, set secret `VAPID_PRIVATE_KEY` to the same private key that matches public key `BIgVcwUhCL93WVMnDdRT...`.
+4. Confirm `obscura-worker` still has `SUPABASE_SERVICE_ROLE_KEY` and `RPC_URL` set.
+5. Redeploy the Vercel frontend so the updated `useNotificationPrefs` hook and `/sw.js` ship.
+6. After deploy, call `POST https://obscura-api-n62v.onrender.com/debug/push-test` with the subscribed wallet to verify production push send.
+7. Generate a new Pay event and confirm logs show `event indexed` → `notification queued` → `notification sent`.
+
+### Privacy / mode safety
+
+- Public/Private Pay mode logic was not changed.
+- Private ocUSDC/FHE writes still use wallet/EOA execution only.
+- No decrypt-on-mount behavior was added.
+- Push payloads include event name, tx hash, activity id, and wallet only; encrypted amounts remain encrypted and are not revealed in notifications.
+

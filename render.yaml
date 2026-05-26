@@ -26,6 +26,8 @@ services:
         value: "3000"
       - key: ALLOWED_ORIGINS
         value: "https://obscura-os-nine.vercel.app"
+      - key: FRONTEND_URL
+        value: "https://obscura-os-nine.vercel.app"
       - key: PAYMASTER_ADDRESS
         value: "0x9B1F61A65467F11339A8d0834349Be32EB2CF878"
       - key: SUPABASE_URL
@@ -64,6 +66,12 @@ services:
         value: "3001"
       - key: SUPABASE_URL
         value: "https://quoovjkjwgtdqwdofubh.supabase.co"
+      - key: FRONTEND_URL
+        value: "https://obscura-os-nine.vercel.app"
+      - key: VAPID_CONTACT_EMAIL
+        value: "noreply@obscura.finance"
+      - key: VAPID_PUBLIC_KEY
+        value: "BIgVcwUhCL93WVMnDdRT9KqySwDS4Sm9C-fSLg4dWJRdddSuLbyDv_M9R5FmDi2F8NwDuKuMtvNiZAwZQ0RH86o"
       - key: CHAINLINK_ETHUSD_ADAPTER
         value: "0xe3E388b421bfcF558FD46a18eE3b1c27aD1D36B3"
       - key: CHAINLINK_USDCUSD_ADAPTER
@@ -86,6 +94,8 @@ services:
       - key: RPC_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
         sync: false
       - key: KEEPER_PRIVATE_KEY
         sync: false

@@ -49,10 +49,23 @@ const EVENT_TYPE_FILTERS: Record<ActivityEventType, string[]> = {
   all:      [],
   sent:     ["ObscuraPay.PaymentSent"],
   received: ["ObscuraPay.PaymentReceived"],
-  stream:   ["ObscuraPayStreamV2.StreamCreated", "ObscuraPayStreamV2.StreamCancelled", "ObscuraPayStreamV2.StreamWithdrawn"],
+  stream:   [
+    "ObscuraPayStreamV2.StreamCreated",
+    "ObscuraPayStreamV2.StreamCancelled",
+    "ObscuraPayStreamV2.StreamWithdrawn",
+    "ObscuraPayStreamV3.StreamCreated",
+    "ObscuraPayStreamV3.StreamCancelled",
+    "ObscuraPayStreamV3.CycleSettled",
+  ],
   invoice:  ["ObscuraInvoice.InvoiceCreated", "ObscuraInvoice.InvoicePaid"],
-  escrow:   ["ObscuraConfidentialEscrow.EscrowDeposited", "ObscuraConfidentialEscrow.EscrowReleased", "ObscuraConfidentialEscrow.EscrowRefunded"],
-  stealth:  ["ObscuraStealthRegistry.StealthAddressRegistered"],
+  escrow:   [
+    "ObscuraConfidentialEscrow.EscrowCreated",
+    "ObscuraConfidentialEscrow.EscrowFunded",
+    "ObscuraConfidentialEscrow.EscrowRedeemed",
+    "ObscuraConfidentialEscrow.EscrowCancelled",
+    "ObscuraConfidentialEscrow.EscrowRefunded",
+  ],
+  stealth:  ["ObscuraStealthRegistry.Announcement", "ObscuraStealthRegistry.MetaAddressSet"],
 };
 
 interface UseActivityFeedResult {
@@ -131,10 +144,12 @@ export function useActivityFeed(): UseActivityFeedResult {
           event:  "INSERT",
           schema: "public",
           table:  "obscura_activity",
-          filter: `wallet=eq.${wallet}`,
         } as never,
         (payload: { new: ActivityItem }) => {
           const newItem = payload.new;
+          const participants = (newItem.participants ?? []).map((p) => p.toLowerCase());
+          if (newItem.wallet.toLowerCase() !== wallet && !participants.includes(wallet)) return;
+
           const allowed = EVENT_TYPE_FILTERS[filter];
           if (allowed.length === 0 || allowed.includes(newItem.event_name)) {
             setItems((prev) => [newItem, ...prev]);

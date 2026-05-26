@@ -45,7 +45,7 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
   // ── Check push support ────────────────────────────────────────────────────
   useEffect(() => {
     setPushSupported(
-      "serviceWorker" in navigator && "PushManager" in window
+      "serviceWorker" in navigator && "PushManager" in window && "Notification" in window
     );
   }, []);
 
@@ -64,20 +64,37 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
   const enable = useCallback(async () => {
     if (!wallet || !pushSupported) return;
 
+    if (Notification.permission === "denied") {
+      throw new Error("Browser notifications are blocked for this site.");
+    }
+
+    if (Notification.permission !== "granted") {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        throw new Error("Notification permission was not granted.");
+      }
+    }
+
     // Get VAPID public key from service
-    const { publicKey } = await fetch(`${NOTIFICATIONS_URL}/vapid-public-key`).then((r) => r.json()) as { publicKey: string };
+    const keyResponse = await fetch(`${NOTIFICATIONS_URL}/vapid-public-key`);
+    if (!keyResponse.ok) throw new Error(`VAPID key request failed (${keyResponse.status})`);
+    const { publicKey } = await keyResponse.json() as { publicKey?: string };
+    if (!publicKey) throw new Error("VAPID public key is missing.");
 
     const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly:      true,
+    const sub = await reg.pushManager.getSubscription() ?? await reg.pushManager.subscribe({
+      userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(publicKey),
     });
 
-    await fetch(`${NOTIFICATIONS_URL}/subscribe`, {
+    const subscribeResponse = await fetch(`${NOTIFICATIONS_URL}/subscribe`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ wallet, subscription: sub.toJSON() }),
     });
+    if (!subscribeResponse.ok) {
+      throw new Error(`Push subscription save failed (${subscribeResponse.status})`);
+    }
 
     await savePrefsInner({ push_enabled: true });
   }, [wallet, pushSupported]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -90,11 +107,12 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
     const sub = await reg.pushManager.getSubscription();
     if (sub) await sub.unsubscribe();
 
-    await fetch(`${NOTIFICATIONS_URL}/subscribe`, {
+    const response = await fetch(`${NOTIFICATIONS_URL}/subscribe`, {
       method:  "DELETE",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ wallet }),
     });
+    if (!response.ok) throw new Error(`Push subscription removal failed (${response.status})`);
 
     await savePrefsInner({ push_enabled: false });
   }, [wallet]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -102,13 +120,15 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
   // ── Save prefs ────────────────────────────────────────────────────────────
   const savePrefsInner = async (updates: Partial<NotificationPrefs>) => {
     if (!wallet) return;
-    const updated = { ...(prefs ?? { wallet, ...DEFAULT_PREFS }), ...updates };
+    const updated = { ...(prefs ?? { wallet, ...DEFAULT_PREFS }), ...updates, wallet };
+    if (!updated.events || updated.events.length === 0) updated.events = ["*"];
     setPrefs(updated);
-    await fetch(`${NOTIFICATIONS_URL}/prefs`, {
+    const response = await fetch(`${NOTIFICATIONS_URL}/prefs`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(updated),
     });
+    if (!response.ok) throw new Error(`Notification preference save failed (${response.status})`);
   };
 
   const savePrefs = useCallback(savePrefsInner, [wallet, prefs]); // eslint-disable-line react-hooks/exhaustive-deps

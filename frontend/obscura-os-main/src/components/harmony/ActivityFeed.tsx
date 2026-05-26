@@ -5,7 +5,7 @@
  * Listens to Supabase Realtime for live updates.
  */
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowUpRight,
@@ -25,6 +25,8 @@ import {
   type ActivityItem,
 } from "@/hooks/useActivityFeed";
 import { HarmonyFormCard } from "@/components/harmony/harmony-ui";
+import type { PayPrivacyMode } from "@/contexts/PaymentModeContext";
+import { filterActivityByPrivacyMode } from "@/lib/payModeFilters";
 
 // ─── Filter tab config ────────────────────────────────────────────────────────
 const FILTER_TABS: { key: ActivityEventType; label: string }[] = [
@@ -114,7 +116,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export function ActivityFeed() {
+export function ActivityFeed({ mode = "private" }: { mode?: PayPrivacyMode }) {
   const { address } = useAccount();
   const {
     items,
@@ -127,16 +129,25 @@ export function ActivityFeed() {
     refresh,
   } = useActivityFeed();
 
-  const isEmpty = !isLoading && items.length === 0;
+  useEffect(() => {
+    if (mode === "public" && filter !== "all") setFilter("all");
+  }, [mode, filter, setFilter]);
+
+  const visibleItems = useMemo(
+    () => filterActivityByPrivacyMode(items, mode),
+    [items, mode],
+  );
+  const isEmpty = !isLoading && visibleItems.length === 0;
+  const tabs = mode === "public" ? FILTER_TABS.filter((tab) => tab.key === "all") : FILTER_TABS;
 
   return (
     <HarmonyFormCard
-      title="On-chain activity"
-      eyebrow="Live · Indexed from chain"
+      title={mode === "public" ? "Public USDC activity" : "Private activity"}
+      eyebrow={mode === "public" ? "Public Mode · Indexed from chain" : "Private Mode · Indexed from chain"}
     >
       {/* Filter pills */}
       <div className="mb-5 flex flex-wrap gap-2">
-        {FILTER_TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setFilter(t.key)}
@@ -182,13 +193,15 @@ export function ActivityFeed() {
 
       {address && isEmpty && !error && (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          No activity found for this filter.
+          {mode === "public"
+            ? "No indexed public USDC, smart-account, paymaster, or bridge activity found yet."
+            : "No private ocUSDC activity found for this filter."}
         </p>
       )}
 
-      {address && items.length > 0 && (
+      {address && visibleItems.length > 0 && (
         <AnimatePresence initial={false}>
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <ActivityRow key={`${item.tx_hash}-${item.log_index}`} item={item} />
           ))}
         </AnimatePresence>

@@ -74,9 +74,7 @@ export function PaymentModeProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem(PRIVACY_STORAGE_KEY);
       if (stored === "public" || stored === "private") return stored;
 
-      // One-time compatibility with the old Wallet/Smart execution switch.
-      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-      return legacy === "smart" ? "public" : "private";
+      return "private";
     } catch {
       return "private";
     }

@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { Lock, Network, ShieldCheck, Wallet } from "lucide-react";
+import { Eye, Lock, Network, ShieldCheck, Wallet, Zap } from "lucide-react";
 import { HarmonyFormCard, HarmonyPageIntro } from "@/components/harmony/harmony-ui";
 import UsdcIcon from "@/components/shared/UsdcIcon";
 import { usePaymentMode } from "@/contexts/PaymentModeContext";
@@ -117,8 +117,16 @@ export function PayHarmonyTabShell({
           : meta
         : tab === "automations"
           ? privacyMode === "public"
-            ? { ...meta, eyebrow: "Batching · Public", description: "Batch visible USDC transfers from your passkey smart account." }
+            ? { ...meta, eyebrow: "Automations · Private required", description: "Public recurring automation is not enabled yet. Switch to Private Mode for encrypted streams, escrows, subscriptions, and payroll." }
             : meta
+          : tab === "activity"
+            ? privacyMode === "public"
+              ? { ...meta, eyebrow: "History · Public", description: "Public USDC, smart-account, paymaster, and bridge activity only." }
+              : { ...meta, eyebrow: "History · Private", description: "Encrypted ocUSDC activity and browser-local private receipts only." }
+            : tab === "settings"
+              ? privacyMode === "public"
+                ? { ...meta, eyebrow: "Settings · Public", description: "Passkey smart account, public USDC preferences, notifications, and local receipt controls." }
+                : { ...meta, eyebrow: "Settings · Private", description: "Privacy maintenance, stealth receiving, contacts, notifications, and local receipt controls." }
           : meta;
   return (
     <>
@@ -214,10 +222,37 @@ export function PayHarmonyNotice({
 
 export function PayHarmonySendBar({ onShield }: { onShield: () => void }) {
   const usdcBalance = useUSDCBalance();
+  const { privacyMode, activeToken, modeSummary, smartAccountAddress, isSmartAvailable, executionLabel } = usePaymentMode();
+  const smartUsdcBalance = useUSDCBalance(smartAccountAddress as `0x${string}` | null);
   const { decrypted, reveal, busy } = useOcUSDCBalance();
-  const { privacyMode, activeToken, modeSummary } = usePaymentMode();
   const isRevealed = decrypted !== null && decrypted !== undefined;
   const cusdc = isRevealed ? (Number(decrypted) / 1_000_000).toFixed(2) : null;
+
+  if (privacyMode === "public") {
+    return (
+      <div className="rounded-2xl hairline bg-card p-5">
+        <div className="flex flex-wrap items-center gap-4">
+          <UsdcIcon className="h-8 w-8 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Public Mode balances
+            </p>
+            <p className="mt-1 text-sm text-foreground">
+              Wallet USDC <span className="font-mono tabular-nums">{usdcBalance ?? "--"}</span>
+              {" · "}
+              Smart USDC <span className="font-mono tabular-nums">{smartUsdcBalance ?? "--"}</span>
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground/55">
+              Active token: USDC. {executionLabel}. Visible on-chain.
+            </p>
+          </div>
+          <span className="inline-flex h-10 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium text-muted-foreground">
+            <Zap className="h-3.5 w-3.5" /> {isSmartAvailable ? "Gasless ready" : "Passkey needed"}
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl hairline bg-card p-5">
@@ -225,11 +260,9 @@ export function PayHarmonySendBar({ onShield }: { onShield: () => void }) {
         <UsdcIcon className="h-8 w-8 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            {privacyMode === "public" ? "Public Mode balances" : "Private Mode balances"}
+            Private Mode balance
           </p>
           <p className="mt-1 text-sm text-foreground">
-            USDC <span className="font-mono tabular-nums">{usdcBalance ?? "—"}</span>
-            {" · "}
             ocUSDC{" "}
             {isRevealed ? (
               <span className="font-mono tabular-nums text-[hsl(var(--success))]">{cusdc}</span>
@@ -240,12 +273,12 @@ export function PayHarmonySendBar({ onShield }: { onShield: () => void }) {
                 disabled={busy}
                 className="font-mono text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
               >
-                {busy ? "…" : "reveal"}
+                {busy ? "..." : <><Eye className="mr-1 inline h-3 w-3" /> reveal</>}
               </button>
             )}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground/55">
-            Active token: {activeToken}. {modeSummary}.
+            Active token: {activeToken}. {modeSummary}. Plain USDC available to shield: <span className="font-mono">{usdcBalance ?? "--"}</span>.
           </p>
         </div>
         <button

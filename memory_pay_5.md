@@ -1592,3 +1592,67 @@ Important: `preVerificationGas` is part of the signed UserOp hash, so it must be
 
 This is a frontend-only fix. Backend relay and contracts do not need changes. The local dev build includes the fix immediately; hosted Vercel needs a redeploy from the updated frontend code.
 
+---
+
+## W5P13 — True Mode-Specific Pay Surfaces ✅
+
+**Completed**: current session — turns Public/Private Mode from a visual toggle into real product surfaces across Pay.
+
+### Product architecture locked in
+
+| Mode | Token | Execution | UX surface |
+|------|-------|-----------|------------|
+| Private Mode | `ocUSDC` | Wallet / EOA FHE writes | Default mode, encrypted balances, stealth inbox, streams, escrows, subscriptions, payroll, private receipts |
+| Public Mode | normal `USDC` | Smart Account / ERC-4337 / passkey / paymaster | Visible USDC workspace, smart account funding, passkey sends, sponsored UserOps, public receipts |
+
+Critical rule preserved: encrypted `ocUSDC` transfers are never routed through the Smart Account because CoFHE signer binding rejects forwarded `InEuint64` flows (`InvalidSigner`, selector `0x7ba5ffb5`). Public Mode is the gasless normal-USDC lane only.
+
+### What changed
+
+| File | Change |
+|------|--------|
+| `frontend/obscura-os-main/src/lib/payModeFilters.ts` | New centralized mode classifier for local receipts and indexed activity |
+| `frontend/obscura-os-main/src/contexts/PaymentModeContext.tsx` | First load now defaults to Private Mode unless an explicit `obscura:payPrivacyMode` exists |
+| `frontend/obscura-os-main/src/hooks/useUSDCBalance.ts` | Accepts optional account address so wallet USDC and Smart Account USDC can display separately |
+| `frontend/obscura-os-main/src/hooks/useOnboardingState.ts` | Private onboarding `hasActivity` now counts private receipts only, not public USDC receipts |
+| `frontend/obscura-os-main/src/components/pay-v4/PaymentReceipt.tsx` | Receipts filter by mode; Public receipts show USDC amounts; Private receipts stay masked until reveal; CSV/JSON exports are mode-filtered |
+| `frontend/obscura-os-main/src/components/harmony/ActivityFeed.tsx` | Indexed Supabase activity filters by mode; Public shows USDC/UserOp/paymaster/CCTP-like events; Private shows encrypted Pay events |
+| `frontend/obscura-os-main/src/pages/PayPage.tsx` | Mode-aware shell, Pay/Get Paid/Automations/Activity/Settings routing; Public Mode hides private inbox badge/banner; Public Automations is gated instead of rendering batch sends |
+| `frontend/obscura-os-main/src/components/harmony/PayHarmonyTabShell.tsx` | Mode-aware tab descriptions and balance bar; Public shows wallet/smart USDC only; Private shows ocUSDC reveal + shield context |
+| `frontend/obscura-os-main/src/components/harmony/PaymentModeBar.tsx` | Private Mode moved first and marked Default; Public copy clarifies visible USDC + passkey + sponsored gas |
+| `frontend/obscura-os-main/src/components/harmony/PayHarmonyHome.tsx` | Overview now fully branches: Public USDC smart-account workspace vs Private encrypted treasury workspace |
+
+### Mode-aware behavior now enforced
+
+- Private Mode is the default for new sessions.
+- Public Overview no longer shows private balance reveal, stealth inbox widgets, private inbox counts, or ocUSDC activity.
+- Private Overview keeps the encrypted treasury setup and uses private receipts for activity/progress.
+- Public Activity filters indexed activity to public USDC / Smart Account / paymaster / bridge-like events and local public receipts.
+- Private Activity filters indexed activity and local receipts to private ocUSDC flows.
+- Public Receipts show visible USDC amounts by design; Private Receipts remain masked unless the user explicitly reveals locally.
+- Public Automations no longer pretends batch public sends are recurring automations; it shows a Private Mode-required gate for streams, escrows, payroll, subscriptions, and insurance.
+- Public Get Paid shows wallet/smart-account receiving for normal USDC and gates private invoice/stealth inbox flows.
+- Public Settings focuses Smart Account, preferences, notifications, and data; private privacy/contact/legacy panels stay in Private Mode.
+- Unknown receipt/activity classifications default to Private Mode to avoid accidental private-data leakage.
+
+### Not changed
+
+- No contract changes.
+- No backend relay/paymaster changes.
+- No FHE decrypt-on-mount behavior added.
+- Private ocUSDC hooks/forms remain wallet-executed; Public Mode still cannot forward encrypted transfers.
+- Forbidden docs (`about.md`, `README.md`, `wave4.md`) were not touched.
+
+### Verification
+
+- Editor diagnostics on `frontend/obscura-os-main/src`: clean ✅
+- Frontend build: `npm run build` in `frontend/obscura-os-main` ✅ (`✓ built in 33.97s`)
+- Frontend tests: `npm run test` in `frontend/obscura-os-main` ✅ (`1 passed`)
+- Targeted lint on touched files: `npx eslint src/lib/payModeFilters.ts src/contexts/PaymentModeContext.tsx src/hooks/useUSDCBalance.ts src/hooks/useOnboardingState.ts src/components/pay-v4/PaymentReceipt.tsx src/components/harmony/ActivityFeed.tsx src/components/harmony/PayHarmonyTabShell.tsx src/components/harmony/PaymentModeBar.tsx src/components/harmony/PayHarmonyHome.tsx src/pages/PayPage.tsx` ✅ (`0 errors`, one existing Fast Refresh warning in `PaymentModeContext.tsx`)
+- Full frontend lint: `npm run lint` still fails on pre-existing repo-wide lint debt (`105 errors`, mostly `no-explicit-any`, empty blocks, and UI template lint issues outside this Pay mode pass). No new touched-file lint errors found.
+- Browser/dev-server smoke: not run in this session because the dev-server launch was skipped after validation; build/test/diagnostics are green.
+
+### Build note
+
+The first W5P13 frontend build caught a JSX literal `>` in the new Public Overview `View all ->` button. It was fixed by replacing the text arrow with the existing `ChevronRight` icon, then the production build passed.
+

@@ -17,6 +17,7 @@ import { useAccount, usePublicClient, useReadContract } from "wagmi";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 import { getTrackedUnits } from "@/lib/trackedBalance";
 import { useReceipts } from "@/hooks/useReceipts";
+import { filterReceiptsByPrivacyMode } from "@/lib/payModeFilters";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
@@ -45,7 +46,7 @@ export interface OnboardingState {
   /** Stealth meta-address registered on-chain */
   isStealthRegistered: boolean;
   stealthLoading: boolean;
-  /** Has any on-chain receipts in local history */
+  /** Has any private ocUSDC receipts in local history */
   hasActivity: boolean;
 }
 
@@ -102,8 +103,8 @@ export function useOnboardingState(): OnboardingState {
     ? (stealthData as readonly [`0x${string}`, `0x${string}`, bigint])[2] > 0n
     : false;
 
-  // ── Receipts activity ────────────────────────────────────────────────────
-  const hasActivity = receipts.length > 0;
+  // ── Private receipt activity ─────────────────────────────────────────────
+  const hasActivity = filterReceiptsByPrivacyMode(receipts, "private").length > 0;
 
   // ── Derived stage ────────────────────────────────────────────────────────
   const stage = useMemo((): OnboardingStage => {

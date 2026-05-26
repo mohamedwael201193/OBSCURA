@@ -141,10 +141,19 @@ export function PaymentModeBar({ onSetupSmart, className }: PaymentModeBarProps)
     <div className={cn("overflow-hidden rounded-xl hairline bg-card", className)}>
       <div className="flex divide-x divide-border/50">
         <ModeSegment
+          active={privacyMode === "private"}
+          icon={EyeOff}
+          label="Private Mode"
+          description="Encrypted ocUSDC, hidden amounts, wallet-secured"
+          badge="Default"
+          status="Wallet execution"
+          onClick={() => setPrivacyMode("private")}
+        />
+        <ModeSegment
           active={privacyMode === "public"}
           icon={Zap}
           label="Public Mode"
-          description="Fast, gasless USDC with passkey signing"
+          description="Visible USDC with passkey signing and sponsored gas"
           badge={isSmartAvailable ? "USDC" : "Setup →"}
           status={isSmartAvailable ? "Smart account" : "Passkey needed"}
           onClick={
@@ -155,15 +164,6 @@ export function PaymentModeBar({ onSetupSmart, className }: PaymentModeBarProps)
                   onSetupSmart?.();
                 }
           }
-        />
-        <ModeSegment
-          active={privacyMode === "private"}
-          icon={EyeOff}
-          label="Private Mode"
-          description="Encrypted ocUSDC, hidden amounts, wallet-secured"
-          badge="ocUSDC"
-          status="Wallet execution"
-          onClick={() => setPrivacyMode("private")}
         />
       </div>
 

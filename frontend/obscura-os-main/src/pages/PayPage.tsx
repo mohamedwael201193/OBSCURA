@@ -228,25 +228,92 @@ function ModeAwareGetPaid({ children }: { children: ReactNode }) {
 }
 
 function ModeAwareAutomations({ children }: { children: ReactNode }) {
-  const { privacyMode } = usePaymentMode();
+  const { privacyMode, setPrivacyMode, isSmartAvailable } = usePaymentMode();
   if (privacyMode === "public") {
     return (
       <div className="space-y-5">
         <HarmonyWorkspaceHeader
           eyebrow="Public Mode"
-          title="Gasless public payments"
-          description="Send one or many normal USDC transfers from your passkey smart account. Transfers are visible on-chain and sponsored when the USDC paymaster target is enabled."
+          title="Public automations are not enabled yet"
+          description="Public Mode is currently focused on one-time USDC sends from the passkey smart account. Encrypted recurring agreements remain in Private Mode."
         />
-        <PayHarmonyPanelCard title="Batch public USDC" eyebrow="Smart Account · ERC-4337">
-          <PublicUSDCSendForm defaultPanel="batch" />
+        <PayHarmonyPanelCard title="Switch required" eyebrow="Private Mode · ocUSDC">
+          <div className="space-y-4">
+            <p className="text-[13px] text-muted-foreground leading-relaxed">
+              Streams, escrows, payroll batches, subscriptions, and insurance move private ocUSDC through wallet-secured FHE transactions. They are not routed through the smart account.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-3 text-[11px]">
+              <span className="rounded-xl hairline bg-muted/40 px-3 py-2">Token: ocUSDC</span>
+              <span className="rounded-xl hairline bg-muted/40 px-3 py-2">Execution: wallet</span>
+              <span className="rounded-xl hairline bg-muted/40 px-3 py-2">Amounts: encrypted</span>
+            </div>
+            <button type="button" onClick={() => setPrivacyMode("private")} className="btn-pay btn-pay-primary">
+              <Lock className="w-3.5 h-3.5" /> Switch to Private Mode
+            </button>
+          </div>
         </PayHarmonyPanelCard>
-        <PayHarmonyNotice title="Private automations stay encrypted">
-          Streams, escrows, payroll, subscriptions, and insurance use ocUSDC and wallet-secured FHE writes. Switch to Private Mode to manage them.
+        <PayHarmonyNotice title="Public payment tooling">
+          {isSmartAvailable
+            ? "Use the Pay tab for gasless visible USDC sends. Public recurring automation will get its own surface once it exists."
+            : "Set up the passkey smart account from Settings before using public gasless USDC sends."}
         </PayHarmonyNotice>
       </div>
     );
   }
   return <>{children}</>;
+}
+
+function ModeAwareActivity({ onSetupSmart }: { onSetupSmart: () => void }) {
+  const { privacyMode } = usePaymentMode();
+  return (
+    <PayHarmonyTabShell tab="activity">
+      <PaymentModeBar onSetupSmart={onSetupSmart} />
+      <PayHarmonyNotice title={privacyMode === "public" ? "Public Mode visibility" : "Private Mode visibility"}>
+        {privacyMode === "public"
+          ? "This view is limited to normal USDC, smart-account, paymaster, and bridge events. Private ocUSDC receipts stay out of this workspace."
+          : "This view is limited to encrypted ocUSDC flows. Public USDC smart-account receipts stay out of this workspace."}
+      </PayHarmonyNotice>
+      <ActivityFeed mode={privacyMode} />
+      <HarmonyFormCard title="Local receipts" eyebrow="Browser only · Not synced">
+        <ReceiptList mode={privacyMode} />
+      </HarmonyFormCard>
+    </PayHarmonyTabShell>
+  );
+}
+
+function ModeAwarePayShell({
+  tab,
+  unreadCount,
+  isConnected,
+  onSelectTab,
+  children,
+}: {
+  tab: Tab;
+  unreadCount: number;
+  isConnected: boolean;
+  onSelectTab: (tab: Tab) => void;
+  children: ReactNode;
+}) {
+  const { privacyMode } = usePaymentMode();
+  const harmonySidebar = basePayNav.map((item) => ({
+    key: item.key,
+    label: item.label,
+    active: tab === item.key,
+    badge:
+      privacyMode === "private" && item.key === "getpaid" && unreadCount > 0
+        ? String(unreadCount)
+        : undefined,
+    onClick: () => onSelectTab(item.key),
+  }));
+
+  return (
+    <HarmonyAppShell appName="Pay" sidebar={harmonySidebar} searchPlaceholder="Search pay…">
+      {privacyMode === "private" && isConnected && tab !== "getpaid" && tab !== "home" && (
+        <NewPaymentBanner onOpenInbox={() => onSelectTab("getpaid")} />
+      )}
+      {children}
+    </HarmonyAppShell>
+  );
 }
 
 // ── Settings sub-panels (content only — shells rendered by renderActiveSection) ───
@@ -721,15 +788,6 @@ const PayPage = () => {
   const [streamRefreshKey, setStreamRefreshKey] = useState(0);
   const refreshStreams = () => setStreamRefreshKey((k) => k + 1);
 
-  const harmonySidebar = basePayNav.map((item) => ({
-    key: item.key,
-    label: item.label,
-    active: tab === item.key,
-    badge:
-      item.key === "getpaid" && inbox.unreadCount > 0 ? String(inbox.unreadCount) : undefined,
-    onClick: () => setTab(item.key),
-  }));
-
   // Sub-nav change handlers (with URL sync)
   const onPaySub = (next: PaySub) => { setPaySub(next); writeUrl("pay", next); };
   const onGetPaidSub = (next: GetPaidSub) => { setGetPaidSub(next); writeUrl("getpaid", next); };
@@ -755,6 +813,82 @@ const PayPage = () => {
     setTabState("settings");
     onSettingsSub("account");
     writeUrl("settings", "account");
+  };
+
+  const publicSettingsKeys: SettingsSub[] = ["account", "prefs", "notifications", "data"];
+
+  const ModeAwareSettingsSubNav = () => {
+    const { privacyMode } = usePaymentMode();
+    const isPublicMode = privacyMode === "public";
+    const value = isPublicMode && !publicSettingsKeys.includes(settingsSub) ? "account" : settingsSub;
+    return (
+      <HarmonySubNav<SettingsSub>
+        value={value}
+        onChange={onSettingsSub}
+        items={isPublicMode
+          ? [
+              { key: "account", label: "Smart Account", icon: KeyRound },
+              { key: "prefs", label: "Preferences", icon: SettingsIcon },
+              { key: "notifications", label: "Notifications", icon: Mail },
+              { key: "data", label: "Data", icon: Database },
+            ]
+          : [
+              { key: "prefs", label: "Preferences", icon: SettingsIcon },
+              { key: "privacy", label: "Privacy", icon: Shield },
+              { key: "contacts", label: "Contacts", icon: BookUser },
+              { key: "notifications", label: "Notifications", icon: Mail },
+              { key: "data", label: "Data", icon: Database },
+              { key: "legacy", label: "Legacy", icon: Wrench },
+              { key: "account", label: "Smart Account", icon: KeyRound },
+            ]}
+      />
+    );
+  };
+
+  const ModeAwareSettingsPanels = () => {
+    const { privacyMode } = usePaymentMode();
+    const effectiveSub = privacyMode === "public" && !publicSettingsKeys.includes(settingsSub) ? "account" : settingsSub;
+
+    return (
+      <>
+        {privacyMode === "public" && effectiveSub === "account" && (
+          <PayHarmonyNotice title="Public Mode settings">
+            Configure the passkey smart account for visible USDC sends. Private ocUSDC permissions, contacts, and legacy FHE tools remain in Private Mode.
+          </PayHarmonyNotice>
+        )}
+        {effectiveSub === "prefs" && <SettingsPrefsCard />}
+        {effectiveSub === "privacy" && <SettingsPrivacyCard />}
+        {effectiveSub === "contacts" && <ContactsSection />}
+        {effectiveSub === "notifications" && <SettingsNotificationsCard />}
+        {effectiveSub === "account" && <SettingsSmartAccountCard />}
+        {effectiveSub === "data" && <SettingsDataCard />}
+        {effectiveSub === "legacy" && (
+          <HarmonyFormCard title="Legacy tools" eyebrow="Advanced · V1">
+            <div className="space-y-3">
+              <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
+                Legacy V1 forms for old escrows and streams. Not needed for new payments.
+              </p>
+              <button type="button" onClick={() => setShowLegacy((v) => !v)} className="btn-pay btn-pay-ghost">
+                <Wrench className="w-3.5 h-3.5" />
+                {showLegacy ? "Hide legacy tools" : "Show legacy tools"}
+              </button>
+              {showLegacy && isConnected && (
+                <PrivateModeGate
+                  title="Legacy private tools"
+                  description="Legacy ocUSDC transfers, streams, and stealth inbox actions use wallet-secured FHE transactions."
+                >
+                  <div className="space-y-6 pt-2">
+                    <OcUSDCTransferForm />
+                    <CreateStreamForm onCreated={refreshStreams} />
+                    <StealthInbox />
+                  </div>
+                </PrivateModeGate>
+              )}
+            </div>
+          </HarmonyFormCard>
+        )}
+      </>
+    );
   };
 
   const renderActiveSection = () => {
@@ -1030,67 +1164,14 @@ const PayPage = () => {
       }
 
       case "activity":
-        return (
-          <PayHarmonyTabShell tab="activity">
-            <PaymentModeBar onSetupSmart={openSmartAccountSettings} />
-            <PayHarmonyNotice title="Mode visibility">
-              Public Mode activity is normal on-chain USDC. Private Mode activity keeps amounts encrypted unless you explicitly reveal them.
-            </PayHarmonyNotice>
-            <ActivityFeed />
-            <HarmonyFormCard title="Local receipts" eyebrow="Browser only · Not synced">
-              <ReceiptList />
-            </HarmonyFormCard>
-          </PayHarmonyTabShell>
-        );
+        return <ModeAwareActivity onSetupSmart={openSmartAccountSettings} />;
 
       case "settings":
         return (
           <PayHarmonyTabShell tab="settings">
             <PaymentModeBar onSetupSmart={openSmartAccountSettings} />
-            <HarmonySubNav<SettingsSub>
-              value={settingsSub}
-              onChange={onSettingsSub}
-              items={[
-                { key: "prefs", label: "Preferences", icon: SettingsIcon },
-                { key: "privacy", label: "Privacy", icon: Shield },
-                { key: "contacts", label: "Contacts", icon: BookUser },
-                { key: "notifications", label: "Notifications", icon: Mail },
-                { key: "account", label: "Smart Account", icon: KeyRound },
-                { key: "data", label: "Data", icon: Database },
-                { key: "legacy", label: "Legacy", icon: Wrench },
-              ]}
-            />
-            {settingsSub === "prefs" && <SettingsPrefsCard />}
-            {settingsSub === "privacy" && <SettingsPrivacyCard />}
-            {settingsSub === "contacts" && <ContactsSection />}
-            {settingsSub === "notifications" && <SettingsNotificationsCard />}
-            {settingsSub === "account" && <SettingsSmartAccountCard />}
-            {settingsSub === "data" && <SettingsDataCard />}
-            {settingsSub === "legacy" && (
-              <HarmonyFormCard title="Legacy tools" eyebrow="Advanced · V1">
-                <div className="space-y-3">
-                  <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
-                    Legacy V1 forms for old escrows and streams. Not needed for new payments.
-                  </p>
-                  <button type="button" onClick={() => setShowLegacy((v) => !v)} className="btn-pay btn-pay-ghost">
-                    <Wrench className="w-3.5 h-3.5" />
-                    {showLegacy ? "Hide legacy tools" : "Show legacy tools"}
-                  </button>
-                  {showLegacy && isConnected && (
-                    <PrivateModeGate
-                      title="Legacy private tools"
-                      description="Legacy ocUSDC transfers, streams, and stealth inbox actions use wallet-secured FHE transactions."
-                    >
-                      <div className="space-y-6 pt-2">
-                        <OcUSDCTransferForm />
-                        <CreateStreamForm onCreated={refreshStreams} />
-                        <StealthInbox />
-                      </div>
-                    </PrivateModeGate>
-                  )}
-                </div>
-              </HarmonyFormCard>
-            )}
+            <ModeAwareSettingsSubNav />
+            <ModeAwareSettingsPanels />
           </PayHarmonyTabShell>
         );
     }
@@ -1098,11 +1179,12 @@ const PayPage = () => {
 
   return (
     <PaymentModeProvider>
-      <HarmonyAppShell appName="Pay" sidebar={harmonySidebar} searchPlaceholder="Search pay…">
-        {isConnected && tab !== "getpaid" && tab !== "home" && (
-          <NewPaymentBanner onOpenInbox={() => setTab("getpaid")} />
-        )}
-
+      <ModeAwarePayShell
+        tab={tab}
+        unreadCount={inbox.unreadCount ?? 0}
+        isConnected={isConnected}
+        onSelectTab={setTab}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={tab}
@@ -1114,7 +1196,7 @@ const PayPage = () => {
             {renderActiveSection()}
           </motion.div>
         </AnimatePresence>
-      </HarmonyAppShell>
+      </ModeAwarePayShell>
     </PaymentModeProvider>
   );
 };

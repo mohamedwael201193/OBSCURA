@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Download, Eye, EyeOff, Lock, Trash2, ExternalLink, FileSpreadsheet } from "lucide-react";
 import { useReceipts, type Receipt } from "@/hooks/useReceipts";
 import { toCsv, downloadCsv } from "@/lib/exportCsv";
+import type { PayPrivacyMode } from "@/contexts/PaymentModeContext";
+import { filterReceiptsByPrivacyMode, getReceiptMode, getReceiptToken } from "@/lib/payModeFilters";
 
 const KIND_LABEL: Record<Receipt["kind"], string> = {
   transfer: "Transfer",
@@ -27,8 +29,21 @@ const KIND_LABEL: Record<Receipt["kind"], string> = {
   "stealth-rotate": "Meta rotated",
 };
 
+function downloadJson(filename: string, data: unknown) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function ReceiptRow({ r, onRemove, showAmount = false }: { r: Receipt; onRemove: (id: string) => void; showAmount?: boolean }) {
   const ts = new Date(r.timestamp);
+  const receiptMode = getReceiptMode(r);
+  const token = getReceiptToken(r);
+  const amountVisible = receiptMode === "public" || showAmount;
   return (
     <div className="flex items-start gap-3 p-3 rounded-xl hairline bg-muted/40 text-[12px]">
       <div className="flex-1 min-w-0">
@@ -39,12 +54,14 @@ export function ReceiptRow({ r, onRemove, showAmount = false }: { r: Receipt; on
           )}
           <span className="font-mono text-muted-foreground/60">
             {" · "}
-            {r.amount && showAmount ? (
-              <span className="text-[hsl(var(--success))]/80">{r.amount} ocUSDC</span>
+            {r.amount && amountVisible ? (
+              <span className={receiptMode === "public" ? "text-foreground/80" : "text-[hsl(var(--success))]/80"}>
+                {r.amount} {token}
+              </span>
             ) : (
               <span className="inline-flex items-center gap-0.5">
                 <Lock className="inline h-[9px] w-[9px] opacity-40" />
-                <span className="opacity-50">••••• ocUSDC</span>
+                <span className="opacity-50">••••• {token}</span>
               </span>
             )}
           </span>
@@ -73,15 +90,21 @@ export function ReceiptRow({ r, onRemove, showAmount = false }: { r: Receipt; on
   );
 }
 
-export function ReceiptList({ limit }: { limit?: number }) {
+export function ReceiptList({ limit, mode }: { limit?: number; mode?: PayPrivacyMode }) {
   const { receipts, remove, exportJSON } = useReceipts();
   const [showAmounts, setShowAmounts] = useState(false);
-  const shown = typeof limit === "number" ? receipts.slice(0, limit) : receipts;
+  const filteredReceipts = filterReceiptsByPrivacyMode(receipts, mode);
+  const shown = typeof limit === "number" ? filteredReceipts.slice(0, limit) : filteredReceipts;
+  const tokenLabel = mode === "public" ? "USDC" : mode === "private" ? "ocUSDC" : "Token";
 
-  if (receipts.length === 0) {
+  if (filteredReceipts.length === 0) {
     return (
       <Card className="p-5 text-center text-[12px] text-muted-foreground/65">
-        No receipts yet. Every send writes one locally.
+        {mode === "public"
+          ? "No public USDC receipts yet. Gasless public sends and smart-account funding will appear here."
+          : mode === "private"
+            ? "No private ocUSDC receipts yet. Encrypted sends, streams, escrows, and claims will appear here."
+            : "No receipts yet. Every send writes one locally."}
       </Card>
     );
   }
@@ -90,30 +113,34 @@ export function ReceiptList({ limit }: { limit?: number }) {
     <Card className="p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/55 font-mono">
-          Recent receipts ({receipts.length})
+          Recent receipts ({filteredReceipts.length})
         </div>
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setShowAmounts((v) => !v)}
-            title={showAmounts ? "Hide amounts" : "Reveal amounts"}
-            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[9px] font-mono uppercase tracking-[0.1em] text-muted-foreground/50 transition-colors hover:text-foreground hairline"
-          >
-            {showAmounts ? (
-              <><EyeOff className="h-3 w-3" /> Hide</>
-            ) : (
-              <><Eye className="h-3 w-3" /> Reveal</>
-            )}
-          </button>
+          {mode !== "public" && (
+            <button
+              type="button"
+              onClick={() => setShowAmounts((v) => !v)}
+              title={showAmounts ? "Hide amounts" : "Reveal amounts"}
+              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[9px] font-mono uppercase tracking-[0.1em] text-muted-foreground/50 transition-colors hover:text-foreground hairline"
+            >
+              {showAmounts ? (
+                <><EyeOff className="h-3 w-3" /> Hide</>
+              ) : (
+                <><Eye className="h-3 w-3" /> Reveal</>
+              )}
+            </button>
+          )}
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
               const csv = toCsv(
-                receipts.map((r) => ({
+                filteredReceipts.map((r) => ({
                   date: new Date(r.timestamp).toISOString(),
                   kind: KIND_LABEL[r.kind] ?? r.kind,
                   amount: r.amount ?? "",
+                  token: getReceiptToken(r),
+                  mode: getReceiptMode(r),
                   recipient: r.recipientLabel ?? "",
                   note: r.note ?? "",
                   txHash: r.txHash,
@@ -122,7 +149,9 @@ export function ReceiptList({ limit }: { limit?: number }) {
                 [
                   { key: "date", label: "Date (UTC)" },
                   { key: "kind", label: "Kind" },
-                  { key: "amount", label: "Amount (ocUSDC)" },
+                  { key: "amount", label: `Amount (${tokenLabel})` },
+                  { key: "token", label: "Token" },
+                  { key: "mode", label: "Mode" },
                   { key: "recipient", label: "Recipient label" },
                   { key: "note", label: "Note" },
                   { key: "txHash", label: "Tx hash" },
@@ -135,7 +164,11 @@ export function ReceiptList({ limit }: { limit?: number }) {
           >
             <FileSpreadsheet className="w-3.5 h-3.5 mr-1" /> CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={() => exportJSON()}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => mode ? downloadJson(`obscura-${mode}-receipts-${new Date().toISOString().slice(0, 10)}.json`, filteredReceipts) : exportJSON()}
+          >
             <Download className="w-3.5 h-3.5 mr-1" /> JSON
           </Button>
         </div>

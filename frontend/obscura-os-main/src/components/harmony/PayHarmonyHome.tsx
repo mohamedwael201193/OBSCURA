@@ -22,9 +22,10 @@ import {
   Send,
   Shield,
   ShieldCheck,
+  Wallet,
   Zap,
 } from "lucide-react";
-import { useAccount, useChainId, useSwitchChain } from "wagmi";
+import { useAccount, useChainId, useReadContract, useSwitchChain } from "wagmi";
 import { cn } from "@/lib/utils";
 import { HarmonyStatusBanner } from "@/components/harmony/harmony-ui";
 import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
@@ -32,8 +33,10 @@ import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 import { useStealthInbox } from "@/hooks/useStealthInbox";
 import { useReceipts } from "@/hooks/useReceipts";
 import { useOnboardingState } from "@/hooks/useOnboardingState";
-import { useSmartAccount } from "@/hooks/useSmartAccount";
 import { usePaymentMode } from "@/contexts/PaymentModeContext";
+import { USDC_ARB_SEPOLIA } from "@/config/pay";
+import { PAYMASTER_ABI, PAYMASTER_ADDRESS } from "@/config/smartAccount";
+import { filterReceiptsByPrivacyMode, getReceiptToken } from "@/lib/payModeFilters";
 
 const ARB_SEPOLIA_CHAIN_ID = 421614;
 
@@ -428,12 +431,31 @@ export function PayHarmonyHome({
   const inbox = useStealthInbox();
   const receipts = useReceipts();
   const onboarding = useOnboardingState();
-  const { isDeployed: isSmartDeployed, hasPasskey: isSmartEnrolled } = useSmartAccount();
-  const { privacyMode, setPrivacyMode, isSmartAvailable, activeToken, executionLabel, modeSummary } = usePaymentMode();
+  const {
+    privacyMode,
+    setPrivacyMode,
+    isSmartAvailable,
+    isSmartDeployed,
+    isSmartEnrolled,
+    smartAccountAddress,
+    activeToken,
+    executionLabel,
+    modeSummary,
+  } = usePaymentMode();
+  const smartUsdcBalance = useUSDCBalance(smartAccountAddress as `0x${string}` | null);
+  const { data: usdcWhitelisted } = useReadContract({
+    address: PAYMASTER_ADDRESS || undefined,
+    abi: PAYMASTER_ABI,
+    functionName: "whitelistedTargets",
+    args: [USDC_ARB_SEPOLIA],
+    query: { enabled: !!PAYMASTER_ADDRESS },
+  });
 
   const isWrongChain = isConnected && chainId !== ARB_SEPOLIA_CHAIN_ID;
   const unread = inbox.unreadCount ?? 0;
   const usdcNum = usdcBalance ? parseFloat(usdcBalance) : 0;
+  const smartUsdcNum = smartUsdcBalance ? parseFloat(smartUsdcBalance) : 0;
+  const sponsorshipReady = Boolean(PAYMASTER_ADDRESS && usdcWhitelisted === true);
   const hasPrivateUsdc = onboarding.hasPrivateUsdc;
   const ocDisplay =
     decrypted != null
@@ -613,7 +635,8 @@ export function PayHarmonyHome({
           title: "Set up your\nprivate treasury.",
         };
 
-  const activity = receipts.receipts.slice(0, 4).map((r) => ({
+  const activityReceipts = filterReceiptsByPrivacyMode(receipts.receipts, privacyMode);
+  const activity = activityReceipts.slice(0, 4).map((r) => ({
     icon:
       r.kind.includes("receive") || r.kind.includes("claim")
         ? ArrowDownLeft
@@ -624,8 +647,7 @@ export function PayHarmonyHome({
       : r.txHash
         ? `${r.txHash.slice(0, 6)}…${r.txHash.slice(-4)}`
         : "",
-    value: r.amount ? `${r.amount} ${String((r.meta as { token?: string } | undefined)?.token ?? "ocUSDC")}` : null,
-    encrypted: String((r.meta as { mode?: string } | undefined)?.mode ?? "").startsWith("public") ? false : true,
+    value: r.amount ? `${r.amount} ${getReceiptToken(r)}` : null,
     time: formatRelativeTime((r as { timestamp?: number }).timestamp),
   }));
 
@@ -641,6 +663,282 @@ export function PayHarmonyHome({
       },
     }),
   };
+
+  const publicSteps: ChecklistStep[] = [
+    {
+      num: 1,
+      title: "Connect wallet",
+      hint: isConnected ? "Wallet session active" : "Connect before setting up public USDC payments",
+      privacyNote: "Public Mode uses normal USDC",
+      done: isConnected,
+      active: !isConnected,
+      actionLabel: "Connect",
+      onAction: () => onNavigate("settings"),
+    },
+    {
+      num: 2,
+      title: "Set up passkey smart account",
+      hint: isSmartAvailable
+        ? "Passkey account is deployed and enrolled"
+        : isSmartDeployed
+          ? "Add a passkey before public gasless sends"
+          : "Deploy the passkey account for ERC-4337 sends",
+      privacyNote: "Public sends are visible but gasless",
+      done: isSmartAvailable,
+      active: isConnected && !isSmartAvailable,
+      actionLabel: isSmartDeployed && !isSmartEnrolled ? "Add passkey" : "Set up",
+      onAction: () => onNavigate("settings"),
+    },
+    {
+      num: 3,
+      title: "Fund smart account with USDC",
+      hint: smartUsdcNum > 0
+        ? `${smartUsdcNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC ready`
+        : "Move normal USDC from wallet to smart account",
+      privacyNote: "Only normal USDC belongs here",
+      done: smartUsdcNum > 0,
+      active: isSmartAvailable && smartUsdcNum <= 0,
+      actionLabel: "Fund account",
+      onAction: () => onNavigate("pay"),
+    },
+    {
+      num: 4,
+      title: "Gas sponsorship",
+      hint: sponsorshipReady
+        ? "USDC paymaster target is configured"
+        : PAYMASTER_ADDRESS
+          ? "Checking whether the USDC paymaster target is enabled"
+          : "Paymaster is not configured for public USDC in this environment",
+      privacyNote: "Sponsored UserOps, not encrypted FHE",
+      done: sponsorshipReady,
+      active: isSmartAvailable && !sponsorshipReady,
+      actionLabel: "Review settings",
+      onAction: () => onNavigate("settings"),
+    },
+  ];
+  const publicDoneCount = publicSteps.filter((step) => step.done).length;
+  const publicProgress = (publicDoneCount / publicSteps.length) * 100;
+  const publicPrimaryAction: PrimaryAction = !isConnected
+    ? { label: "Connect wallet", icon: Plug, onClick: () => onNavigate("settings") }
+    : !isSmartAvailable
+      ? { label: "Set up passkey", icon: Fingerprint, onClick: () => onNavigate("settings") }
+      : smartUsdcNum <= 0
+        ? { label: "Fund smart account", icon: Wallet, onClick: () => onNavigate("pay") }
+        : { label: "Send public USDC", icon: Send, onClick: () => onNavigate("pay") };
+  const PublicPrimaryIcon = publicPrimaryAction.icon;
+
+  if (privacyMode === "public") {
+    return (
+      <div className="space-y-2.5">
+        {isWrongChain && (
+          <HarmonyStatusBanner
+            variant="warning"
+            icon={<Network className="h-4 w-4" />}
+            message="Switch to Arbitrum Sepolia to use Obscura Pay."
+            action={{
+              label: "Switch network ->",
+              onClick: () => switchChain?.({ chainId: ARB_SEPOLIA_CHAIN_ID }),
+            }}
+          />
+        )}
+
+        <motion.section
+          custom={0}
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          className="overflow-hidden rounded-2xl hairline bg-card"
+        >
+          <div className={cn("flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-border/60 px-6 py-2.5", !isConnected && "opacity-30")}>
+            <PostureItem label="Normal USDC" active={isConnected} />
+            <span className="select-none text-[10px] text-border/50">·</span>
+            <PostureItem label="Smart account" active={isSmartAvailable} />
+            <span className="select-none text-[10px] text-border/50">·</span>
+            <PostureItem label="Sponsored gas" active={sponsorshipReady} />
+            <span className="select-none text-[10px] text-border/50">·</span>
+            <PostureItem label="Visible on-chain" active={isConnected} />
+          </div>
+
+          <div className="grid lg:grid-cols-[1.15fr_1fr]">
+            <div className="border-b border-border/50 px-6 py-5 lg:border-b-0 lg:border-r lg:px-7 lg:py-6">
+              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground/45">
+                {isConnected ? `${greeting} · Public Mode` : "Obscura Pay · Public Mode"}
+              </p>
+              <h1 className="mt-1.5 whitespace-pre-line font-display text-[1.7rem] leading-[1.15] tracking-tight text-foreground sm:text-[1.95rem]">
+                {"Public USDC workspace.\nPasskey-ready payments."}
+              </h1>
+
+              {isConnected ? (
+                <>
+                  <div className="mt-5 space-y-2.5">
+                    <p className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/35">
+                      Smart account balance
+                    </p>
+                    <div className="flex items-baseline gap-3">
+                      <span className="font-display text-[2.75rem] tabular-nums leading-none text-foreground">
+                        {smartUsdcBalance ?? "--"}
+                      </span>
+                      <span className="self-end pb-1.5 font-mono text-[11px] text-muted-foreground/40">USDC</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[11px] text-muted-foreground/45">
+                      <span>Wallet USDC {usdcBalance ?? "--"}</span>
+                      <span className="select-none text-border/50">·</span>
+                      <span>{smartAccountAddress ? `${smartAccountAddress.slice(0, 8)}...${smartAccountAddress.slice(-6)}` : "Smart account not deployed"}</span>
+                    </div>
+                  </div>
+                  <div className="mt-5 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={publicPrimaryAction.onClick}
+                      className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-[13px] font-medium text-background transition-opacity hover:opacity-90 active:scale-[0.97]"
+                    >
+                      <PublicPrimaryIcon className="h-[14px] w-[14px]" />
+                      {publicPrimaryAction.label}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrivacyMode("private")}
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-border/70 px-4 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      Switch to Private Mode
+                      <ChevronRight className="h-[14px] w-[14px]" />
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/40 px-2.5 py-[3px] font-mono text-[9px] text-muted-foreground/50">
+                      <Fingerprint className="h-[8px] w-[8px]" />
+                      Passkey approval
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/40 px-2.5 py-[3px] font-mono text-[9px] text-muted-foreground/50">
+                      <Zap className="h-[8px] w-[8px]" />
+                      Sponsored UserOps
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/40 px-2.5 py-[3px] font-mono text-[9px] text-muted-foreground/50">
+                      <Wallet className="h-[8px] w-[8px]" />
+                      Normal USDC only
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="mt-3 max-w-sm text-[13px] leading-relaxed text-muted-foreground/65">
+                    Public Mode is the visible USDC lane: smart account, passkey approval, and sponsored gas when configured.
+                  </p>
+                  <div className="mt-5">
+                    <button
+                      type="button"
+                      onClick={publicPrimaryAction.onClick}
+                      className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-[13px] font-medium text-background transition-opacity hover:opacity-90 active:scale-[0.97]"
+                    >
+                      <PublicPrimaryIcon className="h-[14px] w-[14px]" />
+                      {publicPrimaryAction.label}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-col bg-muted/15">
+              <div className="flex items-center justify-between border-b border-border/50 px-5 py-3">
+                <div>
+                  <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground/55">
+                    Public readiness
+                  </p>
+                  <p className="mt-0.5 text-[12px] font-medium text-foreground">
+                    {publicDoneCount === publicSteps.length ? "Ready to send" : `${publicDoneCount} of ${publicSteps.length} ready`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] text-muted-foreground/45">{Math.round(publicProgress)}%</span>
+                  <div className="h-[3px] w-20 overflow-hidden rounded-full bg-border/50">
+                    <motion.div
+                      className="h-full rounded-full bg-foreground"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${publicProgress}%` }}
+                      transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 divide-y divide-border/40">
+                {publicSteps.map((step) => <ChecklistRow key={step.num} step={step} />)}
+              </div>
+            </div>
+          </div>
+        </motion.section>
+
+        <motion.div
+          custom={1}
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+        >
+          <ActionPill icon={Send} label="Send" sublabel="Public USDC" onClick={() => onNavigate("pay")} />
+          <ActionPill icon={ArrowDownLeft} label="Receive" sublabel="Wallet or smart account" onClick={() => onNavigate("getpaid")} />
+          <ActionPill icon={Fingerprint} label="Passkey" sublabel={isSmartAvailable ? "Ready" : "Set up"} onClick={() => onNavigate("settings")} />
+          <ActionPill icon={Shield} label="Go private" sublabel="Switch to ocUSDC" onClick={() => setPrivacyMode("private")} />
+        </motion.div>
+
+        <motion.section
+          custom={2}
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          className="overflow-hidden rounded-2xl hairline bg-card"
+        >
+          <header className="flex items-center justify-between border-b border-border/60 px-5 py-2.5">
+            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground/55">
+              Recent public activity
+              {activity.length > 0 && (
+                <span className="ml-2 normal-case tracking-normal text-muted-foreground/35">· last {activity.length}</span>
+              )}
+            </p>
+            {activity.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onNavigate("activity")}
+                className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/50 transition-colors hover:text-foreground"
+              >
+                View all
+                <ChevronRight className="h-3 w-3" />
+              </button>
+            )}
+          </header>
+          {activity.length === 0 ? (
+            <div className="px-5 py-7 text-center">
+              <div className="mx-auto mb-2.5 grid h-9 w-9 place-items-center rounded-full bg-muted">
+                <Wallet className="h-[14px] w-[14px] text-muted-foreground/50" />
+              </div>
+              <p className="text-[12px] font-medium text-foreground/60">No public receipts yet.</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground/40">Public USDC sends and smart-account funding will appear here.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-border/40">
+              {activity.map((row, index) => {
+                const Icon = row.icon;
+                return (
+                  <li key={index} className="flex items-center gap-3 px-5 py-2 transition-colors hover:bg-muted/30">
+                    <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-muted text-foreground/55">
+                      <Icon className="h-[13px] w-[13px]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[12px] font-medium capitalize text-foreground">{row.title}</p>
+                      <p className="truncate font-mono text-[10px] text-muted-foreground/50">{row.meta}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="font-mono text-[12px] tabular-nums text-muted-foreground/60">{row.value ?? "-- USDC"}</p>
+                      <p className="font-mono text-[10px] text-muted-foreground/40">{row.time}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </motion.section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2.5">

@@ -53,7 +53,11 @@ export interface RelayResult {
 // ─── Gas constants (conservative for Arbitrum Sepolia) ───────────────────────
 const VERIFICATION_GAS  = 200_000n;
 const CALL_GAS          = 500_000n;
-const PRE_VERIFICATION  = 100_000n;
+// Arbitrum Sepolia public Smart Account sends with WebAuthn + paymaster calldata
+// have been observed requiring ~363k preVerificationGas. Keep a conservative
+// floor so a failed or under-sized bundler estimate never signs an under-gassed
+// UserOp that must be retried after the passkey prompt.
+const PRE_VERIFICATION  = 500_000n;
 const PAYMASTER_VERIFICATION_GAS = 200_000n;
 const PAYMASTER_POST_OP = 100_000n;   // postOpGasLimit in paymasterAndData
 const MIN_PRIORITY_FEE_PER_GAS = 120_000n;
@@ -124,8 +128,20 @@ function withGasMargin(value: bigint): bigint {
   return (value * 120n + 99n) / 100n;
 }
 
+function withPreVerificationMargin(value: bigint): bigint {
+  return (value * 140n + 99n) / 100n;
+}
+
 function maxGas(floor: bigint, estimated: bigint | undefined): bigint {
   return estimated === undefined ? floor : floor > withGasMargin(estimated) ? floor : withGasMargin(estimated);
+}
+
+function maxPreVerificationGas(estimated: bigint | undefined): bigint {
+  return estimated === undefined
+    ? PRE_VERIFICATION
+    : PRE_VERIFICATION > withPreVerificationMargin(estimated)
+      ? PRE_VERIFICATION
+      : withPreVerificationMargin(estimated);
 }
 
 function sleep(ms: number) {
@@ -331,7 +347,7 @@ export async function buildUserOp(opts: UserOpBuildOptions): Promise<PackedUserO
   if (gasEstimate) {
     verificationGasLimit = maxGas(VERIFICATION_GAS, parseOptionalBigInt(gasEstimate.verificationGasLimit));
     callGasLimit = maxGas(CALL_GAS, parseOptionalBigInt(gasEstimate.callGasLimit));
-    preVerificationGas = maxGas(PRE_VERIFICATION, parseOptionalBigInt(gasEstimate.preVerificationGas));
+    preVerificationGas = maxPreVerificationGas(parseOptionalBigInt(gasEstimate.preVerificationGas));
     paymasterVerificationGas = maxGas(
       PAYMASTER_VERIFICATION_GAS,
       parseOptionalBigInt(gasEstimate.paymasterVerificationGasLimit),

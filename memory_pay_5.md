@@ -1547,3 +1547,48 @@ Full `npx hardhat test` result: `118 passing, 5 failing`. Failures are pre-exist
   4. Public single USDC send succeeds after USDC target whitelist/paymaster v2.
   5. Public batch send succeeds after paymaster v2 deployment.
 
+---
+
+## W5P12 — Public Mode WebAuthn preVerificationGas Fix ✅
+
+**Completed**: current session — fixes the live Public Mode USDC send failure after accepting the passkey prompt.
+
+### User-reported failure
+
+Public Mode flow reached passkey signing, then relay submission failed with:
+
+```
+Relay error 400: {"error":"Bundler error: preVerificationGas is not enough, required: 362979, got: 120000"}
+```
+
+### Root cause
+
+`preVerificationGas` was still using a `100_000` fallback plus the shared 20% gas margin, producing the signed value `120_000` whenever the bundler estimate was low or unavailable. WebAuthn + ERC-4337 + paymaster UserOps on Arbitrum Sepolia need substantially more pre-verification gas because the passkey signature payload, paymaster data, and calldata are all charged before execution.
+
+Important: `preVerificationGas` is part of the signed UserOp hash, so it must be set correctly before the passkey prompt. The relay cannot safely bump it after signing.
+
+### Fix
+
+| File | Change |
+|------|--------|
+| `frontend/obscura-os-main/src/lib/userop.ts` | Raised the public UserOp pre-verification floor from `100_000` to `500_000` |
+| `frontend/obscura-os-main/src/lib/userop.ts` | Added a dedicated `withPreVerificationMargin()` helper using a 40% margin for bundler estimates |
+| `frontend/obscura-os-main/src/lib/userop.ts` | Switched pre-verification assignment to `maxPreVerificationGas(...)` so low estimates cannot sign under-gassed UserOps |
+
+### Expected behavior
+
+- Public Mode funding is unchanged: wallet sends normal USDC to the smart account.
+- Public Mode USDC send still uses passkey + paymaster sponsorship.
+- Signed UserOps now carry at least `500000` `preVerificationGas`, covering the observed `required: 362979` failure.
+- Private Mode ocUSDC/FHE wallet execution remains untouched.
+
+### Verification
+
+- Editor diagnostics on `src/lib/userop.ts`: clean ✅
+- Frontend build: `npm run build` in `frontend/obscura-os-main` ✅ (`✓ built in 55.42s`)
+- Frontend tests: `npm run test` in `frontend/obscura-os-main` ✅ (`1 passed`)
+
+### Deployment note
+
+This is a frontend-only fix. Backend relay and contracts do not need changes. The local dev build includes the fix immediately; hosted Vercel needs a redeploy from the updated frontend code.
+

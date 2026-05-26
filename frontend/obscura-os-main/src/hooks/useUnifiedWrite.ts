@@ -4,7 +4,7 @@
  *
  * Returns a single `write(opts)` callable. When Smart Mode is active and the
  * smart account is deployed, calls are routed through `sendUserOp` (passkey
- * signed, no MetaMask). Otherwise falls back to standard `writeContractAsync`.
+ * signed, no MetaMask). Wallet mode uses standard `writeContractAsync`.
  *
  * Usage:
  *   const { write } = useUnifiedWrite();
@@ -31,7 +31,7 @@ export interface UnifiedWriteOpts {
   /**
    * Override the global mode for this specific call.
    * "eoa" → always use MetaMask/wallet
-   * "smart-account" → always use passkey UserOp (falls back to EOA if unavailable)
+  * "smart-account" → always use passkey UserOp
    */
   mode?: WriteMode;
 }
@@ -44,7 +44,8 @@ export interface UnifiedWriteOpts {
  *   - opts.mode === "smart-account", OR contextMode === "smart"
  *   - AND the smart account is deployed + passkey enrolled
  *
- * Falls back silently to EOA if the smart account is unavailable.
+ * In Smart Mode this never falls back to EOA, because an unexpected MetaMask
+ * popup breaks the passkey/gasless contract with the user.
  */
 export function useUnifiedWrite() {
   const { address: eoaAddress } = useAccount();
@@ -60,6 +61,10 @@ export function useUnifiedWrite() {
           : contextMode === "smart";
 
       const isSmartReady = preferSmart && isDeployed && !!accountAddress;
+
+      if (preferSmart && !isSmartReady) {
+        throw new Error("Smart account is not ready. Finish Smart Account setup before sending.");
+      }
 
       if (isSmartReady) {
         // ── Smart Account path — passkey UserOp, no MetaMask ──

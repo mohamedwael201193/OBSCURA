@@ -44,7 +44,7 @@ export function useOcUSDCTransfer() {
 
   // Smart account
   const { accountAddress, isDeployed, sendUserOp } = useSmartAccount();
-  const { mode: paymentMode } = usePaymentMode();
+  const { mode: paymentMode, smartAccountAddress, isSmartAvailable } = usePaymentMode();
 
   /**
    * Check whether the smart account is an approved operator on the Pay ocUSDC.
@@ -104,7 +104,8 @@ export function useOcUSDCTransfer() {
         throw new Error('Wallet not connected or ocUSDC contract not configured');
       }
 
-      const isSmartMode = paymentMode === 'smart' && isDeployed && !!accountAddress && !!address;
+      const isSmartRequested = paymentMode === 'smart';
+      const smartAddress = (accountAddress ?? smartAccountAddress) as `0x${string}` | null;
 
       try {
         fheStatus.setStep(FHEStepStatus.ENCRYPTING);
@@ -118,12 +119,18 @@ export function useOcUSDCTransfer() {
 
         let hash: Hex;
 
-        if (isSmartMode) {
+        if (isSmartRequested) {
           // ── Smart Account path ──
+          if (!address) throw new Error('Wallet not connected');
+          if (!smartAddress) throw new Error('Smart account address is still loading');
+          if (!isSmartAvailable && !isDeployed) {
+            throw new Error('Smart account is not ready. Finish Smart Account setup before sending.');
+          }
+
           // Ensure smart account is approved as operator (one-time, EOA signs)
-          const isOp = await checkIsOperator(accountAddress!);
+          const isOp = await checkIsOperator(smartAddress);
           if (!isOp) {
-            await approveSmartOperator(accountAddress!);
+            await approveSmartOperator(smartAddress);
           }
 
           // Route through sendUserOp → confidentialTransferFrom(eoaAddr, to, enc)
@@ -163,7 +170,7 @@ export function useOcUSDCTransfer() {
     },
     [
       publicClient, walletClient, writeContractAsync, address, fheStatus,
-      paymentMode, isDeployed, accountAddress, sendUserOp,
+      paymentMode, isDeployed, accountAddress, smartAccountAddress, isSmartAvailable, sendUserOp,
       checkIsOperator, approveSmartOperator,
     ]
   );
@@ -199,6 +206,8 @@ export function useOcUSDCTransfer() {
   return {
     transfer,
     setOperator,
+    checkIsOperator,
+    approveSmartOperator,
     txHash,
     isTxPending,
     ...fheStatus,

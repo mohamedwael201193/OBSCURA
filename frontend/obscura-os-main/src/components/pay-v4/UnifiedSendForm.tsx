@@ -96,9 +96,11 @@ export default function UnifiedSendForm() {
   const { decrypted, trackedCusdc } = useOcUSDCBalance();
 
   // Smart account + payment mode
-  const { mode: paymentMode } = usePaymentMode();
+  const { mode: paymentMode, smartAccountAddress, isSmartAvailable } = usePaymentMode();
   const { accountAddress, isDeployed, sendUserOp } = useSmartAccount();
-  const isSmartMode = paymentMode === "smart" && isDeployed && !!accountAddress && !!address;
+  const isSmartRequested = paymentMode === "smart";
+  const smartAddress = (accountAddress ?? smartAccountAddress) as `0x${string}` | null;
+  const isSmartMode = isSmartRequested && !!address && !!smartAddress && (isSmartAvailable || isDeployed);
 
   const cusdc = decrypted !== null
     ? (Number(decrypted) / 1_000_000).toFixed(6)
@@ -179,12 +181,19 @@ export default function UnifiedSendForm() {
 
       if (mode === "direct") {
         if (!resolved.address) throw new Error("Recipient address missing");
-        beginProgress([
-          "Initialize FHE encryption client",
-          "Encrypt amount in browser",
-          "Submit confidentialTransfer",
-          "Wait for on-chain confirmation",
-        ]);
+        beginProgress(isSmartRequested
+          ? [
+              "Initialize FHE encryption client",
+              "Encrypt amount in browser",
+              "Authorize smart account if needed",
+              "Sign passkey UserOp and relay",
+            ]
+          : [
+              "Initialize FHE encryption client",
+              "Encrypt amount in browser",
+              "Submit confidentialTransfer",
+              "Wait for on-chain confirmation",
+            ]);
         try {
           advanceProgress(0, "active");
           await initFHEClient(publicClient, walletClient);
@@ -193,7 +202,11 @@ export default function UnifiedSendForm() {
           // useCUSDCTransfer encrypts + submits + waits internally; we surface
           // its three remaining steps as a single progress bracket.
           advanceProgress(1, "done");
-          advanceProgress(2, "active");
+          advanceProgress(
+            2,
+            "active",
+            isSmartRequested ? "One-time wallet approval if missing; passkey follows" : undefined,
+          );
           hash = await transfer.transfer(resolved.address, amountWei);
           advanceProgress(2, "done", `${hash.slice(0, 10)}…`);
           advanceProgress(3, "done");
@@ -238,13 +251,16 @@ export default function UnifiedSendForm() {
 
           advanceProgress(3, "active");
 
-          if (isSmartMode) {
+          if (isSmartRequested) {
             // ── Smart mode: route confidentialTransferFrom via passkey UserOp ──
             // useOcUSDCTransfer handles operator approval internally; here we
             // call the stealth variant directly via sendUserOp.
-            const isOp = await transfer.checkIsOperator(accountAddress!);
+            if (!isSmartMode || !smartAddress) {
+              throw new Error("Smart account is not ready. Finish Smart Account setup before sending.");
+            }
+            const isOp = await transfer.checkIsOperator(smartAddress);
             if (!isOp) {
-              await transfer.approveSmartOperator(accountAddress!);
+              await transfer.approveSmartOperator(smartAddress);
             }
             const transferCallData = encodeFunctionData({
               abi: CONFIDENTIAL_TOKEN_ABI,
@@ -286,8 +302,11 @@ export default function UnifiedSendForm() {
           };
           let annHash: `0x${string}`;
           try {
-            if (isSmartMode) {
+            if (isSmartRequested) {
               // ── Smart mode: announce via passkey UserOp ──
+              if (!isSmartMode) {
+                throw new Error("Smart account is not ready. Finish Smart Account setup before sending.");
+              }
               const announceCallData = encodeFunctionData({
                 abi: OBSCURA_STEALTH_REGISTRY_ABI,
                 functionName: "announce",
@@ -364,7 +383,10 @@ export default function UnifiedSendForm() {
     try {
       await sleep(1500);
       let annHash: `0x${string}`;
-      if (isSmartMode) {
+      if (isSmartRequested) {
+        if (!isSmartMode) {
+          throw new Error("Smart account is not ready. Finish Smart Account setup before retrying.");
+        }
         const announceCallData = encodeFunctionData({
           abi: OBSCURA_STEALTH_REGISTRY_ABI,
           functionName: "announce",

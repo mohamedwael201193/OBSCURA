@@ -1107,6 +1107,49 @@ Existing smart accounts from the old factory cannot be upgraded. Users must depl
 
 ---
 
+## W5P9.5 — Smart Mode MetaMask Popup Routing Fix ✅
+
+**Completed**: current session — fixes direct ocUSDC send opening MetaMask after Smart Account enrollment.
+
+### Bug
+
+**Symptom**: user enrolls/deploys the new WebAuthn smart account, selects Smart Mode, then sends direct ocUSDC. Instead of the device passkey prompt, MetaMask opens against the Pay ocUSDC contract (`0xEd46020Df8abe7BB1E096f27d089F4326D223a53`).
+
+### Root cause
+
+This was not another AA24 contract failure. The frontend had two Smart Mode UX/routing problems:
+
+1. `useOcUSDCTransfer()` treated Smart Mode as smart only when its own local `useSmartAccount()` instance had already loaded `accountAddress + isDeployed`. If that local hook was still loading, it silently used the EOA `writeContractAsync()` path, which opens MetaMask.
+2. For EOA-held ocUSDC, the smart account must be approved once as an FHERC20 operator before it can call `confidentialTransferFrom(owner, to, encryptedAmount)`. That required wallet approval was happening inside the send step with no explicit setup/status, so it looked like the direct transfer was bypassing passkey.
+
+### Fix
+
+Frontend changes:
+
+| File | Change |
+|------|--------|
+| `src/hooks/useSmartAccount.ts` | `sendUserOp()` now re-resolves the passkey smart account from the factory if local hook state is stale; `deploy()` returns the smart account address. |
+| `src/hooks/useUnifiedWrite.ts` | Smart Mode no longer silently falls back to EOA. If smart account is not ready, it throws a setup error instead of opening MetaMask. |
+| `src/hooks/useOcUSDCTransfer.ts` | Direct ocUSDC Smart Mode now uses PaymentMode context as source of truth and never routes to EOA when Smart Mode is selected. Exposes `checkIsOperator()` and `approveSmartOperator()`. |
+| `src/components/pay-v4/UnifiedSendForm.tsx` | Direct and stealth sends now treat Smart Mode as mandatory once selected; no EOA fallback. Progress copy calls out the one-time ocUSDC authorization if missing. |
+| `src/components/harmony/PasskeyEnrollModal.tsx` | Enrollment now performs the one-time ocUSDC smart-send operator authorization after deploying the smart account. Future sends should go directly to passkey. |
+| `src/pages/PayPage.tsx` | Smart Account settings now show `ocUSDC smart sends: Enabled / Needs approval` and provide an `Enable ocUSDC smart sends` button for already-deployed accounts. |
+| `src/components/harmony/PaymentModeBar.tsx` | Smart Mode copy clarified: passkey/gasless behavior applies after one-time ocUSDC authorization. |
+
+### Expected behavior after this fix
+
+- New Smart Account setup: passkey enrollment/deploy happens, then one wallet confirmation may appear for `setOperator(smartAccount, expiry)` on Pay ocUSDC.
+- After `ocUSDC smart sends` is enabled, direct Smart Mode sends should show the device passkey prompt and submit through the relay/paymaster.
+- If Smart Mode is selected but the smart account is not ready, the app stops with a setup error instead of opening MetaMask as a fallback.
+- Existing users who already deployed the new factory account can go to Settings → Smart Account and click `Enable ocUSDC smart sends` once.
+
+### Verification
+
+- Editor diagnostics: no errors in touched Smart Mode/send files ✅
+- `npm run build` in `frontend/obscura-os-main` ✅ (`✓ built in 46.90s`)
+
+---
+
 ## W5P10 — Smart Mode Full Routing (All Pay Features) ✅
 
 **Completed**: commits `1ac0a5d` (UI toggle), `fdb83fa` (all components fixed)

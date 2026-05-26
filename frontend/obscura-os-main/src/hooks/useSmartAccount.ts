@@ -48,7 +48,7 @@ export interface SmartAccountState {
 
 export interface UseSmartAccountReturn extends SmartAccountState {
   /** Register a passkey and deploy the smart account contract */
-  deploy: () => Promise<void>;
+  deploy: () => Promise<Address>;
   /** Send a UserOp using the passkey signature */
   sendUserOp: (target: Address, callData: Hex, value?: bigint) => Promise<Hex>;
   /** Reset to idle after error or confirmation */
@@ -168,8 +168,28 @@ export function useSmartAccount(): UseSmartAccountReturn {
     };
   }, [state.status]);
 
+  const resolvePasskeyAccount = useCallback(async (): Promise<{ accountAddress: Address; isDeployed: boolean }> => {
+    if (!eoaAddress || !publicClient) throw new Error("Wallet not connected");
+
+    const passkey = await getPasskey(eoaAddress);
+    if (!passkey) throw new Error("Passkey not enrolled for this wallet");
+
+    const accountAddress = await publicClient.readContract({
+      address: SMART_ACCOUNT_FACTORY_ADDRESS,
+      abi: SMART_ACCOUNT_FACTORY_ABI,
+      functionName: "getAccountAddress",
+      args: [eoaAddress, passkey.publicKeyX, passkey.publicKeyY, DEFAULT_SALT],
+    }) as Address;
+
+    const code = await publicClient.getBytecode({ address: accountAddress });
+    const isDeployed = !!code && code !== "0x";
+
+    setPartial({ accountAddress, isDeployed, hasPasskey: true });
+    return { accountAddress, isDeployed };
+  }, [eoaAddress, publicClient]);
+
   // ─── deploy ───────────────────────────────────────────────────────────────
-  const deploy = useCallback(async () => {
+  const deploy = useCallback(async (): Promise<Address> => {
     if (!eoaAddress || !publicClient || !walletClient) {
       throw new Error("Wallet not connected");
     }
@@ -196,7 +216,7 @@ export function useSmartAccount(): UseSmartAccountReturn {
       const code = await publicClient.getBytecode({ address: accountAddress });
       if (code && code !== "0x") {
         setPartial({ isDeployed: true, status: "deployed" });
-        return;
+        return accountAddress;
       }
 
       // Deploy via factory (EOA pays gas for deployment)
@@ -218,6 +238,7 @@ export function useSmartAccount(): UseSmartAccountReturn {
       await publicClient.waitForTransactionReceipt({ hash });
 
       setPartial({ isDeployed: true, status: "deployed" });
+      return accountAddress;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setPartial({ status: "error", error: msg });
@@ -229,14 +250,23 @@ export function useSmartAccount(): UseSmartAccountReturn {
   const sendUserOp = useCallback(
     async (target: Address, callData: Hex, value: bigint = 0n): Promise<Hex> => {
       if (!eoaAddress || !publicClient) throw new Error("Wallet not connected");
-      if (!state.accountAddress) throw new Error("Smart account address unknown");
-      if (!state.isDeployed) throw new Error("Smart account not deployed yet");
 
       setPartial({ status: "signing", error: null });
       try {
+        let sender = state.accountAddress;
+        let isDeployed = state.isDeployed;
+
+        if (!sender || !isDeployed) {
+          const resolved = await resolvePasskeyAccount();
+          sender = resolved.accountAddress;
+          isDeployed = resolved.isDeployed;
+        }
+
+        if (!isDeployed) throw new Error("Smart account not deployed yet");
+
         // Build unsigned UserOp
         const op = await buildUserOp({
-          sender: state.accountAddress,
+          sender,
           target,
           callData,
           value,
@@ -263,7 +293,7 @@ export function useSmartAccount(): UseSmartAccountReturn {
         throw e;
       }
     },
-    [eoaAddress, publicClient, state.accountAddress, state.isDeployed],
+    [eoaAddress, publicClient, state.accountAddress, state.isDeployed, resolvePasskeyAccount],
   );
 
   const reset = useCallback(() => {

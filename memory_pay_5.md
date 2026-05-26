@@ -1430,3 +1430,120 @@ This prevents the smart account from trying to approve itself as its own operato
 ### Build result
 `✓ build succeeded` — zero TypeScript errors, all chunk size warnings are expected.
 
+---
+
+## W5P11 — Dual Public/Private Pay Architecture ✅
+
+**Completed**: current session — replaces the stale W5P10 encrypted-smart routing assumption with a strict mode split.
+
+### Architecture decision
+
+Obscura Pay now has two separate payment lanes:
+
+| Mode | Token | Execution | UX promise |
+|------|-------|-----------|------------|
+| Public Mode | public `USDC` | Smart Account / ERC-4337 / passkey / paymaster | Fast, gasless, passkey |
+| Private Mode | encrypted `ocUSDC` | Wallet / EOA FHE transactions | Encrypted, hidden, wallet-secured |
+
+Critical rule: encrypted `ocUSDC` flows must not route through the Smart Account. CoFHE encrypted input proofs are bound to the immediate caller, so forwarding `InEuint64` through `smartAccount.execute(...)` fails with `InvalidSigner(address,address)`.
+
+### Frontend behavior
+
+- `PaymentModeContext` now stores `privacyMode: "public" | "private"` in `obscura:payPrivacyMode`.
+- Legacy `mode: "wallet" | "smart"` remains for older hooks:
+  - Private Mode always resolves to `wallet`.
+  - Public Mode resolves to `smart` only when passkey + smart account are ready.
+- `PaymentModeBar` is now a Public/Private segmented switch:
+  - Public = fast, gasless, passkey.
+  - Private = encrypted, hidden, wallet-secured.
+- Smart-account readiness is broadcast with `obscura:smartAccountRefresh` so separate `useSmartAccount()` hook instances update after deployment.
+
+### Public Mode
+
+- New `PublicUSDCSendForm` sends normal USDC from the user's smart account.
+- Supports single public USDC transfer via `sendUserOp(USDC, transfer(to, amount))`.
+- Supports batch public transfers via `sendBatchUserOp([...])`, which encodes `executeBatch(address[],uint256[],bytes[])`.
+- Shows wallet USDC balance, smart-account USDC balance, funding action from wallet to smart account, passkey setup state, and paymaster USDC whitelist status.
+- Public receive surface shares smart-account address and wallet address.
+- Public automations surface exposes gasless batch USDC transfers.
+
+### Private Mode preserved
+
+All existing private Pay features stay wallet/FHE:
+
+- shield / unshield,
+- direct and stealth ocUSDC send,
+- stealth inbox / sweep / registration,
+- escrows,
+- invoices,
+- streams,
+- subscriptions,
+- payroll,
+- insurance / coverage / staking,
+- auditor grants and legacy ocUSDC tools.
+
+Public Mode routes private-only screens to clear switch-to-Private callouts instead of attempting Smart Account execution.
+
+### Paymaster support
+
+`ObscuraPaymaster` now validates both:
+
+- `execute(address,uint256,bytes)` — one target must be whitelisted.
+- `executeBatch(address[],uint256[],bytes[])` — every target must be whitelisted.
+
+New deployment helper: `contracts-hardhat/scripts/deployPublicPaymasterV2.ts` deploys a paymaster with batch validation, funds it, whitelists public USDC plus active Pay targets, and updates `deployments/<network>.json`.
+
+Updated `deploySmartAccount.ts` whitelist includes public USDC and current active Wave 4/5 Pay contracts.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `frontend/obscura-os-main/src/contexts/PaymentModeContext.tsx` | Privacy mode store + legacy execution derivation |
+| `frontend/obscura-os-main/src/components/harmony/PaymentModeBar.tsx` | Public/Private switch |
+| `frontend/obscura-os-main/src/components/pay-v4/PublicUSDCSendForm.tsx` | New public USDC single/batch Smart Account send UI |
+| `frontend/obscura-os-main/src/pages/PayPage.tsx` | Mode-aware Pay/Get Paid/Automations/Activity/Settings routing and private gates |
+| `frontend/obscura-os-main/src/components/harmony/PayHarmonyHome.tsx` | Dual-lane onboarding and overview copy |
+| `frontend/obscura-os-main/src/components/harmony/PayHarmonyTabShell.tsx` | Mode-aware tab descriptions and balance bar |
+| `frontend/obscura-os-main/src/hooks/useSmartAccount.ts` | `sendBatchUserOp`, bundle tx return, cross-hook refresh event |
+| `frontend/obscura-os-main/src/lib/userop.ts` | Pre-encoded account calldata support for batch UserOps |
+| `frontend/obscura-os-main/src/config/pay.ts` | Public USDC ERC20 `transfer` + `allowance` ABI |
+| `frontend/obscura-os-main/src/hooks/useOcUSDCTransfer.ts` | Guard copy changed to Private Mode terminology |
+| `frontend/obscura-os-main/src/components/pay-v4/UnifiedSendForm.tsx` | Private fallback copy changed to Private Mode |
+| `frontend/obscura-os-main/src/components/pay-v4/StreamList.tsx` | Removed duplicate `toast` import that blanked dev mode |
+| `contracts-hardhat/contracts/SmartAccount/ObscuraPaymaster.sol` | Batch target whitelist validation |
+| `contracts-hardhat/test/ObscuraSmartAccount.test.ts` | Paymaster execute + executeBatch sponsorship tests |
+| `contracts-hardhat/scripts/deploySmartAccount.ts` | Refreshed whitelist targets |
+| `contracts-hardhat/scripts/deployPublicPaymasterV2.ts` | New paymaster-v2 deployment script |
+
+### Verification
+
+- Editor diagnostics on modified files: clean ✅
+- Frontend build: `npm run build` in `frontend/obscura-os-main` ✅
+- Frontend tests: `npm run test` in `frontend/obscura-os-main` ✅ (`1 passed`)
+- Backend build: `npm run build` in `backend/obscura-api` ✅
+- Contracts compile: `npx hardhat compile` in `contracts-hardhat` ✅
+- Targeted Smart Account/Paymaster tests: `npx hardhat test test/ObscuraSmartAccount.test.ts` ✅ (`44 passing`)
+- Browser smoke test: Vite dev server rendered `/pay`; no page errors after removing duplicate `toast`; localStorage mode flip showed Public passkey / Private wallet posture ✅
+
+Full `npx hardhat test` result: `118 passing, 5 failing`. Failures are pre-existing and unrelated to W5P11:
+
+- `ObscuraCreditScore` artifact missing; test likely needs `ObscuraCreditScoreV2`.
+- `ObscuraPayrollResolver` artifact missing; available contracts are V2/V3.
+- Three legacy `ObscuraPay.grantAuditAccess` tests revert inside CoFHE mock `FHE.allow`.
+
+### Deployment status / limitations
+
+- Paymaster v2 deployed on Arbitrum Sepolia: `0x7a8D880D9c5F88Ba8bd4435c450256628F66dd0C`.
+- Funded paymaster v2 with `0.15 ETH` EntryPoint deposit. Funding tx: `0xb6f1c213fecc70b3c185863f8bd59552efdee0181ddcdbf2b543dc9acb894e9b`.
+- Whitelisted public USDC and all active Pay targets on the new paymaster.
+- Updated `contracts-hardhat/deployments/arb-sepolia.json` and local `frontend/obscura-os-main/.env` `VITE_PAYMASTER_ADDRESS` to the new paymaster.
+- Old paymaster `0x9B1F61A65467F11339A8d0834349Be32EB2CF878` remains obsolete for Public batch sponsorship because it only validates single `execute(...)` calls.
+- Final frontend build after `.env` update passed: `✓ built in 14.30s`.
+- Manual wallet-connected verification is still required on Arbitrum Sepolia:
+  1. Private Mode shield/reveal/send/stealth/stream/escrow flows still work with wallet prompts.
+  2. Public Mode passkey setup works.
+  3. Funding smart account with public USDC works.
+  4. Public single USDC send succeeds after USDC target whitelist/paymaster v2.
+  5. Public batch send succeeds after paymaster v2 deployment.
+

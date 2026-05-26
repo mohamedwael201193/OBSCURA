@@ -30,9 +30,11 @@ export interface UserOpBuildOptions {
   /** Smart account address (sender) */
   sender: Address;
   /** Target contract address */
-  target: Address;
+  target?: Address;
   /** Encoded call data for the target */
-  callData: Hex;
+  callData?: Hex;
+  /** Pre-encoded smart-account calldata, e.g. executeBatch(...) */
+  accountCallData?: Hex;
   /** ETH value to forward (default 0) */
   value?: bigint;
   /** Factory initCode (only for first deployment, empty after) */
@@ -226,7 +228,7 @@ async function waitForRelayUserOperationReceipt(userOpHash: Hex) {
 function formatUserOperationFailure(receipt: RelayUserOperationReceipt) {
   const reason = receipt.reason ?? "";
   if (reason.includes("0x7ba5ffb5")) {
-    return "Smart account execution failed: encrypted ocUSDC inputs cannot be relayed through the smart account yet. Switch to Wallet Mode for this encrypted send.";
+    return "Smart account execution failed: encrypted ocUSDC inputs cannot be relayed through the smart account yet. Switch to Private Mode for this encrypted send.";
   }
 
   const txHash = receipt.receipt?.transactionHash;
@@ -278,7 +280,7 @@ export function encodeExecuteBatchCall(
  * The `signature` field is set to `0x` — fill it before submitting.
  */
 export async function buildUserOp(opts: UserOpBuildOptions): Promise<PackedUserOperation> {
-  const { sender, target, callData, value = 0n, initCode = "0x", usePaymaster = !!PAYMASTER_ADDRESS, publicClient } = opts;
+  const { sender, target, callData, accountCallData: providedAccountCallData, value = 0n, initCode = "0x", usePaymaster = !!PAYMASTER_ADDRESS, publicClient } = opts;
 
   // Fetch current nonce from EntryPoint
   const nonce = await publicClient.readContract({
@@ -297,8 +299,12 @@ export async function buildUserOp(opts: UserOpBuildOptions): Promise<PackedUserO
     localFeeData?.maxPriorityFeePerGas,
   );
 
-  // Build account callData (wrap in execute)
-  const accountCallData = encodeExecuteCall(target, value, callData);
+  // Build account callData. Most callers use execute(target,value,data), while
+  // public batch sends pass a pre-encoded executeBatch(...) payload.
+  const accountCallData = providedAccountCallData ?? (() => {
+    if (!target || !callData) throw new Error("target and callData are required when accountCallData is not provided");
+    return encodeExecuteCall(target, value, callData);
+  })();
 
   let verificationGasLimit = VERIFICATION_GAS;
   let callGasLimit = CALL_GAS;

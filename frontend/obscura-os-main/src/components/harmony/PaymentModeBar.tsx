@@ -1,18 +1,18 @@
 /**
- * PaymentModeBar — premium fintech segmented control.
+ * PaymentModeBar — premium fintech privacy-mode switch.
  *
- * Wallet Mode | Smart Mode
+ * Public Mode | Private Mode
  *
- * Smart Mode is locked + shows "Setup →" when smart account is not yet
- * deployed + passkey enrolled. Pass `onSetupSmart` to handle the nav.
+ * Public Mode uses public USDC + passkeys + sponsored UserOps. Private Mode
+ * uses encrypted ocUSDC + wallet execution.
  */
-import { Fingerprint, Wallet } from "lucide-react";
+import { EyeOff, Fingerprint, Lock, Wallet, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { usePaymentMode } from "@/contexts/PaymentModeContext";
 
 interface PaymentModeBarProps {
-  /** Called when user clicks Smart Mode but it's not yet set up */
+  /** Called when user clicks Public Mode but passkey setup is not complete */
   onSetupSmart?: () => void;
   className?: string;
 }
@@ -24,6 +24,7 @@ function ModeSegment({
   label,
   description,
   badge,
+  status,
   onClick,
 }: {
   active: boolean;
@@ -32,6 +33,7 @@ function ModeSegment({
   label: string;
   description: string;
   badge?: string;
+  status?: string;
   onClick: () => void;
 }) {
   return (
@@ -109,51 +111,114 @@ function ModeSegment({
       >
         {description}
       </p>
+      {status && (
+        <span
+          className={cn(
+            "mt-1 inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em]",
+            active
+              ? "bg-background/15 text-background/65"
+              : "bg-muted text-muted-foreground/55",
+          )}
+        >
+          {status}
+        </span>
+      )}
     </button>
   );
 }
 
 export function PaymentModeBar({ onSetupSmart, className }: PaymentModeBarProps) {
-  const { mode, setMode, isSmartAvailable } = usePaymentMode();
+  const {
+    privacyMode,
+    setPrivacyMode,
+    isSmartAvailable,
+    isSmartDeployed,
+    isSmartEnrolled,
+    smartAccountAddress,
+  } = usePaymentMode();
 
   return (
     <div className={cn("overflow-hidden rounded-xl hairline bg-card", className)}>
       <div className="flex divide-x divide-border/50">
         <ModeSegment
-          active={mode === "wallet"}
-          icon={Wallet}
-          label="Wallet Mode"
-          description="Standard wallet confirmations"
-          onClick={() => setMode("wallet")}
-        />
-        <ModeSegment
-          active={mode === "smart"}
-          dimmed={!isSmartAvailable}
-          icon={Fingerprint}
-          label="Smart Mode"
-          description="Biometric · Sponsored actions"
-          badge={isSmartAvailable ? undefined : "Setup →"}
+          active={privacyMode === "public"}
+          icon={Zap}
+          label="Public Mode"
+          description="Fast, gasless USDC with passkey signing"
+          badge={isSmartAvailable ? "USDC" : "Setup →"}
+          status={isSmartAvailable ? "Smart account" : "Passkey needed"}
           onClick={
             isSmartAvailable
-              ? () => setMode("smart")
-              : (onSetupSmart ?? (() => {}))
+              ? () => setPrivacyMode("public")
+              : () => {
+                  setPrivacyMode("public");
+                  onSetupSmart?.();
+                }
           }
+        />
+        <ModeSegment
+          active={privacyMode === "private"}
+          icon={EyeOff}
+          label="Private Mode"
+          description="Encrypted ocUSDC, hidden amounts, wallet-secured"
+          badge="ocUSDC"
+          status="Wallet execution"
+          onClick={() => setPrivacyMode("private")}
         />
       </div>
 
       <AnimatePresence>
-        {mode === "smart" && (
+        {privacyMode === "public" && (
           <motion.div
-            key="smart-footer"
+            key="public-footer"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden border-t border-border/40 bg-muted/20 px-5 py-2"
           >
-            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/45">
-              Signed by your device · encrypted ocUSDC sends use Wallet Mode
-            </p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/45">
+              <span className="inline-flex items-center gap-1">
+                <Fingerprint className="h-3 w-3" /> Passkey UserOps
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Zap className="h-3 w-3" /> Sponsored gas
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Wallet className="h-3 w-3" /> Public USDC
+              </span>
+              {!isSmartAvailable && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPrivacyMode("public");
+                    onSetupSmart?.();
+                  }}
+                  className="text-foreground/70 hover:text-foreground"
+                >
+                  Set up passkey →
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+        {privacyMode === "private" && (
+          <motion.div
+            key="private-footer"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden border-t border-border/40 bg-muted/20 px-5 py-2"
+          >
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/45">
+              <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Encrypted amounts</span>
+              <span className="inline-flex items-center gap-1"><EyeOff className="h-3 w-3" /> Stealth receiving</span>
+              <span className="inline-flex items-center gap-1"><Wallet className="h-3 w-3" /> Wallet-secured FHE</span>
+              {isSmartDeployed && isSmartEnrolled && smartAccountAddress && (
+                <span>Public smart account ready when you switch</span>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

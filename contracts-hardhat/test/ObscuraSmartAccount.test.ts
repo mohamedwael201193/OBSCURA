@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { Signer } from "ethers";
 
 // ─── Signing helper ───────────────────────────────────────────────────────────
@@ -13,6 +13,7 @@ async function signEOA(signer: Signer, hash: string): Promise<string> {
 }
 
 describe("ObscuraSmartAccount", () => {
+  const ENTRY_POINT = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";
   let owner: Signer;
   let other: Signer;
   let governance: Signer;
@@ -230,8 +231,25 @@ describe("ObscuraSmartAccount", () => {
 
   // ─── Paymaster ────────────────────────────────────────────────────────────
   describe("ObscuraPaymaster", () => {
+    let entryPoint: Signer;
+    let accountIface: any;
+
     before(async () => {
       await paymaster.connect(governance).whitelistTarget(await mockTarget.getAddress(), true);
+      await network.provider.request({ method: "hardhat_impersonateAccount", params: [ENTRY_POINT] });
+      await network.provider.request({
+        method: "hardhat_setBalance",
+        params: [ENTRY_POINT, "0x3635C9ADC5DEA00000"],
+      });
+      entryPoint = await ethers.getSigner(ENTRY_POINT);
+      const Account = await ethers.getContractFactory("ObscuraSmartAccount");
+      accountIface = Account.interface;
+    });
+
+    const baseUserOp = (callData: string) => ({
+      sender: ownerAddr, nonce: 0n, initCode: "0x", callData,
+      accountGasLimits: ethers.ZeroHash, preVerificationGas: 0n,
+      gasFees: ethers.ZeroHash, paymasterAndData: "0x", signature: "0x",
     });
 
     it("stores governance correctly", async () => {
@@ -271,6 +289,36 @@ describe("ObscuraSmartAccount", () => {
       await expect(
         paymaster.connect(owner).validatePaymasterUserOp(op, ethers.ZeroHash, 0n)
       ).to.be.revertedWithCustomError(paymaster, "NotEntryPoint");
+    });
+
+    it("validatePaymasterUserOp allows whitelisted execute target", async () => {
+      const callData = accountIface.encodeFunctionData("execute", [await mockTarget.getAddress(), 0n, "0x"]);
+      await expect(
+        paymaster.connect(entryPoint).validatePaymasterUserOp.staticCall(baseUserOp(callData), ethers.ZeroHash, 1n)
+      ).to.not.be.reverted;
+    });
+
+    it("validatePaymasterUserOp rejects unwhitelisted execute target", async () => {
+      const callData = accountIface.encodeFunctionData("execute", [otherAddr, 0n, "0x"]);
+      await expect(
+        paymaster.connect(entryPoint).validatePaymasterUserOp.staticCall(baseUserOp(callData), ethers.ZeroHash, 1n)
+      ).to.be.revertedWithCustomError(paymaster, "TargetNotWhitelisted").withArgs(otherAddr);
+    });
+
+    it("validatePaymasterUserOp allows executeBatch when every target is whitelisted", async () => {
+      const target = await mockTarget.getAddress();
+      const callData = accountIface.encodeFunctionData("executeBatch", [[target, target], [0n, 0n], ["0x", "0x"]]);
+      await expect(
+        paymaster.connect(entryPoint).validatePaymasterUserOp.staticCall(baseUserOp(callData), ethers.ZeroHash, 1n)
+      ).to.not.be.reverted;
+    });
+
+    it("validatePaymasterUserOp rejects executeBatch with an unwhitelisted target", async () => {
+      const target = await mockTarget.getAddress();
+      const callData = accountIface.encodeFunctionData("executeBatch", [[target, otherAddr], [0n, 0n], ["0x", "0x"]]);
+      await expect(
+        paymaster.connect(entryPoint).validatePaymasterUserOp.staticCall(baseUserOp(callData), ethers.ZeroHash, 1n)
+      ).to.be.revertedWithCustomError(paymaster, "TargetNotWhitelisted").withArgs(otherAddr);
     });
 
     it("postOp reverts from non-EntryPoint", async () => {

@@ -10,7 +10,7 @@ import { arbitrumSepolia } from 'viem/chains';
 import { usePaymentMode } from '@/contexts/PaymentModeContext';
 
 export const SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE =
-  'Smart Mode cannot send encrypted ocUSDC yet. Encrypted amounts must be authorized by the wallet that owns them, so switch to Wallet Mode for this send.';
+  'Public Mode cannot send encrypted ocUSDC. Encrypted amounts must be authorized by the wallet that owns them, so switch to Private Mode for this send.';
 
 /** Retry helper for RPC rate-limit errors — exponential backoff */
 async function withRateLimitRetry<T>(

@@ -28,6 +28,8 @@ contract ObscuraPaymaster is IPaymaster {
     address public constant ENTRY_POINT = 0x0000000071727De22E5E9d8BAf0edAc6f37da032;
 
     uint256 public constant RATE_LIMIT_PERIOD = 1 days;
+    bytes4 private constant EXECUTE_SELECTOR = bytes4(keccak256("execute(address,uint256,bytes)"));
+    bytes4 private constant EXECUTE_BATCH_SELECTOR = bytes4(keccak256("executeBatch(address[],uint256[],bytes[])"));
     /// @notice Max sponsored ops per user per RATE_LIMIT_PERIOD
     uint256 public constant MAX_OPS_PER_USER_PER_PERIOD = 20;
     /// @notice Max global ETH spend per day (wei)
@@ -106,12 +108,8 @@ contract ObscuraPaymaster is IPaymaster {
         uint256 maxCost
     ) external override onlyEntryPoint returns (bytes memory context, uint256 validationData) {
         // ── Layer 1: target whitelist ─────────────────────────────────────────
-        // Extract call target from callData. callData is: execute(target, value, data)
-        // Selector: 0xb61d27f6. First param (target) starts at byte 4.
-        address callTarget = _extractCallTarget(userOp.callData);
-        if (!whitelistedTargets[callTarget]) {
-            revert TargetNotWhitelisted(callTarget);
-        }
+        // Supports both execute(target,value,data) and executeBatch(targets,values,datas).
+        _requireWhitelistedTargets(userOp.callData);
 
         // ── Layer 2: per-user rate limit ──────────────────────────────────────
         address user = userOp.sender;
@@ -205,15 +203,28 @@ contract ObscuraPaymaster is IPaymaster {
     }
 
     // ─── Internal helpers ─────────────────────────────────────────────────────
-    /// @dev Extracts the call target from ObscuraSmartAccount.execute(target, value, data)
-    ///      callData[0:4]  = selector (0xb61d27f6)
-    ///      callData[4:36] = target (address, padded to 32 bytes)
-    function _extractCallTarget(bytes calldata callData) internal pure returns (address) {
-        if (callData.length < 36) return address(0);
+    /// @dev Validates call targets from ObscuraSmartAccount.execute(...) or executeBatch(...).
+    function _requireWhitelistedTargets(bytes calldata callData) internal view {
+        if (callData.length < 4) revert TargetNotWhitelisted(address(0));
         bytes4 selector = bytes4(callData[:4]);
-        // execute(address,uint256,bytes) selector
-        if (selector != 0xb61d27f6) return address(0);
-        return address(uint160(uint256(bytes32(callData[4:36]))));
+
+        if (selector == EXECUTE_SELECTOR) {
+            if (callData.length < 36) revert TargetNotWhitelisted(address(0));
+            address callTarget = address(uint160(uint256(bytes32(callData[4:36]))));
+            if (!whitelistedTargets[callTarget]) revert TargetNotWhitelisted(callTarget);
+            return;
+        }
+
+        if (selector == EXECUTE_BATCH_SELECTOR) {
+            (address[] memory targets,,) = abi.decode(callData[4:], (address[], uint256[], bytes[]));
+            if (targets.length == 0) revert TargetNotWhitelisted(address(0));
+            for (uint256 i = 0; i < targets.length; i++) {
+                if (!whitelistedTargets[targets[i]]) revert TargetNotWhitelisted(targets[i]);
+            }
+            return;
+        }
+
+        revert TargetNotWhitelisted(address(0));
     }
 
     /// @dev Validates the governance counter-signature embedded in paymasterAndData.

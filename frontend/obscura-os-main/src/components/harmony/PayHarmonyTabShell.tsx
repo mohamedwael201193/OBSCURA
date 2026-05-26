@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Lock, Network, ShieldCheck, Wallet } from "lucide-react";
 import { HarmonyFormCard, HarmonyPageIntro } from "@/components/harmony/harmony-ui";
 import UsdcIcon from "@/components/shared/UsdcIcon";
+import { usePaymentMode } from "@/contexts/PaymentModeContext";
 import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 
@@ -103,11 +104,26 @@ export function PayHarmonyTabShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const { privacyMode } = usePaymentMode();
   const meta = TAB_META[tab];
+  const modeMeta =
+    tab === "pay"
+      ? privacyMode === "public"
+        ? { ...meta, eyebrow: "Move money · Public", description: "Send normal USDC with passkey approval, smart-account execution, and sponsored gas when enabled." }
+        : meta
+      : tab === "getpaid"
+        ? privacyMode === "public"
+          ? { ...meta, eyebrow: "Inbound · Public", description: "Receive normal USDC to your wallet or passkey smart account." }
+          : meta
+        : tab === "automations"
+          ? privacyMode === "public"
+            ? { ...meta, eyebrow: "Batching · Public", description: "Batch visible USDC transfers from your passkey smart account." }
+            : meta
+          : meta;
   return (
     <>
-      <HarmonyPageIntro eyebrow={meta.eyebrow} title={meta.title} actions={actions} />
-      <p className="mt-4 max-w-2xl text-sm text-muted-foreground">{meta.description}</p>
+      <HarmonyPageIntro eyebrow={modeMeta.eyebrow} title={modeMeta.title} actions={actions} />
+      <p className="mt-4 max-w-2xl text-sm text-muted-foreground">{modeMeta.description}</p>
       <div className="mt-10 space-y-6">{children}</div>
     </>
   );
@@ -199,6 +215,7 @@ export function PayHarmonyNotice({
 export function PayHarmonySendBar({ onShield }: { onShield: () => void }) {
   const usdcBalance = useUSDCBalance();
   const { decrypted, reveal, busy } = useOcUSDCBalance();
+  const { privacyMode, activeToken, modeSummary } = usePaymentMode();
   const isRevealed = decrypted !== null && decrypted !== undefined;
   const cusdc = isRevealed ? (Number(decrypted) / 1_000_000).toFixed(2) : null;
 
@@ -207,7 +224,9 @@ export function PayHarmonySendBar({ onShield }: { onShield: () => void }) {
       <div className="flex flex-wrap items-center gap-4">
         <UsdcIcon className="h-8 w-8 shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Balances</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            {privacyMode === "public" ? "Public Mode balances" : "Private Mode balances"}
+          </p>
           <p className="mt-1 text-sm text-foreground">
             USDC <span className="font-mono tabular-nums">{usdcBalance ?? "—"}</span>
             {" · "}
@@ -224,6 +243,9 @@ export function PayHarmonySendBar({ onShield }: { onShield: () => void }) {
                 {busy ? "…" : "reveal"}
               </button>
             )}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground/55">
+            Active token: {activeToken}. {modeSummary}.
           </p>
         </div>
         <button

@@ -429,7 +429,7 @@ export function PayHarmonyHome({
   const receipts = useReceipts();
   const onboarding = useOnboardingState();
   const { isDeployed: isSmartDeployed, hasPasskey: isSmartEnrolled } = useSmartAccount();
-  const { mode: paymentMode, setMode: setPaymentMode, isSmartAvailable } = usePaymentMode();
+  const { privacyMode, setPrivacyMode, isSmartAvailable, activeToken, executionLabel, modeSummary } = usePaymentMode();
 
   const isWrongChain = isConnected && chainId !== ARB_SEPOLIA_CHAIN_ID;
   const unread = inbox.unreadCount ?? 0;
@@ -532,11 +532,11 @@ export function PayHarmonyHome({
     },
     {
       num: 6,
-      title: "Enable passkey signing",
+      title: "Enable Public Mode",
       hint: isSmartAvailable
-        ? "Smart Mode available for supported actions"
-        : "Passkey-secured sponsored actions",
-      privacyNote: "Encrypted sends still use Wallet Mode",
+        ? "Fast, gasless, passkey USDC is ready"
+        : "Set up passkey-secured sponsored actions",
+      privacyNote: "Private Mode keeps encrypted flows on wallet",
       done: isSmartAvailable,
       active: onboarding.hasActivity && !isSmartAvailable,
       actionLabel: isSmartDeployed && !isSmartEnrolled ? "Add passkey" : "Set up",
@@ -624,8 +624,8 @@ export function PayHarmonyHome({
       : r.txHash
         ? `${r.txHash.slice(0, 6)}…${r.txHash.slice(-4)}`
         : "",
-    value: r.amount ? `${r.amount} ocUSDC` : null,
-    encrypted: true,
+    value: r.amount ? `${r.amount} ${String((r.meta as { token?: string } | undefined)?.token ?? "ocUSDC")}` : null,
+    encrypted: String((r.meta as { mode?: string } | undefined)?.mode ?? "").startsWith("public") ? false : true,
     time: formatRelativeTime((r as { timestamp?: number }).timestamp),
   }));
 
@@ -687,8 +687,8 @@ export function PayHarmonyHome({
           />
           <span className="select-none text-[10px] text-border/50">·</span>
           <PostureItem
-            label="Smart Mode"
-            active={isConnected && paymentMode === "smart"}
+            label={privacyMode === "public" ? "Public passkey" : "Private wallet"}
+            active={isConnected && (privacyMode === "private" || isSmartAvailable)}
           />
         </div>
 
@@ -882,7 +882,7 @@ export function PayHarmonyHome({
         />
       </motion.div>
 
-      {/* ── Smart Account discovery ─────────────────────────────────────────── */}
+      {/* ── Payment mode discovery ─────────────────────────────────────────── */}
       {isConnected && (
         <motion.section
           custom={1.5}
@@ -895,58 +895,54 @@ export function PayHarmonyHome({
             <div
               className={cn(
                 "grid h-7 w-7 shrink-0 place-items-center rounded-full",
-                isSmartAvailable
+                privacyMode === "public"
                   ? "bg-foreground text-background"
                   : "bg-muted text-muted-foreground/50",
               )}
             >
-              <Fingerprint className="h-[13px] w-[13px]" />
+              {privacyMode === "public" ? <Fingerprint className="h-[13px] w-[13px]" /> : <Shield className="h-[13px] w-[13px]" />}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-medium text-foreground leading-none">
-                {isSmartAvailable ? "Smart Mode available" : "Passkey signing"}
+                {privacyMode === "public" ? "Public Mode" : "Private Mode"}
               </p>
               <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/45">
-                {isSmartAvailable ? "ERC-4337 · Passkey secured" : "ERC-4337 · Setup required"}
+                {activeToken} · {executionLabel} · {modeSummary}
               </p>
             </div>
-            {isSmartAvailable ? (
+            <div className="flex shrink-0 rounded-full hairline bg-muted/30 p-0.5">
               <button
                 type="button"
                 onClick={() => {
-                  if (paymentMode === "smart") {
-                    setPaymentMode("wallet");
-                  } else {
-                    setPaymentMode("smart");
-                    onNavigate("pay");
-                  }
+                  setPrivacyMode("public");
+                  if (!isSmartAvailable) onNavigate("settings");
                 }}
                 className={cn(
-                  "shrink-0 rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] transition-colors",
-                  paymentMode === "smart"
-                    ? "bg-foreground text-background"
-                    : "hairline hover:bg-muted text-foreground/70",
+                  "rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] transition-colors",
+                  privacyMode === "public" ? "bg-foreground text-background" : "text-muted-foreground/60 hover:text-foreground",
                 )}
               >
-                {paymentMode === "smart" ? "On" : "Enable"}
+                Public
               </button>
-            ) : (
               <button
                 type="button"
-                onClick={() => onNavigate("settings")}
-                className="shrink-0 rounded-full hairline px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+                onClick={() => setPrivacyMode("private")}
+                className={cn(
+                  "rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] transition-colors",
+                  privacyMode === "private" ? "bg-foreground text-background" : "text-muted-foreground/60 hover:text-foreground",
+                )}
               >
-                Set up →
+                Private
               </button>
-            )}
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-x-5 gap-y-1.5 px-5 py-3">
             {[
-              { label: "Passkey UserOps", ok: isSmartAvailable },
-              { label: "Gas covered on supported actions", ok: isSmartAvailable },
-              { label: "Fingerprint / Face ID signing", ok: isSmartEnrolled },
-              { label: "Encrypted sends use Wallet Mode", ok: true },
+              { label: "Public = fast, gasless, passkey", ok: isSmartAvailable },
+              { label: "Private = encrypted, hidden, wallet-secured", ok: true },
+              { label: "Public USDC uses smart account", ok: isSmartAvailable },
+              { label: "Private ocUSDC stays wallet-executed", ok: true },
             ].map((feat) => (
               <span
                 key={feat.label}

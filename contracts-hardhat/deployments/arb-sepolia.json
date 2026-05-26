@@ -116,8 +116,9 @@
   "ObscuraInsuranceSubscriptionV2": "0xEA9Fc5800F41d090dFB90f9735F4CF3824d6743D",
   "wave5PayMigrationDeployedAt": "2026-05-23T23:39:05.559Z",
   "ObscuraSmartAccountFactory": "0xFaC683D8AB872cCf5eBfaE1659a9CD44C6FB4feB",
-  "ObscuraPaymaster": "0x9B1F61A65467F11339A8d0834349Be32EB2CF878",
+  "ObscuraPaymaster": "0x7a8D880D9c5F88Ba8bd4435c450256628F66dd0C",
   "wave5Phase3DeployedAt": "2026-05-25T18:24:43.071Z",
   "ObscuraSmartAccountImplementation": "0x0415945e442C4C5533367Fbb6f0D40528e0D7809",
-  "wave5PayAA24WebAuthnFactoryDeployedAt": "2026-05-26T03:39:24.406Z"
+  "wave5PayAA24WebAuthnFactoryDeployedAt": "2026-05-26T03:39:24.406Z",
+  "wave5PublicPaymasterV2DeployedAt": "2026-05-26T14:33:54.962Z"
 }

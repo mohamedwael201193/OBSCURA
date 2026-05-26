@@ -575,7 +575,7 @@ export default function UnifiedSendForm() {
                 onClick={() => setPaymentMode("wallet")}
                 className="shrink-0 rounded-full border border-amber-700/30 px-2.5 py-1 text-[11px] font-medium text-amber-900 hover:bg-amber-500/15 transition-colors"
               >
-                Use Wallet Mode
+                Use Private Mode
               </button>
             </div>
           )}

@@ -1,11 +1,13 @@
 /**
- * PaymentModeContext — global payment mode state.
+ * PaymentModeContext — global Pay privacy mode state.
  *
- * "wallet"  → standard MetaMask / EOA confirmations
- * "smart"   → passkey-signed UserOps via smart account (gasless, biometric)
+ * "public"  → public USDC, smart account, passkey UserOps, sponsored gas
+ * "private" → ocUSDC, encrypted FHE flows, wallet execution
  *
- * Persisted to localStorage. Auto-downgrades to "wallet" if the smart
- * account is no longer available (passkey removed, account reset, etc.).
+ * The legacy `mode` field remains for older hooks:
+ *   - Public Mode resolves to "smart" only when the smart account is ready.
+ *   - Private Mode always resolves to "wallet" so FHE writes never route
+ *     encrypted inputs through ERC-4337.
  */
 import {
   createContext,
@@ -19,8 +21,17 @@ import {
 import { useSmartAccount } from "@/hooks/useSmartAccount";
 
 export type PaymentMode = "wallet" | "smart";
+export type PayPrivacyMode = "public" | "private";
 
 interface PaymentModeContextValue {
+  privacyMode: PayPrivacyMode;
+  setPrivacyMode: (m: PayPrivacyMode) => void;
+  isPublicMode: boolean;
+  isPrivateMode: boolean;
+  activeToken: "USDC" | "ocUSDC";
+  executionLabel: string;
+  modeSummary: string;
+  /** Legacy execution mode for older hooks. */
   mode: PaymentMode;
   setMode: (m: PaymentMode) => void;
   /** true iff smart account is deployed AND passkey is enrolled */
@@ -34,6 +45,13 @@ interface PaymentModeContextValue {
 }
 
 const PaymentModeContext = createContext<PaymentModeContextValue>({
+  privacyMode: "private",
+  setPrivacyMode: () => {},
+  isPublicMode: false,
+  isPrivateMode: true,
+  activeToken: "ocUSDC",
+  executionLabel: "Wallet secured",
+  modeSummary: "Encrypted, hidden, wallet-secured",
   mode: "wallet",
   setMode: () => {},
   isSmartAvailable: false,
@@ -44,40 +62,53 @@ const PaymentModeContext = createContext<PaymentModeContextValue>({
   clearFallback: () => {},
 });
 
-const STORAGE_KEY = "obscura:paymentMode";
+const PRIVACY_STORAGE_KEY = "obscura:payPrivacyMode";
+const LEGACY_STORAGE_KEY = "obscura:paymentMode";
 
 export function PaymentModeProvider({ children }: { children: ReactNode }) {
   const { accountAddress, isDeployed, hasPasskey } = useSmartAccount();
   const isSmartAvailable = isDeployed && hasPasskey;
 
-  const [mode, setModeState] = useState<PaymentMode>(() => {
+  const [privacyMode, setPrivacyModeState] = useState<PayPrivacyMode>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored === "smart" ? "smart" : "wallet";
+      const stored = localStorage.getItem(PRIVACY_STORAGE_KEY);
+      if (stored === "public" || stored === "private") return stored;
+
+      // One-time compatibility with the old Wallet/Smart execution switch.
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+      return legacy === "smart" ? "public" : "private";
     } catch {
-      return "wallet";
+      return "private";
     }
   });
 
   const [lastFallback, setLastFallback] = useState(false);
 
-  // Auto-downgrade to wallet if smart account becomes unavailable
+  const effectiveMode: PaymentMode = privacyMode === "public" && isSmartAvailable ? "smart" : "wallet";
+
   useEffect(() => {
-    if (mode === "smart" && !isSmartAvailable) {
-      setModeState("wallet");
+    try {
+      localStorage.setItem(PRIVACY_STORAGE_KEY, privacyMode);
+      localStorage.setItem(LEGACY_STORAGE_KEY, effectiveMode);
+    } catch {
+      // ignore storage errors
     }
-  }, [mode, isSmartAvailable]);
+  }, [privacyMode, effectiveMode]);
+
+  const setPrivacyMode = useCallback((m: PayPrivacyMode) => {
+    setPrivacyModeState(m);
+    setLastFallback(false);
+  }, []);
 
   const setMode = useCallback(
     (m: PaymentMode) => {
-      if (m === "smart" && !isSmartAvailable) return;
-      setModeState(m);
-      setLastFallback(false);
-      try {
-        localStorage.setItem(STORAGE_KEY, m);
-      } catch {
-        // ignore storage errors
+      if (m === "smart") {
+        if (!isSmartAvailable) return;
+        setPrivacyModeState("public");
+      } else {
+        setPrivacyModeState("private");
       }
+      setLastFallback(false);
     },
     [isSmartAvailable],
   );
@@ -86,7 +117,22 @@ export function PaymentModeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<PaymentModeContextValue>(
     () => ({
-      mode: isSmartAvailable && mode === "smart" ? "smart" : "wallet",
+      privacyMode,
+      setPrivacyMode,
+      isPublicMode: privacyMode === "public",
+      isPrivateMode: privacyMode === "private",
+      activeToken: privacyMode === "public" ? "USDC" : "ocUSDC",
+      executionLabel:
+        privacyMode === "public"
+          ? isSmartAvailable
+            ? "Passkey smart account"
+            : "Passkey setup needed"
+          : "Wallet secured",
+      modeSummary:
+        privacyMode === "public"
+          ? "Fast, gasless, passkey"
+          : "Encrypted, hidden, wallet-secured",
+      mode: effectiveMode,
       setMode,
       isSmartAvailable,
       isSmartDeployed: isDeployed,
@@ -96,7 +142,9 @@ export function PaymentModeProvider({ children }: { children: ReactNode }) {
       clearFallback,
     }),
     [
-      mode,
+      privacyMode,
+      setPrivacyMode,
+      effectiveMode,
       setMode,
       isSmartAvailable,
       isDeployed,

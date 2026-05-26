@@ -36,7 +36,10 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 function base64urlToBytes(b64: string): Uint8Array {
-  const padded = b64.replace(/-/g, "+").replace(/_/g, "/") + "==".slice((b64.length + 3) & 3);
+  const base64 = b64.replace(/-/g, "+").replace(/_/g, "/");
+  // Add the correct number of "=" padding chars so length is a multiple of 4.
+  // Formula: (4 - len%4) % 4  →  0→0, 2→2, 3→1 padding chars.
+  const padded = base64 + "===".slice(0, (4 - base64.length % 4) % 4);
   const bin = atob(padded);
   return Uint8Array.from(bin, (c) => c.charCodeAt(0));
 }
@@ -205,9 +208,8 @@ export async function signWithPasskey(
   const stored = await getPasskey(ownerAddress);
   if (!stored) throw new Error("No passkey registered for this address. Please enroll first.");
 
-  const hashBytes = base64urlToBytes(
-    bytesToBase64url(Uint8Array.from(hash.slice(2).match(/.{2}/g)!.map((b) => parseInt(b, 16))))
-  );
+  // Decode the hex UserOpHash directly to bytes — no base64 round-trip needed.
+  const hashBytes = Uint8Array.from(hash.slice(2).match(/.{2}/g)!.map((b) => parseInt(b, 16)));
 
   const assertion = await navigator.credentials.get({
     publicKey: {

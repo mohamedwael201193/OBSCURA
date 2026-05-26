@@ -367,7 +367,9 @@ const SettingsSmartAccountCard = () => {
         </div>
       </HarmonyFormCard>
 
-      <PasskeyEnrollModal open={enrollOpen} onOpenChange={setEnrollOpen} />
+      {enrollOpen && (
+        <PasskeyEnrollModal onClose={() => setEnrollOpen(false)} />
+      )}
     </>
   );
 };

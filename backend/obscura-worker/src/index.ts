@@ -12,14 +12,23 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import http from "http";
-import { startIndexer } from "./indexer";
+import { startIndexer, getIndexerHealth } from "./indexer";
 import { startKeeper } from "./keeper";
 
 // ── Minimal health server (required for Render free web service) ──────────────
 const PORT = parseInt(process.env.PORT ?? "3001");
 const healthServer = http.createServer((_req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ status: "ok", service: "obscura-worker" }));
+  res.end(JSON.stringify({
+    status: "ok",
+    service: "obscura-worker",
+    indexer: getIndexerHealth(),
+    keeper: {
+      enabled: process.env.KEEPER_ENABLED === "true",
+      configured: Boolean(process.env.KEEPER_PRIVATE_KEY),
+    },
+    timestamp: new Date().toISOString(),
+  }));
 });
 healthServer.listen(PORT, () => {
   console.log(`[worker] Health server on port ${PORT}`);

@@ -1,7 +1,7 @@
 /**
  * useNotificationPrefs.ts — Read / write notification preferences + Web Push subscribe
  *
- * Endpoints on pay-notifications service (port 3702).
+ * Endpoints on the unified obscura-api service.
  * Service worker registration is assumed to happen at app boot via main.tsx.
  */
 
@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 
 const NOTIFICATIONS_URL =
-  import.meta.env.VITE_NOTIFICATIONS_URL as string ?? "http://localhost:3702";
+  import.meta.env.VITE_NOTIFICATIONS_URL as string ?? "http://localhost:3000";
 
 export interface NotificationPrefs {
   wallet:       string;

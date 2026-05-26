@@ -131,11 +131,11 @@ function buildActivityPayload(activity: Record<string, unknown>, wallet: string)
   });
 }
 
-function buildDebugPayload(wallet: string, title?: string, body?: string): string {
+function buildDebugPayload(wallet: string): string {
   const url = `${FRONTEND_URL}/pay?tab=settings&sub=notifications`;
   return JSON.stringify({
-    title: title?.trim() || "Obscura Push Test",
-    body: body?.trim() || `Test notification for ${shortWallet(wallet)}.`,
+    title: "Obscura Push Test",
+    body: `Test notification for ${shortWallet(wallet)}.`,
     tag: `obscura-debug-${wallet}`,
     url,
     data: {
@@ -334,7 +334,7 @@ export async function dispatchNotification(activity: Record<string, unknown>, so
   return summary;
 }
 
-async function sendDebugPush(wallet?: string, title?: string, body?: string): Promise<{
+async function sendDebugPush(wallet?: string): Promise<{
   ok: boolean;
   attempted: number;
   sent: number;
@@ -356,7 +356,7 @@ async function sendDebugPush(wallet?: string, title?: string, body?: string): Pr
 
   for (const row of rows) {
     const targetWallet = row.wallet.toLowerCase();
-    await sendPush(targetWallet, row.subscription, buildDebugPayload(targetWallet, title, body), summary, "debug-push-test");
+    await sendPush(targetWallet, row.subscription, buildDebugPayload(targetWallet), summary, "debug-push-test");
   }
 
   return {
@@ -462,10 +462,10 @@ async function handleDebugPushTest(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    const body = (req.body ?? {}) as { wallet?: string; title?: string; body?: string };
+    const body = (req.body ?? {}) as { wallet?: string };
     const queryWallet = typeof req.query.wallet === "string" ? req.query.wallet : undefined;
     const normalizedWallet = normalizeWallet(body.wallet ?? queryWallet ?? null) ?? undefined;
-    const result = await sendDebugPush(normalizedWallet, body.title, body.body);
+    const result = await sendDebugPush(normalizedWallet);
     res.status(result.ok ? 200 : 207).json(result);
   } catch (e) {
     console.error(`[notifications] debug push failed: ${(e as Error).message}`);

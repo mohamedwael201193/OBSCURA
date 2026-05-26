@@ -1937,3 +1937,79 @@ RPC_URL=<Arbitrum Sepolia RPC URL>
 
 If API/worker logs show `notification sent` but no desktop notification appears, the remaining failure is the browser/OS endpoint path: stale saved endpoint, a different Chrome profile/device, site notification permission, Windows notification settings, or focus/quiet mode. After frontend deploy, use Settings → Notifications → `Repair browser`, then `Test`; the saved subscription will be replaced with the current browser endpoint before testing.
 
+---
+
+## PAY-FINAL P0.1/P0.2 — Deploy/Env Parity + Indexer/Notification Reliability
+
+**Completed locally**: 2026-05-27 — implementation for `PAY_FINAL_PLAN.md` P0.1 and P0.2 only.
+
+### Completed work
+
+- Aligned the Pay API deployment config on current paymaster v2:
+  - `PAYMASTER_ADDRESS=0x7a8D880D9c5F88Ba8bd4435c450256628F66dd0C`
+  - updated `render.yaml`, `backend/obscura-api/.env.example`, and local ignored API `.env`.
+- Sanitized env examples so dashboard-only secrets are placeholders:
+  - API bundler URLs use `<ALCHEMY_KEY>` / `<PIMLICO_KEY>` placeholders.
+  - Worker `RPC_URL` uses `<ALCHEMY_KEY>` placeholder.
+  - no VAPID private key literal in `.env.example` files.
+- Updated frontend notification local fallback:
+  - `VITE_NOTIFICATIONS_URL` fallback is now `http://localhost:3000` for unified `obscura-api`.
+- Replaced stale operator runbook `backend_db_vercal.md` with current topology:
+  - Vercel root `frontend/obscura-os-main`, build `npm run build`, output `dist`.
+  - Render roots `backend/obscura-api` and `backend/obscura-worker`.
+  - Supabase project `quoovjkjwgtdqwdofubh`.
+  - current paymaster v2 and WebAuthn smart-account factory.
+  - Render/Vercel secret boundary documented without committed secret values.
+- Hardened debug push privacy:
+  - `/debug/push-test` now ignores caller-provided notification title/body and always sends fixed amount-free copy.
+- Added worker health summary:
+  - `GET /health` now includes `indexer.chunkSize`, `maxChunkSize`, retry settings, watched contracts, timestamps, failures, and recovered duplicate dispatch count.
+  - `keeper.enabled` and `keeper.configured` are exposed as booleans only, with no secret values.
+- Updated local ignored smoke helper `scripts/test-e2e.ps1`:
+  - asserts current EntryPoint and paymaster from API `/health`.
+  - checks worker `indexer.chunkSize <= 10` after worker redeploy.
+
+### Infra/deployment changes
+
+- `render.yaml` is ready for redeploy with:
+  - `obscura-api` current paymaster v2.
+  - `obscura-worker` chunk size `10`, duplicate catch-up dispatch enabled, keeper disabled by default.
+- `backend_db_vercal.md` is the current operator runbook for P0.1/P0.2.
+- Vercel still needs dashboard env parity with all `VITE_*` values from `frontend/obscura-os-main/.env`, especially relay URL, notifications URL, Supabase URL/anon key, smart-account factory, current paymaster, and Pay ocUSDC.
+
+### Validation run
+
+- `npm run build` in `backend/obscura-api` passed.
+- `npm run build` in `backend/obscura-worker` passed.
+- `npm run build` in `frontend/obscura-os-main` passed.
+- `npm run test` in `frontend/obscura-os-main` passed (`1 passed`).
+- `git diff --check` on touched files passed.
+- Local API `/health` returned current EntryPoint and paymaster v2.
+- Local worker `/health` returned `indexer.chunkSize=10`, `maxChunkSize=10`, six watched Pay contracts, `consecutiveFailures=0`, and `keeper.enabled=false`.
+- Production smoke script result before redeploy:
+  - API/health reachable but still served old paymaster, so Render API must redeploy with updated env/config.
+  - worker/health reachable, but health summary missing until Render worker redeploys.
+  - VAPID public key present.
+  - all three Supabase tables HTTP 200.
+  - recent `obscura_activity` rows present.
+  - frontend and `/sw.js` HTTP 200.
+
+### Blockers / remaining tasks
+
+- Render redeploy is required before claiming production P0.1/P0.2 is green:
+  1. Redeploy `obscura-api` so `/health` reports paymaster `0x7a8D880D9c5F88Ba8bd4435c450256628F66dd0C`.
+  2. Redeploy `obscura-worker` so `/health` includes indexer health summary and keeps `chunkSize <= 10`.
+  3. Confirm Render dashboard secrets are set and not committed: `BUNDLER_URL`, `BUNDLER_URL_FALLBACK`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`, worker `RPC_URL`, optional `RESEND_API_KEY`, optional `KEEPER_PRIVATE_KEY` only when keeper is intentionally enabled.
+  4. Redeploy Vercel if env or frontend bundle changed.
+  5. Re-run `scripts/test-e2e.ps1`; expected final result is no paymaster mismatch and no worker health-summary warning.
+  6. In a subscribed browser, Settings → Notifications → Repair browser, then Test; confirm visible browser notification.
+  7. Generate a fresh Pay event and confirm exactly one `obscura_activity` row plus worker log `notification queued` and `notification sent` or an explicit skip reason.
+
+### Privacy/FHE safety
+
+- No contract or FHE write path changed.
+- No auto-decrypt behavior added.
+- Private `ocUSDC` remains wallet/EOA execution only.
+- Stealth, streams, escrow, payroll, subscriptions, request links, notifications, and activity feed paths were not refactored.
+- Notification bodies remain amount-free.
+

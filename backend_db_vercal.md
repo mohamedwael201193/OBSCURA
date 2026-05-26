@@ -1,347 +1,204 @@
-# Obscura — Backend, Database & Vercel Architecture
+# Obscura Pay Backend, Database, and Deployment Runbook
 
-## Architecture Overview
+This runbook covers the current Pay production topology for P0.1/P0.2. Only the current `obscura-api` and `obscura-worker` services should be used for active deploys.
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         USER BROWSER                                    │
-│  Frontend (Vite + React Router + wagmi v2)                              │
-│  https://obscura-os-nine.vercel.app                                     │
-└─────────┬──────────────────────┬───────────────────┬────────────────────┘
-          │                      │                   │
-          │ POST /relay          │ POST /subscribe   │ Supabase JS
-          │ GET  /health         │ GET  /vapid-pk    │ Realtime
-          ▼                      ▼                   ▼
-┌──────────────────────┐   ┌─────────────────────────────────────────────┐
-│   obscura-api        │   │          Supabase (woqfefgrkpleedsuxavd)    │
-│   Render Web Service │   │  ┌────────────────────────────────────────┐ │
-│   apps/obscura-api   │◄──┤  │  obscura_activity (indexed events)     │ │
-│                      │   │  │  obscura_push_subscriptions            │ │
-│  ┌────────────────┐  │   │  │  obscura_notification_prefs            │ │
-│  │  relay.ts      │  │   │  └────────────────────────────────────────┘ │
-│  │  POST /relay   │  │   │  RLS: anon can read own wallet rows         │
-│  └────────┬───────┘  │   │  service_role: full read/write (backend)    │
-│           │           │   └────────────────────┬────────────────────────┘
-│  ┌────────▼───────┐  │                         │ Realtime (postgres_changes)
-│  │notifications.ts│  │◄────────────────────────┘
-│  │ Realtime sub   │  │   INSERT trigger on obscura_activity
-│  │ Web Push send  │  │
-│  │ Resend email   │  │
-│  └────────────────┘  │
-└──────────┬───────────┘
-           │ eth_sendUserOperation
-           ▼
-┌──────────────────────────────────────────────────────────┐
-│  Alchemy Bundler (primary)                               │
-│  https://arb-sepolia.g.alchemy.com/v2/g89_KwJ9...       │
-│                                                          │
-│  Pimlico Bundler (fallback on primary failure)           │
-│  https://api.pimlico.io/v2/421614/rpc?apikey=pim_bXT... │
-└──────────────────────┬───────────────────────────────────┘
-                       │
-                       ▼
-          Arbitrum Sepolia (chainId 421614)
-          EntryPoint: 0x0000000071727De22E5E9d8BAf0edAc6f37da032
-          SmartAccountFactory: 0xbe8dC1d4Dcc368e0dBb6c7A5BDFfac2Fe72AFd05
-          Paymaster: 0x9B1F61A65467F11339A8d0834349Be32EB2CF878
+## Canonical Services
 
-┌──────────────────────┐
-│  obscura-worker      │
-│  Render Worker       │
-│  apps/obscura-worker │
-│                      │
-│  ┌────────────────┐  │
-│  │ indexer/       │  │──► eth_getLogs + watchEvent
-│  │ Backfill on    │  │    (6 contract addresses)
-│  │ start, then    │  │
-│  │ live watch     │  │──► INSERT obscura_activity (Supabase)
-│  └────────────────┘  │
-│                      │
-│  ┌────────────────┐  │
-│  │ keeper/        │  │──► readContract (borrowersLength, getPlainBorrow...)
-│  │ Scan borrowers │  │    computeHfBps (off-chain, plaintext shadows)
-│  │ every 30s      │  │──► writeContract: liquidationOpen(), settle()
-│  └────────────────┘  │    (disabled if KEEPER_PRIVATE_KEY not set)
-└──────────────────────┘
-```
-
----
-
-## Services
-
-### 1. `obscura-api` — Render Web Service
-
-**Source:** `apps/obscura-api/`  
-**URL:** `https://obscura-api.onrender.com`  
-**Health:** `GET https://obscura-api.onrender.com/health`
-
-Replaces two old services: `obscura-pay-relay` + `obscura-pay-notifications`
-
-| Route | Method | Description |
-|---|---|---|
-| `/health` | GET | Healthcheck — returns entryPoint + paymaster addresses |
-| `/relay` | POST | Forward ERC-4337 PackedUserOp to Alchemy bundler |
-| `/vapid-public-key` | GET | Returns VAPID public key for browser push subscription |
-| `/subscribe` | POST | Save a Web Push subscription (wallet + endpoint) |
-| `/subscribe` | DELETE | Remove a push subscription |
-| `/prefs` | POST | Update notification preferences (web_push, email, email_address) |
-| `/prefs/:wallet` | GET | Get notification preferences for a wallet |
-
-**Background:** `startNotificationListener()` subscribes to Supabase Realtime on `obscura_activity` INSERT events. When a new event arrives, it dispatches Web Push to the wallet (if subscribed) and sends a Resend email (if enabled in prefs).
-
-**Environment variables:**
-
-| Variable | Value | Secret |
-|---|---|---|
-| `NODE_ENV` | `production` | No |
-| `PORT` | `3000` | No |
-| `ALLOWED_ORIGINS` | `https://obscura-os-nine.vercel.app` | No |
-| `PAYMASTER_ADDRESS` | `0x9B1F61A65467F11339A8d0834349Be32EB2CF878` | No |
-| `BUNDLER_URL` | `https://arb-sepolia.g.alchemy.com/v2/g89_KwJ9ARUpVNY0upgCk` | No |
-| `BUNDLER_URL_FALLBACK` | `https://api.pimlico.io/v2/421614/rpc?apikey=pim_bXTiDpX8oPrJjZ4GY5vAmU` | No |
-| `SUPABASE_URL` | `https://woqfefgrkpleedsuxavd.supabase.co` | No |
-| `SUPABASE_SERVICE_ROLE_KEY` | *(from Supabase dashboard)* | **YES** |
-| `VAPID_CONTACT_EMAIL` | `noreply@obscura.finance` | No |
-| `VAPID_PUBLIC_KEY` | `BIgVcwUhCL93WVMnDdRT9KqySwDS4Sm9C-fSLg4dWJRdddSuLbyDv_M9R5FmDi2F8NwDuKuMtvNiZAwZQ0RH86o` | No |
-| `VAPID_PRIVATE_KEY` | `WqDC2gqeKfnK0Z-2rD6l1_XR8i05bvKJdQRu04x7gKM` | **YES** |
-| `RESEND_API_KEY` | *(from Resend dashboard)* | **YES** |
-
----
-
-### 2. `obscura-worker` — Render Background Worker
-
-**Source:** `apps/obscura-worker/`
-
-Replaces two old services: `obscura-pay-indexer` + `credit-keeper` (ESM package)
-
-**Indexer contracts watched:**
-
-| Contract | Address |
+| Layer | Current value |
 |---|---|
-| ObscuraPay | `0x91CdD9a481C732bEB09Ce039da23DC11e83547a4` |
-| ObscuraPayStreamV3 | `0xE4328F139F03138D63f7fdF90A8Ef240e04653fA` |
-| ObscuraInvoice | `0x62a86C8d68fF32ea41Faf349db6EF7EF496620b7` |
-| ObscuraConfidentialEscrow | `0x293810A2081114CcE0c98A709a0c31aE07c01D75` |
-| ObscuraInsuranceSubscriptionV2 | `0xEA9Fc5800F41d090dFB90f9735F4CF3824d6743D` |
-| ObscuraStealthRegistry | `0xa36e791a611D36e2C817a7DA0f41547D30D4917d` |
-| ObscuraPayStreamV2 *(legacy)* | `0xb2fF39C496131d4AFd01d189569aF6FEBaC54d2C` |
-| ObscuraInsuranceSubscription *(legacy)* | `0x0CCE5DA9E447e7B4A400fC53211dd29C51CA8102` |
+| Frontend | `https://obscura-os-nine.vercel.app` |
+| Frontend root | `frontend/obscura-os-main` |
+| Frontend build | `npm run build` -> `dist` |
+| API | `https://obscura-api-n62v.onrender.com` |
+| API root | `backend/obscura-api` |
+| Worker | `https://obscura-worker-0ppj.onrender.com` |
+| Worker root | `backend/obscura-worker` |
+| Supabase project | `quoovjkjwgtdqwdofubh` |
+| Supabase URL | `https://quoovjkjwgtdqwdofubh.supabase.co` |
+| Chain | Arbitrum Sepolia, chain id `421614` |
+| EntryPoint v0.7 | `0x0000000071727De22E5E9d8BAf0edAc6f37da032` |
+| Smart account factory | `0xFaC683D8AB872cCf5eBfaE1659a9CD44C6FB4feB` |
+| Current paymaster | `0x7a8D880D9c5F88Ba8bd4435c450256628F66dd0C` |
 
-**Keeper markets:**
+## Architecture
 
-| Market | Address |
-|---|---|
-| CUSDC/CUSDC (M316) | `0x269f59672F3fd7f95bF440941e618b54Ebc5717A` |
-| M86 | `0xcf98d97934F37Ac9A05bc037437E43cb6788eC8b` |
-| M70 WETH | `0x0b645441D65A0CCb91A82b5a2eE3156C1c89207B` |
-| M50 OBS | `0x05e58B8D96Bbd752A72Fa02921A0eE31eCB9035d` |
+The browser talks to the unified API for public UserOps and notification registration. It reads Pay activity directly from Supabase with the anon key and wallet filtering. The worker is the canonical writer to `obscura_activity` and the primary immediate Web Push dispatcher.
 
-**Environment variables:**
+```text
+Frontend (Vercel)
+  | POST /relay, /subscribe, /prefs, /debug/push-test
+  v
+obscura-api (Render web service)
+  | eth_sendUserOperation / eth_getUserOperationReceipt
+  v
+Bundler -> EntryPoint -> Arbitrum Sepolia
 
-| Variable | Value | Secret |
+obscura-worker (Render web service)
+  | chunked eth_getLogs, retry/backoff
+  v
+Supabase obscura_activity
+  | worker-side push dispatch, API realtime fallback
+  v
+Browser service worker /sw.js
+```
+
+## Render Configuration
+
+Render reads `render.yaml` from the repository root and creates two web services:
+
+| Service | Root | Health |
 |---|---|---|
-| `NODE_ENV` | `production` | No |
-| `RPC_URL` | `https://arb-sepolia.g.alchemy.com/v2/g89_KwJ9ARUpVNY0upgCk` | No |
-| `SUPABASE_URL` | `https://woqfefgrkpleedsuxavd.supabase.co` | No |
-| `SUPABASE_SERVICE_ROLE_KEY` | *(from Supabase dashboard)* | **YES** |
-| `CHAINLINK_ETHUSD_ADAPTER` | `0xe3E388b421bfcF558FD46a18eE3b1c27aD1D36B3` | No |
-| `CHAINLINK_USDCUSD_ADAPTER` | `0xc65e85926Cb29aaEC74f99cF1591CBa65daa2c4A` | No |
-| `KEEPER_AUCTION` | `0x205FfC0A3b8207B645c1a6B1b4805eb3FfC828F0` | No |
-| `KEEPER_MARKETS` | `0x269f59...,...` | No |
-| `KEEPER_DRY_RUN` | `false` | No |
-| `KEEPER_POLL_MS` | `30000` | No |
-| `KEEPER_HF_THRESHOLD_BPS` | `10000` | No |
-| `KEEPER_MAX_GAS_GWEI` | `2` | No |
-| `KEEPER_PRIVATE_KEY` | *(keeper EOA private key)* | **YES** |
+| `obscura-api` | `backend/obscura-api` | `GET /health` returns `status`, `entryPoint`, and `paymaster` |
+| `obscura-worker` | `backend/obscura-worker` | `GET /health` returns `status`, indexer health, and keeper enablement |
 
----
+### API Environment
 
-## Database (Supabase)
-
-**Project:** `woqfefgrkpleedsuxavd`  
-**URL:** `https://woqfefgrkpleedsuxavd.supabase.co`  
-**Region:** us-east-1
-
-### Tables
-
-#### `obscura_activity`
-Stores all on-chain events indexed by the worker.
-
-```sql
-CREATE TABLE obscura_activity (
-  id               BIGSERIAL PRIMARY KEY,
-  created_at       TIMESTAMPTZ DEFAULT NOW(),
-  chain_id         INT NOT NULL,
-  block_number     NUMERIC NOT NULL,
-  tx_hash          TEXT NOT NULL,
-  log_index        INT NOT NULL,
-  contract_address TEXT NOT NULL,
-  event_name       TEXT NOT NULL,
-  wallet           TEXT NOT NULL,          -- primary wallet (lowercase)
-  participants     TEXT[] NOT NULL,         -- all addresses in the event
-  args             JSONB NOT NULL,          -- raw event args (bigints as strings)
-  UNIQUE (tx_hash, log_index)
-);
-
--- Index for wallet activity feed (used by frontend)
-CREATE INDEX obscura_activity_wallet_idx ON obscura_activity(wallet);
--- Index for keeper to look up last indexed block per contract
-CREATE INDEX obscura_activity_contract_block_idx ON obscura_activity(contract_address, block_number DESC);
-```
-
-#### `obscura_push_subscriptions`
-Stores browser Web Push subscriptions.
-
-```sql
-CREATE TABLE obscura_push_subscriptions (
-  id         BIGSERIAL PRIMARY KEY,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  wallet     TEXT NOT NULL,
-  endpoint   TEXT NOT NULL,
-  p256dh     TEXT NOT NULL,
-  auth       TEXT NOT NULL,
-  UNIQUE (wallet, endpoint)
-);
-```
-
-#### `obscura_notification_prefs`
-Per-wallet notification preferences.
-
-```sql
-CREATE TABLE obscura_notification_prefs (
-  wallet        TEXT PRIMARY KEY,
-  web_push      BOOLEAN DEFAULT TRUE,
-  email         BOOLEAN DEFAULT FALSE,
-  email_address TEXT
-);
-```
-
-### Row Level Security (RLS)
-
-RLS is enabled on all tables. Key policies:
-
-- **`obscura_activity`**: anon role can `SELECT` rows where `wallet = auth.uid()` or where `auth.uid() = ANY(participants)`. Backend (service_role) bypasses RLS.
-- **`obscura_push_subscriptions`**: anon role can SELECT/INSERT/DELETE own wallet rows.
-- **`obscura_notification_prefs`**: anon role can SELECT/UPDATE own wallet row.
-
-**Important:** The frontend uses the **anon key** (`VITE_SUPABASE_ANON_KEY`) — safe to expose because RLS limits access.  
-The backend uses the **service_role key** (`SUPABASE_SERVICE_ROLE_KEY`) — NEVER expose this in the frontend.
-
-### Realtime
-
-The `obscura-api` service subscribes to Supabase Realtime:
-```
-postgres_changes → INSERT on obscura_activity
-```
-When the worker inserts a new event, Supabase broadcasts it to `obscura-api` which dispatches push notifications.
-
----
-
-## Frontend (Vercel)
-
-**Repository:** `frontend/obscura-os-main/`  
-**Framework:** Vite 5 + React Router 6  
-**URL:** `https://obscura-os-nine.vercel.app`
-
-### Environment Variables (Vercel Dashboard)
-
-Set all `VITE_*` variables in Vercel → Project → Settings → Environment Variables.
-
-**Critical URLs (updated for v2 architecture):**
+Non-secret values are committed in `render.yaml`:
 
 | Variable | Value |
 |---|---|
-| `VITE_RELAY_URL` | `https://obscura-api.onrender.com` |
-| `VITE_NOTIFICATIONS_URL` | `https://obscura-api.onrender.com` |
-| `VITE_SUPABASE_URL` | `https://woqfefgrkpleedsuxavd.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | `eyJhbGciOi...` (full anon key — safe to expose) |
+| `NODE_ENV` | `production` |
+| `PORT` | `3000` |
+| `ALLOWED_ORIGINS` | `https://obscura-os-nine.vercel.app` |
+| `FRONTEND_URL` | `https://obscura-os-nine.vercel.app` |
+| `PAYMASTER_ADDRESS` | `0x7a8D880D9c5F88Ba8bd4435c450256628F66dd0C` |
+| `SUPABASE_URL` | `https://quoovjkjwgtdqwdofubh.supabase.co` |
+| `VAPID_CONTACT_EMAIL` | `noreply@obscura.finance` |
+| `VAPID_PUBLIC_KEY` | public VAPID key used by the frontend subscription flow |
 
-All other contract address variables are in `frontend/obscura-os-main/.env`.
+Set these secrets manually in the Render dashboard:
 
-### How Frontend Connects to Each Service
+| Variable | Required | Notes |
+|---|---:|---|
+| `BUNDLER_URL` | Yes | Primary Arbitrum Sepolia bundler/RPC endpoint |
+| `BUNDLER_URL_FALLBACK` | Yes | Fallback bundler endpoint |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only key for `quoovjkjwgtdqwdofubh` |
+| `VAPID_PRIVATE_KEY` | Yes | Must match the committed public VAPID key |
+| `RESEND_API_KEY` | Optional | Email notification delivery |
 
-| Frontend action | Endpoint | Service |
-|---|---|---|
-| Submit a transaction (ERC-4337) | `POST VITE_RELAY_URL/relay` | obscura-api |
-| Subscribe to push notifications | `POST VITE_NOTIFICATIONS_URL/subscribe` | obscura-api |
-| Get VAPID public key | `GET VITE_NOTIFICATIONS_URL/vapid-public-key` | obscura-api |
-| Read activity feed | Supabase JS direct | Supabase (anon key) |
-| Live activity updates | Supabase Realtime direct | Supabase (anon key) |
-| Read encrypted balances | wagmi + viem direct | Arbitrum Sepolia RPC |
+### Worker Environment
 
----
+Non-secret values are committed in `render.yaml`:
 
-## Render Deployment Steps
+| Variable | Value |
+|---|---|
+| `NODE_ENV` | `production` |
+| `PORT` | `3001` |
+| `SUPABASE_URL` | `https://quoovjkjwgtdqwdofubh.supabase.co` |
+| `FRONTEND_URL` | `https://obscura-os-nine.vercel.app` |
+| `VAPID_CONTACT_EMAIL` | `noreply@obscura.finance` |
+| `VAPID_PUBLIC_KEY` | public VAPID key used by the API/frontend |
+| `INDEXER_GETLOGS_CHUNK_BLOCKS` | `10` |
+| `INDEXER_GETLOGS_RETRIES` | `3` |
+| `INDEXER_GETLOGS_RETRY_BASE_MS` | `1000` |
+| `INDEXER_LIVE_POLL_MS` | `5000` |
+| `INDEXER_LIVE_RETRY_MAX_MS` | `30000` |
+| `INDEXER_STARTUP_RECENT_BLOCKS` | `5000` |
+| `INDEXER_BACKGROUND_BACKFILL_DELAY_MS` | `15000` |
+| `INDEXER_DISPATCH_RECOVERED_DUPLICATES` | `true` |
+| `KEEPER_ENABLED` | `false` |
+| `KEEPER_DRY_RUN` | `true` |
 
-1. **Connect repository** to Render (GitHub → `OBSCURA` repo → `main` branch).
-2. Render auto-detects `render.yaml` — creates `obscura-api` (web) + `obscura-worker` (worker).
-3. In Render dashboard, **manually set secrets** for each service:
+Set these secrets manually in the Render dashboard:
 
-**obscura-api secrets:**
-- `SUPABASE_SERVICE_ROLE_KEY` → Supabase → Project Settings → API → service_role key
-- `VAPID_PRIVATE_KEY` → `WqDC2gqeKfnK0Z-2rD6l1_XR8i05bvKJdQRu04x7gKM`
-- `RESEND_API_KEY` → Resend dashboard → API Keys
+| Variable | Required | Notes |
+|---|---:|---|
+| `RPC_URL` | Yes | Arbitrum Sepolia RPC. Current indexer chunks logs at 10 blocks or lower. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only key for `quoovjkjwgtdqwdofubh` |
+| `VAPID_PRIVATE_KEY` | Yes | Same VAPID private key used by `obscura-api` |
+| `KEEPER_PRIVATE_KEY` | Optional | Only set when `KEEPER_ENABLED=true` intentionally shares worker RPC quota |
 
-**obscura-worker secrets:**
-- `SUPABASE_SERVICE_ROLE_KEY` → same as above
-- `KEEPER_PRIVATE_KEY` → keeper EOA private key (fund it with ETH for gas)
+## Vercel Configuration
 
-4. Click **Deploy**.
-5. Verify: `GET https://obscura-api.onrender.com/health` → `{ "status": "ok" }`
+The Vercel project must use:
 
-**Deploy order:** No strict ordering required. Worker can start indexing before API is up.
+| Setting | Value |
+|---|---|
+| Root directory | `frontend/obscura-os-main` |
+| Install command | `npm install --legacy-peer-deps` |
+| Build command | `npm run build` |
+| Output directory | `dist` |
 
----
+Required dashboard variables include every `VITE_*` value from `frontend/obscura-os-main/.env`, especially:
 
-## Vercel Deployment Steps
+| Variable | Current value |
+|---|---|
+| `VITE_RELAY_URL` | `https://obscura-api-n62v.onrender.com` |
+| `VITE_NOTIFICATIONS_URL` | `https://obscura-api-n62v.onrender.com` |
+| `VITE_SUPABASE_URL` | `https://quoovjkjwgtdqwdofubh.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon key for `quoovjkjwgtdqwdofubh` |
+| `VITE_SMART_ACCOUNT_FACTORY_ADDRESS` | `0xFaC683D8AB872cCf5eBfaE1659a9CD44C6FB4feB` |
+| `VITE_PAYMASTER_ADDRESS` | `0x7a8D880D9c5F88Ba8bd4435c450256628F66dd0C` |
+| `VITE_OBSCURA_PAY_OCUSDC_ADDRESS` | `0xEd46020Df8abe7BB1E096f27d089F4326D223a53` |
 
-1. Go to Vercel → Project → Settings → Environment Variables.
-2. Update:
-   - `VITE_RELAY_URL` = `https://obscura-api.onrender.com`
-   - `VITE_NOTIFICATIONS_URL` = `https://obscura-api.onrender.com`
-3. **Redeploy** (Deployments → Redeploy latest).
-4. All other `VITE_*` vars are already set. No changes needed.
+Do not set server-only secrets in Vercel.
 
----
+## Supabase Tables
 
-## Secrets Checklist
+The active project contains:
 
-| Secret | Where to get it | Where to set it |
-|---|---|---|
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API | Render (both services) |
-| `VAPID_PRIVATE_KEY` | Already generated: `WqDC2gqeKfnK0Z-2rD6l1_XR8i05bvKJdQRu04x7gKM` | Render (obscura-api) |
-| `RESEND_API_KEY` | resend.com → API Keys | Render (obscura-api) |
-| `KEEPER_PRIVATE_KEY` | Generate a new EOA — fund it with 0.01 ETH | Render (obscura-worker) |
+| Table | Role |
+|---|---|
+| `obscura_activity` | Worker-written indexed Pay events; unique by `(tx_hash, log_index)` |
+| `obscura_push_subscriptions` | Browser Web Push subscriptions keyed by wallet |
+| `obscura_notification_prefs` | Per-wallet push/email preferences and event filters |
 
----
+The testnet RLS model is permissive in places and relies on wallet-filtered frontend reads. Treat that as acceptable for testnet only; tighten wallet-auth policies or API-mediated reads before mainnet.
+
+## Notification Reliability Contract
+
+- `obscura-worker` is the primary dispatcher immediately after a fresh activity insert.
+- `obscura-api` keeps the Supabase Realtime listener as optional redundancy.
+- Notification payloads include event metadata, activity id, transaction hash, and wallet participation only.
+- Notification and email bodies must not include decrypted amounts, local receipt amounts, notes, labels, or private counterpart metadata.
+- Stale Web Push subscriptions are removed on 404/410 from the push service.
+- Browser repair/test lives in Pay Settings -> Notifications.
 
 ## Local Development
 
 ```powershell
-# Start obscura-api locally
-cd apps/obscura-api
-Copy-Item .env.example .env   # Edit .env with real secrets
-npm install
-npm run dev   # Starts on http://localhost:3000
-
-# Start obscura-worker locally
-cd apps/obscura-worker
-Copy-Item .env.example .env   # Edit .env with real secrets
+# API
+Push-Location backend/obscura-api
+Copy-Item .env.example .env
 npm install
 npm run dev
+Pop-Location
+
+# Worker
+Push-Location backend/obscura-worker
+Copy-Item .env.example .env
+npm install
+npm run dev
+Pop-Location
 ```
 
-Set `VITE_RELAY_URL=http://localhost:3000` and `VITE_NOTIFICATIONS_URL=http://localhost:3000` in the frontend `.env` for local testing.
+For local frontend testing, use `VITE_RELAY_URL=http://localhost:3000` and `VITE_NOTIFICATIONS_URL=http://localhost:3000`.
 
----
+## Production Smoke Checks
+
+Run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\test-e2e.ps1
+```
+
+Manual checks:
+
+1. `GET https://obscura-api-n62v.onrender.com/health` returns the v0.7 EntryPoint and current paymaster.
+2. `GET https://obscura-worker-0ppj.onrender.com/health` returns `status=ok` and `indexer.chunkSize <= 10`.
+3. `GET https://obscura-os-nine.vercel.app/sw.js` returns HTTP 200.
+4. `GET https://obscura-api-n62v.onrender.com/vapid-public-key` returns the public VAPID key.
+5. Pay Activity loads for a connected wallet without Supabase configuration errors.
+6. Settings -> Notifications -> Repair browser refreshes the current browser subscription.
+7. Settings -> Notifications -> Test produces a visible browser notification on a subscribed browser.
 
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `POST /relay` returns 500 | `BUNDLER_URL` wrong or missing | Check Render env → BUNDLER_URL |
-| Push not received | `VAPID_PRIVATE_KEY` wrong | Must match the public key |
-| Worker not indexing | `SUPABASE_SERVICE_ROLE_KEY` wrong | Copy service_role from Supabase |
-| Keeper not liquidating | `KEEPER_DRY_RUN=true` | Set `KEEPER_DRY_RUN=false` in Render |
-| Keeper out of gas | Keeper EOA has no ETH | Fund keeper address on Arb Sepolia |
-| Frontend 404 on relay | `VITE_RELAY_URL` still points to old URL | Update Vercel env → redeploy |
+| API health paymaster is old | Render `PAYMASTER_ADDRESS` still stale | Update Render env/YAML to current paymaster and redeploy `obscura-api` |
+| Public UserOp fails before submission | Bundler env missing or invalid | Check `BUNDLER_URL` and `BUNDLER_URL_FALLBACK` in Render |
+| Worker health is down | Missing worker secrets or cold start | Check `RPC_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and Render logs |
+| RPC 429s appear | RPC budget exhausted | Keep chunks at 10 or lower, keep keeper disabled unless needed, upgrade RPC if needed |
+| Push test sends but no browser notification appears | Browser endpoint stale or OS/browser blocked notifications | Use Repair browser, confirm site/OS notifications, test from the active profile |
+| Activity feed is empty | No indexed rows or Supabase env mismatch | Check worker logs and Vercel `VITE_SUPABASE_*` values |

@@ -69,6 +69,46 @@ const INDEXER_CONTRACTS: readonly ContractConfig[] = [
   { contractName: "ObscuraInsuranceSubscription",   address: CONTRACTS.ObscuraInsuranceSubscription,   events: INSURANCE_EVENTS, live: false },
 ] as const;
 
+interface IndexerHealthSnapshot {
+  status: "starting" | "running";
+  chainId: number;
+  maxChunkSize: number;
+  chunkSize: number;
+  retries: number;
+  livePollMs: number;
+  startupRecentBlocks: number;
+  watchedContracts: string[];
+  startedAt: string;
+  lastChunkAt: string | null;
+  lastSuccessAt: string | null;
+  lastErrorAt: string | null;
+  lastError: string | null;
+  consecutiveFailures: number;
+  recoveredDuplicateDispatches: number;
+}
+
+const indexerHealth: IndexerHealthSnapshot = {
+  status: "starting",
+  chainId: CHAIN_ID,
+  maxChunkSize: MAX_GET_LOGS_BLOCKS,
+  chunkSize: GET_LOGS_CHUNK_BLOCKS,
+  retries: GET_LOGS_RETRIES,
+  livePollMs: LIVE_POLL_MS,
+  startupRecentBlocks: STARTUP_RECENT_BLOCKS,
+  watchedContracts: INDEXER_CONTRACTS.filter((contract) => contract.live).map((contract) => contract.contractName),
+  startedAt: new Date().toISOString(),
+  lastChunkAt: null,
+  lastSuccessAt: null,
+  lastErrorAt: null,
+  lastError: null,
+  consecutiveFailures: 0,
+  recoveredDuplicateDispatches: 0,
+};
+
+export function getIndexerHealth(): IndexerHealthSnapshot {
+  return { ...indexerHealth, watchedContracts: [...indexerHealth.watchedContracts] };
+}
+
 const client = createPublicClient({
   chain: arbitrumSepolia,
   transport: http(RPC_URL),
@@ -148,6 +188,7 @@ async function handleLog(
 
   if (!inserted) {
     recoveredDuplicateDispatches.add(key);
+    indexerHealth.recoveredDuplicateDispatches = recoveredDuplicateDispatches.size;
     console.log(`[indexer] recovered duplicate activity id=${activity.id} event=${activity.event_name} block=${activity.block_number} tx=${activity.tx_hash.slice(0, 12)}... dispatching catch-up notification`);
   }
 
@@ -170,6 +211,7 @@ async function getLogsChunk(
   phase: "backfill" | "live",
 ): Promise<boolean> {
   for (let attempt = 1; attempt <= GET_LOGS_RETRIES; attempt++) {
+    indexerHealth.lastChunkAt = new Date().toISOString();
     try {
       console.log(`[indexer] ${phase} chunk ${contractName} from=${fromBlock} to=${toBlock} attempt=${attempt}/${GET_LOGS_RETRIES}`);
       const logs = await client.getLogs({
@@ -195,10 +237,16 @@ async function getLogsChunk(
       }
 
       console.log(`[indexer] ${phase} chunk complete ${contractName} from=${fromBlock} to=${toBlock} logs=${logs.length}`);
+      indexerHealth.lastSuccessAt = new Date().toISOString();
+      indexerHealth.lastError = null;
+      indexerHealth.consecutiveFailures = 0;
       return true;
     } catch (e) {
       const message = errorMessage(e);
+      indexerHealth.lastErrorAt = new Date().toISOString();
+      indexerHealth.lastError = message;
       if (attempt >= GET_LOGS_RETRIES) {
+        indexerHealth.consecutiveFailures++;
         console.error(`[indexer] ${phase} chunk failed ${contractName} from=${fromBlock} to=${toBlock} attempts=${attempt} error=${message}`);
         return false;
       }
@@ -303,7 +351,11 @@ function watchContract(
     } catch (e) {
       failureCount++;
       const delay = Math.min(LIVE_RETRY_MAX_MS, retryDelay(failureCount));
-      console.error(`[indexer] live poll error ${contractName} retryInMs=${delay} failures=${failureCount} error=${errorMessage(e)}`);
+      const message = errorMessage(e);
+      indexerHealth.lastErrorAt = new Date().toISOString();
+      indexerHealth.lastError = message;
+      indexerHealth.consecutiveFailures++;
+      console.error(`[indexer] live poll error ${contractName} retryInMs=${delay} failures=${failureCount} error=${message}`);
       schedule(delay);
     } finally {
       running = false;
@@ -322,6 +374,7 @@ function watchContract(
 // ─── Entry ────────────────────────────────────────────────────────────────────
 export async function startIndexer(): Promise<() => void> {
   console.log(`[indexer] Starting RPC=${RPC_URL} chunkSize=${GET_LOGS_CHUNK_BLOCKS} retries=${GET_LOGS_RETRIES} livePollMs=${LIVE_POLL_MS} startupRecentBlocks=${STARTUP_RECENT_BLOCKS}`);
+  indexerHealth.status = "running";
 
   let startupBlock: bigint | undefined;
   try {

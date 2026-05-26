@@ -29,7 +29,7 @@ services:
       - key: FRONTEND_URL
         value: "https://obscura-os-nine.vercel.app"
       - key: PAYMASTER_ADDRESS
-        value: "0x9B1F61A65467F11339A8d0834349Be32EB2CF878"
+        value: "0x7a8D880D9c5F88Ba8bd4435c450256628F66dd0C"
       - key: SUPABASE_URL
         value: "https://quoovjkjwgtdqwdofubh.supabase.co"
       - key: VAPID_CONTACT_EMAIL

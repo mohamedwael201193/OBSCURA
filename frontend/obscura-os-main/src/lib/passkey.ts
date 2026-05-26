@@ -52,64 +52,31 @@ function bytesToHex(buf: Uint8Array): `0x${string}` {
   return ("0x" + Array.from(buf).map((b) => b.toString(16).padStart(2, "0")).join("")) as `0x${string}`;
 }
 
-// ─── Parse COSE P-256 public key → (x, y) coordinates ───────────────────────
+// ─── Extract P-256 (x, y) from SPKI/DER bytes ────────────────────────────────
 /**
- * WebAuthn returns the public key as a COSE-encoded CBOR map.
- * For P-256 (kty=2, alg=-7): x is key -2, y is key -3.
- * We parse the raw CBOR manually (only the fields we need).
+ * `AuthenticatorAttestationResponse.getPublicKey()` returns the key in
+ * SubjectPublicKeyInfo (SPKI / DER) format — NOT COSE CBOR.
+ *
+ * We use the Web Crypto API to import the SPKI key and then export it as a
+ * raw uncompressed EC point: 0x04 || x(32 bytes) || y(32 bytes).
+ * This is the most reliable method and works across all modern browsers.
  */
-function parseCOSEPublicKey(coseBytes: ArrayBuffer): { x: bigint; y: bigint } {
-  // Minimal CBOR parser for the COSE key map
-  const data = new Uint8Array(coseBytes);
-  let offset = 0;
-
-  function readByte(): number { return data[offset++]; }
-  function readUint(n: number): number {
-    let val = 0;
-    for (let i = 0; i < n; i++) val = (val << 8) | readByte();
-    return val;
+async function extractP256XY(spkiBytes: ArrayBuffer): Promise<{ x: bigint; y: bigint }> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "spki",
+    spkiBytes,
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,       // must be extractable to export as raw
+    ["verify"],
+  );
+  // raw export = 0x04 (uncompressed prefix) || x(32) || y(32) — always 65 bytes
+  const raw = new Uint8Array(await crypto.subtle.exportKey("raw", cryptoKey));
+  if (raw.length !== 65 || raw[0] !== 0x04) {
+    throw new Error("Unexpected EC point format — expected 65-byte uncompressed P-256 point");
   }
-
-  function readCBORValue(): unknown {
-    const byte = readByte();
-    const major = byte >> 5;
-    const info  = byte & 0x1f;
-    let len = info < 24 ? info : info === 24 ? readUint(1) : info === 25 ? readUint(2) : readUint(4);
-
-    if (major === 0) return len;              // positive int
-    if (major === 1) return -1 - len;         // negative int
-    if (major === 2) {                        // byte string
-      const bytes = data.slice(offset, offset + len);
-      offset += len;
-      return bytes;
-    }
-    if (major === 3) {                        // text string
-      const text = new TextDecoder().decode(data.slice(offset, offset + len));
-      offset += len;
-      return text;
-    }
-    if (major === 5) {                        // map
-      const map: Record<number | string, unknown> = {};
-      for (let i = 0; i < len; i++) {
-        const k = readCBORValue();
-        const v = readCBORValue();
-        map[k as number | string] = v;
-      }
-      return map;
-    }
-    throw new Error(`Unsupported CBOR major type ${major}`);
-  }
-
-  const map = readCBORValue() as Record<number, Uint8Array>;
-  const xBytes = map[-2];
-  const yBytes = map[-3];
-  if (!xBytes || !yBytes || xBytes.length !== 32 || yBytes.length !== 32) {
-    throw new Error("Invalid P-256 public key — expected 32-byte x/y coordinates");
-  }
-
   return {
-    x: BigInt(bytesToHex(xBytes)),
-    y: BigInt(bytesToHex(yBytes)),
+    x: BigInt(bytesToHex(raw.slice(1, 33))),
+    y: BigInt(bytesToHex(raw.slice(33, 65))),
   };
 }
 
@@ -176,7 +143,10 @@ export async function registerPasskey(ownerAddress: string): Promise<StoredPassk
 
   const response = credential.response as AuthenticatorAttestationResponse;
   const credId   = bytesToBase64url(new Uint8Array(credential.rawId));
-  const { x, y } = parseCOSEPublicKey(response.getPublicKey()!);
+
+  const pkBytes = response.getPublicKey();
+  if (!pkBytes) throw new Error("Browser did not return the public key. Try Chrome, Safari or Edge with biometrics.");
+  const { x, y } = await extractP256XY(pkBytes);
 
   const entry: StoredPasskey = {
     credentialId: credId,

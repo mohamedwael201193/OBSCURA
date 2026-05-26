@@ -68,10 +68,10 @@ export function PasskeyEnrollModal({ onClose, onSuccess }: PasskeyEnrollModalPro
 
   return (
     <AnimatePresence>
-      {/* ── Backdrop ─────────────────────────────────────────────── */}
+      {/* ── Backdrop — very light tint, no blur ──────────────────── */}
       <motion.div
         key="backdrop"
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+        className="fixed inset-0 z-50 bg-foreground/10"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Eye,
   EyeOff,
+  Fingerprint,
   Inbox,
   Lock,
   Network,
@@ -31,6 +32,8 @@ import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 import { useStealthInbox } from "@/hooks/useStealthInbox";
 import { useReceipts } from "@/hooks/useReceipts";
 import { useOnboardingState } from "@/hooks/useOnboardingState";
+import { useSmartAccount } from "@/hooks/useSmartAccount";
+import { usePaymentMode } from "@/contexts/PaymentModeContext";
 
 const ARB_SEPOLIA_CHAIN_ID = 421614;
 
@@ -425,6 +428,8 @@ export function PayHarmonyHome({
   const inbox = useStealthInbox();
   const receipts = useReceipts();
   const onboarding = useOnboardingState();
+  const { isDeployed: isSmartDeployed, hasPasskey: isSmartEnrolled } = useSmartAccount();
+  const { mode: paymentMode, setMode: setPaymentMode, isSmartAvailable } = usePaymentMode();
 
   const isWrongChain = isConnected && chainId !== ARB_SEPOLIA_CHAIN_ID;
   const unread = inbox.unreadCount ?? 0;
@@ -524,6 +529,18 @@ export function PayHarmonyHome({
       active: onboarding.isStealthRegistered && !onboarding.hasActivity,
       actionLabel: "Send",
       onAction: () => onNavigate("pay"),
+    },
+    {
+      num: 6,
+      title: "Enable biometric payments",
+      hint: isSmartAvailable
+        ? "Smart Mode active — no MetaMask popups"
+        : "Passkey-secured, gasless transactions",
+      privacyNote: "Signed by your device, not your wallet app",
+      done: isSmartAvailable,
+      active: onboarding.hasActivity && !isSmartAvailable,
+      actionLabel: isSmartDeployed && !isSmartEnrolled ? "Add passkey" : "Set up",
+      onAction: () => onNavigate("settings"),
     },
   ];
 
@@ -667,6 +684,11 @@ export function PayHarmonyHome({
           <PostureItem
             label="Receiving private"
             active={isConnected && onboarding.isStealthRegistered}
+          />
+          <span className="select-none text-[10px] text-border/50">·</span>
+          <PostureItem
+            label="Smart Mode"
+            active={isConnected && paymentMode === "smart"}
           />
         </div>
 
@@ -859,6 +881,92 @@ export function PayHarmonyHome({
           onClick={() => onNavigate("pay")}
         />
       </motion.div>
+
+      {/* ── Smart Account discovery ─────────────────────────────────────────── */}
+      {isConnected && (
+        <motion.section
+          custom={1.5}
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          className="overflow-hidden rounded-2xl hairline bg-card"
+        >
+          <div className="flex items-center gap-3 border-b border-border/50 px-5 py-3">
+            <div
+              className={cn(
+                "grid h-7 w-7 shrink-0 place-items-center rounded-full",
+                isSmartAvailable
+                  ? "bg-foreground text-background"
+                  : "bg-muted text-muted-foreground/50",
+              )}
+            >
+              <Fingerprint className="h-[13px] w-[13px]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-medium text-foreground leading-none">
+                {isSmartAvailable ? "Smart Mode available" : "Biometric payments"}
+              </p>
+              <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/45">
+                {isSmartAvailable ? "ERC-4337 · Passkey secured" : "ERC-4337 · Setup required"}
+              </p>
+            </div>
+            {isSmartAvailable ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (paymentMode === "smart") {
+                    setPaymentMode("wallet");
+                  } else {
+                    setPaymentMode("smart");
+                    onNavigate("pay");
+                  }
+                }}
+                className={cn(
+                  "shrink-0 rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] transition-colors",
+                  paymentMode === "smart"
+                    ? "bg-foreground text-background"
+                    : "hairline hover:bg-muted text-foreground/70",
+                )}
+              >
+                {paymentMode === "smart" ? "On" : "Enable"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onNavigate("settings")}
+                className="shrink-0 rounded-full hairline px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+              >
+                Set up →
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5 px-5 py-3">
+            {[
+              { label: "No MetaMask popups", ok: isSmartAvailable },
+              { label: "Gas covered by paymaster", ok: isSmartAvailable },
+              { label: "Fingerprint / Face ID signing", ok: isSmartEnrolled },
+              { label: "Auto-fallback to wallet", ok: true },
+            ].map((feat) => (
+              <span
+                key={feat.label}
+                className={cn(
+                  "inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.1em]",
+                  feat.ok ? "text-foreground/60" : "text-muted-foreground/30",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-1 w-1 rounded-full",
+                    feat.ok ? "bg-foreground/50" : "bg-border",
+                  )}
+                />
+                {feat.label}
+              </span>
+            ))}
+          </div>
+        </motion.section>
+      )}
 
       {/* ── Activity (compact, secondary) ───────────────────────────────────── */}
       <motion.section

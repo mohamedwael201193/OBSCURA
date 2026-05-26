@@ -88,6 +88,8 @@ import { Input } from "@/components/ui/input";
 import { useNotificationPrefs } from "@/hooks/useNotificationPrefs";
 import { useSmartAccount } from "@/hooks/useSmartAccount";
 import { PasskeyEnrollModal } from "@/components/harmony/PasskeyEnrollModal";
+import { PaymentModeProvider } from "@/contexts/PaymentModeContext";
+import { PaymentModeBar } from "@/components/harmony/PaymentModeBar";
 
 // W5P1.5 — IA refactor: 9 tabs collapsed to 6 user-intent tabs
 type Tab =
@@ -625,6 +627,13 @@ const PayPage = () => {
         }
         return (
           <PayHarmonyTabShell tab="pay">
+            <PaymentModeBar
+              onSetupSmart={() => {
+                setTabState("settings");
+                onSettingsSub("account");
+                writeUrl("settings", "account");
+              }}
+            />
             <HarmonySubNav<PaySub>
               value={paySub}
               onChange={onPaySub}
@@ -930,23 +939,25 @@ const PayPage = () => {
   };
 
   return (
-    <HarmonyAppShell appName="Pay" sidebar={harmonySidebar} searchPlaceholder="Search pay…">
-      {isConnected && tab !== "getpaid" && tab !== "home" && (
-        <NewPaymentBanner onOpenInbox={() => setTab("getpaid")} />
-      )}
+    <PaymentModeProvider>
+      <HarmonyAppShell appName="Pay" sidebar={harmonySidebar} searchPlaceholder="Search pay…">
+        {isConnected && tab !== "getpaid" && tab !== "home" && (
+          <NewPaymentBanner onOpenInbox={() => setTab("getpaid")} />
+        )}
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={tab}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        >
-          {renderActiveSection()}
-        </motion.div>
-      </AnimatePresence>
-    </HarmonyAppShell>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {renderActiveSection()}
+          </motion.div>
+        </AnimatePresence>
+      </HarmonyAppShell>
+    </PaymentModeProvider>
   );
 };
 

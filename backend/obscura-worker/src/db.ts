@@ -41,8 +41,25 @@ export interface StoredActivityRecord {
   created_at:       string;
 }
 
+export interface InsertActivityResult {
+  activity: StoredActivityRecord;
+  inserted: boolean;
+}
+
+async function getActivityByTxLog(txHash: string, logIndex: number): Promise<StoredActivityRecord | null> {
+  const { data, error } = await db
+    .from("obscura_activity")
+    .select("*")
+    .eq("tx_hash", txHash)
+    .eq("log_index", logIndex)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as StoredActivityRecord | null) ?? null;
+}
+
 /** Upsert an on-chain event (idempotent via tx_hash + log_index unique constraint) */
-export async function insertActivity(record: ActivityRecord): Promise<StoredActivityRecord | null> {
+export async function insertActivity(record: ActivityRecord): Promise<InsertActivityResult> {
   const { data, error } = await db
     .from("obscura_activity")
     .upsert(
@@ -58,13 +75,18 @@ export async function insertActivity(record: ActivityRecord): Promise<StoredActi
   }
 
   if (!data) {
-    console.log(`[db] activity duplicate skipped event=${record.event_name} tx=${record.tx_hash.slice(0, 12)}... log=${record.log_index}`);
-    return null;
+    const existing = await getActivityByTxLog(record.tx_hash, record.log_index);
+    if (!existing) {
+      throw new Error(`Activity duplicate had no selectable row tx=${record.tx_hash} log=${record.log_index}`);
+    }
+
+    console.log(`[db] activity duplicate found id=${existing.id} event=${existing.event_name} tx=${record.tx_hash.slice(0, 12)}... log=${record.log_index}`);
+    return { activity: existing, inserted: false };
   }
 
   const stored = data as StoredActivityRecord;
   console.log(`[db] event indexed id=${stored.id} event=${stored.event_name} wallet=${stored.wallet.slice(0, 6)}...${stored.wallet.slice(-4)} tx=${stored.tx_hash.slice(0, 12)}...`);
-  return stored;
+  return { activity: stored, inserted: true };
 }
 
 /** Get the last indexed block for a given contract address */

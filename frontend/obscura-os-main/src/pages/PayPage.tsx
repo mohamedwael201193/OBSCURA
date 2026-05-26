@@ -15,6 +15,8 @@ import {
   Settings as SettingsIcon,
   BookUser,
   RotateCw,
+  RefreshCw,
+  Bell,
   Trash2,
   Plus,
   Pencil,
@@ -431,11 +433,14 @@ const SettingsDataCard = () => {
 };
 
 const SettingsNotificationsCard = () => {
-  const { prefs, isLoading, pushSupported, enable, disable, savePrefs } = useNotificationPrefs();
+  const { prefs, isLoading, pushSupported, enable, repair, disable, testPush, savePrefs } = useNotificationPrefs();
   const [email, setEmail] = useState(prefs?.email ?? "");
   const [saving, setSaving] = useState(false);
   const [pushSaving, setPushSaving] = useState(false);
+  const [repairing, setRepairing] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [pushError, setPushError] = useState<string | null>(null);
+  const [pushResult, setPushResult] = useState<string | null>(null);
 
   const handleEmailSave = async () => {
     setSaving(true);
@@ -445,6 +450,7 @@ const SettingsNotificationsCard = () => {
   const handlePushToggle = async () => {
     setPushSaving(true);
     setPushError(null);
+    setPushResult(null);
     try {
       if (prefs?.push_enabled) await disable();
       else await enable();
@@ -452,6 +458,34 @@ const SettingsNotificationsCard = () => {
       setPushError((err as Error).message || "Push notification setup failed");
     } finally {
       setPushSaving(false);
+    }
+  };
+
+  const handleRepair = async () => {
+    setRepairing(true);
+    setPushError(null);
+    setPushResult(null);
+    try {
+      await repair();
+      setPushResult("This browser is subscribed.");
+    } catch (err) {
+      setPushError((err as Error).message || "Push notification repair failed");
+    } finally {
+      setRepairing(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setPushError(null);
+    setPushResult(null);
+    try {
+      const result = await testPush();
+      setPushResult(result.sent > 0 ? "Test notification sent." : `Test attempted ${result.attempted}, sent ${result.sent}.`);
+    } catch (err) {
+      setPushError((err as Error).message || "Push notification test failed");
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -481,9 +515,34 @@ const SettingsNotificationsCard = () => {
             </div>
           )}
           {prefs?.push_enabled && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={repairing || testing}
+                onClick={handleRepair}
+                className="btn-pay btn-pay-ghost"
+              >
+                {repairing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                Repair browser
+              </button>
+              <button
+                type="button"
+                disabled={repairing || testing}
+                onClick={handleTest}
+                className="btn-pay btn-pay-ghost"
+              >
+                {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5" />}
+                Test
+              </button>
+            </div>
+          )}
+          {prefs?.push_enabled && (
             <p className="text-[11px] text-muted-foreground/55">
-              You will receive push notifications for on-chain activity linked to your wallet.
+              Push alerts are enabled for on-chain activity linked to your wallet.
             </p>
+          )}
+          {pushResult && (
+            <p className="text-[11px] text-[#2D6A4F]">{pushResult}</p>
           )}
           {pushError && (
             <p className="text-[11px] text-red-400">{pushError}</p>

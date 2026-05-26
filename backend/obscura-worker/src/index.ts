@@ -31,13 +31,15 @@ async function main(): Promise<void> {
   // ── Indexer (always enabled) ───────────────────────────────────────────────
   const stopIndexer = await startIndexer();
 
-  // ── Credit Keeper (only if private key is configured) ─────────────────────
-  if (process.env.KEEPER_PRIVATE_KEY) {
+  // ── Credit Keeper (explicit opt-in; keep Pay indexing from sharing RPC quota)
+  if (process.env.KEEPER_ENABLED === "true" && process.env.KEEPER_PRIVATE_KEY) {
     startKeeper().catch((e) => {
       console.error("[worker] Keeper fatal error:", (e as Error).message);
     });
+  } else if (process.env.KEEPER_ENABLED === "true") {
+    console.log("[worker] KEEPER_ENABLED=true but KEEPER_PRIVATE_KEY is not set — credit keeper disabled");
   } else {
-    console.log("[worker] KEEPER_PRIVATE_KEY not set — credit keeper disabled");
+    console.log("[worker] KEEPER_ENABLED is not true — credit keeper disabled");
   }
 
   // ── Graceful shutdown ──────────────────────────────────────────────────────

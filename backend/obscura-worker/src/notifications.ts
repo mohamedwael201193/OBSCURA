@@ -18,6 +18,7 @@ const pushEnabled = Boolean(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
 
 if (pushEnabled) {
   webpush.setVapidDetails(`mailto:${VAPID_CONTACT_EMAIL}`, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  console.log(`[notifications] worker push dispatch enabled contact=${VAPID_CONTACT_EMAIL}`);
 } else {
   console.warn("[notifications] VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY missing; worker push dispatch disabled");
 }

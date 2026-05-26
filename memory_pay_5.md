@@ -1867,3 +1867,73 @@ KEEPER_PRIVATE_KEY=<credit keeper bot key, only if keeper should run>
 - Browser notification appearance still requires observing the browser/device notification after redeploy or a manual debug push confirmation from the subscribed browser.
 - Do not claim full final success until Render worker health is stable, a new post-redeploy event indexes into `obscura_activity`, worker logs show notification dispatch, and the browser notification appears.
 
+---
+
+## W5P16 — Browser Push Delivery Follow-up / Duplicate Catch-up Dispatch
+
+**Completed**: 2026-05-26 — follow-up after DB rows appeared but no visible browser notification.
+
+### What the new evidence showed
+
+- `obscura_activity` was updating and the frontend inbox showed 3 private payments.
+- Production worker logs showed chunked live catch-up running, but only `live chunk complete ... logs=0` lines for the pasted range and no `notification queued` / `notification sent` lines yet.
+- The latest row in DB (`id=5`, `ObscuraStealthRegistry.Announcement`, block `271321464`) included the connected wallet `0xf76e...71a3` in `participants`.
+- API prefs for `0xf76e...71a3` were valid: `push_enabled=true`, `events=["*"]`.
+- API debug push to that wallet returned `attempted=1`, `sent=1`, `failed=0`.
+- Manual worker dispatch for activity `id=5` using the fixed local worker modules returned:
+  - queued wallets: `2`
+  - skipped no prefs: `1` for the generated stealth address
+  - sent: `1` to `0xf76e...71a3`
+  - failed: `0`
+
+### Root cause refinement
+
+There were two issues after the crash recovery:
+
+1. Rows restored before the Render worker reached those blocks became duplicate upserts. `insertActivity()` returned `null` for duplicates, so `handleLog()` returned before dispatching any notification. The worker could therefore catch up over an existing DB row and never send push for it.
+2. The credit keeper was running live in the same Render process and sharing the same Alchemy key. Its market scans produced `429 Too Many Requests`, slowing or starving Pay indexer catch-up.
+
+### Fixes added
+
+- `backend/obscura-worker/src/db.ts`
+  - `insertActivity()` now returns `{ activity, inserted }`.
+  - On duplicate upsert, it fetches and returns the existing row by `(tx_hash, log_index)` instead of returning `null`.
+- `backend/obscura-worker/src/indexer/index.ts`
+  - Recent live catch-up now dispatches notifications for duplicate activity rows once per worker process when `INDEXER_DISPATCH_RECOVERED_DUPLICATES=true`.
+  - Logs `recovered duplicate activity ... dispatching catch-up notification` before dispatch.
+- `backend/obscura-worker/src/notifications.ts`
+  - Logs `worker push dispatch enabled` on startup when VAPID keys are configured.
+- `backend/obscura-worker/src/index.ts`
+  - Keeper is now explicit opt-in via `KEEPER_ENABLED=true`; this prevents credit keeper scans from consuming Pay notification RPC quota by default.
+- `frontend/obscura-os-main/src/hooks/useNotificationPrefs.ts`
+  - Added `repair()` to force-unsubscribe/re-subscribe the current browser and save that endpoint for the wallet.
+  - Added `testPush()` to call `/debug/push-test` for the connected wallet.
+- `frontend/obscura-os-main/src/pages/PayPage.tsx`
+  - Settings → Notifications now has `Repair browser` and `Test` buttons when push is enabled.
+
+### Required Render worker env additions
+
+```env
+INDEXER_DISPATCH_RECOVERED_DUPLICATES=true
+KEEPER_ENABLED=false
+KEEPER_DRY_RUN=true
+```
+
+Keep the existing required values:
+
+```env
+VAPID_PRIVATE_KEY=<same key used by obscura-api>
+SUPABASE_SERVICE_ROLE_KEY=<quoovjkjwgtdqwdofubh service_role key>
+RPC_URL=<Arbitrum Sepolia RPC URL>
+```
+
+### Verification
+
+- Worker build: `npm run build` in `backend/obscura-worker` passed.
+- Frontend build: `npm run build` in `frontend/obscura-os-main` passed.
+- Manual worker dispatch for activity `id=5` showed `sent=1 failed=0` using worker VAPID config.
+
+### Final browser-side note
+
+If API/worker logs show `notification sent` but no desktop notification appears, the remaining failure is the browser/OS endpoint path: stale saved endpoint, a different Chrome profile/device, site notification permission, Windows notification settings, or focus/quiet mode. After frontend deploy, use Settings → Notifications → `Repair browser`, then `Test`; the saved subscription will be replaced with the current browser endpoint before testing.
+

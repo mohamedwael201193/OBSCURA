@@ -30,7 +30,9 @@ interface UseNotificationPrefsResult {
   isLoading:    boolean;
   pushSupported: boolean;
   enable:       () => Promise<void>;
+  repair:       () => Promise<void>;
   disable:      () => Promise<void>;
+  testPush:     () => Promise<{ sent: number; failed: number; attempted: number }>;
   savePrefs:    (updates: Partial<NotificationPrefs>) => Promise<void>;
 }
 
@@ -61,7 +63,7 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
   }, [wallet]);
 
   // ── Subscribe to Web Push ─────────────────────────────────────────────────
-  const enable = useCallback(async () => {
+  const registerBrowserSubscription = async (forceNew: boolean) => {
     if (!wallet || !pushSupported) return;
 
     if (Notification.permission === "denied") {
@@ -82,7 +84,10 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
     if (!publicKey) throw new Error("VAPID public key is missing.");
 
     const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription() ?? await reg.pushManager.subscribe({
+    const existing = await reg.pushManager.getSubscription();
+    if (existing && forceNew) await existing.unsubscribe();
+
+    const sub = !forceNew && existing ? existing : await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(publicKey),
     });
@@ -95,7 +100,16 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
     if (!subscribeResponse.ok) {
       throw new Error(`Push subscription save failed (${subscribeResponse.status})`);
     }
+  };
 
+  const enable = useCallback(async () => {
+    await registerBrowserSubscription(false);
+
+    await savePrefsInner({ push_enabled: true });
+  }, [wallet, pushSupported]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const repair = useCallback(async () => {
+    await registerBrowserSubscription(true);
     await savePrefsInner({ push_enabled: true });
   }, [wallet, pushSupported]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -133,7 +147,25 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
 
   const savePrefs = useCallback(savePrefsInner, [wallet, prefs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { prefs, isLoading, pushSupported, enable, disable, savePrefs };
+  const testPush = useCallback(async () => {
+    if (!wallet) throw new Error("Connect a wallet before testing push notifications.");
+    const response = await fetch(`${NOTIFICATIONS_URL}/debug/push-test`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wallet }),
+    });
+    const result = await response.json().catch(() => null) as { sent?: number; failed?: number; attempted?: number; error?: string } | null;
+    if (!response.ok && response.status !== 207) {
+      throw new Error(result?.error || `Push test failed (${response.status})`);
+    }
+    return {
+      sent: result?.sent ?? 0,
+      failed: result?.failed ?? 0,
+      attempted: result?.attempted ?? 0,
+    };
+  }, [wallet]);
+
+  return { prefs, isLoading, pushSupported, enable, repair, disable, testPush, savePrefs };
 }
 
 // ── Utility: base64url → Uint8Array for applicationServerKey ─────────────────

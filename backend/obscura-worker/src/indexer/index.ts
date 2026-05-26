@@ -30,6 +30,7 @@ const LIVE_POLL_MS = Math.max(2000, Number.parseInt(process.env.INDEXER_LIVE_POL
 const LIVE_RETRY_MAX_MS = Math.max(5000, Number.parseInt(process.env.INDEXER_LIVE_RETRY_MAX_MS ?? "30000", 10) || 30000);
 const STARTUP_RECENT_BLOCKS = Math.max(10, Number.parseInt(process.env.INDEXER_STARTUP_RECENT_BLOCKS ?? "5000", 10) || 5000);
 const BACKGROUND_BACKFILL_DELAY_MS = Math.max(0, Number.parseInt(process.env.INDEXER_BACKGROUND_BACKFILL_DELAY_MS ?? "15000", 10) || 15000);
+const DISPATCH_RECOVERED_DUPLICATES = (process.env.INDEXER_DISPATCH_RECOVERED_DUPLICATES ?? "true").toLowerCase() !== "false";
 
 type IndexedEvent = {
   readonly type: "event";
@@ -73,6 +74,8 @@ const client = createPublicClient({
   transport: http(RPC_URL),
 });
 
+const recoveredDuplicateDispatches = new Set<string>();
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -95,6 +98,10 @@ function errorMessage(error: unknown): string {
   return err.shortMessage ?? err.message ?? String(error);
 }
 
+function activityKey(txHash: string, logIndex: number): string {
+  return `${txHash.toLowerCase()}:${logIndex}`;
+}
+
 // ─── Log handler ─────────────────────────────────────────────────────────────
 function extractWallets(args: Record<string, unknown>): string[] {
   return Object.values(args)
@@ -106,12 +113,13 @@ async function handleLog(
   contractName: string,
   contractAddress: Address,
   log: Log & { eventName: string; args: Record<string, unknown> },
+  phase: "backfill" | "live",
 ): Promise<void> {
   const args = log.args;
   const wallets = extractWallets(args);
   const primaryWallet = wallets[0] ?? contractAddress.toLowerCase();
 
-  const activity = await insertActivity({
+  const result = await insertActivity({
     chain_id:         CHAIN_ID,
     block_number:     log.blockNumber ?? 0n,
     tx_hash:          log.transactionHash ?? "0x",
@@ -128,9 +136,24 @@ async function handleLog(
     ),
   });
 
-  if (!activity) return;
+  const { activity, inserted } = result;
+  const key = activityKey(activity.tx_hash, activity.log_index);
+  const shouldDispatch = inserted || (
+    phase === "live" &&
+    DISPATCH_RECOVERED_DUPLICATES &&
+    !recoveredDuplicateDispatches.has(key)
+  );
 
-  console.log(`[indexer] event indexed ${contractName}.${log.eventName} block=${log.blockNumber} tx=${log.transactionHash?.slice(0, 12)}...`);
+  if (!shouldDispatch) return;
+
+  if (!inserted) {
+    recoveredDuplicateDispatches.add(key);
+    console.log(`[indexer] recovered duplicate activity id=${activity.id} event=${activity.event_name} block=${activity.block_number} tx=${activity.tx_hash.slice(0, 12)}... dispatching catch-up notification`);
+  }
+
+  if (inserted) {
+    console.log(`[indexer] event indexed ${contractName}.${log.eventName} block=${log.blockNumber} tx=${log.transactionHash?.slice(0, 12)}...`);
+  }
   try {
     await dispatchActivityNotification(activity);
   } catch (e) {
@@ -160,7 +183,7 @@ async function getLogsChunk(
       for (const log of logs) {
         const indexedLog = log as Log & { eventName: string; args: Record<string, unknown> };
         try {
-          await handleLog(contractName, address, indexedLog);
+          await handleLog(contractName, address, indexedLog, phase);
         } catch (e) {
           failedLogs++;
           console.error(`[indexer] handleLog error phase=${phase} contract=${contractName} block=${indexedLog.blockNumber} tx=${indexedLog.transactionHash?.slice(0, 12)}... error=${errorMessage(e)}`);

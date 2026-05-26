@@ -200,12 +200,19 @@ export function useSmartAccount(): UseSmartAccountReturn {
       }
 
       // Deploy via factory (EOA pays gas for deployment)
+      // Fetch current fee estimate and add 50% buffer so we always beat the base fee
+      const fees = await publicClient.estimateFeesPerGas();
+      const maxFeePerGas        = (fees.maxFeePerGas        ?? 30_000_000n) * 3n / 2n;
+      const maxPriorityFeePerGas = (fees.maxPriorityFeePerGas ?? 1_000_000n) * 3n / 2n;
+
       const hash = await walletClient.writeContract({
         address: SMART_ACCOUNT_FACTORY_ADDRESS,
         abi: SMART_ACCOUNT_FACTORY_ABI,
         functionName: "createAccount",
         args: [eoaAddress, passkey.publicKeyX, passkey.publicKeyY, DEFAULT_SALT],
         chain: arbitrumSepolia,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
       });
 
       await publicClient.waitForTransactionReceipt({ hash });

@@ -17,6 +17,7 @@ import { encodeFunctionData, type Abi, type Address, type Hex } from "viem";
 import { arbitrumSepolia } from "viem/chains";
 import { useSmartAccount } from "./useSmartAccount";
 import { usePaymentMode } from "@/contexts/PaymentModeContext";
+import { resolveUnifiedWriteRoute } from "@/lib/payExecutionPolicy";
 
 export type WriteMode = "eoa" | "smart-account";
 
@@ -60,13 +61,9 @@ export function useUnifiedWrite() {
           ? opts.mode === "smart-account"
           : contextMode === "smart";
 
-      const isSmartReady = preferSmart && isDeployed && !!accountAddress;
+      const route = resolveUnifiedWriteRoute({ preferSmart, isDeployed, accountAddress });
 
-      if (preferSmart && !isSmartReady) {
-        throw new Error("Smart account is not ready. Finish Smart Account setup before sending.");
-      }
-
-      if (isSmartReady) {
+      if (route === "smart-account") {
         // ── Smart Account path — passkey UserOp, no MetaMask ──
         const callData = encodeFunctionData({
           abi: opts.abi,

@@ -394,7 +394,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                       if (!publicClient || !OBSCURA_PAY_STREAM_V3_ADDRESS) return;
                       setStreamAction(key);
                       try {
-                        const hash = await write({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "setPaused", args: [s.id, true], gas: 200_000n });
+                        const hash = await write({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "setPaused", args: [s.id, true], gas: 200_000n, mode: "eoa" });
                         if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
                         toast.success(`Stream #${key} paused`);
                         refresh();
@@ -408,7 +408,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                       if (!publicClient || !OBSCURA_PAY_STREAM_V3_ADDRESS) return;
                       setStreamAction(key);
                       try {
-                        const hash = await write({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "cancelStream", args: [s.id], gas: 200_000n });
+                        const hash = await write({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "cancelStream", args: [s.id], gas: 200_000n, mode: "eoa" });
                         if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
                         toast.success(`Stream #${key} cancelled`);
                         refresh();
@@ -428,7 +428,7 @@ export default function StreamList({ mode }: { mode: "employer" | "recipient" })
                       if (!publicClient || !OBSCURA_PAY_STREAM_V3_ADDRESS) return;
                       setStreamAction(key);
                       try {
-                        const hash = await write({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "setPaused", args: [s.id, false], gas: 200_000n });
+                        const hash = await write({ address: OBSCURA_PAY_STREAM_V3_ADDRESS, abi: OBSCURA_PAY_STREAM_V3_ABI, functionName: "setPaused", args: [s.id, false], gas: 200_000n, mode: "eoa" });
                         if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
                         toast.success(`Stream #${key} resumed`);
                         refresh();

@@ -14,6 +14,7 @@ dotenv.config();
 import http from "http";
 import { startIndexer, getIndexerHealth } from "./indexer";
 import { startKeeper } from "./keeper";
+import { backfillReputationEvents, getReputationHealth, shouldRunReputationBackfillOnStart } from "./reputation";
 
 // ── Minimal health server (required for Render free web service) ──────────────
 const PORT = parseInt(process.env.PORT ?? "3001");
@@ -23,6 +24,7 @@ const healthServer = http.createServer((_req, res) => {
     status: "ok",
     service: "obscura-worker",
     indexer: getIndexerHealth(),
+    reputation: getReputationHealth(),
     keeper: {
       enabled: process.env.KEEPER_ENABLED === "true",
       configured: Boolean(process.env.KEEPER_PRIVATE_KEY),
@@ -39,6 +41,14 @@ async function main(): Promise<void> {
 
   // ── Indexer (always enabled) ───────────────────────────────────────────────
   const stopIndexer = await startIndexer();
+
+  if (shouldRunReputationBackfillOnStart()) {
+    backfillReputationEvents().catch((e) => {
+      console.error("[worker] Reputation backfill failed:", (e as Error).message);
+    });
+  } else {
+    console.log("[worker] Reputation backfill disabled");
+  }
 
   // ── Credit Keeper (explicit opt-in; keep Pay indexing from sharing RPC quota)
   if (process.env.KEEPER_ENABLED === "true" && process.env.KEEPER_PRIVATE_KEY) {

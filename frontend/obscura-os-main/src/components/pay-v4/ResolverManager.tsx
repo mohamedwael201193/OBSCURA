@@ -83,6 +83,7 @@ export default function ResolverManager() {
         functionName: "approve",
         args: [parsedId],
         gas: 200_000n,
+        mode: "eoa",
       });
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
       toast.success(`Escrow #${escrowId} approved for release`);
@@ -104,6 +105,7 @@ export default function ResolverManager() {
         functionName: "cancel",
         args: [parsedId],
         gas: 200_000n,
+        mode: "eoa",
       });
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
       toast.success(`Escrow #${escrowId} cancelled by resolver`);

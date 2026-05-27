@@ -682,7 +682,7 @@ export function PayHarmonyHome({
         ? "Passkey account is deployed and enrolled"
         : isSmartDeployed
           ? "Add a passkey before public gasless sends"
-          : "Deploy the passkey account for ERC-4337 sends",
+          : "Create the passkey account for public sends",
       privacyNote: "Public sends are visible but gasless",
       done: isSmartAvailable,
       active: isConnected && !isSmartAvailable,
@@ -709,7 +709,7 @@ export function PayHarmonyHome({
         : PAYMASTER_ADDRESS
           ? "Checking whether the USDC paymaster target is enabled"
           : "Paymaster is not configured for public USDC in this environment",
-      privacyNote: "Sponsored UserOps, not encrypted FHE",
+      privacyNote: "Sponsored public transactions only",
       done: sponsorshipReady,
       active: isSmartAvailable && !sponsorshipReady,
       actionLabel: "Review settings",
@@ -811,7 +811,7 @@ export function PayHarmonyHome({
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/40 px-2.5 py-[3px] font-mono text-[9px] text-muted-foreground/50">
                       <Zap className="h-[8px] w-[8px]" />
-                      Sponsored UserOps
+                      Sponsored transactions
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/40 px-2.5 py-[3px] font-mono text-[9px] text-muted-foreground/50">
                       <Wallet className="h-[8px] w-[8px]" />

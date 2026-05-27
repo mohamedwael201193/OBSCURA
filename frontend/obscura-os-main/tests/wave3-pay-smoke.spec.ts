@@ -1,78 +1,68 @@
 import { test, expect } from "@playwright/test";
 
-/**
- * Wave-3 Pay smoke tests.
- *
- * These run without a connected wallet — they verify that the new Pay
- * UI mounts without errors, the Phase A/B surfaces are reachable from
- * the sidebar, and that the URL routing for invoice / claim links does
- * not crash. Wallet-dependent flows (actual encrypt/transfer) are
- * covered by manual testing against arb-sepolia (see WAVE3_PAY_TESTING.md).
- */
-
 const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:8080";
 
-test.describe("Wave-3 Pay surface smoke", () => {
-  test("Pay home renders without console errors", async ({ page }) => {
+test.describe("Pay final smoke", () => {
+  test("Pay shell renders the current IA without page errors", async ({ page }) => {
     const errors: string[] = [];
-    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("pageerror", (error) => errors.push(error.message));
+
     await page.goto(`${BASE}/pay`);
     await expect(page).toHaveURL(/\/pay/);
-    // Sidebar should expose all the Wave-3 sections.
-    for (const label of ["Send", "Receive", "Streams", "Escrow", "Insurance"]) {
+
+    for (const label of ["Overview", "Pay", "Get Paid", "Automations", "Activity", "Settings"]) {
       await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
     }
     expect(errors, errors.join("\n")).toEqual([]);
   });
 
-  test("Streams tab shows the new Subscription form (B2)", async ({ page }) => {
-    await page.goto(`${BASE}/pay?tab=streams`);
-    // Disconnected user: Streams tab shows the not-connected hint OR
-    // the new subscription card eyebrow. Either is acceptable.
-    const visible = await Promise.race([
-      page.getByText(/Confidential subscription/i).first().isVisible().catch(() => false),
-      page.getByText(/Connect your wallet/i).first().isVisible().catch(() => false),
-    ]);
-    expect(visible).toBeTruthy();
+  test("mobile bottom nav keeps Pay, Get Paid, Activity, and Settings reachable", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${BASE}/pay?tab=activity`);
+
+    for (const label of ["Pay", "Get Paid", "Activity", "Settings"]) {
+      await expect(page.getByRole("button", { name: label })).toBeVisible();
+    }
   });
 
-  test("Escrow tab routes ?invoice=<id> without crashing (B1)", async ({ page }) => {
+  test("activity workspace shows private visibility, reputation, and receipts surfaces", async ({ page }) => {
+    await page.goto(`${BASE}/pay?tab=activity`);
+
+    await expect(page.getByText("Private Mode visibility", { exact: true })).toBeVisible();
+    await expect(page.getByText("Pay reputation", { exact: true })).toBeVisible();
+    await expect(page.getByText("Private activity", { exact: true })).toBeVisible();
+    await expect(page.getByText("Local receipts", { exact: true })).toBeVisible();
+  });
+
+  test("settings notifications route renders browser push controls", async ({ page }) => {
+    await page.goto(`${BASE}/pay?tab=settings&sub=notifications`);
+
+    await expect(page.getByText("Push notifications", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Push alerts|cannot receive push alerts/i).first()).toBeVisible();
+    await expect(page.getByText("Email notifications", { exact: true })).toBeVisible();
+  });
+
+  test("invoice and claim deep links do not crash", async ({ page }) => {
     const errors: string[] = [];
-    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("pageerror", (error) => errors.push(error.message));
+
     await page.goto(`${BASE}/pay?invoice=42`);
     await expect(page).toHaveURL(/invoice=42/);
-    // Either the InvoicePayCard mounts (connected) or the not-connected
-    // notice appears. We just want zero JS errors.
-    await page.waitForTimeout(1500);
-    expect(errors, errors.join("\n")).toEqual([]);
-  });
+    await expect(page.getByText("Get Paid", { exact: true }).first()).toBeVisible();
 
-  test("Escrow tab routes ?claim=<id> without crashing (existing flow)", async ({ page }) => {
-    const errors: string[] = [];
-    page.on("pageerror", (e) => errors.push(e.message));
     await page.goto(`${BASE}/pay?claim=42`);
     await expect(page).toHaveURL(/claim=42/);
-    await page.waitForTimeout(1500);
+    await expect(page.getByText("Get Paid", { exact: true }).first()).toBeVisible();
+
     expect(errors, errors.join("\n")).toEqual([]);
   });
 
-  test("Receipts surface exposes both JSON and CSV export (C2)", async ({ page }) => {
-    await page.goto(`${BASE}/pay`);
-    // The export buttons only render if the user has receipts; here we
-    // just check the receipt list renders the empty-state without throwing.
-    await expect(page.getByText(/No receipts yet|Recent receipts/i).first()).toBeVisible({ timeout: 8000 });
-  });
-
-  test("Disconnected /pay renders the trust-chip hero (Phase 5)", async ({ page }) => {
-    await page.goto(`${BASE}/pay?tab=send`);
-    // The new NotConnected hero advertises the three privacy guarantees.
-    await expect(page.getByText(/Fhenix CoFHE encrypted/i).first()).toBeVisible();
-    await expect(page.getByText(/Arbitrum Sepolia/i).first()).toBeVisible();
-    await expect(page.getByText(/No backend, no logs/i).first()).toBeVisible();
-  });
-
-  test("Sidebar exposes Legacy (renamed from Advanced) (Phase 2)", async ({ page }) => {
-    await page.goto(`${BASE}/pay`);
-    await expect(page.getByText("Legacy", { exact: true }).first()).toBeVisible();
+  test("service worker is served with P1.2 update handling", async ({ request }) => {
+    const response = await request.get(`${BASE}/sw.js`);
+    expect(response.ok()).toBeTruthy();
+    const body = await response.text();
+    expect(body).toContain("pay-final-p1-2");
+    expect(body).toContain("SKIP_WAITING");
+    expect(body).toContain("nestedData.url");
   });
 });

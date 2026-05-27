@@ -16,6 +16,7 @@ import {
 } from "./events";
 import { insertActivity, getLastIndexedBlock } from "../db";
 import { dispatchActivityNotification } from "../notifications";
+import { insertReputationSignalsForActivity } from "../reputation";
 
 const RPC_URL  = process.env.RPC_URL ?? "https://sepolia-rollup.arbitrum.io/rpc";
 const CHAIN_ID = 421614;
@@ -177,6 +178,14 @@ async function handleLog(
   });
 
   const { activity, inserted } = result;
+  if (inserted) {
+    try {
+      await insertReputationSignalsForActivity(activity);
+    } catch (e) {
+      console.error(`[indexer] reputation signal error event=${contractName}.${log.eventName} tx=${log.transactionHash?.slice(0, 12)}... error=${errorMessage(e)}`);
+    }
+  }
+
   const key = activityKey(activity.tx_hash, activity.log_index);
   const shouldDispatch = inserted || (
     phase === "live" &&

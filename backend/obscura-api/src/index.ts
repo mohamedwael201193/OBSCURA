@@ -16,6 +16,7 @@ dotenv.config();
 
 import { relayRouter, ENTRY_POINT, PAYMASTER_ADDR } from "./relay";
 import { notificationsRouter, startNotificationListener } from "./notifications";
+import { reputationRouter } from "./reputation";
 
 const PORT           = parseInt(process.env.PORT ?? "3000");
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "http://localhost:5173").split(",");
@@ -40,6 +41,7 @@ app.get("/health", (_req, res) => {
 // ─── Route modules ────────────────────────────────────────────────────────────
 app.use(relayRouter);
 app.use(notificationsRouter);
+app.use(reputationRouter);
 
 // 404 catch-all
 app.use((_req, res) => res.status(404).json({ error: "Not found" }));

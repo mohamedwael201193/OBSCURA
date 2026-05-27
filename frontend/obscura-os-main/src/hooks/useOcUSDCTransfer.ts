@@ -8,9 +8,12 @@ import { useFHEStatus } from './useFHEStatus';
 import { initFHEClient, encryptAmount } from '@/lib/fhe';
 import { arbitrumSepolia } from 'viem/chains';
 import { usePaymentMode } from '@/contexts/PaymentModeContext';
+import {
+  assertPrivateFheWalletExecution,
+  SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE,
+} from '@/lib/payExecutionPolicy';
 
-export const SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE =
-  'Public Mode cannot send encrypted ocUSDC. Encrypted amounts must be authorized by the wallet that owns them, so switch to Private Mode for this send.';
+export { SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE };
 
 /** Retry helper for RPC rate-limit errors — exponential backoff */
 async function withRateLimitRetry<T>(
@@ -104,11 +107,7 @@ export function useOcUSDCTransfer() {
         throw new Error('Wallet not connected or ocUSDC contract not configured');
       }
 
-      const isSmartRequested = paymentMode === 'smart';
-
-      if (isSmartRequested) {
-        throw new Error(SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE);
-      }
+      assertPrivateFheWalletExecution(paymentMode);
 
       try {
         fheStatus.setStep(FHEStepStatus.ENCRYPTING);

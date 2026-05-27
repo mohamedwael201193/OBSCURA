@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
 import { arbitrumSepolia } from "viem/chains";
-import { encodeAbiParameters, encodeFunctionData, parseUnits, type Hex } from "viem";
+import { encodeAbiParameters, parseUnits, type Hex } from "viem";
 import {
   Send,
   Eye,
@@ -39,7 +39,6 @@ import { useReceipts } from "@/hooks/useReceipts";
 import { usePreferences, type SendMode } from "@/contexts/PreferencesContext";
 import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
 import { usePaymentMode } from "@/contexts/PaymentModeContext";
-import { useSmartAccount } from "@/hooks/useSmartAccount";
 import {
   OBSCURA_STEALTH_REGISTRY_ABI,
   OBSCURA_STEALTH_REGISTRY_ADDRESS,
@@ -95,12 +94,9 @@ export default function UnifiedSendForm() {
   const receipts = useReceipts();
   const { decrypted, trackedCusdc } = useOcUSDCBalance();
 
-  // Smart account + payment mode
-  const { mode: paymentMode, setMode: setPaymentMode, smartAccountAddress, isSmartAvailable } = usePaymentMode();
-  const { accountAddress, isDeployed, sendUserOp } = useSmartAccount();
+  // Private encrypted sends must remain wallet-executed.
+  const { mode: paymentMode, setMode: setPaymentMode } = usePaymentMode();
   const isSmartRequested = paymentMode === "smart";
-  const smartAddress = (accountAddress ?? smartAccountAddress) as `0x${string}` | null;
-  const isSmartMode = isSmartRequested && !!address && !!smartAddress && (isSmartAvailable || isDeployed);
 
   const cusdc = decrypted !== null
     ? (Number(decrypted) / 1_000_000).toFixed(6)
@@ -182,19 +178,12 @@ export default function UnifiedSendForm() {
       if (mode === "direct") {
         if (!resolved.address) throw new Error("Recipient address missing");
         if (isSmartRequested) throw new Error(SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE);
-        beginProgress(isSmartRequested
-          ? [
-              "Initialize FHE encryption client",
-              "Encrypt amount in browser",
-              "Authorize smart account if needed",
-              "Sign passkey UserOp and relay",
-            ]
-          : [
-              "Initialize FHE encryption client",
-              "Encrypt amount in browser",
-              "Submit confidentialTransfer",
-              "Wait for on-chain confirmation",
-            ]);
+        beginProgress([
+          "Prepare private send",
+          "Hide amount in browser",
+          "Submit wallet transfer",
+          "Wait for confirmation",
+        ]);
         try {
           advanceProgress(0, "active");
           await initFHEClient(publicClient, walletClient);
@@ -203,11 +192,7 @@ export default function UnifiedSendForm() {
           // useCUSDCTransfer encrypts + submits + waits internally; we surface
           // its three remaining steps as a single progress bracket.
           advanceProgress(1, "done");
-          advanceProgress(
-            2,
-            "active",
-            isSmartRequested ? "One-time wallet approval if missing; passkey follows" : undefined,
-          );
+          advanceProgress(2, "active");
           hash = await transfer.transfer(resolved.address, amountWei);
           advanceProgress(2, "done", `${hash.slice(0, 10)}…`);
           advanceProgress(3, "done");
@@ -232,8 +217,8 @@ export default function UnifiedSendForm() {
         }
         beginProgress([
           "Derive fresh stealth address",
-          "Initialize FHE encryption client",
-          "Encrypt amount in browser",
+          "Prepare private send",
+          "Hide amount in browser",
           "Transfer ocUSDC to stealth address",
           "Publish announcement on-chain",
         ]);
@@ -253,39 +238,19 @@ export default function UnifiedSendForm() {
 
           advanceProgress(3, "active");
 
-          if (isSmartRequested) {
-            // ── Smart mode: route confidentialTransferFrom via passkey UserOp ──
-            // useOcUSDCTransfer handles operator approval internally; here we
-            // call the stealth variant directly via sendUserOp.
-            if (!isSmartMode || !smartAddress) {
-              throw new Error("Smart account is not ready. Finish Smart Account setup before sending.");
-            }
-            const isOp = await transfer.checkIsOperator(smartAddress);
-            if (!isOp) {
-              await transfer.approveSmartOperator(smartAddress);
-            }
-            const transferCallData = encodeFunctionData({
-              abi: CONFIDENTIAL_TOKEN_ABI,
-              functionName: "confidentialTransferFrom",
-              args: [address, stealth.stealthAddress, enc[0]],
-            }) as Hex;
-            hash = await sendUserOp(OBSCURA_PAY_OCUSDC_ADDRESS, transferCallData);
-          } else {
-            // ── EOA mode ──
-            const fees = await estimateCappedFees(publicClient);
-            hash = await writeContractAsync({
-              address: OBSCURA_PAY_OCUSDC_ADDRESS,
-              abi: CONFIDENTIAL_TOKEN_ABI,
-              functionName: "confidentialTransfer",
-              args: [stealth.stealthAddress, enc[0]],
-              account: address,
-              chain: arbitrumSepolia,
-              maxFeePerGas: fees.maxFeePerGas,
-              maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
-              gas: 500_000n,
-            });
-            await publicClient.waitForTransactionReceipt({ hash });
-          }
+          const fees = await estimateCappedFees(publicClient);
+          hash = await writeContractAsync({
+            address: OBSCURA_PAY_OCUSDC_ADDRESS,
+            abi: CONFIDENTIAL_TOKEN_ABI,
+            functionName: "confidentialTransfer",
+            args: [stealth.stealthAddress, enc[0]],
+            account: address,
+            chain: arbitrumSepolia,
+            maxFeePerGas: fees.maxFeePerGas,
+            maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+            gas: 500_000n,
+          });
+          await publicClient.waitForTransactionReceipt({ hash });
           advanceProgress(3, "done", `${hash.slice(0, 10)}…`);
 
           // Cool down after heavy receipt polling to avoid RPC 429 on announce
@@ -304,33 +269,19 @@ export default function UnifiedSendForm() {
           };
           let annHash: `0x${string}`;
           try {
-            if (isSmartRequested) {
-              // ── Smart mode: announce via passkey UserOp ──
-              if (!isSmartMode) {
-                throw new Error("Smart account is not ready. Finish Smart Account setup before sending.");
-              }
-              const announceCallData = encodeFunctionData({
-                abi: OBSCURA_STEALTH_REGISTRY_ABI,
-                functionName: "announce",
-                args: [announceParams.stealthAddress, announceParams.ephemeralPubKey, announceParams.viewTag, announceParams.metadata],
-              }) as Hex;
-              annHash = await sendUserOp(OBSCURA_STEALTH_REGISTRY_ADDRESS, announceCallData);
-            } else {
-              // ── EOA mode ──
-              const annFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-              annHash = await writeContractAsync({
-                address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
-                abi: OBSCURA_STEALTH_REGISTRY_ABI,
-                functionName: "announce",
-                args: [announceParams.stealthAddress, announceParams.ephemeralPubKey, announceParams.viewTag, announceParams.metadata],
-                account: address,
-                chain: arbitrumSepolia,
-                maxFeePerGas: annFees.maxFeePerGas,
-                maxPriorityFeePerGas: annFees.maxPriorityFeePerGas,
-                gas: 250_000n,
-              });
-              await publicClient.waitForTransactionReceipt({ hash: annHash });
-            }
+            const annFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+            annHash = await writeContractAsync({
+              address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+              abi: OBSCURA_STEALTH_REGISTRY_ABI,
+              functionName: "announce",
+              args: [announceParams.stealthAddress, announceParams.ephemeralPubKey, announceParams.viewTag, announceParams.metadata],
+              account: address,
+              chain: arbitrumSepolia,
+              maxFeePerGas: annFees.maxFeePerGas,
+              maxPriorityFeePerGas: annFees.maxPriorityFeePerGas,
+              gas: 250_000n,
+            });
+            await publicClient.waitForTransactionReceipt({ hash: annHash });
             advanceProgress(4, "done", `${annHash.slice(0, 10)}…`);
           } catch (annErr) {
             if (isRateLimited(annErr)) {
@@ -383,33 +334,22 @@ export default function UnifiedSendForm() {
     setIsRetryingAnnounce(true);
     setError(null);
     try {
+      if (isSmartRequested) throw new Error(SMART_FHE_TRANSFER_UNSUPPORTED_MESSAGE);
       await sleep(1500);
       let annHash: `0x${string}`;
-      if (isSmartRequested) {
-        if (!isSmartMode) {
-          throw new Error("Smart account is not ready. Finish Smart Account setup before retrying.");
-        }
-        const announceCallData = encodeFunctionData({
-          abi: OBSCURA_STEALTH_REGISTRY_ABI,
-          functionName: "announce",
-          args: [pendingAnnounce.stealthAddress, pendingAnnounce.ephemeralPubKey, pendingAnnounce.viewTag, pendingAnnounce.metadata],
-        }) as Hex;
-        annHash = await sendUserOp(OBSCURA_STEALTH_REGISTRY_ADDRESS!, announceCallData);
-      } else {
-        const annFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-        annHash = await writeContractAsync({
-          address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
-          abi: OBSCURA_STEALTH_REGISTRY_ABI,
-          functionName: "announce",
-          args: [pendingAnnounce.stealthAddress, pendingAnnounce.ephemeralPubKey, pendingAnnounce.viewTag, pendingAnnounce.metadata],
-          account: address,
-          chain: arbitrumSepolia,
-          maxFeePerGas: annFees.maxFeePerGas,
-          maxPriorityFeePerGas: annFees.maxPriorityFeePerGas,
-          gas: 250_000n,
-        });
-        await publicClient.waitForTransactionReceipt({ hash: annHash });
-      }
+      const annFees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
+      annHash = await writeContractAsync({
+        address: OBSCURA_STEALTH_REGISTRY_ADDRESS,
+        abi: OBSCURA_STEALTH_REGISTRY_ABI,
+        functionName: "announce",
+        args: [pendingAnnounce.stealthAddress, pendingAnnounce.ephemeralPubKey, pendingAnnounce.viewTag, pendingAnnounce.metadata],
+        account: address,
+        chain: arbitrumSepolia,
+        maxFeePerGas: annFees.maxFeePerGas,
+        maxPriorityFeePerGas: annFees.maxPriorityFeePerGas,
+        gas: 250_000n,
+      });
+      await publicClient.waitForTransactionReceipt({ hash: annHash });
       setPendingAnnounce(null);
       advanceProgress(4, "done", `${annHash.slice(0, 10)}…`);
     } catch (e) {
@@ -508,7 +448,7 @@ export default function UnifiedSendForm() {
           <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl hairline bg-muted/40">
             <ShieldCheck className="w-3.5 h-3.5 text-foreground/60 mt-0.5 shrink-0" />
             <p className="text-[11px] text-muted-foreground/55 leading-relaxed">
-              Both modes encrypt the amount client-side with FHE before it touches the chain.
+              Both modes hide the amount in your browser before it touches the chain.
               <span className="text-[hsl(var(--success))]/70"> Stealth</span> also hides who you're paying.
             </p>
           </div>
@@ -591,7 +531,7 @@ export default function UnifiedSendForm() {
           />
           <div className="mt-4 p-3 rounded-xl hairline bg-muted/40 text-[11px] text-muted-foreground/65 space-y-1.5">
             <div className="flex items-center gap-1.5 text-[hsl(var(--success))]/80">
-              <Lock className="w-3 h-3" /> Amount encrypted client-side before submission.
+              <Lock className="w-3 h-3" /> Amount hidden in your browser before submission.
             </div>
             {mode === "stealth" && (
               <div>A fresh stealth address is derived per send — observers cannot link it to this recipient.</div>
@@ -616,7 +556,7 @@ export default function UnifiedSendForm() {
                   txHash: (p.detail && p.detail.includes("…")) ? undefined : undefined,
                 }))}
                 title={mode === "stealth" ? "Sending privately (stealth)" : "Sending confidentially"}
-                subtitle={mode === "stealth" ? "2-tx stealth flow" : "Direct confidential transfer"}
+                subtitle={mode === "stealth" ? "Private stealth send" : "Direct private transfer"}
                 doneMessage="Payment confirmed on-chain"
               />
             </div>

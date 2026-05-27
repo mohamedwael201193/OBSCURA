@@ -91,7 +91,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.18 }}
-      className="flex items-center gap-4 py-3 border-b border-[#E8E5E0] last:border-0"
+      className="flex items-center gap-3 py-3 border-b border-[#E8E5E0] last:border-0 sm:gap-4"
     >
       {/* Icon */}
       <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#F0EDE8]">
@@ -100,7 +100,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 
       {/* Label */}
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-[#1a1a1a] leading-tight">
+        <p className="truncate text-sm font-medium text-[#1a1a1a] leading-tight">
           {eventLabel(item.event_name)}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
@@ -109,12 +109,12 @@ function ActivityRow({ item }: { item: ActivityItem }) {
       </div>
 
       {/* Right side */}
-      <div className="text-right">
+      <div className="min-w-[76px] shrink-0 text-right">
         <a
           href={arbscanHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-mono text-[11px] text-[#2D6A4F] hover:underline"
+          className="block truncate font-mono text-[11px] text-[#2D6A4F] hover:underline"
         >
           {txShort}
         </a>
@@ -155,7 +155,7 @@ export function ActivityFeed({ mode = "private" }: { mode?: PayPrivacyMode }) {
       eyebrow={mode === "public" ? "Public Mode · Indexed from chain" : "Private Mode · Indexed from chain"}
     >
       {/* Filter pills */}
-      <div className="mb-5 flex flex-wrap gap-2">
+      <div className="mb-5 flex flex-wrap items-center gap-2">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -173,7 +173,7 @@ export function ActivityFeed({ mode = "private" }: { mode?: PayPrivacyMode }) {
 
         <button
           onClick={refresh}
-          className="ml-auto rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-[#F0EDE8]"
+          className="ml-0 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-[#F0EDE8] sm:ml-auto"
           aria-label="Refresh"
         >
           <RefreshCw className="h-3.5 w-3.5" />

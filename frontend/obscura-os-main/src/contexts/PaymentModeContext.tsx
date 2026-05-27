@@ -19,6 +19,7 @@ import {
   type ReactNode,
 } from "react";
 import { useSmartAccount } from "@/hooks/useSmartAccount";
+import { resolvePaymentExecutionMode } from "@/lib/payExecutionPolicy";
 
 export type PaymentMode = "wallet" | "smart";
 export type PayPrivacyMode = "public" | "private";
@@ -82,7 +83,7 @@ export function PaymentModeProvider({ children }: { children: ReactNode }) {
 
   const [lastFallback, setLastFallback] = useState(false);
 
-  const effectiveMode: PaymentMode = privacyMode === "public" && isSmartAvailable ? "smart" : "wallet";
+  const effectiveMode: PaymentMode = resolvePaymentExecutionMode(privacyMode, isSmartAvailable);
 
   useEffect(() => {
     try {

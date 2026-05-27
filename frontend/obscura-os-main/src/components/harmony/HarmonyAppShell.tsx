@@ -157,10 +157,10 @@ export function HarmonyAppShell({
         <main className="mx-auto w-full max-w-[1300px] px-4 py-10 md:px-8 md:py-14 pb-24 md:pb-14">{children}</main>
 
         {/* Mobile bottom nav — visible only on small screens */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex h-16 items-stretch border-t border-border bg-background">
-          {sidebar.slice(0, 5).map((item) => {
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex h-[68px] items-stretch border-t border-border bg-background">
+          {sidebar.map((item) => {
             const inner = (
-              <div className="flex flex-col items-center gap-0.5">
+              <div className="flex min-w-0 flex-col items-center gap-0.5">
                 <span
                   className={cn(
                     "h-6 w-6 rounded-full flex items-center justify-center",
@@ -171,7 +171,7 @@ export function HarmonyAppShell({
                     {item.label.slice(0, 2)}
                   </span>
                 </span>
-                <span className={cn("text-[10px]", item.active ? "text-foreground font-medium" : "text-muted-foreground/60")}>
+                <span className={cn("max-w-full truncate px-0.5 text-[9px] sm:text-[10px]", item.active ? "text-foreground font-medium" : "text-muted-foreground/60")}>
                   {item.label}
                 </span>
                 {item.badge && (
@@ -182,18 +182,18 @@ export function HarmonyAppShell({
               </div>
             );
             const btnClass = cn(
-              "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-center transition-colors",
+              "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-center transition-colors",
               item.active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
             );
             if (item.href) {
               return (
-                <Link key={item.key} to={item.href} className={btnClass}>
+                <Link key={item.key} to={item.href} className={btnClass} aria-label={item.label}>
                   {inner}
                 </Link>
               );
             }
             return (
-              <button key={item.key} type="button" onClick={item.onClick} className={btnClass}>
+              <button key={item.key} type="button" onClick={item.onClick} className={btnClass} aria-label={item.label}>
                 {inner}
               </button>
             );

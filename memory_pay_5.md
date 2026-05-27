@@ -2013,3 +2013,188 @@ If API/worker logs show `notification sent` but no desktop notification appears,
 - Stealth, streams, escrow, payroll, subscriptions, request links, notifications, and activity feed paths were not refactored.
 - Notification bodies remain amount-free.
 
+---
+
+## PAY-FINAL P0.3/P0.4 — Public/Private Execution Split + Privacy UX Safety
+
+**Completed locally**: 2026-05-27 — implementation for `PAY_FINAL_PLAN.md` P0.3 and P0.4 only.
+
+### Completed work
+
+- Added `frontend/obscura-os-main/src/lib/payExecutionPolicy.ts` as the shared Pay execution-policy layer:
+  - final WebAuthn smart-account factory fallback: `0xFaC683D8AB872cCf5eBfaE1659a9CD44C6FB4feB`.
+  - current paymaster fallback: `0x7a8D880D9c5F88Ba8bd4435c450256628F66dd0C`.
+  - deprecated factory rejection for the old raw-hash and loose-challenge factories.
+  - Private Mode always resolves to wallet execution; Public Mode resolves to smart execution only when the smart account is ready.
+  - smart-account writes throw when requested but unavailable instead of silently falling back to EOA.
+- Wired the policy into:
+  - `src/config/smartAccount.ts`
+  - `src/contexts/PaymentModeContext.tsx`
+  - `src/hooks/useUnifiedWrite.ts`
+  - `src/hooks/useOcUSDCTransfer.ts`
+- Removed stale private smart-account routing from `UnifiedSendForm.tsx`:
+  - no `sendUserOp(...)` inside private direct/stealth ocUSDC send.
+  - no `confidentialTransferFrom(...)` path for private UI.
+  - no smart-account stealth `announce(...)` or retry path.
+  - private direct and stealth sends stay wallet/EOA FHE writes only.
+- Forced private Pay management writes through wallet execution with `mode: "eoa"`:
+  - insurance stake flow in `StakePoolForm.tsx`.
+  - payroll resolver approve/cancel in `ResolverManager.tsx`.
+  - stream pause/cancel/resume in `StreamList.tsx`.
+  - auditor grants in `AuditorGrantPanel.tsx`.
+- Made claim-link verification privacy-safe:
+  - `ClaimEscrowCard.tsx` no longer auto-runs reveal/verification after claim settlement.
+  - balance verification is now an explicit user click.
+- Hardened receipt-status behavior in legacy confidential escrow hook:
+  - `useConfidentialEscrow.ts` waits for transaction receipts before setting `FHEStepStatus.READY` in create/fund/redeem/cancel paths.
+- Cleaned active Pay UI copy away from implementation jargon:
+  - Public Mode copy is normal-USDC/passkey/sponsored-gas language.
+  - Private Mode copy is wallet-secured/private-amount language.
+  - removed targeted active phrases such as `Passkey UserOps`, `sponsored UserOp`, `FHE coprocessor`, `decryption permit`, and `FHE silent-failure`.
+- Added targeted regression tests in `src/test/pay-final-p0.test.ts` for:
+  - final factory and deprecated factory rejection.
+  - current paymaster v2 default and Render YAML parity.
+  - Private Mode wallet-only execution.
+  - no silent smart-to-EOA fallback.
+  - UserOp receipt success required before success.
+  - private send source free of smart-account submission.
+  - private management writes forced to EOA.
+  - active Pay UI copy safety.
+  - amount-free notification bodies.
+  - activity reads scoped by wallet participants.
+
+### Validation run
+
+- Editor diagnostics on touched frontend files: clean.
+- Frontend tests: `npm run test` in `frontend/obscura-os-main` passed (`2 test files`, `11 tests`).
+- Frontend build: `npm run build` in `frontend/obscura-os-main` passed (`✓ built in 14.92s`; only expected chunk-size warnings).
+- API build: `npm run build` in `backend/obscura-api` passed.
+- Worker build: `npm run build` in `backend/obscura-worker` passed.
+- `git diff --check` passed.
+- Built bundle checks:
+  - no old paymaster `0x9B1F61A65467F11339A8d0834349Be32EB2CF878`.
+  - no stale local relay `http://localhost:3701`.
+  - deprecated factory addresses appear only in the policy rejection set.
+  - no Obscura server env identifiers such as `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`, `RESEND_API_KEY`, `KEEPER_PRIVATE`, or `ALCHEMY_API_KEY`; one CoFHE SDK mock constant name appears from bundled dependency code and is not an Obscura env secret.
+- Source privacy checks:
+  - `UnifiedSendForm.tsx` has no `sendUserOp` or `confidentialTransferFrom` private path.
+  - claim reveal in `ClaimEscrowCard.tsx` appears only inside click handlers.
+  - active Pay notification bodies remain amount-free.
+  - activity feed remains wallet/participant filtered.
+
+### Deployment status / limitations
+
+- Code is locally stable and ready for deploy.
+- No Render/Vercel deployment was performed from this session.
+- Production health smoke after this patch:
+  - `https://obscura-api-n62v.onrender.com/health` reports EntryPoint `0x0000000071727De22E5E9d8BAf0edAc6f37da032` and paymaster v2 `0x7a8D880D9c5F88Ba8bd4435c450256628F66dd0C`.
+  - `https://obscura-worker-0ppj.onrender.com/health` reports `indexer.chunkSize=10`, `maxChunkSize=10`, six watched contracts, and `keeper.enabled=false`.
+- Remaining deploy gap: redeploy Vercel so the P0.3/P0.4 frontend policy, tests-backed guards, and privacy copy ship.
+- Manual wallet-connected checks are still required after frontend deploy because code-only tests cannot approve wallet/passkey prompts or observe browser OS notifications.
+
+### Manual test checklist after deploy
+
+1. Private Mode direct ocUSDC send prompts the wallet, waits for receipt, and records a private receipt.
+2. Private Mode stealth send prompts the wallet for the private transfer and wallet announce/retry; it never opens a passkey/UserOp path.
+3. Public Mode public USDC send uses smart account/passkey/paymaster and only reports success after UserOp receipt success.
+4. Public Mode cannot send encrypted ocUSDC and shows the explicit switch-to-Private message.
+5. Stream, resolver, stake, and auditor management writes in Private Mode use wallet execution.
+6. Claim link claim settles without an automatic reveal prompt; the user must click the verify/reveal action.
+7. Notifications remain amount-free and activity rows are scoped to the connected wallet participants.
+
+### Privacy/FHE safety
+
+- No Solidity contracts changed.
+- No auto-decrypt on mount added.
+- No smart-account route remains for private encrypted ocUSDC send paths.
+- FHE permits/reveals remain user-triggered.
+- Existing private send, stealth receive, streams, escrow, payroll, subscriptions, request links, notifications, and activity feed were preserved.
+
+---
+
+## PAY-FINAL P0.5/P1.1/P1.2 — Smoke Gate + Reputation Foundation + Mobile/PWA Polish
+
+**Implemented locally**: 2026-05-27 — implementation for `PAY_FINAL_PLAN.md` P0.5, P1.1, and P1.2 only.
+
+### Completed work
+
+- Added `backend/obscura-worker/migrations/002_create_reputation_events.sql`:
+  - `obscura_reputation_events` table with `wallet`, `source_app`, `signal_type`, `signal_weight`, `event_ref`, `public_context`, `created_at`.
+  - source app check for `pay`, `credit`, `vote`.
+  - idempotency via unique `(wallet, source_app, signal_type, event_ref)`.
+  - RLS enabled, anon/authenticated `SELECT` explicitly granted, anon/authenticated writes revoked.
+  - realtime publication add guarded by a `pg_publication_tables` check.
+- Added worker reputation producer in `backend/obscura-worker/src/reputation.ts`:
+  - derives capped Pay signals only from indexed public event metadata.
+  - signal types: private payment sent/received, stream created, stream cycle settled, escrow redeemed, invoice paid, subscription consumed.
+  - links stream/invoice/subscription completion signals back to earlier activity rows by public ids when needed.
+  - stores no amounts, notes, labels, decrypted balances, or private counterpart metadata.
+  - startup backfill is idempotent and controlled by `REPUTATION_EVENTS_ENABLED`, `REPUTATION_BACKFILL_ON_START`, `REPUTATION_BACKFILL_LIMIT`.
+- Wired worker live indexing to insert reputation signals non-fatally after fresh activity inserts.
+- Added worker health surface for reputation backfill/signaling state.
+- Added aggregate-only API route `GET /reputation/:wallet`:
+  - returns wallet, `sourceApp=pay`, capped score, tier, and per-signal aggregate counts.
+  - does not expose raw event refs or raw activity rows.
+- Added frontend hook and UI panel:
+  - `src/hooks/useReputationSummary.ts`.
+  - `src/components/harmony/ReputationSignalsPanel.tsx`.
+  - shown in Private Mode Activity as aggregate Pay reputation only.
+- P1.2 mobile/PWA polish:
+  - mobile bottom nav now includes all six Pay tabs including Settings.
+  - mobile nav items have `aria-label`s and truncating labels.
+  - Payment Mode switch stacks on mobile and avoids narrow overflow.
+  - Activity rows, receipt rows, receipt export buttons, and notification settings wrap cleanly on mobile.
+  - notification unsupported copy shortened to browser-native language.
+  - `/sw.js` now has version `pay-final-p1-2`, update checks from `main.tsx`, `SKIP_WAITING` message handling, and backwards-compatible `url`/`data.url`/`clickUrl` payload support.
+- P0.5 smoke gate refresh:
+  - `src/test/pay-final-p0.test.ts` extended to cover reputation schema/privacy, non-fatal worker insertion, aggregate API, mobile nav, SW update compatibility, and production smoke coverage.
+  - `tests/wave3-pay-smoke.spec.ts` replaced with current Pay final IA/mobile/activity/settings/deep-link/SW smoke checks.
+  - `playwright.config.ts` replaced the missing `lovable-agent-playwright-config` dependency with standard `@playwright/test` config.
+  - `scripts/test-e2e.ps1` now checks `obscura_reputation_events`, `/reputation/:wallet`, and P1.2 SW version.
+- Updated `render.yaml`, worker `.env.example`, and `backend_db_vercal.md` with reputation env/deployment details.
+
+### Validation run
+
+- Editor diagnostics on touched TypeScript/TSX files: clean.
+- Frontend tests: `npm run test` in `frontend/obscura-os-main` passed (`2 test files`, `17 tests`).
+- Frontend build: `npm run build` in `frontend/obscura-os-main` passed (expected Rollup/chunk-size warnings only).
+- API build: `npm run build` in `backend/obscura-api` passed.
+- Worker build: `npm run build` in `backend/obscura-worker` passed.
+- `git diff --check` passed with Windows LF/CRLF warnings only for `playwright.config.ts` and `src/main.tsx`.
+- Playwright local smoke after `npx playwright install chromium`: `npx playwright test tests/wave3-pay-smoke.spec.ts` passed (`6 passed`) against local preview on `127.0.0.1:8080`.
+- Secret scan: no literal server secrets found; expected env variable names only.
+
+### Production smoke result
+
+- `scripts/test-e2e.ps1` current production result before deploy:
+  - API health: pass, current EntryPoint and paymaster v2.
+  - Worker health: pass, chunk size 10, six watched contracts.
+  - VAPID public key: pass.
+  - Existing Supabase tables: pass.
+  - `obscura_reputation_events`: **not found** because migration has not been applied to production yet.
+  - `/reputation/:wallet`: **404** because API has not been redeployed yet.
+  - `/sw.js`: served, but P1.2 version not deployed yet.
+
+### Deployment status / limitations
+
+- Code is locally stable and ready for deploy.
+- Supabase MCP/tool search returned no available migration tool in this session.
+- Local environment has `SUPABASE_SERVICE_ROLE_KEY`, but no `SUPABASE_ACCESS_TOKEN`, Supabase CLI, SQL RPC (`execute_sql`/`exec_sql` returned 404), DB URL, Render token/hook, or Vercel token/CLI.
+- Therefore production deployment/migration could not be completed from this session.
+- Required deployment steps:
+  1. Apply `backend/obscura-worker/migrations/002_create_reputation_events.sql` to Supabase project `quoovjkjwgtdqwdofubh`.
+  2. Redeploy `obscura-api` so `/reputation/:wallet` is live.
+  3. Redeploy `obscura-worker` so live reputation insertion/backfill and health are live.
+  4. Redeploy Vercel frontend so the mobile/PWA/reputation UI changes and `pay-final-p1-2` SW are live.
+  5. Re-run `powershell -ExecutionPolicy Bypass -File .\scripts\test-e2e.ps1`.
+
+### Privacy/FHE safety
+
+- No Solidity contracts changed.
+- No FHE write path changed.
+- No auto-decrypt on mount added.
+- No `decryptForView` or `getOrCreateSelfPermit` added.
+- Private ocUSDC remains wallet/EOA execution only.
+- Reputation signals are derived from indexed chain metadata only and exclude raw amounts, notes, labels, decrypted balances, and private counterpart metadata.
+- Existing private send, stealth receive, streams, escrow, payroll, subscriptions, request links, smart accounts, notifications, and activity feed paths were preserved.
+

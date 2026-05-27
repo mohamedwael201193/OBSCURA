@@ -96,6 +96,9 @@ Non-secret values are committed in `render.yaml`:
 | `INDEXER_STARTUP_RECENT_BLOCKS` | `5000` |
 | `INDEXER_BACKGROUND_BACKFILL_DELAY_MS` | `15000` |
 | `INDEXER_DISPATCH_RECOVERED_DUPLICATES` | `true` |
+| `REPUTATION_EVENTS_ENABLED` | `true` |
+| `REPUTATION_BACKFILL_ON_START` | `true` |
+| `REPUTATION_BACKFILL_LIMIT` | `500` |
 | `KEEPER_ENABLED` | `false` |
 | `KEEPER_DRY_RUN` | `true` |
 
@@ -140,10 +143,13 @@ The active project contains:
 | Table | Role |
 |---|---|
 | `obscura_activity` | Worker-written indexed Pay events; unique by `(tx_hash, log_index)` |
+| `obscura_reputation_events` | Worker-written derived Pay reputation signals; capped categories only, unique by `(wallet, source_app, signal_type, event_ref)` |
 | `obscura_push_subscriptions` | Browser Web Push subscriptions keyed by wallet |
 | `obscura_notification_prefs` | Per-wallet push/email preferences and event filters |
 
 The testnet RLS model is permissive in places and relies on wallet-filtered frontend reads. Treat that as acceptable for testnet only; tighten wallet-auth policies or API-mediated reads before mainnet.
+
+Reputation rows must not store amounts, notes, labels, decrypted balances, or private counterpart metadata. The public API exposes only aggregate Pay counts, capped score, and tier at `GET /reputation/:wallet`.
 
 ## Notification Reliability Contract
 
@@ -191,6 +197,7 @@ Manual checks:
 5. Pay Activity loads for a connected wallet without Supabase configuration errors.
 6. Settings -> Notifications -> Repair browser refreshes the current browser subscription.
 7. Settings -> Notifications -> Test produces a visible browser notification on a subscribed browser.
+8. `GET https://obscura-api-n62v.onrender.com/reputation/0x0000000000000000000000000000000000000001` returns a Pay aggregate response.
 
 ## Troubleshooting
 

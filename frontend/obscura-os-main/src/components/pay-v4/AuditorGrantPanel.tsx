@@ -72,9 +72,10 @@ export default function AuditorGrantPanel({
         functionName: "grantAuditor",
         args: [BigInt(invoiceId), auditor as `0x${string}`],
         gas: 300_000n,
+        mode: "eoa",
       });
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash });
-      toast.success(`Auditor ${auditor.slice(0, 10)}… granted decrypt access to invoice #${invoiceId}`);
+      toast.success(`Auditor ${auditor.slice(0, 10)}… can view invoice #${invoiceId}`);
       setAuditor("");
       await refresh();
     } catch (err) {
@@ -91,7 +92,7 @@ export default function AuditorGrantPanel({
         className="btn-pay btn-pay-ghost"
       >
         <ShieldCheck className="w-3.5 h-3.5" />
-        Grant auditor view (selective disclosure)
+        Grant auditor view
       </button>
     );
   }
@@ -107,7 +108,7 @@ export default function AuditorGrantPanel({
             Share with auditor
           </div>
           <p className="text-[11px] text-muted-foreground/65 leading-relaxed mt-0.5">
-            Grant a wallet permission to decrypt the billed amount, the cumulative paid amount, and the
+            Grant a wallet permission to view the billed amount, the cumulative paid amount, and the
             settled flag of invoice #{invoiceId}. Useful for accountants, tax filings, or regulator audits.
           </p>
         </div>

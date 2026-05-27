@@ -94,6 +94,7 @@ import { useSmartAccount } from "@/hooks/useSmartAccount";
 import { PasskeyEnrollModal } from "@/components/harmony/PasskeyEnrollModal";
 import { PaymentModeProvider, usePaymentMode } from "@/contexts/PaymentModeContext";
 import { PaymentModeBar } from "@/components/harmony/PaymentModeBar";
+import { ReputationSignalsPanel } from "@/components/harmony/ReputationSignalsPanel";
 
 // W5P1.5 — IA refactor: 9 tabs collapsed to 6 user-intent tabs
 type Tab =
@@ -275,6 +276,7 @@ function ModeAwareActivity({ onSetupSmart }: { onSetupSmart: () => void }) {
           ? "This view is limited to normal USDC, smart-account, paymaster, and bridge events. Private ocUSDC receipts stay out of this workspace."
           : "This view is limited to encrypted ocUSDC flows. Public USDC smart-account receipts stay out of this workspace."}
       </PayHarmonyNotice>
+      {privacyMode === "private" && <ReputationSignalsPanel />}
       <ActivityFeed mode={privacyMode} />
       <HarmonyFormCard title="Local receipts" eyebrow="Browser only · Not synced">
         <ReceiptList mode={privacyMode} />
@@ -495,11 +497,11 @@ const SettingsNotificationsCard = () => {
         <div className="space-y-4">
           {!pushSupported && (
             <p className="text-[12px] text-muted-foreground/60">
-              Your browser does not support Web Push. Use Chrome, Edge, or Firefox desktop.
+              This browser cannot receive push alerts.
             </p>
           )}
           {pushSupported && (
-            <div className="grid grid-cols-[1fr_auto] gap-y-3 items-center">
+            <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-3">
               <label className="text-[12px] text-foreground/80">Push alerts</label>
               {isLoading || pushSaving ? (
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -515,12 +517,12 @@ const SettingsNotificationsCard = () => {
             </div>
           )}
           {prefs?.push_enabled && (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <button
                 type="button"
                 disabled={repairing || testing}
                 onClick={handleRepair}
-                className="btn-pay btn-pay-ghost"
+                className="btn-pay btn-pay-ghost justify-center"
               >
                 {repairing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                 Repair browser
@@ -529,7 +531,7 @@ const SettingsNotificationsCard = () => {
                 type="button"
                 disabled={repairing || testing}
                 onClick={handleTest}
-                className="btn-pay btn-pay-ghost"
+                className="btn-pay btn-pay-ghost justify-center"
               >
                 {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bell className="w-3.5 h-3.5" />}
                 Test
@@ -555,19 +557,19 @@ const SettingsNotificationsCard = () => {
           <p className="text-[12px] text-muted-foreground/60 leading-relaxed">
             Receive email summaries for payments received. Your email is stored server-side and never shared.
           </p>
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
               type="email"
               placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="pay-input flex-1"
+              className="pay-input w-full flex-1"
             />
             <button
               type="button"
               disabled={saving || !email}
               onClick={handleEmailSave}
-              className="btn-pay btn-pay-ghost"
+              className="btn-pay btn-pay-ghost justify-center"
             >
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               Save

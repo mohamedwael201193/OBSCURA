@@ -92,9 +92,9 @@ export default function OcUSDCPanel() {
           type="button"
           onClick={async () => {
             try {
-              toast.info("Decrypting… sign the permit in your wallet");
+              toast.info("Revealing… sign in your wallet");
               await reveal();
-              if (!error) toast.success("Balance decrypted");
+              if (!error) toast.success("Balance revealed");
             } catch (e) {
               toast.error((e as Error).message || "Decrypt failed");
             }
@@ -103,7 +103,7 @@ export default function OcUSDCPanel() {
           className="btn-pay btn-pay-ghost btn-pay-sm shrink-0"
         >
           {busy
-            ? <><Loader2 className="w-3 h-3 animate-spin" /> Decrypting…</>
+            ? <><Loader2 className="w-3 h-3 animate-spin" /> Revealing…</>
             : <><Eye className="w-3 h-3" /> Reveal</>
           }
         </button>

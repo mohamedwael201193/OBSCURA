@@ -79,6 +79,9 @@ export function useConfidentialEscrow() {
           gas: 1_200_000n,
         });
 
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status === 'reverted') throw new Error('createEscrow reverted');
+
         setTxHash(hash);
         fheStatus.setStep(FHEStepStatus.READY);
         refetchCount();
@@ -121,6 +124,9 @@ export function useConfidentialEscrow() {
           gas: 600_000n,
         });
 
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status === 'reverted') throw new Error('fundEscrow reverted');
+
         setTxHash(hash);
         fheStatus.setStep(FHEStepStatus.READY);
         return hash;
@@ -155,6 +161,9 @@ export function useConfidentialEscrow() {
           gas: 800_000n,
         });
 
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status === 'reverted') throw new Error('redeemEscrow reverted');
+
         setTxHash(hash);
         fheStatus.setStep(FHEStepStatus.READY);
         return hash;
@@ -168,14 +177,14 @@ export function useConfidentialEscrow() {
 
   const cancelEscrow = useCallback(
     async (escrowId: bigint) => {
-      if (!OBSCURA_ESCROW_ADDRESS || !address) {
+      if (!publicClient || !OBSCURA_ESCROW_ADDRESS || !address) {
         throw new Error('Wallet not connected or escrow contract not configured');
       }
 
       try {
         fheStatus.setStep(FHEStepStatus.COMPUTING);
 
-        const fees = await estimateCappedFees(publicClient!);
+        const fees = await estimateCappedFees(publicClient);
 
         const hash = await writeContractAsync({
           address: OBSCURA_ESCROW_ADDRESS,
@@ -188,6 +197,9 @@ export function useConfidentialEscrow() {
           maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
           gas: 200_000n,
         });
+
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status === 'reverted') throw new Error('cancelEscrow reverted');
 
         setTxHash(hash);
         fheStatus.setStep(FHEStepStatus.READY);

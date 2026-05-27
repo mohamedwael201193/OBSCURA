@@ -391,7 +391,7 @@ export default function PublicUSDCSendForm({ defaultPanel = "single" }: PublicUS
             </button>
           </div>
           <p className="text-[11px] text-muted-foreground/55 leading-relaxed">
-            Batch sends use one passkey approval and one sponsored UserOp. Each transfer is public USDC from your smart account.
+            Batch sends use one passkey approval and one sponsored transaction. Each transfer is public USDC from your smart account.
           </p>
         </div>
       )}

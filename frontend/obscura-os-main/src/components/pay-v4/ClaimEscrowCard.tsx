@@ -37,7 +37,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
   // ── Phase A1/A2/A5 — post-claim verification state ────────────────────────
   // Track balance before/after the redeem tx so we can show "+X.XX ocUSDC"
   // (or detect zero-delta = wrong wallet / already claimed).
-  type VerifyPhase = "idle" | "settling" | "revealing" | "confirmed" | "zero-delta" | "reveal-failed";
+  type VerifyPhase = "idle" | "settling" | "ready-to-reveal" | "revealing" | "confirmed" | "zero-delta" | "reveal-failed";
   const [verifyPhase, setVerifyPhase] = useState<VerifyPhase>("idle");
   const [preClaimUnits, setPreClaimUnits] = useState<bigint | null>(null);
   const [postClaimUnits, setPostClaimUnits] = useState<bigint | null>(null);
@@ -87,7 +87,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
     }
     try {
       // Capture pre-claim tracked balance so we can compute the delta
-      // after the FHE coprocessor settles. Tracked balance is our best
+      // after the private balance settles. Tracked balance is our best
       // local snapshot — Reineira's confidentialBalanceOf returns 403 on
       // sealOutput from third-party wallets, so we cannot eth_call decrypt.
       const pre = address ? getTrackedUnits(address) : 0n;
@@ -114,7 +114,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
       }, 1000);
 
       toast.success(
-        "Claim transaction confirmed. Verifying receipt on the FHE coprocessor…",
+        "Claim transaction confirmed. Waiting for your private balance to settle…",
         { duration: 6000 }
       );
     } catch (err) {
@@ -123,8 +123,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
     }
   }, [claimId, redeem, isConnected, address]);
 
-  // After the settle countdown hits zero, automatically request a fresh
-  // FHE decryption of the user's cUSDC balance and compute the delta.
+  // User-triggered balance reveal after the settle countdown completes.
   const runVerify = useCallback(async () => {
     if (!address) return;
     setVerifyPhase("revealing");
@@ -138,12 +137,12 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
     }
   }, [address, reveal]);
 
-  // When settling timer reaches zero, auto-trigger the reveal.
+  // When settling timer reaches zero, wait for an explicit reveal click.
   useEffect(() => {
     if (verifyPhase === "settling" && settleSecondsLeft === 0) {
-      void runVerify();
+      setVerifyPhase("ready-to-reveal");
     }
-  }, [verifyPhase, settleSecondsLeft, runVerify]);
+  }, [verifyPhase, settleSecondsLeft]);
 
   // When `cusdcDecrypted` updates after a reveal, compute the delta and
   // persist the new balance to the tracked store.
@@ -276,10 +275,30 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
               <div className="px-4 py-3.5 rounded-xl bg-card border border-border flex items-start gap-3">
                 <Loader2 className="w-5 h-5 text-foreground shrink-0 mt-0.5 animate-spin" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-display text-lg text-foreground">Settling on the FHE coprocessor…</div>
+                  <div className="font-display text-lg text-foreground">Settling privately…</div>
                   <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
-                    Your transaction is mined. Waiting <span className="font-mono text-foreground">{settleSecondsLeft}s</span> for the encrypted balance to settle, then automatically revealing your new balance.
+                    Your transaction is mined. Waiting <span className="font-mono text-foreground">{settleSecondsLeft}s</span> for the private balance to settle. You can reveal the result after that.
                   </p>
+                </div>
+              </div>
+            )}
+
+            {verifyPhase === "ready-to-reveal" && (
+              <div className="px-4 py-3.5 rounded-xl bg-card border border-border flex items-start gap-3">
+                <Eye className="w-5 h-5 text-foreground shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-lg text-foreground">Ready to reveal the receipt</div>
+                  <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
+                    Reveal your updated balance with a wallet signature to confirm whether this wallet received the payment.
+                  </p>
+                  <button
+                    onClick={() => void runVerify()}
+                    disabled={revealBusy}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-foreground px-3 py-1.5 text-[11px] font-medium text-background disabled:opacity-50"
+                  >
+                    {revealBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />}
+                    Reveal received amount
+                  </button>
                 </div>
               </div>
             )}
@@ -289,9 +308,9 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
               <div className="px-4 py-3.5 rounded-xl bg-card border border-border flex items-start gap-3">
                 <Loader2 className="w-5 h-5 text-foreground shrink-0 mt-0.5 animate-spin" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-display text-lg text-foreground">Decrypting your balance…</div>
+                  <div className="font-display text-lg text-foreground">Revealing your balance…</div>
                   <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
-                    Asking the CoFHE coprocessor for a fresh decryption permit. This usually takes 5–20 seconds.
+                    Asking for a fresh wallet-authorized balance reveal. This usually takes 5-20 seconds.
                   </p>
                 </div>
               </div>
@@ -323,7 +342,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
                   <div className="font-display text-lg text-amber-200">Transaction confirmed — no funds moved</div>
                   <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
                     Your balance did not change. This wallet is most likely <b>not</b> the encrypted recipient of escrow #{claimId},
-                    or the escrow has already been claimed. No funds were lost — the FHE silent-failure guarantee held.
+                    or the escrow has already been claimed. No funds were lost — the private safety check held.
                   </p>
                   <p className="text-[11px] text-muted-foreground/50 leading-relaxed mt-2">
                     Ask the sender to confirm the recipient address they encrypted, or to re-send to this wallet.
@@ -339,8 +358,7 @@ export default function ClaimEscrowCard({ claimId, contractParam }: { claimId: s
                 <div className="flex-1 min-w-0">
                   <div className="font-display text-lg text-foreground">Claim transaction confirmed</div>
                   <p className="text-[12px] text-muted-foreground/65 leading-relaxed mt-1">
-                    The decryption permit could not be granted (Reineira cUSDC contract limitation).
-                    Click <b>REVEAL</b> on the Pay header to manually decrypt your new balance and confirm the receipt.
+                    The balance reveal could not finish. Use the Pay header reveal button to check your new balance and confirm the receipt.
                   </p>
                   <button
                     onClick={() => void runVerify()}

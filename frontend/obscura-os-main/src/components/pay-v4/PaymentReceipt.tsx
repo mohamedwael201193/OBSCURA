@@ -45,14 +45,14 @@ export function ReceiptRow({ r, onRemove, showAmount = false }: { r: Receipt; on
   const token = getReceiptToken(r);
   const amountVisible = receiptMode === "public" || showAmount;
   return (
-    <div className="flex items-start gap-3 p-3 rounded-xl hairline bg-muted/40 text-[12px]">
+    <div className="flex items-start gap-2 p-3 rounded-xl hairline bg-muted/40 text-[12px] sm:gap-3">
       <div className="flex-1 min-w-0">
-        <div className="text-foreground/90 truncate">
+        <div className="text-foreground/90 break-words sm:truncate">
           {KIND_LABEL[r.kind] ?? r.kind}
           {r.recipientLabel && (
             <span className="text-muted-foreground/70"> · {r.recipientLabel}</span>
           )}
-          <span className="font-mono text-muted-foreground/60">
+          <span className="font-mono text-muted-foreground/60 sm:whitespace-nowrap">
             {" · "}
             {r.amount && amountVisible ? (
               <span className={receiptMode === "public" ? "text-foreground/80" : "text-[hsl(var(--success))]/80"}>
@@ -74,14 +74,14 @@ export function ReceiptRow({ r, onRemove, showAmount = false }: { r: Receipt; on
         href={`https://sepolia.arbiscan.io/tx/${r.txHash}`}
         target="_blank"
         rel="noreferrer"
-        className="text-muted-foreground/65 hover:text-[hsl(var(--success))]"
+        className="shrink-0 text-muted-foreground/65 hover:text-[hsl(var(--success))]"
         title={r.txHash}
       >
         <ExternalLink className="w-3.5 h-3.5" />
       </a>
       <button
         onClick={() => onRemove(r.id)}
-        className="text-muted-foreground/55 hover:text-red-300"
+        className="shrink-0 text-muted-foreground/55 hover:text-red-300"
         title="Remove from local ledger"
       >
         <Trash2 className="w-3.5 h-3.5" />
@@ -111,11 +111,11 @@ export function ReceiptList({ limit, mode }: { limit?: number; mode?: PayPrivacy
 
   return (
     <Card className="p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-[10px] tracking-[0.22em] uppercase text-muted-foreground/55 font-mono">
           Recent receipts ({filteredReceipts.length})
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {mode !== "public" && (
             <button
               type="button"

@@ -5,6 +5,18 @@
  * Must be served from the root path (/sw.js) so its scope covers the entire app.
  */
 
+const SW_VERSION = "pay-final-p1-2";
+const FALLBACK_URL = "https://obscura-os-nine.vercel.app/pay";
+
+function notificationUrlFrom(data, nestedData) {
+  const rawUrl = data.url || nestedData.url || data.clickUrl || nestedData.clickUrl || FALLBACK_URL;
+  try {
+    return new URL(rawUrl, self.location.origin).toString();
+  } catch {
+    return FALLBACK_URL;
+  }
+}
+
 // ── Push event: display notification ──────────────────────────────────────────
 self.addEventListener("push", function (event) {
   let data = {};
@@ -15,7 +27,7 @@ self.addEventListener("push", function (event) {
   }
 
   const nestedData = data && typeof data.data === "object" && data.data !== null ? data.data : {};
-  const targetUrl = data.url || nestedData.url || "https://obscura-os-nine.vercel.app/pay";
+  const targetUrl = notificationUrlFrom(data, nestedData);
   const title   = data.title   || "Obscura Pay";
   const options = {
     body:    data.body    || "You have new activity on Obscura Pay.",
@@ -34,6 +46,7 @@ self.addEventListener("push", function (event) {
     tag: options.tag,
     eventName: options.data.eventName,
     txHash: options.data.txHash,
+    version: SW_VERSION,
   });
 
   event.waitUntil(
@@ -49,7 +62,7 @@ self.addEventListener("notificationclick", function (event) {
 
   const targetUrl = (event.notification.data && event.notification.data.url)
     ? event.notification.data.url
-    : "https://obscura-os-nine.vercel.app/pay";
+    : FALLBACK_URL;
 
   event.waitUntil(
     clients
@@ -67,6 +80,12 @@ self.addEventListener("notificationclick", function (event) {
         }
       })
   );
+});
+
+self.addEventListener("message", function (event) {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 // ── Install & activate: skip waiting so the SW updates immediately ─────────────

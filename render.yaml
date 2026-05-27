@@ -108,6 +108,12 @@ services:
         value: "15000"
       - key: INDEXER_DISPATCH_RECOVERED_DUPLICATES
         value: "true"
+      - key: REPUTATION_EVENTS_ENABLED
+        value: "true"
+      - key: REPUTATION_BACKFILL_ON_START
+        value: "true"
+      - key: REPUTATION_BACKFILL_LIMIT
+        value: "500"
       # ── Secrets — set in Render dashboard, never in YAML ────────────────────
       - key: RPC_URL
         sync: false

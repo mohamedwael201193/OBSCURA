@@ -3,7 +3,7 @@
  *
  * Public Mode | Private Mode
  *
- * Public Mode uses public USDC + passkeys + sponsored UserOps. Private Mode
+ * Public Mode uses public USDC + passkeys + sponsored transactions. Private Mode
  * uses encrypted ocUSDC + wallet execution.
  */
 import { EyeOff, Fingerprint, Lock, Wallet, Zap } from "lucide-react";
@@ -41,7 +41,7 @@ function ModeSegment({
       type="button"
       onClick={onClick}
       className={cn(
-        "relative flex flex-1 flex-col gap-0.5 px-5 py-3.5 text-left",
+        "relative flex min-w-0 flex-1 flex-col gap-0.5 px-3 py-3 text-left sm:px-5 sm:py-3.5",
         "transition-all duration-200 focus-visible:outline-none",
         active
           ? "bg-foreground text-background"
@@ -139,7 +139,7 @@ export function PaymentModeBar({ onSetupSmart, className }: PaymentModeBarProps)
 
   return (
     <div className={cn("overflow-hidden rounded-xl hairline bg-card", className)}>
-      <div className="flex divide-x divide-border/50">
+      <div className="flex flex-col divide-y divide-border/50 sm:flex-row sm:divide-x sm:divide-y-0">
         <ModeSegment
           active={privacyMode === "private"}
           icon={EyeOff}
@@ -175,11 +175,11 @@ export function PaymentModeBar({ onSetupSmart, className }: PaymentModeBarProps)
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden border-t border-border/40 bg-muted/20 px-5 py-2"
+            className="overflow-hidden border-t border-border/40 bg-muted/20 px-3 py-2 sm:px-5"
           >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/45">
               <span className="inline-flex items-center gap-1">
-                <Fingerprint className="h-3 w-3" /> Passkey UserOps
+                <Fingerprint className="h-3 w-3" /> Passkey signing
               </span>
               <span className="inline-flex items-center gap-1">
                 <Zap className="h-3 w-3" /> Sponsored gas
@@ -209,12 +209,12 @@ export function PaymentModeBar({ onSetupSmart, className }: PaymentModeBarProps)
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden border-t border-border/40 bg-muted/20 px-5 py-2"
+            className="overflow-hidden border-t border-border/40 bg-muted/20 px-3 py-2 sm:px-5"
           >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/45">
               <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Encrypted amounts</span>
               <span className="inline-flex items-center gap-1"><EyeOff className="h-3 w-3" /> Stealth receiving</span>
-              <span className="inline-flex items-center gap-1"><Wallet className="h-3 w-3" /> Wallet-secured FHE</span>
+              <span className="inline-flex items-center gap-1"><Wallet className="h-3 w-3" /> Wallet confirmation</span>
               {isSmartDeployed && isSmartEnrolled && smartAccountAddress && (
                 <span>Public smart account ready when you switch</span>
               )}

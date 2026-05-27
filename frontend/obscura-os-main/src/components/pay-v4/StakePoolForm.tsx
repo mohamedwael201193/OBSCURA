@@ -70,10 +70,11 @@ export default function StakePoolForm() {
         functionName: "stake",
         args: [encrypted[0]],
         gas: 800_000n,
+        mode: "eoa",
       });
       if (publicClient) await publicClient.waitForTransactionReceipt({ hash: stakeTx });
 
-      toast.success(`Staked ${parsed} cUSDC into insurance pool!`);
+      toast.success(`Staked ${parsed} ocUSDC into insurance pool`);
       setAmount("");
     } catch (e) {
       console.error("[StakePool]", e);
@@ -105,7 +106,7 @@ export default function StakePoolForm() {
 
       <div className="space-y-2">
         <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold">
-          Amount to Stake (cUSDC)
+          Amount to stake (ocUSDC)
         </label>
         <div className="flex gap-2">
           <input

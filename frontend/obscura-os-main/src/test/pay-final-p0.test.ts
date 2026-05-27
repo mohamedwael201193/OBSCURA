@@ -159,6 +159,37 @@ describe("Pay P0.4 privacy gates", () => {
     expect(source).toContain('.contains("participants", [wallet])');
     expect(source).toContain("participants.includes(wallet)");
   });
+
+  it("wires Credit activity through the shared feed and notification preferences", () => {
+    const activityHook = readSource("hooks/useActivityFeed.ts");
+    const activityFeed = readSource("components/harmony/ActivityFeed.tsx");
+    const creditPage = readSource("pages/CreditPage.tsx");
+    const workerIndexer = readWorkspace("backend/obscura-worker/src/indexer/index.ts");
+    const workerNotifications = readWorkspace("backend/obscura-worker/src/notifications.ts");
+    const apiNotifications = readWorkspace("backend/obscura-api/src/notifications.ts");
+    const creditAlerts = readSource("hooks/useCreditAlerts.ts");
+
+    expect(activityHook).toContain('| "credit"');
+    expect(activityHook).toContain("CREDIT_ACTIVITY_EVENT_NAMES");
+    expect(activityHook).toContain('"Borrowed"');
+    expect(activityHook).toContain('"AuctionSettled"');
+    expect(activityFeed).toContain('{ key: "credit",   label: "Credit" }');
+    expect(creditPage).toContain('defaultFilter="credit"');
+    expect(creditPage).toContain("Advanced/Testnet");
+    expect(workerIndexer).toContain("0x1Ec113297c7F9516A6604aa3b18C180559a6f551");
+
+    for (const source of [workerNotifications, apiNotifications]) {
+      expect(source).toContain("credit.*");
+      expect(source).toContain("credit.borrowed");
+      expect(source).toContain("credit.repaid");
+      expect(source).toContain("credit.liquidation_opened");
+      expect(source).toContain("credit.score_tier_changed");
+      expect(source).toContain("eventAllowed(events");
+    }
+
+    expect(creditAlerts).toContain("A Credit position needs attention");
+    expect(creditAlerts).not.toContain("HF ${");
+  });
 });
 
 describe("Pay P0.5/P1.1/P1.2 stabilization gates", () => {

@@ -58,3 +58,54 @@
 - Confirm Render worker deploy picks up `render.yaml` env changes and indexes the canonical market.
 - Confirm Vercel has the canonical market/token envs before production frontend deploy.
 - Existing old markets remain available for repay/withdraw/testnet flows; do not remove until legacy close-out is complete.
+
+---
+
+# Credit Wave 5 - C2/C3/C4 Execution
+
+## Completed
+
+- C2 confirmed complete from existing deployment/config; no new contracts were deployed.
+- Canonical Pay-backed Credit market remains `0x1Ec113297c7F9516A6604aa3b18C180559a6f551` and uses Pay `ocUSDC_Pay` `0xEd46020Df8abe7BB1E096f27d089F4326D223a53` as both loan and collateral asset.
+- C3 frontend now defaults the main Credit workspace to the canonical Pay-backed private USDC market only.
+- Legacy/testnet markets remain accessible behind an Advanced/Testnet toggle in Markets and Settings.
+- Credit overview now embeds the shared `ActivityFeed` with a Credit-first filter instead of a separate Credit-only feed system.
+- Credit settings now expose shared push notification controls and save Credit-specific event aliases through existing notification prefs.
+- Local Credit health browser notification copy is generic and amount-free; it no longer includes exact HF or market labels.
+
+## Shared Activity / Notifications
+
+- `useActivityFeed` now supports a `credit` filter and enumerates Credit market, vault, auction, and score event names.
+- Harmony `ActivityFeed` now includes a Credit tab/icon/labels and can be configured with default/allowed filters and custom copy.
+- Worker built-in Credit market defaults now include canonical market first, matching `render.yaml` and worker env ordering.
+- API and worker notification dispatch now accept aliases like `credit.*`, `credit.borrowed`, `credit.repaid`, `credit.liquidation_opened`, `credit.auction_settled`, and `credit.score_tier_changed` while still matching exact event names and `*`.
+- Notification payload bodies remain generic and amount-free; Credit activity links route to `/credit`.
+- Reputation summary frontend type now accepts the aggregate `sourceApp='all'` API shape and `sources` map.
+
+## Env / Deployment / Supabase Checks
+
+- Verified deployment JSON contains canonical market keys and Pay `ocUSDC_Pay`; canonical market loan/collateral assets both point to Pay `ocUSDC_Pay`.
+- Verified frontend env variable names/values for canonical Credit market, canonical `ocUSDC`, and Supabase project alignment.
+- Verified `render.yaml` has canonical Credit market first in worker Credit market lists.
+- Verified worker local env has canonical market first in `KEEPER_MARKETS` and `CREDIT_INDEXER_MARKETS`.
+- Verified Supabase migrations reuse existing `obscura_activity`, `obscura_notification_prefs`, and `obscura_reputation_events`; no new tables were added.
+- Live smoke check passed for deployed API, worker, Vercel frontend, service worker, Supabase tables, notification prefs, and reputation endpoint.
+- Live Supabase query returned no current Credit activity rows, which indicates no recent indexed Credit activity rather than missing table/realtime infrastructure.
+
+## Verification
+
+- VS Code diagnostics on edited frontend/API/worker/test files: no errors.
+- `npm run test -- src/test/pay-final-p0.test.ts` in `frontend/obscura-os-main`: passed, 19 tests.
+- `npm run test` in `frontend/obscura-os-main`: passed, 20 tests.
+- `npm run build` in `frontend/obscura-os-main`: passed, with existing bundle/browserlist warnings only.
+- `npm run build` in `backend/obscura-worker`: passed.
+- `npm run build` in `backend/obscura-api`: passed.
+- `npm run compile` in `contracts-hardhat`: passed, nothing to compile.
+- `npx hardhat test test/ObscuraCredit.test.ts` in `contracts-hardhat`: passed, 19 tests.
+- `scripts/test-e2e.ps1`: passed, 12 PASS / 0 WARN / 0 FAIL after updating the local ignored smoke script expectation to `sourceApp='all'`.
+
+## Remaining Manual Checks
+
+- Redeploy frontend/API/worker to publish these local code changes; no deploy was performed in this session.
+- After redeploy, perform live wallet flow: shield Pay `ocUSDC`, approve Credit Router/operator flow, supply, add collateral, borrow, repay, and confirm Credit activity rows appear in shared feed.
+- Trigger a safe Credit test event after worker redeploy and confirm `credit.*`/specific aliases send generic push payloads without amounts or exact health factor values.

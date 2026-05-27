@@ -25,6 +25,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   ShieldCheck,
+  Bell,
   X,
   Loader2,
   Lock,
@@ -77,6 +78,19 @@ import HealthBar from "@/components/credit/HealthBar";
 import SetupSheet from "@/components/credit/SetupSheet";
 import { useCreditOnboarding } from "@/hooks/useCreditOnboarding";
 import { useCreditAlerts } from "@/hooks/useCreditAlerts";
+import { ActivityFeed } from "@/components/harmony/ActivityFeed";
+import { useNotificationPrefs } from "@/hooks/useNotificationPrefs";
+
+const CREDIT_NOTIFICATION_TYPES = [
+  "credit.borrowed",
+  "credit.repaid",
+  "credit.supplied",
+  "credit.collateral_supplied",
+  "credit.health_warning",
+  "credit.liquidation_opened",
+  "credit.auction_settled",
+  "credit.score_tier_changed",
+] as const;
 
 // ─── Tab types ────────────────────────────────────────────────────────────
 type CreditTab = "overview" | "markets" | "position" | "vaults" | "liquidations";
@@ -84,11 +98,15 @@ type CreditTab = "overview" | "markets" | "position" | "vaults" | "liquidations"
 // ─── Markets tab ──────────────────────────────────────────────────────────
 function MarketsTab({
   markets,
+  showingAdvanced,
+  onToggleAdvanced,
   onRefresh,
   onBorrow,
   onSupply,
 }: {
   markets: (CreditMarketMeta & { totalSupplyAssets?: bigint; totalBorrowAssets?: bigint; utilizationBps?: bigint })[];
+  showingAdvanced: boolean;
+  onToggleAdvanced: () => void;
   onRefresh: () => void;
   onBorrow: (m: CreditMarketMeta) => void;
   onSupply: (m: CreditMarketMeta) => void;
@@ -107,9 +125,19 @@ function MarketsTab({
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Lending markets</h3>
-          <button onClick={onRefresh} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-            <RefreshCcw className="w-3 h-3" /> Refresh
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onToggleAdvanced}
+              className="rounded-full hairline px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-pressed={showingAdvanced}
+            >
+              {showingAdvanced ? "Hide testnet" : "Advanced/Testnet"}
+            </button>
+            <button onClick={onRefresh} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+              <RefreshCcw className="w-3 h-3" /> Refresh
+            </button>
+          </div>
         </div>
         {markets.length === 0 && <p className="text-sm text-muted-foreground py-4">No markets configured yet.</p>}
         <div className="space-y-3">
@@ -477,7 +505,120 @@ function LiquidationsTab({ markets }: { markets: CreditMarketMeta[] }) {
 }
 
 // ─── Settings slide-over ──────────────────────────────────────────────────
-function SettingsSlideOver({ open, onClose, markets }: { open: boolean; onClose: () => void; markets: CreditMarketMeta[] }) {
+function CreditNotificationsPanel() {
+  const { prefs, isLoading, pushSupported, permission, serviceWorkerReady, enable, repair, testPush, savePrefs } = useNotificationPrefs();
+  const [busy, setBusy] = useState<"enable" | "repair" | "test" | "credit" | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const creditEventsEnabled = !!prefs?.events?.includes("*") || CREDIT_NOTIFICATION_TYPES.some((event) => prefs?.events?.includes(event));
+
+  const run = async (
+    kind: "enable" | "repair" | "test" | "credit",
+    action: () => Promise<void | { sent: number; attempted: number; displayed: boolean }>,
+  ) => {
+    setBusy(kind);
+    setMessage(null);
+    try {
+      const result = await action();
+      if (kind === "test" && result && "attempted" in result) {
+        setMessage(result.displayed ? `Browser displayed. Server sent ${result.sent}/${result.attempted}.` : `Server sent ${result.sent}/${result.attempted}.`);
+      } else if (kind === "credit") {
+        setMessage("Credit notification types saved.");
+      } else {
+        setMessage("Notification setup updated.");
+      }
+    } catch (e) {
+      setMessage((e as Error).message || "Notification update failed.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const focusCreditEvents = async () => {
+    const existing = prefs?.events?.filter((event) => event !== "*" && !event.startsWith("credit.")) ?? [];
+    await savePrefs({ events: [...existing, ...CREDIT_NOTIFICATION_TYPES] });
+  };
+
+  return (
+    <CreditHarmonyPanelCard title="Shared notifications" eyebrow="Supabase · Web Push">
+      <div className="space-y-4 text-sm">
+        <div className="grid grid-cols-[1fr_auto] gap-y-2 text-xs text-muted-foreground">
+          <span>Push alerts</span>
+          <span className="font-mono text-foreground/70">{isLoading ? "loading" : prefs?.push_enabled ? "enabled" : "off"}</span>
+          <span>Browser permission</span>
+          <span className="font-mono text-foreground/70">{permission}</span>
+          <span>Service worker</span>
+          <span className="font-mono text-foreground/70">{serviceWorkerReady ? "ready" : "starting"}</span>
+          <span>Credit event types</span>
+          <span className="font-mono text-foreground/70">{creditEventsEnabled ? "enabled" : "custom"}</span>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={!pushSupported || busy !== null}
+            onClick={() => void run("enable", enable)}
+            className="btn-pay btn-pay-ghost justify-center disabled:opacity-50"
+          >
+            {busy === "enable" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bell className="h-3.5 w-3.5" />}
+            Enable push
+          </button>
+          <button
+            type="button"
+            disabled={!pushSupported || busy !== null}
+            onClick={() => void run("credit", focusCreditEvents)}
+            className="btn-pay btn-pay-ghost justify-center disabled:opacity-50"
+          >
+            Save Credit types
+          </button>
+          <button
+            type="button"
+            disabled={!pushSupported || busy !== null}
+            onClick={() => void run("repair", repair)}
+            className="btn-pay btn-pay-ghost justify-center disabled:opacity-50"
+          >
+            Repair
+          </button>
+          <button
+            type="button"
+            disabled={!pushSupported || busy !== null}
+            onClick={() => void run("test", testPush)}
+            className="btn-pay btn-pay-ghost justify-center disabled:opacity-50"
+          >
+            Test
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {CREDIT_NOTIFICATION_TYPES.map((event) => (
+            <span key={event} className="rounded-full bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">
+              {event}
+            </span>
+          ))}
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Credit alerts use the same activity rows and push dispatcher as Pay. Messages stay generic and never include position amounts.
+        </p>
+        {message && <p className="text-xs text-muted-foreground">{message}</p>}
+      </div>
+    </CreditHarmonyPanelCard>
+  );
+}
+
+function SettingsSlideOver({
+  open,
+  onClose,
+  markets,
+  showingAdvanced,
+  onToggleAdvanced,
+}: {
+  open: boolean;
+  onClose: () => void;
+  markets: CreditMarketMeta[];
+  showingAdvanced: boolean;
+  onToggleAdvanced: () => void;
+}) {
   const approved = useApprovedSets();
   return (
     <AnimatePresence>
@@ -495,6 +636,22 @@ function SettingsSlideOver({ open, onClose, markets }: { open: boolean; onClose:
               <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
             </div>
             <div className="px-5 py-4 space-y-7">
+              <CreditHarmonyPanelCard title="Advanced/Testnet markets" eyebrow="Legacy access">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">
+                    {showingAdvanced ? "Legacy markets are visible in the main Credit workspace." : "Main Credit paths show only the Pay-backed private USDC market."}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={onToggleAdvanced}
+                    className="rounded-full hairline px-3 py-1.5 text-xs hover:bg-muted"
+                    aria-pressed={showingAdvanced}
+                  >
+                    {showingAdvanced ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </CreditHarmonyPanelCard>
+              <CreditNotificationsPanel />
               <div>
                 <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Credit setup</div>
                 <SettingsPanel markets={markets} approved={approved} />
@@ -521,6 +678,7 @@ const CreditPage = () => {
   const [tab, setTab] = useState<CreditTab>("overview");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
+  const [showAdvancedMarkets, setShowAdvancedMarkets] = useState(false);
   const [activeMarketAddress, setActiveMarketAddress] = useState<`0x${string}` | undefined>(undefined);
 
   const { markets, refresh: refreshMarkets } = useCreditMarkets();
@@ -528,10 +686,24 @@ const CreditPage = () => {
   const onboarding = useCreditOnboarding();
   const { unreadCount } = useCreditAlerts();
 
-  const activeMarket = useMemo(
-    () => activeMarketAddress ? markets.find((m) => m.address === activeMarketAddress) ?? markets[0] : markets[0],
-    [markets, activeMarketAddress]
+  const canonicalMarkets = useMemo(
+    () => markets.filter((m) => m.isCanonical || m.status === "canonical"),
+    [markets]
   );
+  const primaryMarkets = canonicalMarkets.length > 0 ? canonicalMarkets : markets.slice(0, 1);
+  const workspaceMarkets = showAdvancedMarkets ? markets : primaryMarkets;
+
+  const activeMarket = useMemo(
+    () => activeMarketAddress ? workspaceMarkets.find((m) => m.address === activeMarketAddress) ?? workspaceMarkets[0] : workspaceMarkets[0],
+    [workspaceMarkets, activeMarketAddress]
+  );
+
+  useEffect(() => {
+    if (!activeMarketAddress) return;
+    if (!workspaceMarkets.some((market) => market.address === activeMarketAddress)) {
+      setActiveMarketAddress(workspaceMarkets[0]?.address);
+    }
+  }, [activeMarketAddress, workspaceMarkets]);
 
   useEffect(() => {
     refreshMarkets();
@@ -553,7 +725,7 @@ const CreditPage = () => {
     {
       key: "markets",
       label: "Markets",
-      badge: markets.length ? String(markets.length) : undefined,
+      badge: workspaceMarkets.length ? String(workspaceMarkets.length) : undefined,
       active: tab === "markets",
       onClick: () => setTab("markets"),
     },
@@ -610,13 +782,25 @@ const CreditPage = () => {
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
         >
           {tab === "overview" && (
-            <CreditHarmonyOverview
-              markets={markets}
-              vaults={vaults}
-              onSupply={() => setTab("vaults")}
-              onBorrow={() => setTab("position")}
-              onOpenVault={() => setTab("vaults")}
-            />
+            <>
+              <CreditHarmonyOverview
+                markets={workspaceMarkets}
+                vaults={vaults}
+                onSupply={() => setTab("vaults")}
+                onBorrow={() => setTab("position")}
+                onOpenVault={() => setTab("vaults")}
+              />
+              <div className="mt-10">
+                <ActivityFeed
+                  mode="private"
+                  defaultFilter="credit"
+                  filters={["credit", "all"]}
+                  title="Credit activity"
+                  eyebrow="Shared feed · Indexed from chain"
+                  emptyMessage="No indexed Credit activity for this wallet yet. Borrow, repay, collateral, liquidation, and score events will appear here."
+                />
+              </div>
+            </>
           )}
           {tab === "markets" && (
             <CreditHarmonyTabShell
@@ -632,7 +816,9 @@ const CreditPage = () => {
               }
             >
               <MarketsTab
-                markets={markets}
+                markets={workspaceMarkets}
+                showingAdvanced={showAdvancedMarkets}
+                onToggleAdvanced={() => setShowAdvancedMarkets((value) => !value)}
                 onRefresh={refreshMarkets}
                 onBorrow={handleBorrowFromMarket}
                 onSupply={handleSupplyFromMarket}
@@ -644,7 +830,7 @@ const CreditPage = () => {
               {!isConnected ? (
                 <CreditHarmonyNotConnected message="Connect your wallet to view and manage your encrypted lending position." />
               ) : (
-                <PositionTab markets={markets} onRefresh={refreshMarkets} />
+                <PositionTab markets={workspaceMarkets} onRefresh={refreshMarkets} />
               )}
             </CreditHarmonyTabShell>
           )}
@@ -666,13 +852,19 @@ const CreditPage = () => {
           )}
           {tab === "liquidations" && (
             <CreditHarmonyTabShell tab="liquidations">
-              <LiquidationsTab markets={markets} />
+              <LiquidationsTab markets={workspaceMarkets} />
             </CreditHarmonyTabShell>
           )}
         </motion.div>
       </AnimatePresence>
 
-      <SettingsSlideOver open={settingsOpen} onClose={() => setSettingsOpen(false)} markets={markets} />
+      <SettingsSlideOver
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        markets={markets}
+        showingAdvanced={showAdvancedMarkets}
+        onToggleAdvanced={() => setShowAdvancedMarkets((value) => !value)}
+      />
 
       <SetupSheet
         open={setupOpen}

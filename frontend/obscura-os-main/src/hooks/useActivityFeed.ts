@@ -29,7 +29,8 @@ export type ActivityEventType =
   | "stream"
   | "invoice"
   | "escrow"
-  | "stealth";
+  | "stealth"
+  | "credit";
 
 export interface ActivityItem {
   id:               number;
@@ -44,6 +45,38 @@ export interface ActivityItem {
   args:             Record<string, unknown>;
   created_at:       string;
 }
+
+const creditContractEventNames = (
+  prefixes: string[],
+  events: string[],
+) => prefixes.flatMap((prefix) => events.map((event) => `${prefix}.${event}`));
+
+const CREDIT_MARKET_PREFIXES = [
+  "CreditMarket",
+  "CreditMarket2",
+  "CreditMarket3",
+  "CreditMarket4",
+  "CreditMarket5",
+  "ObscuraCreditMarket",
+];
+const CREDIT_VAULT_PREFIXES = ["CreditVault", "CreditVault2", "ObscuraCreditVault"];
+const CREDIT_AUCTION_PREFIXES = ["CreditAuction", "ObscuraCreditAuction"];
+const CREDIT_SCORE_PREFIXES = ["CreditScore", "ObscuraCreditScoreV2"];
+
+export const CREDIT_ACTIVITY_EVENT_NAMES = [
+  ...creditContractEventNames(CREDIT_MARKET_PREFIXES, [
+    "Supplied",
+    "Withdrew",
+    "CollateralSupplied",
+    "CollateralWithdrawn",
+    "Borrowed",
+    "Repaid",
+    "LiquidationOpened",
+  ]),
+  ...creditContractEventNames(CREDIT_VAULT_PREFIXES, ["Deposited", "Withdrew"]),
+  ...creditContractEventNames(CREDIT_AUCTION_PREFIXES, ["AuctionOpened", "BidSubmitted", "AuctionSettled"]),
+  ...creditContractEventNames(CREDIT_SCORE_PREFIXES, ["ScoreUpdated"]),
+];
 
 const EVENT_TYPE_FILTERS: Record<ActivityEventType, string[]> = {
   all:      [],
@@ -66,6 +99,7 @@ const EVENT_TYPE_FILTERS: Record<ActivityEventType, string[]> = {
     "ObscuraConfidentialEscrow.EscrowRefunded",
   ],
   stealth:  ["ObscuraStealthRegistry.Announcement", "ObscuraStealthRegistry.MetaAddressSet"],
+  credit:   CREDIT_ACTIVITY_EVENT_NAMES,
 };
 
 interface UseActivityFeedResult {
@@ -79,14 +113,14 @@ interface UseActivityFeedResult {
   refresh:    () => void;
 }
 
-export function useActivityFeed(): UseActivityFeedResult {
+export function useActivityFeed(initialFilter: ActivityEventType = "all"): UseActivityFeedResult {
   const { address } = useAccount();
   const wallet      = address?.toLowerCase() ?? null;
 
   const [items,     setItems]     = useState<ActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error,     setError]     = useState<string | null>(null);
-  const [filter,    setFilter]    = useState<ActivityEventType>("all");
+  const [filter,    setFilter]    = useState<ActivityEventType>(initialFilter);
   const [page,      setPage]      = useState(0);
   const [hasMore,   setHasMore]   = useState(false);
 

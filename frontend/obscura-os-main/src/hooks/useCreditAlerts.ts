@@ -47,7 +47,7 @@ export function useCreditAlerts() {
     () => (typeof Notification !== "undefined" ? Notification.permission : "default")
   );
   const lastSeverity = useRef<HealthSeverity | null>(null);
-  const { aggregateSeverity, worstHF, worstMarket, hasDebt } = useHealthEngine();
+  const { aggregateSeverity, hasDebt } = useHealthEngine();
 
   const push = useCallback((a: Omit<CreditAlert, "id" | "createdAt" | "read">) => {
     setAlerts((prev) => {
@@ -114,16 +114,15 @@ export function useCreditAlerts() {
     }
 
     if (aggregateSeverity === "warning" || aggregateSeverity === "critical") {
-      const hfText = worstHF === null ? "—" : worstHF.toFixed(2);
       push({
         category: "liquidation",
         title: aggregateSeverity === "critical" ? "Liquidation risk" : "Health declining",
-        body: `HF ${hfText}${worstMarket ? ` · ${worstMarket.market.label}` : ""} — consider repaying or adding collateral.`,
+        body: "A Credit position needs attention. Review risk before borrowing more.",
         severity: aggregateSeverity,
       });
     }
     lastSeverity.current = aggregateSeverity;
-  }, [aggregateSeverity, hasDebt, worstHF, worstMarket, push]);
+  }, [aggregateSeverity, hasDebt, push]);
 
   const unreadCount = alerts.filter((a) => !a.read).length;
 

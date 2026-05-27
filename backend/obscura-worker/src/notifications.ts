@@ -98,6 +98,57 @@ function buildPayload(activity: StoredActivityRecord, wallet: string): string {
   });
 }
 
+function notificationAliases(eventName: string): string[] {
+  if (!eventName.startsWith("Credit")) return [];
+  const suffix = eventName.split(".").pop() ?? "";
+  const aliases = ["credit.*"];
+
+  switch (suffix) {
+    case "Supplied":
+      aliases.push("credit.supplied");
+      break;
+    case "Withdrew":
+      aliases.push(eventName.startsWith("CreditVault") ? "credit.vault_withdrew" : "credit.withdrew");
+      break;
+    case "CollateralSupplied":
+      aliases.push("credit.collateral_supplied");
+      break;
+    case "CollateralWithdrawn":
+      aliases.push("credit.collateral_withdrawn");
+      break;
+    case "Borrowed":
+      aliases.push("credit.borrowed");
+      break;
+    case "Repaid":
+      aliases.push("credit.repaid");
+      break;
+    case "LiquidationOpened":
+    case "AuctionOpened":
+      aliases.push("credit.liquidation_opened", "credit.health_warning");
+      break;
+    case "BidSubmitted":
+      aliases.push("credit.auction_bid");
+      break;
+    case "AuctionSettled":
+      aliases.push("credit.auction_settled");
+      break;
+    case "Deposited":
+      aliases.push("credit.vault_deposited");
+      break;
+    case "ScoreUpdated":
+      aliases.push("credit.score_tier_changed");
+      break;
+    default:
+      break;
+  }
+
+  return aliases;
+}
+
+function eventAllowed(events: string[], eventName: string): boolean {
+  return events.includes("*") || events.includes(eventName) || notificationAliases(eventName).some((alias) => events.includes(alias));
+}
+
 async function getPrefs(wallet: string): Promise<NotificationPrefs | null> {
   const { data, error } = await db
     .from("obscura_notification_prefs")
@@ -160,7 +211,7 @@ export async function dispatchActivityNotification(activity: StoredActivityRecor
       }
 
       const events = Array.isArray(prefs.events) && prefs.events.length > 0 ? prefs.events : ["*"];
-      if (!events.includes(activity.event_name) && !events.includes("*")) {
+      if (!eventAllowed(events, activity.event_name)) {
         summary.skippedEventPrefs++;
         console.log(`[notifications] skipped event prefs source=worker-indexer wallet=${shortWallet(wallet)} event=${activity.event_name} allowed=${events.join(",")}`);
         continue;

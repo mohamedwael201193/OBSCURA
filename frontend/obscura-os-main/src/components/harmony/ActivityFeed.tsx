@@ -14,6 +14,7 @@ import {
   FileText,
   Shield,
   User,
+  Landmark,
   RefreshCw,
   AlertCircle,
   Loader2,
@@ -37,6 +38,7 @@ const FILTER_TABS: { key: ActivityEventType; label: string }[] = [
   { key: "invoice",  label: "Invoices" },
   { key: "escrow",   label: "Escrow" },
   { key: "stealth",  label: "Stealth" },
+  { key: "credit",   label: "Credit" },
 ];
 
 // ─── Event icon mapping ───────────────────────────────────────────────────────
@@ -47,6 +49,7 @@ function EventIcon({ eventName }: { eventName: string }) {
   if (eventName.includes("Invoice"))    return <FileText       className="h-4 w-4 text-[#2D6A4F]" />;
   if (eventName.includes("Escrow"))     return <Shield         className="h-4 w-4 text-[#2D6A4F]" />;
   if (eventName.includes("Stealth"))    return <User           className="h-4 w-4 text-[#2D6A4F]" />;
+  if (eventName.includes("Credit"))     return <Landmark       className="h-4 w-4 text-[#2D6A4F]" />;
   return <ArrowUpRight className="h-4 w-4 text-muted-foreground" />;
 }
 
@@ -74,6 +77,31 @@ function eventLabel(eventName: string): string {
     "ObscuraStealthRegistry.MetaAddressSet":              "Private receiving enabled",
     "ObscuraStealthRegistry.StealthAddressRegistered":    "Stealth address registered",
   };
+  if (eventName.includes("CreditMarket") || eventName.startsWith("CreditMarket")) {
+    const suffix = eventName.split(".").pop();
+    if (suffix === "Supplied") return "Credit supplied";
+    if (suffix === "Withdrew") return "Credit supply withdrawn";
+    if (suffix === "CollateralSupplied") return "Credit collateral supplied";
+    if (suffix === "CollateralWithdrawn") return "Credit collateral withdrawn";
+    if (suffix === "Borrowed") return "Credit borrow opened";
+    if (suffix === "Repaid") return "Credit repayment recorded";
+    if (suffix === "LiquidationOpened") return "Credit liquidation opened";
+  }
+  if (eventName.includes("CreditVault") || eventName.startsWith("CreditVault")) {
+    const suffix = eventName.split(".").pop();
+    if (suffix === "Deposited") return "Credit vault deposit";
+    if (suffix === "Withdrew") return "Credit vault withdrawal";
+  }
+  if (eventName.includes("CreditAuction") || eventName.startsWith("CreditAuction")) {
+    const suffix = eventName.split(".").pop();
+    if (suffix === "AuctionOpened") return "Credit auction opened";
+    if (suffix === "BidSubmitted") return "Credit sealed bid submitted";
+    if (suffix === "AuctionSettled") return "Credit auction settled";
+  }
+  if (eventName.includes("CreditScore") || eventName.startsWith("CreditScore")) {
+    const suffix = eventName.split(".").pop();
+    if (suffix === "ScoreUpdated") return "Credit tier updated";
+  }
   return map[eventName] ?? eventName.split(".").pop() ?? eventName;
 }
 
@@ -125,7 +153,21 @@ function ActivityRow({ item }: { item: ActivityItem }) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export function ActivityFeed({ mode = "private" }: { mode?: PayPrivacyMode }) {
+export function ActivityFeed({
+  mode = "private",
+  defaultFilter = "all",
+  filters,
+  title,
+  eyebrow,
+  emptyMessage,
+}: {
+  mode?: PayPrivacyMode;
+  defaultFilter?: ActivityEventType;
+  filters?: ActivityEventType[];
+  title?: string;
+  eyebrow?: string;
+  emptyMessage?: string;
+}) {
   const { address } = useAccount();
   const {
     items,
@@ -136,7 +178,7 @@ export function ActivityFeed({ mode = "private" }: { mode?: PayPrivacyMode }) {
     loadMore,
     hasMore,
     refresh,
-  } = useActivityFeed();
+  } = useActivityFeed(defaultFilter);
 
   useEffect(() => {
     if (mode === "public" && filter !== "all") setFilter("all");
@@ -147,12 +189,15 @@ export function ActivityFeed({ mode = "private" }: { mode?: PayPrivacyMode }) {
     [items, mode],
   );
   const isEmpty = !isLoading && visibleItems.length === 0;
-  const tabs = mode === "public" ? FILTER_TABS.filter((tab) => tab.key === "all") : FILTER_TABS;
+  const allowedFilters = filters ? new Set(filters) : null;
+  const tabs = mode === "public"
+    ? FILTER_TABS.filter((tab) => tab.key === "all")
+    : FILTER_TABS.filter((tab) => !allowedFilters || allowedFilters.has(tab.key));
 
   return (
     <HarmonyFormCard
-      title={mode === "public" ? "Public USDC activity" : "Private activity"}
-      eyebrow={mode === "public" ? "Public Mode · Indexed from chain" : "Private Mode · Indexed from chain"}
+      title={title ?? (mode === "public" ? "Public USDC activity" : "Private activity")}
+      eyebrow={eyebrow ?? (mode === "public" ? "Public Mode · Indexed from chain" : "Private Mode · Indexed from chain")}
     >
       {/* Filter pills */}
       <div className="mb-5 flex flex-wrap items-center gap-2">
@@ -202,9 +247,9 @@ export function ActivityFeed({ mode = "private" }: { mode?: PayPrivacyMode }) {
 
       {address && isEmpty && !error && (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          {mode === "public"
+          {emptyMessage ?? (mode === "public"
             ? "No indexed public USDC, smart-account, paymaster, or bridge activity found yet."
-            : "No private ocUSDC activity found for this filter."}
+            : "No private ocUSDC activity found for this filter.")}
         </p>
       )}
 

@@ -16,10 +16,11 @@ export interface ReputationSignalSummary {
 
 export interface ReputationSummary {
   wallet: string;
-  sourceApp: "pay";
+  sourceApp: "all" | "pay" | "credit" | "vote";
   totalCappedWeight: number;
   tier: "new" | "active" | "steady" | "reliable";
   signals: Record<string, ReputationSignalSummary>;
+  sources?: Record<string, number>;
   updatedAt: string | null;
 }
 

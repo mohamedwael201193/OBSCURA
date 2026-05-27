@@ -3,7 +3,7 @@
  */
 import { useState } from "react";
 import { useAccount } from "wagmi";
-import { Award, Loader2, ShieldCheck, Lock } from "lucide-react";
+import { Award, Eye, Loader2, ShieldCheck, Lock } from "lucide-react";
 import { useCreditScore, useCreditScoreValue } from "@/hooks/useCredit";
 import { CREDIT_MARKETS } from "@/config/credit";
 import { Card, CardHeader } from "@/components/elite/Layout";
@@ -73,7 +73,7 @@ const CreditScoreCard = () => {
             </div>
           ) : (
             <span className="text-sm text-white/40 italic">
-              {scoreLoading ? "Decrypting…" : "No score yet — click Re-compute"}
+              {scoreLoading ? "Decrypting…" : "Encrypted — reveal when needed"}
             </span>
           )}
           {/* Progress bar */}
@@ -99,6 +99,14 @@ const CreditScoreCard = () => {
           >
             {busy === "update" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Award className="w-4 h-4" />}
             Re-compute
+          </button>
+          <button
+            disabled={!address || !!busy || scoreLoading}
+            onClick={refreshScore}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm bg-violet-500/10 border border-violet-500/30 text-violet-100 hover:bg-violet-500/20 disabled:opacity-50"
+          >
+            {scoreLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+            Reveal
           </button>
           <select
             value={marketAddr}

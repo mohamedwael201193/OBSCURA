@@ -33,7 +33,7 @@ const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
     try {
       const u = BigInt(Math.round(parseFloat(amount) * 1e6));
       await repay(u);
-      setMsg(`Repaid ${amount} ocUSDC.`);
+      setMsg(`Repaid ${amount} ${market.loanSymbol}.`);
       setAmount("");
       pos.resetDecrypted(); // clear stale tile — user re-reveals updated debt
       await pos.refresh();
@@ -66,7 +66,7 @@ const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
         label="Outstanding borrow"
         value={pos.myBorrow}
         loading={pos.sharesLoading}
-        symbol="ocUSDC"
+        symbol={market.loanSymbol}
         accent="violet"
         onReveal={pos.decryptShares}
       />
@@ -85,7 +85,7 @@ const RepayForm = ({ market, markets, onSelect, onRefresh }: Props) => {
         ))}
       </select>
 
-      <label className="text-[11px] uppercase tracking-wider text-white/50">Amount (ocUSDC)</label>
+      <label className="text-[11px] uppercase tracking-wider text-white/50">Amount ({market.loanSymbol})</label>
       <input
         inputMode="decimal"
         value={amount}

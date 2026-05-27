@@ -168,3 +168,97 @@ export const STEALTH_EVENTS = [
     ],
   },
 ] as const;
+
+export const CREDIT_MARKET_EVENTS = [
+  {
+    type: "event" as const,
+    name: "Supplied",
+    inputs: [{ name: "user", type: "address", indexed: true }],
+  },
+  {
+    type: "event" as const,
+    name: "Withdrew",
+    inputs: [{ name: "user", type: "address", indexed: true }],
+  },
+  {
+    type: "event" as const,
+    name: "CollateralSupplied",
+    inputs: [{ name: "user", type: "address", indexed: true }],
+  },
+  {
+    type: "event" as const,
+    name: "CollateralWithdrawn",
+    inputs: [{ name: "user", type: "address", indexed: true }],
+  },
+  {
+    type: "event" as const,
+    name: "Borrowed",
+    inputs: [{ name: "user", type: "address", indexed: true }],
+  },
+  {
+    type: "event" as const,
+    name: "Repaid",
+    inputs: [{ name: "user", type: "address", indexed: true }],
+  },
+  {
+    type: "event" as const,
+    name: "LiquidationOpened",
+    inputs: [
+      { name: "borrower", type: "address", indexed: true },
+      { name: "auctionId", type: "uint256", indexed: true },
+    ],
+  },
+] as const;
+
+export const CREDIT_AUCTION_EVENTS = [
+  {
+    type: "event" as const,
+    name: "AuctionOpened",
+    inputs: [
+      { name: "auctionId", type: "uint256", indexed: true },
+      { name: "market", type: "address", indexed: true },
+      { name: "borrower", type: "address", indexed: true },
+      { name: "endsAt", type: "uint64", indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "BidSubmitted",
+    inputs: [
+      { name: "auctionId", type: "uint256", indexed: true },
+      { name: "newCount", type: "uint32", indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "AuctionSettled",
+    inputs: [
+      { name: "auctionId", type: "uint256", indexed: true },
+      { name: "winner", type: "address", indexed: true },
+    ],
+  },
+] as const;
+
+export const CREDIT_VAULT_EVENTS = [
+  {
+    type: "event" as const,
+    name: "Deposited",
+    inputs: [{ name: "user", type: "address", indexed: true }],
+  },
+  {
+    type: "event" as const,
+    name: "Withdrew",
+    inputs: [{ name: "user", type: "address", indexed: true }],
+  },
+] as const;
+
+export const CREDIT_SCORE_EVENTS = [
+  {
+    type: "event" as const,
+    name: "ScoreUpdated",
+    inputs: [
+      { name: "user", type: "address", indexed: true },
+      { name: "tier", type: "uint8", indexed: false },
+    ],
+  },
+] as const;

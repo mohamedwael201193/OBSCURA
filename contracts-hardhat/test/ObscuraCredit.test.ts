@@ -106,9 +106,9 @@ describe("ObscuraCredit", function () {
     });
   });
 
-  describe("ObscuraCreditScore", () => {
+  describe("ObscuraCreditScoreV2", () => {
     it("stores source addresses", async () => {
-      const S = await ethers.getContractFactory("ObscuraCreditScore");
+      const S = await ethers.getContractFactory("ObscuraCreditScoreV2");
       const s = await S.deploy(deployer.address, deployer.address, deployer.address);
       expect(await s.payStream()).to.equal(deployer.address);
     });

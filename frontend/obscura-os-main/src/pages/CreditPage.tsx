@@ -3,7 +3,7 @@
  *
  * 4-tab IA: Markets | Position | Vaults | Liquidations.
  * Settings lives in a gear-icon slide-over (not a tab).
- * "Get test funds" CTA in header opens SetupSheet.
+ * Header setup CTA opens SetupSheet.
  *
  * Privacy rules:
  *  - Markets tab: fully public, no wallet needed
@@ -135,6 +135,12 @@ function MarketsTab({
             </div>
           ))}
         </div>
+        {markets.some((m) => m.isLegacy) && (
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
+            <ShieldCheck className="h-3.5 w-3.5 text-accent" />
+            <span>Legacy/testnet markets remain available for repay, withdraw, and lab collateral flows.</span>
+          </div>
+        )}
       </div>
 
       <div className="rounded-2xl hairline bg-accent/10 p-5">
@@ -227,19 +233,19 @@ function PositionTab({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <EncryptedTile
-            label="Supplied" symbol="ocUSDC"
+            label="Supplied" symbol={market?.loanSymbol ?? "ocUSDC"}
             displayValue={fmt(pos.mySupply)} revealed={revealed}
             loading={pos.sharesLoading} onReveal={handleRevealAll}
             onExpire={() => setRevealed(false)} accent="emerald"
           />
           <EncryptedTile
-            label="Borrowed" symbol="ocUSDC"
+            label="Borrowed" symbol={market?.loanSymbol ?? "ocUSDC"}
             displayValue={fmt(pos.myBorrow)} revealed={revealed}
             loading={pos.sharesLoading} onReveal={handleRevealAll}
             onExpire={() => setRevealed(false)} accent="violet"
           />
           <EncryptedTile
-            label="Collateral" symbol="ocUSDC"
+            label="Collateral" symbol={market?.collateralSymbol ?? "ocUSDC"}
             displayValue={fmt(pos.myCollateral)} revealed={revealed}
             loading={pos.sharesLoading} onReveal={handleRevealAll}
             onExpire={() => setRevealed(false)} accent="amber"
@@ -490,7 +496,7 @@ function SettingsSlideOver({ open, onClose, markets }: { open: boolean; onClose:
             </div>
             <div className="px-5 py-4 space-y-7">
               <div>
-                <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Faucets · Test funds</div>
+                <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Credit setup</div>
                 <SettingsPanel markets={markets} approved={approved} />
               </div>
               <div>
@@ -566,7 +572,7 @@ const CreditPage = () => {
             onClick={() => setSetupOpen(true)}
             className="inline-flex h-10 items-center gap-1.5 rounded-full hairline px-4 text-sm hover:bg-muted"
           >
-            <Droplet className="h-3.5 w-3.5" /> Get test funds
+            <Droplet className="h-3.5 w-3.5" /> Set up credit
           </button>
         )}
         <CreditAlertDrawer />

@@ -29,7 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   CONFIDENTIAL_TOKEN_ABI,
-  CREDIT_OCUSDC_ADDRESS,
+  CREDIT_CANONICAL_OCUSDC_ADDRESS,
   CREDIT_ROUTER_ADDRESS,
 } from "@/config/credit";
 import { estimateCappedFees } from "@/lib/gas";
@@ -41,7 +41,7 @@ interface OperatorApprovalModalProps {
   open: boolean;
   /** Called after the tx is confirmed, or dismissed if the user cancels. */
   onClose: (approved: boolean) => void;
-  /** Override the token being approved; defaults to CREDIT_OCUSDC_ADDRESS (credit market cUSDC). */
+  /** Override the token being approved; defaults to canonical Pay-backed ocUSDC. */
   tokenAddress?: `0x${string}`;
   /** Override the operator address; defaults to CREDIT_ROUTER_ADDRESS. */
   operatorAddress?: `0x${string}`;
@@ -62,7 +62,7 @@ export default function OperatorApprovalModal({
   const [status, setStatus] = useState<"idle" | "pending" | "done" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const token    = tokenAddress    ?? CREDIT_OCUSDC_ADDRESS;
+  const token    = tokenAddress    ?? CREDIT_CANONICAL_OCUSDC_ADDRESS;
   const operator = operatorAddress ?? CREDIT_ROUTER_ADDRESS;
 
   const expirySeconds = BigInt(Math.floor(Date.now() / 1000) + expiryDays * 86_400);

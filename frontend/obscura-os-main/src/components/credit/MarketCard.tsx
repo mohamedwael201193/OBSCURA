@@ -48,7 +48,7 @@ const MarketCard = ({ market, onAction, active, compact }: Props) => {
           </p>
         </div>
         <span className="text-[10px] tracking-[0.18em] uppercase text-violet-300/70 font-mono">
-          {market.lltvBps >= 8500 ? "AGGR" : "BAL"}
+          {market.isCanonical ? "CORE" : market.status === "legacy" ? "LEGACY" : "TEST"}
         </span>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2">

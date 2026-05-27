@@ -13,6 +13,10 @@ import {
   ESCROW_EVENTS,
   STEALTH_EVENTS,
   INSURANCE_EVENTS,
+  CREDIT_AUCTION_EVENTS,
+  CREDIT_MARKET_EVENTS,
+  CREDIT_SCORE_EVENTS,
+  CREDIT_VAULT_EVENTS,
 } from "./events";
 import { insertActivity, getLastIndexedBlock } from "../db";
 import { dispatchActivityNotification } from "../notifications";
@@ -33,6 +37,21 @@ const STARTUP_RECENT_BLOCKS = Math.max(10, Number.parseInt(process.env.INDEXER_S
 const BACKGROUND_BACKFILL_DELAY_MS = Math.max(0, Number.parseInt(process.env.INDEXER_BACKGROUND_BACKFILL_DELAY_MS ?? "15000", 10) || 15000);
 const DISPATCH_RECOVERED_DUPLICATES = (process.env.INDEXER_DISPATCH_RECOVERED_DUPLICATES ?? "true").toLowerCase() !== "false";
 
+const CREDIT_MARKET_DEFAULTS = [
+  "0x269f59672F3fd7f95bF440941e618b54Ebc5717A",
+  "0xcf98d97934F37Ac9A05bc037437E43cb6788eC8b",
+  "0x0b645441D65A0CCb91A82b5a2eE3156C1c89207B",
+  "0x05e58B8D96Bbd752A72Fa02921A0eE31eCB9035d",
+] as const;
+
+const CREDIT_VAULT_DEFAULTS = [
+  "0xCEBb042ae8FDE217a9FdE5b8a82E23827FdBB898",
+  "0xF508315bD4C5EC4c71C5E431AE972C0dC6B78Bbc",
+] as const;
+
+const CREDIT_AUCTION_DEFAULTS = ["0x205FfC0A3b8207B645c1a6B1b4805eb3FfC828F0"] as const;
+const CREDIT_SCORE_DEFAULTS = ["0xe5B0c6c06C0B1fd7d7CD5D2e93997693863d3D4D"] as const;
+
 type IndexedEvent = {
   readonly type: "event";
   readonly name: string;
@@ -44,6 +63,44 @@ interface ContractConfig {
   address: Address;
   events: readonly IndexedEvent[];
   live: boolean;
+}
+
+function isAddress(value: string): value is Address {
+  return /^0x[0-9a-fA-F]{40}$/.test(value);
+}
+
+function parseAddressList(value: string | undefined): Address[] {
+  if (!value) return [];
+  const seen = new Set<string>();
+  const addresses: Address[] = [];
+  for (const raw of value.split(",")) {
+    const trimmed = raw.trim();
+    if (!isAddress(trimmed)) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    addresses.push(trimmed as Address);
+  }
+  return addresses;
+}
+
+function mergeAddresses(defaults: readonly string[], envName: string): Address[] {
+  return parseAddressList([...defaults, process.env[envName] ?? ""].join(","));
+}
+
+function envContracts(
+  prefix: string,
+  events: readonly IndexedEvent[],
+  defaults: readonly string[],
+): ContractConfig[] {
+  const envName = `CREDIT_INDEXER_${prefix.toUpperCase().replace(/CREDIT/, "")}S`;
+  const addresses = mergeAddresses(defaults, envName);
+  return addresses.map((address, index) => ({
+    contractName: index === 0 ? prefix : `${prefix}${index + 1}`,
+    address,
+    events,
+    live: true,
+  }));
 }
 
 // ─── Contracts ────────────────────────────────────────────────────────────────
@@ -68,7 +125,11 @@ const INDEXER_CONTRACTS: readonly ContractConfig[] = [
   { contractName: "ObscuraStealthRegistry",         address: CONTRACTS.ObscuraStealthRegistry,         events: STEALTH_EVENTS,   live: true  },
   { contractName: "ObscuraPayStreamV2",             address: CONTRACTS.ObscuraPayStreamV2,             events: PAYSTREAM_EVENTS, live: false },
   { contractName: "ObscuraInsuranceSubscription",   address: CONTRACTS.ObscuraInsuranceSubscription,   events: INSURANCE_EVENTS, live: false },
-] as const;
+  ...envContracts("CreditMarket", CREDIT_MARKET_EVENTS, CREDIT_MARKET_DEFAULTS),
+  ...envContracts("CreditVault", CREDIT_VAULT_EVENTS, CREDIT_VAULT_DEFAULTS),
+  ...envContracts("CreditAuction", CREDIT_AUCTION_EVENTS, CREDIT_AUCTION_DEFAULTS),
+  ...envContracts("CreditScore", CREDIT_SCORE_EVENTS, CREDIT_SCORE_DEFAULTS),
+];
 
 interface IndexerHealthSnapshot {
   status: "starting" | "running";

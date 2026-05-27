@@ -37,7 +37,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
   const { supply, withdraw, fheStatus } = useCreditMarket(market.address);
   const pos = useMarketPosition(market.address);
   const { decrypted: ocUSDCDecrypted } = useOcUSDCBalance();
-  const cUSDCBal = ocUSDCDecrypted ?? 0n;
+  const cUSDCBal = market.isCanonical ? (ocUSDCDecrypted ?? 0n) : 0n;
 
   const [tab, setTab]     = useState<Tab>("supply");
   const [amount, setAmount] = useState("");
@@ -59,10 +59,10 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
     try {
       if (tab === "supply") {
         await supply(amtBig);
-        setMsg(`Supplied ${amount} ocUSDC to market.`);
+        setMsg(`Supplied ${amount} ${market.loanSymbol} to market.`);
       } else {
         await withdraw(amtBig);
-        setMsg(`Withdrew ${amount} ocUSDC from market.`);
+        setMsg(`Withdrew ${amount} ${market.loanSymbol} from market.`);
       }
       setAmount("");
       pos.resetDecrypted(); // clear stale tile so user re-reveals fresh value
@@ -83,7 +83,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
           label="Your Supply"
           value={pos.mySupply}
           loading={pos.sharesLoading}
-          symbol="ocUSDC"
+          symbol={market.loanSymbol}
           accent="cyan"
           onReveal={pos.decryptShares}
         />
@@ -135,7 +135,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
 
       {/* Amount input */}
       <label className="text-[11px] uppercase tracking-wider text-white/50">
-        Amount (ocUSDC)
+        Amount ({market.loanSymbol})
       </label>
       <input
         inputMode="decimal"
@@ -163,7 +163,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
       {/* Supply privacy note */}
       {tab === "supply" && (
         <p className="text-[11px] text-white/40">
-          Two-step FHE: ocUSDC is transferred, then supply shares are credited.
+          Two-step FHE: {market.loanSymbol} is transferred, then supply shares are credited.
           Your position amount is private on-chain.
         </p>
       )}

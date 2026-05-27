@@ -13,7 +13,7 @@
  * This module is the imperative version used by tx-submission code paths.
  */
 import type { PublicClient, WalletClient } from "viem";
-import { CREDIT_OCUSDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
+import { CREDIT_CANONICAL_OCUSDC_ADDRESS, CONFIDENTIAL_TOKEN_ABI } from "@/config/credit";
 import { estimateCappedFees } from "./gas";
 
 /** A long-lived operator authorization (approx. 30 days). */
@@ -25,7 +25,7 @@ export async function isOperator(
   spender: `0x${string}`,
   tokenOverride?: `0x${string}`
 ): Promise<boolean> {
-  const token = tokenOverride ?? CREDIT_OCUSDC_ADDRESS;
+  const token = tokenOverride ?? CREDIT_CANONICAL_OCUSDC_ADDRESS;
   if (!token) return false;
   try {
     const result = await client.readContract({
@@ -55,7 +55,7 @@ export async function ensureOperator(
   spender: `0x${string}`,
   tokenOverride?: `0x${string}`
 ): Promise<boolean> {
-  const token = tokenOverride ?? CREDIT_OCUSDC_ADDRESS;
+  const token = tokenOverride ?? CREDIT_CANONICAL_OCUSDC_ADDRESS;
   if (!token) {
     throw new Error("ocUSDC address not configured");
   }

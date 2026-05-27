@@ -55,7 +55,8 @@ async function assetPrice(
   const a = asset.toLowerCase();
   if (
     (a === "0xefab856b903c4106769b14798dede21c6923d7d2" ||
-     a === "0xf963fd86348813786ed57b8b2778a365c6226e43") &&
+     a === "0xf963fd86348813786ed57b8b2778a365c6226e43" ||
+     a === "0xed46020df8abe7bb1e096f27d089f4326d223a53") &&
     cfg.usdcAdapter
   ) {
     return { dec: 6, px18: await priceUSD18(pub, cfg.usdcAdapter as Address) };

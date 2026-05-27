@@ -19,6 +19,7 @@ import ObscuraCreditGovernanceProxyAbi from "@/abis/credit/ObscuraCreditGovernan
 import MockChainlinkFeedAbi from "@/abis/credit/MockChainlinkFeed.json";
 import ObscuraConfidentialTokenAbi from "@/abis/credit/ObscuraConfidentialToken.json";
 import ObscuraCreditRouterAbi from "@/abis/credit/ObscuraCreditRouter.json";
+import { OBSCURA_PAY_OCUSDC_ADDRESS } from "@/config/payV3";
 
 // ─── Addresses (Arbitrum Sepolia 421614) ─────────────────────────────────
 export const CREDIT_FACTORY_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_FACTORY_ADDRESS as `0x${string}` | undefined;
@@ -40,6 +41,7 @@ export const CREDIT_MARKET_V316_ADDRESS  = import.meta.env.VITE_OBSCURA_CREDIT_M
 export const CREDIT_VAULT_V316_ADDRESS   = import.meta.env.VITE_OBSCURA_CREDIT_VAULT_V316_ADDRESS   as `0x${string}` | undefined;
 
 // v2 Production — M-86 / M-70-WETH / M-50-OBS markets + Conservative/Balanced vaults.
+export const CREDIT_MARKET_CANONICAL_ADDRESS        = import.meta.env.VITE_OBSCURA_CREDIT_MARKET_CANONICAL_ADDRESS        as `0x${string}` | undefined;
 export const CREDIT_MARKET_M86_ADDRESS              = import.meta.env.VITE_OBSCURA_CREDIT_MARKET_M86_ADDRESS              as `0x${string}` | undefined;
 export const CREDIT_MARKET_M70WETH_ADDRESS          = import.meta.env.VITE_OBSCURA_CREDIT_MARKET_M70WETH_ADDRESS          as `0x${string}` | undefined;
 export const CREDIT_MARKET_M50OBS_ADDRESS           = import.meta.env.VITE_OBSCURA_CREDIT_MARKET_M50OBS_ADDRESS           as `0x${string}` | undefined;
@@ -50,9 +52,12 @@ export const CREDIT_VAULT_BALANCED_V2_ADDRESS       = import.meta.env.VITE_OBSCU
 export const CONFIDENTIAL_USDC_ADDRESS  = import.meta.env.VITE_OBSCURA_CONFIDENTIAL_USDC_ADDRESS  as `0x${string}` | undefined;
 export const CONFIDENTIAL_OBS_ADDRESS   = import.meta.env.VITE_OBSCURA_CONFIDENTIAL_OBS_ADDRESS   as `0x${string}` | undefined;
 export const CONFIDENTIAL_WETH_ADDRESS  = import.meta.env.VITE_OBSCURA_CONFIDENTIAL_WETH_ADDRESS  as `0x${string}` | undefined;
-// CREDIT-ONLY ocUSDC — faucet mode (v3.14), used by the credit market (v316 deployed with this token).
-// Distinct from CONFIDENTIAL_USDC_ADDRESS which is the Pay-page wrapper backed by real USDC.
+// CREDIT-ONLY ocUSDC — faucet mode (v3.14), retained for legacy/testnet markets.
+// Canonical Credit uses CREDIT_CANONICAL_OCUSDC_ADDRESS, the active Pay-backed wrapper.
 export const CREDIT_OCUSDC_ADDRESS = import.meta.env.VITE_OBSCURA_CREDIT_OCUSDC_ADDRESS as `0x${string}` | undefined;
+export const CREDIT_CANONICAL_OCUSDC_ADDRESS = (
+  import.meta.env.VITE_OBSCURA_CREDIT_CANONICAL_OCUSDC_ADDRESS as `0x${string}` | undefined
+) ?? OBSCURA_PAY_OCUSDC_ADDRESS;
 
 // ─── ABIs (re-exported for hooks/components) ─────────────────────────────
 // All credit ABI files are plain arrays (synced from artifacts via
@@ -84,23 +89,32 @@ export interface CreditTokenMeta {
 }
 
 export const CREDIT_TOKENS: Record<string, CreditTokenMeta> = {
-  // Plan v2 — shielded wrapper tokens: ocUSDC / ocWETH / ocOBS.
-  // Symbols match the factory deploy: symbol="ocUSDC", "ocWETH", "ocOBS".
-  ocUSDC: { address: CREDIT_OCUSDC_ADDRESS, name: "Obscura Confidential USDC", symbol: "ocUSDC", decimals: 6, hasFaucet: true,  faucetAmountLabel: "10,000 ocUSDC / 24h", priceUsd: 1.0 },
+  ocUSDC: { address: CREDIT_CANONICAL_OCUSDC_ADDRESS, name: "Pay-backed private USDC", symbol: "ocUSDC", decimals: 6, hasFaucet: false, priceUsd: 1.0 },
+  testOcUSDC: { address: CREDIT_OCUSDC_ADDRESS, name: "Credit testnet ocUSDC", symbol: "ocUSDC", decimals: 6, hasFaucet: true, faucetAmountLabel: "10,000 ocUSDC / 24h", priceUsd: 1.0 },
   ocOBS:  { address: CONFIDENTIAL_OBS_ADDRESS,  name: "Obscura Confidential OBS",  symbol: "ocOBS",  decimals: 6, hasFaucet: true,  faucetAmountLabel: "2 ocOBS / 24h",    priceUsd: 0.10 },
   ocWETH: { address: CONFIDENTIAL_WETH_ADDRESS, name: "Obscura Confidential WETH", symbol: "ocWETH", decimals: 6, hasFaucet: true,  faucetAmountLabel: "2 ocWETH / 24h",   priceUsd: 3000 },
 };
 
 // ─── Static market & vault metadata used by the UI ───────────────────────
 export interface CreditMarketMeta {
+  id: string;
   address?: `0x${string}`;
   label: string;
   loanSymbol: string;
   collateralSymbol: string;
+  loanAssetAddress?: `0x${string}`;
+  collateralAssetAddress?: `0x${string}`;
+  loanTokenKey?: string;
+  collateralTokenKey?: string;
   lltvBps: number;
   liqBonusBps: number;
   liqThresholdBps: number;
   riskTier: "Conservative" | "Balanced" | "Aggressive";
+  status: "canonical" | "legacy" | "testnet";
+  isCanonical?: boolean;
+  isLegacy?: boolean;
+  supportsFaucet?: boolean;
+  supportsHooks?: boolean;
   // Live stats — populated by useMarkets, optional until first poll
   totalSupplyAssets?: bigint;
   totalBorrowAssets?: bigint;
@@ -110,34 +124,80 @@ export interface CreditMarketMeta {
 
 export const CREDIT_MARKETS: CreditMarketMeta[] = [
   {
-    address: CREDIT_MARKET_M86_ADDRESS,
-    label: "ocUSDC · 86% LLTV",
+    id: "canonical-pay-ocusdc",
+    address: CREDIT_MARKET_CANONICAL_ADDRESS,
+    label: "Private USDC Credit Line",
     loanSymbol: "ocUSDC",
     collateralSymbol: "ocUSDC",
+    loanAssetAddress: CREDIT_CANONICAL_OCUSDC_ADDRESS,
+    collateralAssetAddress: CREDIT_CANONICAL_OCUSDC_ADDRESS,
+    loanTokenKey: "ocUSDC",
+    collateralTokenKey: "ocUSDC",
     lltvBps: 8600,
     liqBonusBps: 500,
     liqThresholdBps: 9000,
     riskTier: "Conservative",
+    status: "canonical",
+    isCanonical: true,
+    supportsFaucet: false,
+    supportsHooks: false,
   },
   {
+    id: "legacy-m86-faucet-ocusdc",
+    address: CREDIT_MARKET_M86_ADDRESS,
+    label: "Legacy testnet ocUSDC · 86% LLTV",
+    loanSymbol: "ocUSDC",
+    collateralSymbol: "ocUSDC",
+    loanAssetAddress: CREDIT_OCUSDC_ADDRESS,
+    collateralAssetAddress: CREDIT_OCUSDC_ADDRESS,
+    loanTokenKey: "testOcUSDC",
+    collateralTokenKey: "testOcUSDC",
+    lltvBps: 8600,
+    liqBonusBps: 500,
+    liqThresholdBps: 9000,
+    riskTier: "Conservative",
+    status: "legacy",
+    isLegacy: true,
+    supportsFaucet: true,
+    supportsHooks: true,
+  },
+  {
+    id: "legacy-m70-faucet-weth",
     address: CREDIT_MARKET_M70WETH_ADDRESS,
-    label: "ocWETH → ocUSDC · 70% LLTV",
+    label: "Legacy testnet ocWETH -> ocUSDC · 70% LLTV",
     loanSymbol: "ocUSDC",
     collateralSymbol: "ocWETH",
+    loanAssetAddress: CREDIT_OCUSDC_ADDRESS,
+    collateralAssetAddress: CONFIDENTIAL_WETH_ADDRESS,
+    loanTokenKey: "testOcUSDC",
+    collateralTokenKey: "ocWETH",
     lltvBps: 7000,
     liqBonusBps: 800,
     liqThresholdBps: 8500,
     riskTier: "Balanced",
+    status: "testnet",
+    isLegacy: true,
+    supportsFaucet: true,
+    supportsHooks: false,
   },
   {
+    id: "legacy-m50-faucet-obs",
     address: CREDIT_MARKET_M50OBS_ADDRESS,
-    label: "ocOBS → ocUSDC · 50% LLTV",
+    label: "Legacy risk lab ocOBS -> ocUSDC · 50% LLTV",
     loanSymbol: "ocUSDC",
     collateralSymbol: "ocOBS",
+    loanAssetAddress: CREDIT_OCUSDC_ADDRESS,
+    collateralAssetAddress: CONFIDENTIAL_OBS_ADDRESS,
+    loanTokenKey: "testOcUSDC",
+    collateralTokenKey: "ocOBS",
     lltvBps: 5000,
     liqBonusBps: 1200,
     liqThresholdBps: 8000,
     riskTier: "Aggressive",
+    status: "testnet",
+    isLegacy: true,
+    supportsFaucet: true,
+    supportsHooks: false,
   },
 ];
 

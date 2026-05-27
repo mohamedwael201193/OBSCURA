@@ -43,7 +43,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
   const [busy, setBusy]   = useState(false);
   const [msg, setMsg]     = useState<string | null>(null);
 
-  const collToken = CREDIT_TOKENS[market.collateralSymbol];
+  const collToken = CREDIT_TOKENS[market.collateralTokenKey ?? market.collateralSymbol];
 
   const parsedAmt = (): bigint | null => {
     const n = parseFloat(amount);
@@ -74,7 +74,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
     setMsg(null);
     try {
       if (tab === "supply") {
-        const collAddr = collToken?.address;
+        const collAddr = market.collateralAssetAddress ?? collToken?.address;
         if (!collAddr) throw new Error("Collateral token address not configured");
         await supplyCollateral(amtBig, collAddr);
         setMsg(`Supplied ${amount} ${market.collateralSymbol} as collateral.`);

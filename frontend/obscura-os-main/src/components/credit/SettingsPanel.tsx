@@ -22,7 +22,7 @@ import {
 import { useIsOperator } from "@/hooks/useIsOperator";
 import { useEffect as useEffectOp, useState as useStateOp } from "react";
 
-function FaucetRow({ tokenKey }: { tokenKey: "ocUSDC" | "ocOBS" | "ocWETH" }) {
+function FaucetRow({ tokenKey }: { tokenKey: "testOcUSDC" | "ocOBS" | "ocWETH" }) {
   const meta = CREDIT_TOKENS[tokenKey];
   const { address } = useAccount();
   const publicClient = usePublicClient();
@@ -105,9 +105,12 @@ const SettingsPanel = ({ markets, approved }: Props) => {
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => { if (!marketAddr && markets[0]) setMarketAddr(markets[0].address ?? ""); }, [markets, marketAddr]);
+  const selectedMarket = markets.find((market) => market.address === marketAddr) ?? markets[0];
+  const hooksAvailable = selectedMarket?.supportsHooks !== false;
 
   const enableStream = async () => {
     if (!marketAddr) return;
+    if (!hooksAvailable) { setMsg("Auto-repay hooks are available only for legacy testnet ocUSDC markets."); return; }
     setBusy("stream");
     setMsg(null);
     try {
@@ -126,6 +129,7 @@ const SettingsPanel = ({ markets, approved }: Props) => {
 
   const subscribeIns = async () => {
     if (!marketAddr) return;
+    if (!hooksAvailable) { setMsg("Insurance hooks are available only for legacy testnet ocUSDC markets."); return; }
     setBusy("ins");
     setMsg(null);
     try {
@@ -159,12 +163,12 @@ const SettingsPanel = ({ markets, approved }: Props) => {
   return (
     <div className="grid gap-4">
       <Card>
-        <CardHeader title="Token faucets" />
+        <CardHeader title="Legacy testnet faucets" />
         <div className="px-5 py-3 divide-y divide-white/[0.04]">
-          <FaucetRow tokenKey="ocUSDC" />
+          <FaucetRow tokenKey="testOcUSDC" />
           <FaucetRow tokenKey="ocOBS" />
           <FaucetRow tokenKey="ocWETH" />
-          <p className="text-[10.5px] text-white/40 pt-2">Mint test collateral to your wallet. Balances stay encrypted on-chain.</p>
+          <p className="text-[10.5px] text-white/40 pt-2">For the canonical Credit market, use Pay to shield USDC into private ocUSDC.</p>
         </div>
       </Card>
 
@@ -202,10 +206,11 @@ const SettingsPanel = ({ markets, approved }: Props) => {
               <input value={periodDays} onChange={(e) => setPeriodDays(e.target.value)} className="w-full border-border bg-background rounded-md px-2 py-1.5 text-xs" />
             </div>
           </div>
-          <button onClick={enableStream} disabled={!address || busy === "stream"} className="self-start inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm bg-violet-500/15 border border-violet-500/40 text-violet-100 hover:bg-violet-500/25 disabled:opacity-50">
+          <button onClick={enableStream} disabled={!address || busy === "stream" || !hooksAvailable} className="self-start inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm bg-violet-500/15 border border-violet-500/40 text-violet-100 hover:bg-violet-500/25 disabled:opacity-50">
             {busy === "stream" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Repeat className="w-4 h-4" />}
             Enable
           </button>
+          {!hooksAvailable && <p className="text-[11px] text-white/45">Canonical Pay-backed ocUSDC uses direct wallet execution for now; legacy hooks stay testnet-only.</p>}
         </div>
       </Card>
 
@@ -213,7 +218,7 @@ const SettingsPanel = ({ markets, approved }: Props) => {
         <CardHeader title="Insurance top-up subscription" />
         <div className="px-5 py-4 grid gap-3">
           <p className="text-xs text-white/55">Schedules a recurring collateral top-up against your active position to keep your HF above 1.</p>
-          <button onClick={subscribeIns} disabled={!address || busy === "ins"} className="self-start inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-foreground hover:bg-emerald-500/25 disabled:opacity-50">
+          <button onClick={subscribeIns} disabled={!address || busy === "ins" || !hooksAvailable} className="self-start inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm bg-emerald-500/15 border border-emerald-500/40 text-foreground hover:bg-emerald-500/25 disabled:opacity-50">
             {busy === "ins" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Umbrella className="w-4 h-4" />}
             Subscribe
           </button>

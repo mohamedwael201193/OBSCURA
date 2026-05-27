@@ -16,10 +16,26 @@ type PaySignalType =
   | "invoice_paid"
   | "subscription_consumed";
 
+type CreditSignalType =
+  | "credit_liquidity_supplied"
+  | "credit_liquidity_withdrawn"
+  | "credit_collateral_supplied"
+  | "credit_collateral_withdrawn"
+  | "credit_borrowed"
+  | "credit_repaid"
+  | "credit_liquidation_opened"
+  | "credit_auction_won"
+  | "credit_vault_deposited"
+  | "credit_vault_withdrew"
+  | "credit_score_updated";
+
+type ReputationSourceApp = "pay" | "credit";
+type ReputationSignalType = PaySignalType | CreditSignalType;
+
 interface ReputationEventRecord {
   wallet: string;
-  source_app: "pay";
-  signal_type: PaySignalType;
+  source_app: ReputationSourceApp;
+  signal_type: ReputationSignalType;
   signal_weight: number;
   event_ref: number;
   public_context: {
@@ -96,19 +112,29 @@ function contextFor(activity: StoredActivityRecord, relation: string): Reputatio
 function makeSignal(
   activity: StoredActivityRecord,
   walletValue: unknown,
-  signalType: PaySignalType,
+  signalType: ReputationSignalType,
   relation: string,
+  sourceApp: ReputationSourceApp = "pay",
 ): ReputationEventRecord | null {
   const wallet = normalizeWallet(walletValue);
   if (!wallet || wallet === activity.contract_address.toLowerCase()) return null;
   return {
     wallet,
-    source_app: "pay",
+    source_app: sourceApp,
     signal_type: signalType,
     signal_weight: 1,
     event_ref: activity.id,
     public_context: contextFor(activity, relation),
   };
+}
+
+function makeCreditSignal(
+  activity: StoredActivityRecord,
+  walletValue: unknown,
+  signalType: CreditSignalType,
+  relation: string,
+): ReputationEventRecord | null {
+  return makeSignal(activity, walletValue, signalType, relation, "credit");
 }
 
 async function findLinkedActivity(
@@ -179,6 +205,62 @@ async function derivePaySignals(activity: StoredActivityRecord): Promise<Reputat
   return signals;
 }
 
+async function deriveCreditSignals(activity: StoredActivityRecord): Promise<ReputationEventRecord[]> {
+  const signals: ReputationEventRecord[] = [];
+  const add = (signal: ReputationEventRecord | null) => {
+    if (!signal) return;
+    const duplicate = signals.some((existing) =>
+      existing.wallet === signal.wallet && existing.signal_type === signal.signal_type,
+    );
+    if (!duplicate) signals.push(signal);
+  };
+
+  const eventType = activity.event_name.split(".").pop();
+  if (!activity.event_name.startsWith("Credit")) return signals;
+
+  switch (eventType) {
+    case "Supplied":
+      add(makeCreditSignal(activity, activity.args.user, "credit_liquidity_supplied", "supplier"));
+      break;
+    case "Withdrew":
+      if (activity.event_name.startsWith("CreditVault")) {
+        add(makeCreditSignal(activity, activity.args.user, "credit_vault_withdrew", "vault_user"));
+      } else {
+        add(makeCreditSignal(activity, activity.args.user, "credit_liquidity_withdrawn", "supplier"));
+      }
+      break;
+    case "CollateralSupplied":
+      add(makeCreditSignal(activity, activity.args.user, "credit_collateral_supplied", "borrower"));
+      break;
+    case "CollateralWithdrawn":
+      add(makeCreditSignal(activity, activity.args.user, "credit_collateral_withdrawn", "borrower"));
+      break;
+    case "Borrowed":
+      add(makeCreditSignal(activity, activity.args.user, "credit_borrowed", "borrower"));
+      break;
+    case "Repaid":
+      add(makeCreditSignal(activity, activity.args.user, "credit_repaid", "borrower"));
+      break;
+    case "LiquidationOpened":
+    case "AuctionOpened":
+      add(makeCreditSignal(activity, activity.args.borrower, "credit_liquidation_opened", "borrower"));
+      break;
+    case "AuctionSettled":
+      add(makeCreditSignal(activity, activity.args.winner, "credit_auction_won", "winner"));
+      break;
+    case "Deposited":
+      add(makeCreditSignal(activity, activity.args.user, "credit_vault_deposited", "vault_user"));
+      break;
+    case "ScoreUpdated":
+      add(makeCreditSignal(activity, activity.args.user, "credit_score_updated", "score_subject"));
+      break;
+    default:
+      break;
+  }
+
+  return signals;
+}
+
 async function upsertReputationSignals(signals: ReputationEventRecord[]): Promise<number> {
   if (signals.length === 0) return 0;
 
@@ -200,7 +282,10 @@ export async function insertReputationSignalsForActivity(activity: StoredActivit
   if (!REPUTATION_EVENTS_ENABLED) return 0;
 
   try {
-    const signals = await derivePaySignals(activity);
+    const signals = [
+      ...(await derivePaySignals(activity)),
+      ...(await deriveCreditSignals(activity)),
+    ];
     const inserted = await upsertReputationSignals(signals);
     if (signals.length > 0) {
       console.log(`[reputation] activity=${activity.id} event=${activity.event_name} signals=${signals.length} inserted=${inserted}`);

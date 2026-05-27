@@ -74,7 +74,9 @@ function candidateWallets(activity: StoredActivityRecord): string[] {
 
 function buildPayload(activity: StoredActivityRecord, wallet: string): string {
   const eventLabel = activity.event_name.split(".").pop() ?? "Activity";
-  const url = `${FRONTEND_URL}/pay?tab=activity`;
+  const url = activity.event_name.startsWith("Credit")
+    ? `${FRONTEND_URL}/credit`
+    : `${FRONTEND_URL}/pay?tab=activity`;
   const sentAt = new Date().toISOString();
 
   return JSON.stringify({

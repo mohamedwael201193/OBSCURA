@@ -38,13 +38,7 @@ import {
   type CreditMarketMeta,
   type CreditVaultMeta,
 } from "@/config/credit";
-import { OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS, FHERC20_ABI as _FHERC20_ABI } from "@/config/pay";
-// v3.14 — credit-side switched to in-repo ObscuraConfidentialToken (ocUSDC).
 import { CREDIT_OCUSDC_ADDRESS } from "@/config/credit";
-const OCUSDC_ADDRESS = CREDIT_OCUSDC_ADDRESS;
-// ocUSDC exposes the same selectors as Reineira cUSDC, so FHERC20_ABI covers both.
-const OCUSDC_ABI = _FHERC20_ABI;
-void OBSCURA_CONFIDENTIAL_ESCROW_ADDRESS;
 import { decryptBalance, encryptAddressAndAmount, encryptAmount, initFHEClient } from "@/lib/fhe";
 import { estimateCappedFees } from "@/lib/gas";
 import { withRateLimitRetry } from "@/lib/rateLimit";
@@ -53,26 +47,50 @@ import { batchRead } from "@/lib/multicall";
 import { useFHEStatus } from "./useFHEStatus";
 import { FHEStepStatus } from "@/lib/constants";
 
+async function readMarketAsset(
+  publicClient: ReturnType<typeof usePublicClient>,
+  market: `0x${string}`,
+  functionName: "loanAsset" | "collateralAsset",
+): Promise<`0x${string}`> {
+  if (!publicClient) throw new Error("public client not ready");
+  return publicClient.readContract({
+    address: market,
+    abi: CREDIT_MARKET_ABI,
+    functionName,
+  }) as Promise<`0x${string}`>;
+}
+
+async function readVaultLoanAsset(
+  publicClient: ReturnType<typeof usePublicClient>,
+  vault: `0x${string}`,
+): Promise<`0x${string}`> {
+  if (!publicClient) throw new Error("public client not ready");
+  return publicClient.readContract({
+    address: vault,
+    abi: CREDIT_VAULT_ABI,
+    functionName: "loanAsset",
+  }) as Promise<`0x${string}`>;
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // 1. useCreditMarkets — list of available markets + their public scalars.
 // ─────────────────────────────────────────────────────────────────────────
 export function useCreditMarkets() {
   const publicClient = usePublicClient();
 
-  const [snapshots, setSnapshots] = useState<CreditMarketMeta[]>(CREDIT_MARKETS);
+  const configuredMarkets = useMemo(() => CREDIT_MARKETS.filter((m) => !!m.address), []);
+  const [snapshots, setSnapshots] = useState<CreditMarketMeta[]>(configuredMarkets);
 
   const refresh = useCallback(async () => {
     if (!publicClient) return;
     const FNS = ["totalSupplyAssets", "totalBorrowAssets", "utilizationBps", "borrowersLength"] as const;
-    const calls = CREDIT_MARKETS
-      .filter((m) => !!m.address)
+    const calls = configuredMarkets
       .flatMap((m) =>
         FNS.map((fn) => ({ address: m.address!, abi: CREDIT_MARKET_ABI, functionName: fn, fallback: 0n }))
       );
     const results = await batchRead<bigint>(publicClient, calls);
     let i = 0;
-    const next = CREDIT_MARKETS.map((m) => {
-      if (!m.address) return m;
+    const next = configuredMarkets.map((m) => {
       const [tsa, tba, util, bl] = [results[i], results[i + 1], results[i + 2], results[i + 3]];
       i += 4;
       if (tsa === null && tba === null && util === null && bl === null) return m;
@@ -85,7 +103,7 @@ export function useCreditMarkets() {
       };
     });
     setSnapshots(next);
-  }, [publicClient]);
+  }, [publicClient, configuredMarkets]);
 
   return { markets: snapshots, refresh };
 }
@@ -196,11 +214,11 @@ export function useEnsureOperator(target?: `0x${string}`) {
 
   const ensure = useCallback(
     async (untilSeconds = Math.floor(Date.now() / 1000) + 30 * 24 * 3600) => {
-      if (!OCUSDC_ADDRESS || !target || !address || !publicClient) return false;
+      if (!CREDIT_OCUSDC_ADDRESS || !target || !address || !publicClient) return false;
       try {
         const isOp = await publicClient.readContract({
-          address: OCUSDC_ADDRESS,
-          abi: OCUSDC_ABI,
+          address: CREDIT_OCUSDC_ADDRESS,
+          abi: CONFIDENTIAL_TOKEN_ABI,
           functionName: "isOperator",
           args: [address, target],
         });
@@ -209,8 +227,8 @@ export function useEnsureOperator(target?: `0x${string}`) {
 
       const fees = await estimateCappedFees(publicClient);
       const tx = await writeContractAsync({
-        address: OCUSDC_ADDRESS,
-        abi: OCUSDC_ABI,
+        address: CREDIT_OCUSDC_ADDRESS,
+        abi: CONFIDENTIAL_TOKEN_ABI,
         functionName: "setOperator",
         args: [target, BigInt(untilSeconds)],
         account: address,
@@ -248,23 +266,24 @@ export function useCreditMarket(market?: `0x${string}`) {
   // ── Two-step supply: cUSDC.confidentialTransfer(market) → market.supply(amt) ──
   const supply = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !walletClient || !market || !address || !OCUSDC_ADDRESS) throw new Error("not ready");
+      if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
+      const loanAsset = await readMarketAsset(publicClient, market, "loanAsset");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
       const enc = await encryptAmount(amount);
       fhe.setStep(FHEStepStatus.COMPUTING);
 
-      // Step 1 — direct cUSDC transfer to market (user is immediate CoFHE caller)
+      // Step 1 — direct loan-asset transfer to market (user is immediate CoFHE caller)
       const fees = await estimateCappedFees(publicClient);
       const txTransfer = await writeContractAsync({
-        address: OCUSDC_ADDRESS, abi: OCUSDC_ABI,
+        address: loanAsset, abi: CONFIDENTIAL_TOKEN_ABI,
         functionName: "confidentialTransfer", args: [market, enc[0]],
         account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: 600_000n,
       });
       const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
-      if (r.status !== "success") throw new Error("ocUSDC transfer to market failed");
+      if (r.status !== "success") throw new Error("loan asset transfer to market failed");
       fhe.setStep(FHEStepStatus.SETTLING);
       await awaitCoFHESettle(publicClient, txTransfer);
 
@@ -321,6 +340,10 @@ export function useCreditMarket(market?: `0x${string}`) {
   const supplyCollateral = useCallback(
     async (amount: bigint, collateralTokenAddress: `0x${string}`) => {
       if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
+      const marketCollateral = await readMarketAsset(publicClient, market, "collateralAsset");
+      if (marketCollateral.toLowerCase() !== collateralTokenAddress.toLowerCase()) {
+        throw new Error("Selected collateral token does not match market collateral asset");
+      }
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
 
@@ -329,12 +352,8 @@ export function useCreditMarket(market?: `0x${string}`) {
       fhe.setStep(FHEStepStatus.COMPUTING);
       // Fetch fees once with retry — reused for both steps (Arb Sepolia fees stable over 30 s)
       const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
-      // cUSDC (Reineira) uses OCUSDC_ABI; cOBS / cWETH use CONFIDENTIAL_TOKEN_ABI
-      const collAbi = collateralTokenAddress === OCUSDC_ADDRESS
-        ? OCUSDC_ABI
-        : CONFIDENTIAL_TOKEN_ABI;
       const txTransfer = await writeContractAsync({
-        address: collateralTokenAddress, abi: collAbi,
+        address: collateralTokenAddress, abi: CONFIDENTIAL_TOKEN_ABI,
         functionName: "confidentialTransfer", args: [market, enc1[0]],
         account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
@@ -459,23 +478,24 @@ export function useCreditMarket(market?: `0x${string}`) {
   // ── Two-step repay: cUSDC.confidentialTransfer(market) → market.repay(amt, encAmt) ──
   const repay = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !walletClient || !market || !address || !OCUSDC_ADDRESS) throw new Error("not ready");
+      if (!publicClient || !walletClient || !market || !address) throw new Error("not ready");
+      const loanAsset = await readMarketAsset(publicClient, market, "loanAsset");
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
 
-      // Step 1 — direct cUSDC transfer to market
+      // Step 1 — direct loan-asset transfer to market
       const enc1 = await encryptAmount(amount);
       fhe.setStep(FHEStepStatus.COMPUTING);
       const fees = await estimateCappedFees(publicClient);
       const txTransfer = await writeContractAsync({
-        address: OCUSDC_ADDRESS, abi: OCUSDC_ABI,
+        address: loanAsset, abi: CONFIDENTIAL_TOKEN_ABI,
         functionName: "confidentialTransfer", args: [market, enc1[0]],
         account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: 600_000n,
       });
       const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
-      if (r.status !== "success") throw new Error("ocUSDC transfer failed");
+      if (r.status !== "success") throw new Error("loan asset transfer failed");
       fhe.setStep(FHEStepStatus.SETTLING);
       await awaitCoFHESettle(publicClient, txTransfer);
 
@@ -531,7 +551,8 @@ export function useCreditVault(vault?: `0x${string}`) {
   // ── Two-step deposit: cUSDC.confidentialTransfer(vault) → vault.deposit(amt) ──
   const deposit = useCallback(
     async (amount: bigint) => {
-      if (!publicClient || !walletClient || !vault || !address || !OCUSDC_ADDRESS) throw new Error("not ready");
+      if (!publicClient || !walletClient || !vault || !address) throw new Error("not ready");
+      const loanAsset = await readVaultLoanAsset(publicClient, vault);
       fhe.setStep(FHEStepStatus.ENCRYPTING);
       await initFHEClient(publicClient, walletClient);
       const enc = await encryptAmount(amount);
@@ -540,14 +561,14 @@ export function useCreditVault(vault?: `0x${string}`) {
       // Step 1 — direct cUSDC transfer to vault (user is immediate CoFHE caller)
       const fees = await estimateCappedFees(publicClient);
       const txTransfer = await writeContractAsync({
-        address: OCUSDC_ADDRESS, abi: OCUSDC_ABI,
+        address: loanAsset, abi: CONFIDENTIAL_TOKEN_ABI,
         functionName: "confidentialTransfer", args: [vault, enc[0]],
         account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: 600_000n,
       });
       const r = await publicClient.waitForTransactionReceipt({ hash: txTransfer });
-      if (r.status !== "success") throw new Error("ocUSDC transfer to vault failed");
+      if (r.status !== "success") throw new Error("loan asset transfer to vault failed");
       fhe.setStep(FHEStepStatus.SETTLING);
       await awaitCoFHESettle(publicClient, txTransfer);
 
@@ -681,6 +702,9 @@ export function useCreditAuctions() {
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.bid,
       });
+      fhe.setStep(FHEStepStatus.SETTLING);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") throw new Error("sealed bid reverted on-chain");
       fhe.setStep(FHEStepStatus.READY);
       return hash;
     },
@@ -1098,7 +1122,7 @@ export function useCreditScoreValue() {
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!publicClient || !CREDIT_SCORE_V2_ADDRESS || !address) return;
+    if (!publicClient || !walletClient || !CREDIT_SCORE_V2_ADDRESS || !address) return;
     setLoading(true);
     try {
       const handle = await publicClient.readContract({
@@ -1110,7 +1134,7 @@ export function useCreditScoreValue() {
         setScore(null);
         return;
       }
-      if (walletClient) await initFHEClient(publicClient, walletClient);
+      await initFHEClient(publicClient, walletClient);
       setScore(await decryptBalance(bn));
     } catch {
       // ignore
@@ -1118,8 +1142,6 @@ export function useCreditScoreValue() {
       setLoading(false);
     }
   }, [publicClient, walletClient, address]);
-
-  useEffect(() => { refresh(); }, [refresh]);
 
   return { score, loading, refresh };
 }

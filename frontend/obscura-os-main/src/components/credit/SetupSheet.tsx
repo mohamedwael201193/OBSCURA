@@ -15,17 +15,15 @@
  */
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAccount, usePublicClient, useWriteContract, useReadContract } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import {
   X,
   Droplet,
   ShieldCheck,
   ArrowDownToLine,
-  ChevronRight,
+  ExternalLink,
   Check,
   Loader2,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import FHEStepper from "@/components/shared/FHEStepper";
 import { useFHEStatus } from "@/hooks/useFHEStatus";
@@ -35,7 +33,8 @@ import { estimateCappedFees } from "@/lib/gas";
 import { awaitCoFHESettle } from "@/lib/cofheSettle";
 import {
   CREDIT_ROUTER_ADDRESS,
-  CREDIT_MARKET_V316_ADDRESS,
+  CREDIT_MARKET_CANONICAL_ADDRESS,
+  CREDIT_CANONICAL_OCUSDC_ADDRESS,
   CREDIT_OCUSDC_ADDRESS,
   CONFIDENTIAL_WETH_ADDRESS,
   CONFIDENTIAL_OBS_ADDRESS,
@@ -44,7 +43,6 @@ import {
   CREDIT_GAS_CAPS,
 } from "@/config/credit";
 import type { CreditMarketMeta } from "@/config/credit";
-import { useIsOperator } from "@/hooks/useIsOperator";
 
 const OPERATOR_EXPIRY_DAYS = 7;
 const OPERATOR_EXPIRY_SEC  = OPERATOR_EXPIRY_DAYS * 24 * 60 * 60;
@@ -57,7 +55,7 @@ interface SetupSheetProps {
   onSuccess?: () => void;
 }
 
-type SetupStep = "faucet" | "operator" | "borrow" | "done";
+type SetupStep = "funding" | "operator" | "borrow" | "done";
 
 export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSheetProps) {
   const { address } = useAccount();
@@ -65,35 +63,49 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
   const { writeContractAsync } = useWriteContract();
   const fhe = useFHEStatus();
 
-  const [step, setStep] = useState<SetupStep>("faucet");
+  const [step, setStep] = useState<SetupStep>("funding");
   const [collateralAmt, setCollateralAmt] = useState("");
   const [borrowAmt, setBorrowAmt]         = useState("");
   const [stealthToggle, setStealthToggle] = useState(false);
   const [busy, setBusy]   = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const marketAddr = market?.address ?? CREDIT_MARKET_V316_ADDRESS;
+  const isCanonical = market?.isCanonical ?? true;
+  const marketAddr = market?.address ?? CREDIT_MARKET_CANONICAL_ADDRESS;
+  const loanTokenAddress = market?.loanAssetAddress ?? CREDIT_CANONICAL_OCUSDC_ADDRESS;
+  const collateralTokenAddress = market?.collateralAssetAddress ?? CREDIT_CANONICAL_OCUSDC_ADDRESS;
+  const loanSymbol = market?.loanSymbol ?? "ocUSDC";
+  const collateralSymbol = market?.collateralSymbol ?? "ocUSDC";
   const routerAddr = CREDIT_ROUTER_ADDRESS;
 
-  // Check operator approval status
-  const { checkOperator } = useIsOperator();
+  const openPay = useCallback(() => {
+    window.location.href = "/pay";
+  }, []);
 
-  // Claim faucet for all 3 tokens — skips tokens still on cooldown
+  // Legacy/testnet faucet claim — skipped for the canonical Pay-backed market.
   const handleFaucet = useCallback(async () => {
+    if (isCanonical) {
+      setStep("operator");
+      return;
+    }
     if (!address || !publicClient) return;
     setBusy(true);
     setError(null);
     fhe.setStep(FHEStepStatus.SENDING);
     try {
       const tokens: (`0x${string}` | undefined)[] = [
-        CREDIT_OCUSDC_ADDRESS,
+        loanTokenAddress ?? CREDIT_OCUSDC_ADDRESS,
+        collateralTokenAddress,
         CONFIDENTIAL_WETH_ADDRESS,
         CONFIDENTIAL_OBS_ADDRESS,
       ].filter(Boolean);
+      const uniqueTokens = [...new Set(tokens.map((token) => token?.toLowerCase()))]
+        .map((lower) => tokens.find((token) => token?.toLowerCase() === lower))
+        .filter(Boolean) as `0x${string}`[];
 
       // Batch all cooldown reads into a single multicall — avoids rate limiting
       const cooldowns = await publicClient.multicall({
-        contracts: tokens.map((addr) => ({
+        contracts: uniqueTokens.map((addr) => ({
           abi: CONFIDENTIAL_TOKEN_ABI,
           address: addr as `0x${string}`,
           functionName: "nextFaucetIn" as const,
@@ -102,7 +114,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
         allowFailure: true,
       });
 
-      const claimable = tokens.filter(
+      const claimable = uniqueTokens.filter(
         (_, i) => cooldowns[i].status === "success" && (cooldowns[i].result as bigint) === 0n
       );
 
@@ -136,7 +148,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
     } finally {
       setBusy(false);
     }
-  }, [address, publicClient, writeContractAsync, fhe]);
+  }, [address, publicClient, writeContractAsync, fhe, isCanonical, loanTokenAddress, collateralTokenAddress]);
 
   // Approve Router as operator on ocUSDC (7-day expiry)
   const handleOperator = useCallback(async () => {
@@ -148,11 +160,14 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
       const until = Math.floor(Date.now() / 1000) + OPERATOR_EXPIRY_SEC;
       const fees = await estimateCappedFees(publicClient);
 
-      // Approve on loan token (ocUSDC) — needed for repay path
-      if (CREDIT_OCUSDC_ADDRESS) {
+      const tokens = [loanTokenAddress, collateralTokenAddress]
+        .filter(Boolean)
+        .filter((token, index, arr) => arr.findIndex((candidate) => candidate?.toLowerCase() === token?.toLowerCase()) === index) as `0x${string}`[];
+
+      for (const token of tokens) {
         const h1 = await writeContractAsync({
           abi: CONFIDENTIAL_TOKEN_ABI,
-          address: CREDIT_OCUSDC_ADDRESS,
+          address: token,
           functionName: "setOperator",
           args: [routerAddr, BigInt(until)],
           ...fees,
@@ -168,7 +183,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
     } finally {
       setBusy(false);
     }
-  }, [address, publicClient, writeContractAsync, routerAddr, fhe]);
+  }, [address, publicClient, writeContractAsync, routerAddr, fhe, loanTokenAddress, collateralTokenAddress]);
 
   // setupAndBorrow via Router (single tx)
   const handleSetup = useCallback(async () => {
@@ -254,7 +269,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
   }, [address, publicClient, writeContractAsync, routerAddr, marketAddr, collateralAmt, borrowAmt, stealthToggle, fhe, onSuccess]);
 
   const steps: { key: SetupStep; label: string; icon: React.ReactNode }[] = [
-    { key: "faucet",   label: "Get test funds", icon: <Droplet className="w-4 h-4" /> },
+    { key: "funding",  label: isCanonical ? "Private USDC" : "Test funds", icon: <Droplet className="w-4 h-4" /> },
     { key: "operator", label: "Approve Router",  icon: <ShieldCheck className="w-4 h-4" /> },
     { key: "borrow",   label: "Borrow now",      icon: <ArrowDownToLine className="w-4 h-4" /> },
   ];
@@ -307,26 +322,50 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
             {/* Step content */}
             <div className="px-5 py-4 pb-8 max-h-[70vh] overflow-y-auto">
               <AnimatePresence mode="wait">
-                {step === "faucet" && (
-                  <motion.div key="faucet" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Claim 10,000 ocUSDC + 1 ocWETH + 1,000 ocOBS to your wallet — needed for collateral and repayment.
-                    </p>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">3 txs · one per token · 24h cooldown</p>
-                    <button
-                      disabled={busy || !address}
-                      onClick={handleFaucet}
-                      className="btn-pay btn-pay-emerald w-full py-3 disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Droplet className="w-4 h-4" />}
-                      Claim test funds
-                    </button>
-                    <button
-                      onClick={() => setStep("operator")}
-                      className="w-full mt-2 py-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      Skip (already claimed) →
-                    </button>
+                {step === "funding" && (
+                  <motion.div key="funding" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                    {isCanonical ? (
+                      <>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          The default Credit market uses the same private USDC balance as Pay. Shield USDC in Pay, then come back to approve the Credit Router.
+                        </p>
+                        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">Pay-backed ocUSDC · no faucet · reusable balance</p>
+                        <button
+                          type="button"
+                          onClick={openPay}
+                          className="btn-pay btn-pay-emerald w-full py-3 flex items-center justify-center gap-2"
+                        >
+                          <ExternalLink className="w-4 h-4" /> Open Pay
+                        </button>
+                        <button
+                          onClick={() => setStep("operator")}
+                          className="w-full mt-2 py-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Continue with private USDC
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Claim legacy testnet assets for the selected test market.
+                        </p>
+                        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">One tx per token · 24h cooldown</p>
+                        <button
+                          disabled={busy || !address}
+                          onClick={handleFaucet}
+                          className="btn-pay btn-pay-emerald w-full py-3 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Droplet className="w-4 h-4" />}
+                          Claim test funds
+                        </button>
+                        <button
+                          onClick={() => setStep("operator")}
+                          className="w-full mt-2 py-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Skip legacy faucet
+                        </button>
+                      </>
+                    )}
                   </motion.div>
                 )}
 
@@ -358,7 +397,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                     <div className="mb-4 space-y-3">
                       <div>
                         <label className="font-mono block text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1.5">
-                          Collateral (ocUSDC)
+                          Collateral ({collateralSymbol})
                         </label>
                         <input
                           type="text"
@@ -371,7 +410,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                       </div>
                       <div>
                         <label className="font-mono block text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1.5">
-                          Borrow amount (ocUSDC)
+                          Borrow amount ({loanSymbol})
                         </label>
                         <input
                           type="text"

@@ -114,7 +114,9 @@ function buildActivityPayload(activity: Record<string, unknown>, wallet: string)
   const eventName = getEventName(activity);
   const eventLabel = eventName.split(".").pop() ?? "Activity";
   const txHash = typeof activity.tx_hash === "string" ? activity.tx_hash : undefined;
-  const url = `${FRONTEND_URL}/pay?tab=activity`;
+  const url = eventName.startsWith("Credit")
+    ? `${FRONTEND_URL}/credit`
+    : `${FRONTEND_URL}/pay?tab=activity`;
   const sentAt = new Date().toISOString();
 
   return JSON.stringify({

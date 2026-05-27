@@ -120,5 +120,15 @@
   "wave5Phase3DeployedAt": "2026-05-25T18:24:43.071Z",
   "ObscuraSmartAccountImplementation": "0x0415945e442C4C5533367Fbb6f0D40528e0D7809",
   "wave5PayAA24WebAuthnFactoryDeployedAt": "2026-05-26T03:39:24.406Z",
-  "wave5PublicPaymasterV2DeployedAt": "2026-05-26T14:33:54.962Z"
+  "wave5PublicPaymasterV2DeployedAt": "2026-05-26T14:33:54.962Z",
+  "CreditCanonicalPayOcUSDCMarket": "0x1Ec113297c7F9516A6604aa3b18C180559a6f551",
+  "v5_CanonicalPayOcUSDCMarket": "0x1Ec113297c7F9516A6604aa3b18C180559a6f551",
+  "wave5CreditCanonicalAssetMigrationAt": "2026-05-27T16:16:37.431Z",
+  "wave5CreditCanonicalAsset": {
+    "loanAsset": "0xEd46020Df8abe7BB1E096f27d089F4326D223a53",
+    "collateralAsset": "0xEd46020Df8abe7BB1E096f27d089F4326D223a53",
+    "lltvBps": "8600",
+    "liqBonusBps": "500",
+    "liqThresholdBps": "9000"
+  }
 }

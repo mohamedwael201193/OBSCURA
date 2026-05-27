@@ -9,6 +9,17 @@ const PAY_SIGNAL_CAPS: Record<string, number> = {
   escrow_redeemed: 10,
   invoice_paid: 20,
   subscription_consumed: 20,
+  credit_liquidity_supplied: 20,
+  credit_liquidity_withdrawn: 10,
+  credit_collateral_supplied: 20,
+  credit_collateral_withdrawn: 10,
+  credit_borrowed: 20,
+  credit_repaid: 24,
+  credit_liquidation_opened: 5,
+  credit_auction_won: 10,
+  credit_vault_deposited: 20,
+  credit_vault_withdrew: 10,
+  credit_score_updated: 10,
 };
 
 interface ReputationEventRow {
@@ -41,6 +52,7 @@ function signalLabel(signalType: string): string {
 
 function summarizeRows(rows: ReputationEventRow[]) {
   const bySignal: Record<string, { label: string; count: number; cappedWeight: number; latestAt: string | null }> = {};
+  const bySource: Record<string, number> = {};
   let totalCappedWeight = 0;
 
   for (const row of rows) {
@@ -56,6 +68,7 @@ function summarizeRows(rows: ReputationEventRow[]) {
     current.cappedWeight = Math.min(cap, current.cappedWeight + Math.max(1, row.signal_weight || 1));
     current.latestAt = !current.latestAt || row.created_at > current.latestAt ? row.created_at : current.latestAt;
     bySignal[signalType] = current;
+    bySource[row.source_app] = (bySource[row.source_app] ?? 0) + Math.max(1, row.signal_weight || 1);
   }
 
   for (const signal of Object.values(bySignal)) {
@@ -66,6 +79,7 @@ function summarizeRows(rows: ReputationEventRow[]) {
     totalCappedWeight,
     tier: tierFor(totalCappedWeight),
     signals: bySignal,
+    sources: bySource,
     updatedAt: rows[0]?.created_at ?? null,
   };
 }
@@ -84,7 +98,7 @@ reputationRouter.get("/reputation/:wallet", async (req: Request, res: Response) 
       .from("obscura_reputation_events")
       .select("source_app, signal_type, signal_weight, created_at, public_context")
       .eq("wallet", wallet)
-      .eq("source_app", "pay")
+      .in("source_app", ["pay", "credit"])
       .order("created_at", { ascending: false })
       .limit(500);
 
@@ -92,7 +106,7 @@ reputationRouter.get("/reputation/:wallet", async (req: Request, res: Response) 
     const rows = (data ?? []) as ReputationEventRow[];
     res.json({
       wallet,
-      sourceApp: "pay",
+      sourceApp: "all",
       ...summarizeRows(rows),
     });
   } catch (e) {

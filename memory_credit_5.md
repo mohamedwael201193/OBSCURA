@@ -1,0 +1,60 @@
+# Credit Wave 5 - P0 Canonical Asset Migration
+
+## Completed
+
+- Deployed canonical Pay-backed Credit market on Arbitrum Sepolia: `0x1Ec113297c7F9516A6604aa3b18C180559a6f551`.
+- Canonical market uses Pay `ocUSDC_Pay` as both loan asset and collateral asset: `0xEd46020Df8abe7BB1E096f27d089F4326D223a53`.
+- Risk params: `lltvBps=8600`, `liqBonusBps=500`, `liqThresholdBps=9000`.
+- Wired market to Credit Router `0x46275A34e26C9dBb46fB1716852a5D221564a43F`, Auction `0x205FfC0A3b8207B645c1a6B1b4805eb3FfC828F0`, Score V2 `0xe5B0c6c06C0B1fd7d7CD5D2e93997693863d3D4D`.
+- Set oracle public feed for Pay `ocUSDC_Pay` to USDC adapter `0xc65e85926Cb29aaEC74f99cF1591CBa65daa2c4A`.
+- Authorized canonical market in Score V2.
+- Persisted deployment keys in `contracts-hardhat/deployments/arb-sepolia.json`:
+	- `CreditCanonicalPayOcUSDCMarket`
+	- `v5_CanonicalPayOcUSDCMarket`
+	- `wave5CreditCanonicalAsset`
+
+## Frontend
+
+- Added canonical Credit envs:
+	- `VITE_OBSCURA_CREDIT_MARKET_CANONICAL_ADDRESS=0x1Ec113297c7F9516A6604aa3b18C180559a6f551`
+	- `VITE_OBSCURA_CREDIT_CANONICAL_OCUSDC_ADDRESS=0xEd46020Df8abe7BB1E096f27d089F4326D223a53`
+- `src/config/credit.ts` now makes `Private USDC Credit Line` the first/default configured market and marks old faucet markets as legacy/testnet.
+- Credit hooks now resolve `loanAsset` and `collateralAsset` from the selected market instead of using global faucet `ocUSDC`.
+- Removed credit score auto-decrypt on mount; score reveal is now user-triggered.
+- Sealed auction bid flow now waits for transaction receipt before setting READY.
+- Setup UX now points canonical users to Pay shielding instead of faucet-first onboarding.
+- Legacy faucet/hook settings remain available but are demoted and labeled testnet/legacy.
+
+## Worker / API / Supabase
+
+- Reused existing Supabase tables; no duplicate tables or new infrastructure added.
+- Worker indexer now watches Credit market, vault, auction, and score events through the existing `obscura_activity` path.
+- Indexed Credit events are amount-free where contract events are amount-free; vault events with public plaintext amount fields are intentionally not indexed.
+- Worker reputation derivation now inserts `source_app='credit'` signals for Credit supply, borrow, repay, collateral, liquidation, vault, auction, and score events.
+- API reputation summary now aggregates both Pay and Credit reputation events.
+- Worker/API notifications route Credit activity to `/credit`; notification bodies remain generic and amount-free.
+- Keeper USDC pricing recognizes Pay `ocUSDC_Pay` for canonical market health checks.
+
+## Env / Deployment Config
+
+- `backend/obscura-worker/.env`, `.env.example`, and `render.yaml` include canonical market first in `KEEPER_MARKETS`.
+- Added `CREDIT_INDEXER_MARKETS`, `CREDIT_INDEXER_VAULTS`, `CREDIT_INDEXER_AUCTIONS`, and `CREDIT_INDEXER_SCORES` to worker envs/render config.
+- `KEEPER_ENABLED` remains `false`; keeper remains opt-in/dry-run unless intentionally enabled.
+- Vercel production must receive the new frontend `VITE_OBSCURA_CREDIT_*` env values before production deploy if not sourced from the committed env file.
+
+## Verification
+
+- `npm run compile` in `contracts-hardhat`: passed.
+- `npx hardhat run scripts/deployCreditCanonicalPayOcUSDC.ts --network arb-sepolia`: deployed and wired canonical market successfully.
+- `npx hardhat test test/ObscuraCredit.test.ts`: passed, 19 passing.
+- `npm run build` in `frontend/obscura-os-main`: passed.
+- `npm run build` in `backend/obscura-worker`: passed.
+- `npm run build` in `backend/obscura-api`: passed.
+- VS Code diagnostics on edited frontend/worker/API files: no errors.
+
+## Notes / Remaining Manual Checks
+
+- Manual wallet flow still needed on deployed frontend: shield USDC in Pay, approve Credit Router on Pay `ocUSDC_Pay`, supply, add collateral, borrow, repay.
+- Confirm Render worker deploy picks up `render.yaml` env changes and indexes the canonical market.
+- Confirm Vercel has the canonical market/token envs before production frontend deploy.
+- Existing old markets remain available for repay/withdraw/testnet flows; do not remove until legacy close-out is complete.

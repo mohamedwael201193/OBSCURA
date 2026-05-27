@@ -79,12 +79,13 @@ export function useStealthInbox() {
   }, [address]);
 
   // Periodic re-scan. Pauses while the tab is hidden so background tabs
-  // don't burn through the RPC's per-IP rate limit.
+  // don't burn through the RPC's per-IP rate limit. Scanning is gated by an
+  // explicit inbox unlock; polling never opens a wallet signature prompt.
   // Uses scanFnRef so `scan` object is NOT in the dep array — having the
   // unstable scan object in deps caused a tight re-render loop firing
   // hundreds of getLogs/getBlockNumber calls per second (429 wall).
   useEffect(() => {
-    if (!address) return;
+    if (!address || !scan.isUnlocked) return;
     const tick = () => {
       if (typeof document !== "undefined" && document.hidden) return;
       void scanFnRef.current();
@@ -99,7 +100,23 @@ export function useStealthInbox() {
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [address]); // intentionally omits `scan` — use scanFnRef instead
+  }, [address, scan.isUnlocked]); // intentionally omits `scan` — use scanFnRef instead
+
+  const unlockInbox = useCallback(async () => {
+    setBulkError(null);
+    try {
+      return await scan.unlock();
+    } catch (e) {
+      setBulkError((e as Error).message || "Inbox unlock failed");
+      throw e;
+    }
+  }, [scan]);
+
+  const lockInbox = useCallback(() => {
+    scan.lock();
+    setIgnoredMap({});
+    setBulkError(null);
+  }, [scan]);
 
   // Refresh ignore-filter state when the scan list changes.
   useEffect(() => {
@@ -303,8 +320,12 @@ export function useStealthInbox() {
     unreadCount,
     unclaimedCount,
     isScanning: scan.isScanning,
+    isUnlocked: scan.isUnlocked,
+    scanSummary: scan.summary,
     scanError: scan.error,
     refresh: scan.scan,
+    unlockInbox,
+    lockInbox,
     markAsSeen,
     markAllAsSeen,
     ignoreSender,

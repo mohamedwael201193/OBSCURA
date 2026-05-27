@@ -20,6 +20,75 @@ export const KEYSTORE_UNLOCK_MESSAGE = "Obscura stealth keystore unlock v1";
 
 /** In-memory cache so we don't re-prompt for every read in the same tab. */
 const unlockedKeyCache = new Map<string, CryptoKey>();
+const SESSION_UNLOCK_KEY = "obscura.stealth.unlock.session.v1";
+const SESSION_UNLOCK_TTL_MS = 8 * 60 * 60 * 1000;
+
+interface StoredUnlockSession {
+  v: 1;
+  digestHex: `0x${string}`;
+  expiresAt: number;
+}
+
+function sessionKeyFor(account: string): string {
+  return `${SESSION_UNLOCK_KEY}:${account.toLowerCase()}`;
+}
+
+function readSessionDigest(account: string): `0x${string}` | null {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(sessionKeyFor(account));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredUnlockSession;
+    if (parsed.v !== 1 || !parsed.digestHex || Date.now() > parsed.expiresAt) {
+      sessionStorage.removeItem(sessionKeyFor(account));
+      return null;
+    }
+    return parsed.digestHex;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionDigest(account: string, digestHex: `0x${string}`): void {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    const payload: StoredUnlockSession = {
+      v: 1,
+      digestHex,
+      expiresAt: Date.now() + SESSION_UNLOCK_TTL_MS,
+    };
+    sessionStorage.setItem(sessionKeyFor(account), JSON.stringify(payload));
+  } catch {
+    // Private browsing / storage-disabled browsers still work with memory cache.
+  }
+}
+
+function clearSessionDigest(account?: string): void {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    if (account) {
+      sessionStorage.removeItem(sessionKeyFor(account));
+      return;
+    }
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const key = sessionStorage.key(i);
+      if (key?.startsWith(`${SESSION_UNLOCK_KEY}:`)) sessionStorage.removeItem(key);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+async function importAesKey(digestHex: `0x${string}`): Promise<CryptoKey> {
+  const keyBytes = hexToBytes(digestHex);
+  return crypto.subtle.importKey(
+    "raw",
+    keyBytes as BufferSource,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
 
 function bytesToBase64(bytes: Uint8Array): string {
   let s = "";
@@ -45,6 +114,13 @@ export async function getUnlockKey(
   const cached = unlockedKeyCache.get(cacheKey);
   if (cached) return cached;
 
+  const sessionDigest = readSessionDigest(cacheKey);
+  if (sessionDigest) {
+    const sessionKey = await importAesKey(sessionDigest);
+    unlockedKeyCache.set(cacheKey, sessionKey);
+    return sessionKey;
+  }
+
   const signature = await walletClient.signMessage({
     account,
     message: KEYSTORE_UNLOCK_MESSAGE,
@@ -52,24 +128,31 @@ export async function getUnlockKey(
   // keccak256(signature) → 32 raw bytes for AES-256.
   const sigBytes = hexToBytes(signature);
   const digestHex = keccak256(sigBytes);
-  const keyBytes = hexToBytes(digestHex);
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyBytes as BufferSource,
-    { name: "AES-GCM" },
-    false,
-    ["encrypt", "decrypt"]
-  );
+  const cryptoKey = await importAesKey(digestHex);
   unlockedKeyCache.set(cacheKey, cryptoKey);
+  writeSessionDigest(cacheKey, digestHex);
   return cryptoKey;
+}
+
+export function isKeystoreUnlocked(account: `0x${string}` | string | undefined): boolean {
+  if (!account) return false;
+  const cacheKey = account.toLowerCase();
+  return unlockedKeyCache.has(cacheKey) || !!readSessionDigest(cacheKey);
+}
+
+export function hasKeystoreUnlockSession(account: `0x${string}` | string | undefined): boolean {
+  return isKeystoreUnlocked(account);
 }
 
 /** Clear the in-memory unlock key (e.g. on logout / account switch). */
 export function lockKeystore(account?: `0x${string}` | string) {
   if (account) {
-    unlockedKeyCache.delete(account.toLowerCase());
+    const cacheKey = account.toLowerCase();
+    unlockedKeyCache.delete(cacheKey);
+    clearSessionDigest(cacheKey);
   } else {
     unlockedKeyCache.clear();
+    clearSessionDigest();
   }
 }
 

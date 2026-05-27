@@ -435,7 +435,7 @@ const SettingsDataCard = () => {
 };
 
 const SettingsNotificationsCard = () => {
-  const { prefs, isLoading, pushSupported, enable, repair, disable, testPush, savePrefs } = useNotificationPrefs();
+  const { prefs, isLoading, pushSupported, permission, serviceWorkerReady, enable, repair, disable, testPush, savePrefs } = useNotificationPrefs();
   const [email, setEmail] = useState(prefs?.email ?? "");
   const [saving, setSaving] = useState(false);
   const [pushSaving, setPushSaving] = useState(false);
@@ -483,7 +483,11 @@ const SettingsNotificationsCard = () => {
     setPushResult(null);
     try {
       const result = await testPush();
-      setPushResult(result.sent > 0 ? "Test notification sent." : `Test attempted ${result.attempted}, sent ${result.sent}.`);
+      setPushResult(
+        result.displayed
+          ? `Browser notification displayed. Server push sent ${result.sent}/${result.attempted}.`
+          : `Test attempted ${result.attempted}, sent ${result.sent}.`
+      );
     } catch (err) {
       setPushError((err as Error).message || "Push notification test failed");
     } finally {
@@ -514,6 +518,14 @@ const SettingsNotificationsCard = () => {
                   {prefs?.push_enabled ? "Enabled" : "Enable"}
                 </button>
               )}
+            </div>
+          )}
+          {pushSupported && (
+            <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-[11px] text-muted-foreground/55">
+              <span>Browser permission</span>
+              <span className="font-mono text-foreground/65">{permission}</span>
+              <span>Service worker</span>
+              <span className="font-mono text-foreground/65">{serviceWorkerReady ? "ready" : "starting"}</span>
             </div>
           )}
           {prefs?.push_enabled && (

@@ -57,12 +57,13 @@ test.describe("Pay final smoke", () => {
     expect(errors, errors.join("\n")).toEqual([]);
   });
 
-  test("service worker is served with P1.2 update handling", async ({ request }) => {
+  test("service worker is served with P1.3 notification handling", async ({ request }) => {
     const response = await request.get(`${BASE}/sw.js`);
     expect(response.ok()).toBeTruthy();
     const body = await response.text();
-    expect(body).toContain("pay-final-p1-2");
+    expect(body).toContain("pay-final-p1-3");
     expect(body).toContain("SKIP_WAITING");
     expect(body).toContain("nestedData.url");
+    expect(body).toContain("OBSCURA_SHOW_NOTIFICATION");
   });
 });

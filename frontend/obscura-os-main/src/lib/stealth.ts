@@ -25,6 +25,8 @@ import {
   encryptJSON,
   decryptJSON,
   getUnlockKey,
+  isKeystoreUnlocked,
+  lockKeystore,
   type EncryptedBlob,
 } from "./keystore";
 
@@ -138,6 +140,7 @@ function bytesToBigInt(b: Uint8Array): bigint {
 }
 
 const STORAGE_KEY = "obscura.stealth.keys.v1";
+const unlockedStealthKeysCache = new Map<string, MetaAddressKeys>();
 
 /** v2 stored shape: meta is plaintext (already published on-chain),
  *  privkeys live encrypted in `enc`. The wave-2 plaintext shape is
@@ -202,6 +205,31 @@ export function hasStoredKeys(account: string | undefined): boolean {
   return loadStoredMetaPublic(account) !== null;
 }
 
+export function getCachedUnlockedKeys(account: string | undefined): MetaAddressKeys | null {
+  if (!account) return null;
+  return unlockedStealthKeysCache.get(account.toLowerCase()) ?? null;
+}
+
+export function isStealthKeystoreUnlocked(account: string | undefined): boolean {
+  if (!account) return false;
+  return unlockedStealthKeysCache.has(account.toLowerCase()) || isKeystoreUnlocked(account);
+}
+
+export function lockStealthKeystore(account?: `0x${string}` | string): void {
+  if (account) {
+    unlockedStealthKeysCache.delete(account.toLowerCase());
+    lockKeystore(account);
+  } else {
+    unlockedStealthKeysCache.clear();
+    lockKeystore();
+  }
+}
+
+function rememberUnlockedKeys(account: string, keys: MetaAddressKeys): MetaAddressKeys {
+  unlockedStealthKeysCache.set(account.toLowerCase(), keys);
+  return keys;
+}
+
 /** SYNCHRONOUS — deprecated wrapper kept ONLY for legacy callers that already
  *  hold plaintext keys from Wave 2. Returns null in the encrypted-at-rest case;
  *  callers must prefer `unlockStoredKeys` which prompts the wallet for the
@@ -218,6 +246,9 @@ export async function unlockStoredKeys(
   account: `0x${string}`,
   walletClient: WalletClient
 ): Promise<MetaAddressKeys | null> {
+  const cached = getCachedUnlockedKeys(account);
+  if (cached) return cached;
+
   const stored = readRawStored(account);
   if (!stored) return null;
 
@@ -238,7 +269,7 @@ export async function unlockStoredKeys(
     });
     const v2: StoredKeystoreV2 = { v: 2, meta: legacy.meta, enc };
     localStorage.setItem(storageKeyFor(account), JSON.stringify(v2));
-    return legacy;
+    return rememberUnlockedKeys(account, legacy);
   }
 
   // v2 encrypted-at-rest path.
@@ -247,11 +278,11 @@ export async function unlockStoredKeys(
     spendingPrivateKey: `0x${string}`;
     viewingPrivateKey: `0x${string}`;
   }>(aesKey, stored.enc);
-  return {
+  return rememberUnlockedKeys(account, {
     spendingPrivateKey: decrypted.spendingPrivateKey,
     viewingPrivateKey: decrypted.viewingPrivateKey,
     meta: stored.meta,
-  };
+  });
 }
 
 /** Async — persist freshly-generated meta keys in encrypted form.
@@ -268,6 +299,7 @@ export async function persistKeysEncrypted(
   });
   const v2: StoredKeystoreV2 = { v: 2, meta: keys.meta, enc };
   localStorage.setItem(storageKeyFor(account), JSON.stringify(v2));
+  rememberUnlockedKeys(account, keys);
 }
 
 /** Sync — LEGACY plaintext writer. Kept only so old call-sites compile until

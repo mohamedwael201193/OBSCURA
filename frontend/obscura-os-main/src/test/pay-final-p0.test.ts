@@ -216,10 +216,43 @@ describe("Pay P0.5/P1.1/P1.2 stabilization gates", () => {
 
     expect(mainSource).toContain("registration.update()");
     expect(mainSource).toContain("SKIP_WAITING");
+    expect(mainSource).toContain("OBSCURA_PUSH_RECEIVED");
     expect(workerSource).toContain("nestedData.url");
     expect(workerSource).toContain("data.clickUrl");
-    expect(workerSource).toContain("SW_VERSION");
+    expect(workerSource).toContain("pay-final-p1-3");
+    expect(workerSource).toContain("requireInteraction");
+    expect(workerSource).toContain("OBSCURA_SHOW_NOTIFICATION");
+    expect(workerSource).toContain("sameOriginClient.navigate");
     expect(workerSource).toContain("clients.claim()");
+  });
+
+  it("keeps notification setup permission-aware and uses real browser display checks", () => {
+    const hookSource = readSource("hooks/useNotificationPrefs.ts");
+    const paySource = readSource("pages/PayPage.tsx");
+
+    expect(hookSource).toContain("Notification.requestPermission()");
+    expect(hookSource).toContain("registration.showNotification");
+    expect(hookSource).toContain("serviceWorkerReady");
+    expect(paySource).toContain("Browser notification displayed");
+    expect(paySource).toContain("Browser permission");
+  });
+
+  it("keeps stealth inbox scans behind explicit session unlock", () => {
+    const scanSource = readSource("hooks/useStealthScan.ts");
+    const inboxSource = readSource("hooks/useStealthInbox.ts");
+    const inboxUiSource = readSource("components/pay-v4/StealthInboxV2.tsx");
+    const keystoreSource = readSource("lib/keystore.ts");
+
+    expect(scanSource).toContain("Unlock inbox to scan private announcements");
+    expect(scanSource).toContain("obscura_activity");
+    expect(scanSource).toContain("ObscuraStealthRegistry.Announcement");
+    expect(scanSource).toContain("RPC_CHUNK_BLOCKS");
+    expect(inboxSource).toContain("if (!address || !scan.isUnlocked) return");
+    expect(inboxSource).toContain("unlockInbox");
+    expect(inboxSource).toContain("lockInbox");
+    expect(inboxUiSource).toContain("Unlock inbox");
+    expect(inboxUiSource).toContain("Lock");
+    expect(keystoreSource).toContain("sessionStorage");
   });
 
   it("extends production smoke checks to reputation deployment health", () => {
@@ -227,6 +260,6 @@ describe("Pay P0.5/P1.1/P1.2 stabilization gates", () => {
 
     expect(smokeScript).toContain("obscura_reputation_events");
     expect(smokeScript).toContain("/reputation/0x0000000000000000000000000000000000000001");
-    expect(smokeScript).toContain("pay-final-p1-2");
+    expect(smokeScript).toContain("pay-final-p1-3");
   });
 });

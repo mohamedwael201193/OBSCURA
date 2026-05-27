@@ -2198,3 +2198,64 @@ If API/worker logs show `notification sent` but no desktop notification appears,
 - Reputation signals are derived from indexed chain metadata only and exclude raw amounts, notes, labels, decrypted balances, and private counterpart metadata.
 - Existing private send, stealth receive, streams, escrow, payroll, subscriptions, request links, smart accounts, notifications, and activity feed paths were preserved.
 
+## P1.3 Push Visibility + Stealth Inbox Unlock Hotfix — 2026-05-27
+
+### User-reported production issues
+
+- Notifications Test reached the service worker (`[SW] push received`) but did not show a visible browser notification.
+- Private inbox showed a MetaMask signature prompt for `Obscura stealth keystore unlock v1`, then stayed empty.
+- User had already deployed the P0.5/P1.1/P1.2 stack and applied `002_create_reputation_events.sql` in Supabase.
+
+### Notification fixes
+
+- `frontend/obscura-os-main/public/sw.js` bumped to `pay-final-p1-3`.
+- Service worker now normalizes `url`, `clickUrl`, nested `data`, text payloads, debug payloads, timestamps, and notification options before display.
+- Service worker always calls real `self.registration.showNotification()` for push events with `requireInteraction`, `renotify`, `silent: false`, icon, badge, timestamp, actions, and robust error logging.
+- Service worker broadcasts `OBSCURA_PUSH_RECEIVED` to foreground clients so the app can show an in-page Sonner toast while the browser notification is still displayed by the SW.
+- Service worker accepts `OBSCURA_SHOW_NOTIFICATION` client messages for explicit local display checks.
+- Notification click handling now focuses exact tabs, navigates same-origin Obscura tabs to the target URL, or opens a new window.
+- `src/main.tsx` listens for `OBSCURA_PUSH_RECEIVED` and shows foreground toasts with Open action.
+- `src/hooks/useNotificationPrefs.ts` now tracks notification permission and service-worker readiness, ensures SW registration/readiness, requests permission only from explicit Settings actions, and makes Test call `ServiceWorkerRegistration.showNotification()` as a real browser display probe after the server debug push.
+- `PayPage` Settings > Notifications now displays browser permission and service-worker readiness, and Test reports `Browser notification displayed` with server push sent/attempted counts.
+- API debug push payloads now use unique tags, `requireInteraction`, `renotify`, `silent: false`, and `sentAt` so repeated tests are not silently collapsed under an old tag.
+- Worker/API activity pushes now include consistent `renotify`, `silent: false`, and `sentAt` fields.
+- `NewPaymentBanner` no longer auto-prompts for Notification permission; it only shows hidden-tab notifications if permission was already granted from Settings, using the SW registration API.
+
+### Stealth inbox fixes
+
+- `src/lib/keystore.ts` now supports an 8-hour session unlock cache in `sessionStorage` plus memory cache, with `lockKeystore()` clearing both. This avoids repeated MetaMask signature spam after a user explicitly unlocks.
+- `src/lib/stealth.ts` now caches decrypted stealth keys in memory, exposes cached/unlocked/lock helpers, and clears both decrypted keys and keystore unlock state on lock.
+- `src/hooks/useStealthScan.ts` was refactored so scans never call `personal_sign` from mount/polling. If no explicit unlock/session exists, scan returns `Unlock inbox to scan private announcements`.
+- `useStealthScan` now queries indexed `obscura_activity` rows for `ObscuraStealthRegistry.Announcement` via Supabase (limit 2000), scans them locally with the viewing key, and also checks a small chunked recent RPC fallback window. This fixes the old fragile 50k-block raw RPC lookback, which could miss older payments and fail on provider range limits.
+- Scan results are cached/published across hook instances so the inbox component and Pay shell badge can share matches after an explicit scan.
+- `src/hooks/useStealthInbox.ts` now polls only while `scan.isUnlocked` is true; no wallet prompt can happen from background timers or hidden components.
+- `StealthInboxV2` now has explicit `Unlock inbox` and `Lock` controls. Refresh, mark read, and claim-all are disabled while locked. Setup unlocks/scans as part of the user's setup action using the already-cached key.
+- Empty state now distinguishes locked inbox from scanned-empty inbox and shows indexed/RPC scan counts after scans.
+- Private inbox continues to use the connected wagmi EOA address for local keys and registry scanning; Public Mode smart-account addresses are not used for private ocUSDC/stealth ownership.
+
+### Validation run
+
+- Editor diagnostics on touched frontend/API/worker files: clean.
+- Frontend tests: `npm run test` in `frontend/obscura-os-main` passed (`2 test files`, `19 tests`).
+- Frontend build: `npm run build` in `frontend/obscura-os-main` passed (expected Rollup/chunk-size warnings only).
+- API build: `npm run build` in `backend/obscura-api` passed.
+- Worker build: `npm run build` in `backend/obscura-worker` passed.
+- Playwright local smoke: `npx playwright test tests/wave3-pay-smoke.spec.ts` passed (`6 passed`) against local preview on `127.0.0.1:8080`.
+- Browser notification probe: headed Chromium with notification permission granted successfully created a `ServiceWorkerRegistration.showNotification()` notification (`permission=granted`, `count=1`, title `Obscura Push Visual Check`). Headless Chromium denies notifications, so headed probe was required.
+- Production smoke: `scripts/test-e2e.ps1` passed API health, worker health, VAPID public key, all Supabase tables including `obscura_reputation_events`, recent activity/indexer rows, prefs, reputation API, frontend HTTP. It warned only that production `/sw.js` is not redeployed to `pay-final-p1-3` yet.
+- `git diff --check` passed with the existing Windows LF/CRLF warning for `src/main.tsx` only.
+
+### Deployment note
+
+- Production currently serves the old `/sw.js` until Vercel redeploys the frontend; redeploy frontend for `pay-final-p1-3` notification behavior.
+- Redeploy API and worker for the payload-option updates. Supabase migration `002_create_reputation_events.sql` is already applied per user and verified by smoke script.
+
+### Privacy/FHE safety
+
+- No Solidity contracts changed.
+- No FHE write path changed.
+- No auto-decrypt or wallet-triggered stealth unlock on mount/polling added.
+- `decryptForView` and `getOrCreateSelfPermit` were not added.
+- Private ocUSDC remains wallet/EOA execution only.
+- Stealth scanning uses public announcements plus local viewing keys; no private keys, decrypted values, or plaintext amounts are sent to Supabase/API.
+

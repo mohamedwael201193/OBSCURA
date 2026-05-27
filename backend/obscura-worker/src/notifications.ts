@@ -75,18 +75,23 @@ function candidateWallets(activity: StoredActivityRecord): string[] {
 function buildPayload(activity: StoredActivityRecord, wallet: string): string {
   const eventLabel = activity.event_name.split(".").pop() ?? "Activity";
   const url = `${FRONTEND_URL}/pay?tab=activity`;
+  const sentAt = new Date().toISOString();
 
   return JSON.stringify({
     title: `Obscura - ${eventLabel}`,
     body: `Activity detected for ${shortWallet(wallet)}.`,
     tag: `obscura-${activity.tx_hash.slice(2, 14)}-${activity.log_index}`,
     url,
+    renotify: true,
+    silent: false,
+    sentAt,
     data: {
       url,
       eventName: activity.event_name,
       txHash: activity.tx_hash,
       activityId: activity.id,
       wallet,
+      sentAt,
     },
   });
 }

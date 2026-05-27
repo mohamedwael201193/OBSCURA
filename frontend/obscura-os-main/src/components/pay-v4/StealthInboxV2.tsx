@@ -7,7 +7,7 @@
  *   • Adds a Claim-All button that runs sweeps sequentially.
  *   • Adds an Ignore button per row that writes to ObscuraInboxIndex.
  */
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/elite/Layout";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   ArrowDownToLine,
   KeyRound,
+  Lock,
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -33,28 +34,39 @@ export default function StealthInboxV2() {
   const meta = useStealthMetaAddress();
 
   const [isSettingUp, setIsSettingUp] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
-  const prevKeysMeta = useRef(meta.keysMeta);
-
-  // Auto-scan as soon as keys are first created in this session
-  useEffect(() => {
-    if (!prevKeysMeta.current && meta.keysMeta) {
-      void inbox.refresh();
-    }
-    prevKeysMeta.current = meta.keysMeta;
-  }, [meta.keysMeta, inbox]);
 
   const handleSetup = async () => {
     setIsSettingUp(true);
     setSetupError(null);
     try {
       await meta.generateAndPublish();
-      toast.success("Private receiving enabled! Scanning for incoming payments…");
+      await inbox.unlockInbox();
+      toast.success("Private receiving enabled. Inbox unlocked for this session.");
     } catch (e) {
       setSetupError((e as Error).message);
     } finally {
       setIsSettingUp(false);
     }
+  };
+
+  const handleUnlock = async () => {
+    setIsUnlocking(true);
+    setSetupError(null);
+    try {
+      await inbox.unlockInbox();
+      toast.success("Inbox unlocked for this session.");
+    } catch (e) {
+      setSetupError((e as Error).message);
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
+  const handleLock = () => {
+    inbox.lockInbox();
+    toast.success("Inbox locked.");
   };
 
   if (!meta.keysMeta) {
@@ -136,7 +148,7 @@ export default function StealthInboxV2() {
             Private inbox
           </div>
           <div className="text-[13px] text-foreground/90 flex items-center gap-2">
-            {inbox.items.length} payment{inbox.items.length === 1 ? "" : "s"}
+            {inbox.isUnlocked ? `${inbox.items.length} payment${inbox.items.length === 1 ? "" : "s"}` : "Locked"}
             {inbox.unreadCount > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-red-500/20 border border-red-500/40 text-red-300 text-[10px]">
                 {inbox.unreadCount} unread
@@ -145,11 +157,25 @@ export default function StealthInboxV2() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {!inbox.isUnlocked ? (
+            <Button
+              size="sm"
+              onClick={() => void handleUnlock()}
+              disabled={isUnlocking || inbox.isScanning}
+            >
+              {isUnlocking ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <KeyRound className="w-3.5 h-3.5 mr-1" />}
+              Unlock inbox
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={handleLock} disabled={inbox.isScanning}>
+              <Lock className="w-3.5 h-3.5 mr-1" /> Lock
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
             onClick={() => void inbox.refresh()}
-            disabled={inbox.isScanning}
+            disabled={!inbox.isUnlocked || inbox.isScanning}
           >
             {inbox.isScanning ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -161,14 +187,14 @@ export default function StealthInboxV2() {
             variant="outline"
             size="sm"
             onClick={inbox.markAllAsSeen}
-            disabled={inbox.unreadCount === 0}
+            disabled={!inbox.isUnlocked || inbox.unreadCount === 0}
           >
             <CheckCheck className="w-3.5 h-3.5 mr-1" /> Mark all read
           </Button>
           <Button
             size="sm"
             onClick={() => void inbox.claimAll()}
-            disabled={inbox.isClaimingAll || inbox.unclaimedCount === 0}
+            disabled={!inbox.isUnlocked || inbox.isClaimingAll || inbox.unclaimedCount === 0}
           >
             {inbox.isClaimingAll ? (
               <>
@@ -187,13 +213,33 @@ export default function StealthInboxV2() {
       {inbox.bulkError && (
         <div className="text-[12px] text-red-300 mb-3">{inbox.bulkError}</div>
       )}
+      {setupError && (
+        <div className="text-[12px] text-red-300 mb-3">{setupError}</div>
+      )}
+      {inbox.isUnlocked && inbox.scanSummary.scannedAt && (
+        <div className="text-[11px] text-muted-foreground/55 mb-3">
+          Scanned {inbox.scanSummary.indexedAnnouncements} indexed and {inbox.scanSummary.rpcAnnouncements} recent on-chain announcements.
+        </div>
+      )}
 
-      {inbox.items.length === 0 ? (
+      {!inbox.isUnlocked ? (
+        <div className="text-center py-8">
+          <Lock className="w-6 h-6 mx-auto mb-2 text-foreground/60" />
+          <div className="text-[13px] text-foreground/80 mb-1">Inbox locked</div>
+          <p className="text-[12px] text-muted-foreground/60 max-w-xs mx-auto mb-4">
+            Unlock once to scan indexed stealth announcements with your local viewing key. No scan runs until you unlock.
+          </p>
+          <Button size="sm" onClick={() => void handleUnlock()} disabled={isUnlocking}>
+            {isUnlocking ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <KeyRound className="w-3.5 h-3.5 mr-1" />}
+            Unlock inbox
+          </Button>
+        </div>
+      ) : inbox.items.length === 0 ? (
         <div className="text-center py-8">
           <Inbox className="w-6 h-6 mx-auto mb-2 text-foreground/60" />
           <div className="text-[13px] text-foreground/80 mb-1">Inbox empty</div>
           <p className="text-[12px] text-muted-foreground/60 max-w-xs mx-auto">
-            No incoming stealth payments scanned yet. Share your stealth meta-address from the Receive tab to start receiving private ocUSDC.
+            No matching private payments found in indexed or recent on-chain announcements.
           </p>
         </div>
       ) : (

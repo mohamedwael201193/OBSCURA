@@ -7,6 +7,23 @@ logEnvHealthOnce();
 
 // Register service worker for Web Push notifications
 if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data?.type !== "OBSCURA_PUSH_RECEIVED") return;
+    window.dispatchEvent(new CustomEvent("obscura:push-received", { detail: event.data }));
+    const payload = event.data.payload ?? {};
+    import("sonner")
+      .then(({ toast }) => {
+        toast(payload.title ?? "Obscura Pay", {
+          description: payload.body ?? "You have new activity on Obscura Pay.",
+          action: payload.url ? {
+            label: "Open",
+            onClick: () => { window.location.href = payload.url; },
+          } : undefined,
+        });
+      })
+      .catch(() => undefined);
+  });
+
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/sw.js")

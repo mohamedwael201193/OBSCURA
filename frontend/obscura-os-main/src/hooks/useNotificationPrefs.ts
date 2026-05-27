@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 
 const NOTIFICATIONS_URL =
-  import.meta.env.VITE_NOTIFICATIONS_URL as string ?? "http://localhost:3000";
+  (import.meta.env.VITE_NOTIFICATIONS_URL as string | undefined) ?? "http://localhost:3000";
 
 export interface NotificationPrefs {
   wallet:       string;
@@ -29,10 +29,12 @@ interface UseNotificationPrefsResult {
   prefs:        NotificationPrefs | null;
   isLoading:    boolean;
   pushSupported: boolean;
+  permission:   NotificationPermission | "unsupported";
+  serviceWorkerReady: boolean;
   enable:       () => Promise<void>;
   repair:       () => Promise<void>;
   disable:      () => Promise<void>;
-  testPush:     () => Promise<{ sent: number; failed: number; attempted: number }>;
+  testPush:     () => Promise<{ sent: number; failed: number; attempted: number; displayed: boolean }>;
   savePrefs:    (updates: Partial<NotificationPrefs>) => Promise<void>;
 }
 
@@ -43,13 +45,87 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
   const [prefs,         setPrefs]         = useState<NotificationPrefs | null>(null);
   const [isLoading,     setIsLoading]     = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
+  const [permission,    setPermission]    = useState<NotificationPermission | "unsupported">("unsupported");
+  const [serviceWorkerReady, setServiceWorkerReady] = useState(false);
 
   // ── Check push support ────────────────────────────────────────────────────
   useEffect(() => {
-    setPushSupported(
-      "serviceWorker" in navigator && "PushManager" in window && "Notification" in window
-    );
+    const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+    setPushSupported(supported);
+    setPermission(supported ? Notification.permission : "unsupported");
+    if (!supported) return;
+
+    let mounted = true;
+    navigator.serviceWorker.ready
+      .then(() => { if (mounted) setServiceWorkerReady(true); })
+      .catch(() => { if (mounted) setServiceWorkerReady(false); });
+
+    let permissionStatus: PermissionStatus | null = null;
+    if (navigator.permissions?.query) {
+      void navigator.permissions
+        .query({ name: "notifications" as PermissionName })
+        .then((status) => {
+          permissionStatus = status;
+          if (mounted) setPermission(Notification.permission);
+          status.onchange = () => {
+            if (mounted) setPermission(Notification.permission);
+          };
+        })
+        .catch(() => undefined);
+    }
+
+    return () => {
+      mounted = false;
+      if (permissionStatus) permissionStatus.onchange = null;
+    };
   }, []);
+
+  const ensurePermission = async () => {
+    if (!pushSupported) throw new Error("This browser cannot receive push alerts.");
+    if (Notification.permission === "denied") {
+      setPermission("denied");
+      throw new Error("Browser notifications are blocked for this site. Enable them in browser site settings, then use Repair browser.");
+    }
+    if (Notification.permission !== "granted") {
+      const nextPermission = await Notification.requestPermission();
+      setPermission(nextPermission);
+      if (nextPermission !== "granted") {
+        throw new Error("Notification permission was not granted.");
+      }
+    }
+    setPermission("granted");
+  };
+
+  const getReadyRegistration = async (): Promise<ServiceWorkerRegistration> => {
+    if (!pushSupported) throw new Error("This browser cannot receive push alerts.");
+    let registration = await navigator.serviceWorker.getRegistration("/");
+    if (!registration) {
+      registration = await navigator.serviceWorker.register("/sw.js");
+    }
+    await registration.update().catch(() => undefined);
+    const ready = await navigator.serviceWorker.ready;
+    setServiceWorkerReady(true);
+    return ready;
+  };
+
+  const showLocalTestNotification = async (registration: ServiceWorkerRegistration, wallet: string): Promise<boolean> => {
+    try {
+      await registration.showNotification("Obscura Push Test", {
+        body: `Browser display check for ${wallet.slice(0, 6)}...${wallet.slice(-4)}.`,
+        icon: "/favicon.ico",
+        badge: "/favicon.ico",
+        tag: `obscura-debug-local-${Date.now()}`,
+        renotify: true,
+        requireInteraction: true,
+        silent: false,
+        timestamp: Date.now(),
+        data: { url: `${window.location.origin}/pay?tab=settings&sub=notifications`, eventName: "debug.local-display", debug: true },
+      });
+      return true;
+    } catch (e) {
+      throw new Error(`Browser notification display failed: ${(e as Error).message}`);
+    }
+  };
 
   // ── Load prefs on connect ─────────────────────────────────────────────────
   useEffect(() => {
@@ -65,17 +141,7 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
   // ── Subscribe to Web Push ─────────────────────────────────────────────────
   const registerBrowserSubscription = async (forceNew: boolean) => {
     if (!wallet || !pushSupported) return;
-
-    if (Notification.permission === "denied") {
-      throw new Error("Browser notifications are blocked for this site.");
-    }
-
-    if (Notification.permission !== "granted") {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        throw new Error("Notification permission was not granted.");
-      }
-    }
+    await ensurePermission();
 
     // Get VAPID public key from service
     const keyResponse = await fetch(`${NOTIFICATIONS_URL}/vapid-public-key`);
@@ -83,7 +149,7 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
     const { publicKey } = await keyResponse.json() as { publicKey?: string };
     if (!publicKey) throw new Error("VAPID public key is missing.");
 
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await getReadyRegistration();
     const existing = await reg.pushManager.getSubscription();
     if (existing && forceNew) await existing.unsubscribe();
 
@@ -117,7 +183,7 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
   const disable = useCallback(async () => {
     if (!wallet) return;
 
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await getReadyRegistration();
     const sub = await reg.pushManager.getSubscription();
     if (sub) await sub.unsubscribe();
 
@@ -149,6 +215,8 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
 
   const testPush = useCallback(async () => {
     if (!wallet) throw new Error("Connect a wallet before testing push notifications.");
+    await ensurePermission();
+    const registration = await getReadyRegistration();
     const response = await fetch(`${NOTIFICATIONS_URL}/debug/push-test`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -158,14 +226,16 @@ export function useNotificationPrefs(): UseNotificationPrefsResult {
     if (!response.ok && response.status !== 207) {
       throw new Error(result?.error || `Push test failed (${response.status})`);
     }
+    const displayed = await showLocalTestNotification(registration, wallet);
     return {
       sent: result?.sent ?? 0,
       failed: result?.failed ?? 0,
       attempted: result?.attempted ?? 0,
+      displayed,
     };
-  }, [wallet]);
+  }, [wallet, pushSupported]);
 
-  return { prefs, isLoading, pushSupported, enable, repair, disable, testPush, savePrefs };
+  return { prefs, isLoading, pushSupported, permission, serviceWorkerReady, enable, repair, disable, testPush, savePrefs };
 }
 
 // ── Utility: base64url → Uint8Array for applicationServerKey ─────────────────

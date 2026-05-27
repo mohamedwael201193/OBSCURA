@@ -115,35 +115,45 @@ function buildActivityPayload(activity: Record<string, unknown>, wallet: string)
   const eventLabel = eventName.split(".").pop() ?? "Activity";
   const txHash = typeof activity.tx_hash === "string" ? activity.tx_hash : undefined;
   const url = `${FRONTEND_URL}/pay?tab=activity`;
+  const sentAt = new Date().toISOString();
 
   return JSON.stringify({
     title: `Obscura - ${eventLabel}`,
     body: `Activity detected for ${shortWallet(wallet)}.`,
     tag: txHash ? `obscura-${txHash.slice(2, 14)}-${activity.log_index ?? 0}` : `obscura-${Date.now()}`,
     url,
+    renotify: true,
+    silent: false,
+    sentAt,
     data: {
       url,
       eventName,
       txHash,
       activityId: activity.id,
       wallet,
+      sentAt,
     },
   });
 }
 
 function buildDebugPayload(wallet: string): string {
   const url = `${FRONTEND_URL}/pay?tab=settings&sub=notifications`;
+  const sentAt = new Date().toISOString();
   return JSON.stringify({
     title: "Obscura Push Test",
     body: `Test notification for ${shortWallet(wallet)}.`,
-    tag: `obscura-debug-${wallet}`,
+    tag: `obscura-debug-${wallet.slice(2, 10)}-${Date.now()}`,
     url,
+    requireInteraction: true,
+    renotify: true,
+    silent: false,
+    sentAt,
     data: {
       url,
       eventName: "debug.push-test",
       wallet,
       debug: true,
-      sentAt: new Date().toISOString(),
+      sentAt,
     },
   });
 }

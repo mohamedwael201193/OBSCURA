@@ -58,30 +58,26 @@ export default function NewPaymentBanner({ onOpenInbox }: { onOpenInbox: () => v
   );
   const count = visibleItems.length;
 
-  // Browser push: when the page is hidden and a brand-new payment appears,
-  // post a system notification once per item id.
+  // Browser notification: when the page is hidden and a brand-new payment
+  // appears, show a system notification once per item id if permission was
+  // already granted from Settings. This never prompts automatically.
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) return;
     if (count === 0) return;
-    if (Notification.permission === "default") {
-      // Request once; if user denies we silently fall back to in-page banner.
-      void Notification.requestPermission();
-      return;
-    }
     if (Notification.permission !== "granted") return;
     if (typeof document !== "undefined" && !document.hidden) return; // only when tab hidden
     for (const item of visibleItems) {
       if (notifiedRef.current.has(item.id)) continue;
       notifiedRef.current.add(item.id);
-      try {
-        new Notification("Obscura — new private payment", {
+      void navigator.serviceWorker.ready.then((registration) => {
+        void registration.showNotification("Obscura - new private payment", {
           body: "You have a new encrypted payment waiting in your stealth inbox.",
           tag: item.id,
           icon: "/favicon.ico",
+          badge: "/favicon.ico",
+          data: { url: `${window.location.origin}/pay?tab=getpaid&sub=inbox` },
         });
-      } catch {
-        /* silent */
-      }
+      }).catch(() => undefined);
     }
   }, [count, visibleItems]);
 

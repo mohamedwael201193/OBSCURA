@@ -1,7 +1,7 @@
 /**
  * Wave 4 v2 — ObscuraCredit dashboard.
  *
- * 4-tab IA: Markets | Position | Vaults | Liquidations.
+ * Primary IA: Overview | Borrow | Position | Earn | Liquidations | Risk.
  * Settings lives in a gear-icon slide-over (not a tab).
  * Header setup CTA opens SetupSheet.
  *
@@ -25,6 +25,10 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   ShieldCheck,
+  Coins,
+  Gauge,
+  Landmark,
+  WalletCards,
   Bell,
   X,
   Loader2,
@@ -48,7 +52,6 @@ import {
   useCreditAuctions,
   useCreditVault,
   useApprovedSets,
-  useUtilizationApr,
   useVaultPosition,
   useMarketPosition,
 } from "@/hooks/useCredit";
@@ -68,11 +71,11 @@ import SupplyCollateralForm from "@/components/credit/SupplyCollateralForm";
 import SealedAuctionCard from "@/components/credit/SealedAuctionCard";
 import CreditScoreRing from "@/components/credit/CreditScoreRing";
 import SettingsPanel from "@/components/credit/SettingsPanel";
-import PrivateExplorer from "@/components/credit/PrivateExplorer";
 import HealthRibbon from "@/components/credit/HealthRibbon";
 import LiquidationAlertCenter from "@/components/credit/LiquidationAlertCenter";
 import CreditOnboarding from "@/components/credit/CreditOnboarding";
 import CreditAlertDrawer from "@/components/credit/CreditAlertDrawer";
+import { CreditReputationPanel } from "@/components/credit/CreditReputationPanel";
 import EncryptedTile from "@/components/credit/EncryptedTile";
 import HealthBar from "@/components/credit/HealthBar";
 import SetupSheet from "@/components/credit/SetupSheet";
@@ -93,38 +96,100 @@ const CREDIT_NOTIFICATION_TYPES = [
 ] as const;
 
 // ─── Tab types ────────────────────────────────────────────────────────────
-type CreditTab = "overview" | "markets" | "position" | "vaults" | "liquidations";
+type CreditTab = "overview" | "borrow" | "position" | "earn" | "liquidations" | "risk";
 
-// ─── Markets tab ──────────────────────────────────────────────────────────
-function MarketsTab({
+// ─── Borrow tab ───────────────────────────────────────────────────────────
+function BorrowTab({
   markets,
   showingAdvanced,
   onToggleAdvanced,
   onRefresh,
-  onBorrow,
-  onSupply,
+  onSetup,
+  onSelectMarket,
+  onGoEarn,
 }: {
   markets: (CreditMarketMeta & { totalSupplyAssets?: bigint; totalBorrowAssets?: bigint; utilizationBps?: bigint })[];
   showingAdvanced: boolean;
   onToggleAdvanced: () => void;
   onRefresh: () => void;
-  onBorrow: (m: CreditMarketMeta) => void;
-  onSupply: (m: CreditMarketMeta) => void;
+  onSetup: () => void;
+  onSelectMarket: (m: CreditMarketMeta) => void;
+  onGoEarn: () => void;
 }) {
   const totalSupplied = markets.reduce((a, m) => a + (m.totalSupplyAssets ?? 0n), 0n);
   const totalBorrowed = markets.reduce((a, m) => a + (m.totalBorrowAssets ?? 0n), 0n);
+  const [selectedAddress, setSelectedAddress] = useState<`0x${string}` | undefined>(markets[0]?.address);
+  const primary = markets.find((market) => market.address === selectedAddress) ?? markets[0];
+  const availableLiquidity = totalSupplied >= totalBorrowed ? totalSupplied - totalBorrowed : 0n;
+  const selectMarket = (market: CreditMarketMeta) => {
+    setSelectedAddress(market.address);
+    onSelectMarket(market);
+  };
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <CreditHarmonyStatChip label="Total supplied" value={`$${(Number(totalSupplied) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-        <CreditHarmonyStatChip label="Total borrowed" value={`$${(Number(totalBorrowed) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-        <CreditHarmonyStatChip label="Markets" value={String(markets.length)} />
+        <CreditHarmonyStatChip label="Pool supplied" value={`$${(Number(totalSupplied) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+        <CreditHarmonyStatChip label="Pool borrowed" value={`$${(Number(totalBorrowed) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+        <CreditHarmonyStatChip label="Available" value={`$${(Number(availableLiquidity) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Lending markets</h3>
+      <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="space-y-4">
+          <div className="rounded-2xl hairline bg-card p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Borrow path</p>
+            <div className="mt-4 grid gap-3">
+              {[
+                { label: "Use Pay-backed private USDC", body: "Shield once in Pay, then reuse that encrypted balance in Credit." },
+                { label: "Approve the Credit Router", body: "A time-boxed operator approval lets the router move encrypted ocUSDC for this market." },
+                { label: "Borrow against encrypted collateral", body: "Amounts are encrypted before transaction submit and settle through the existing FHE flow." },
+              ].map((item, index) => (
+                <div key={item.label} className="grid grid-cols-[auto_1fr] gap-3 rounded-xl bg-muted/50 p-3">
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-foreground text-xs font-medium text-background">{index + 1}</span>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{item.label}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{item.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" onClick={() => { window.location.href = "/pay"; }} className="btn-pay btn-pay-emerald">
+                <WalletCards className="h-3.5 w-3.5" /> Open Pay
+              </button>
+              <button type="button" onClick={onSetup} className="btn-pay btn-pay-ghost">
+                <ShieldCheck className="h-3.5 w-3.5" /> Set up credit
+              </button>
+            </div>
+          </div>
+
+          {primary ? (
+            <div className="overflow-hidden rounded-2xl hairline bg-card">
+              <div className="border-b border-border p-4">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Default market</p>
+              </div>
+              <div className="p-4">
+                <MarketCard market={primary} compact />
+              </div>
+              <div className="flex border-t border-border">
+                <button
+                  onClick={onGoEarn}
+                  className="flex-1 py-2.5 text-sm text-[hsl(var(--success))] hover:bg-accent/10 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <ArrowUpFromLine className="w-3 h-3" /> Supply liquidity
+                </button>
+                <button
+                  onClick={onRefresh}
+                  className="flex-1 border-l border-border py-2.5 text-sm text-muted-foreground hover:bg-muted transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <RefreshCcw className="w-3 h-3" /> Refresh
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-2xl hairline bg-card p-5 text-sm text-muted-foreground">No Credit market configured yet.</p>
+          )}
+
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
@@ -134,50 +199,45 @@ function MarketsTab({
             >
               {showingAdvanced ? "Hide testnet" : "Advanced/Testnet"}
             </button>
-            <button onClick={onRefresh} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-              <RefreshCcw className="w-3 h-3" /> Refresh
-            </button>
           </div>
-        </div>
-        {markets.length === 0 && <p className="text-sm text-muted-foreground py-4">No markets configured yet.</p>}
-        <div className="space-y-3">
-          {markets.map((m) => (
-            <div key={m.address ?? m.label} className="overflow-hidden rounded-2xl hairline bg-card">
-              <div className="p-4">
-                <MarketCard market={m} compact />
+
+          {showingAdvanced && markets.length > 1 && (
+            <div className="rounded-2xl hairline bg-card p-4">
+              <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Legacy/testnet markets</p>
+              <div className="space-y-2">
+                {markets.slice(1).map((m) => (
+                  <button
+                    key={m.address ?? m.label}
+                    type="button"
+                    onClick={() => selectMarket(m)}
+                    className="w-full rounded-xl hairline bg-muted/40 p-3 text-left hover:bg-muted"
+                  >
+                    <span className="block text-sm text-foreground">{m.label}</span>
+                    <span className="mt-1 block text-[11px] text-muted-foreground">{m.riskTier} · {m.lltvBps / 100}% LLTV · lab market</span>
+                  </button>
+                ))}
               </div>
-              <div className="flex border-t border-border">
-                <button
-                  onClick={() => onBorrow(m)}
-                  className="flex-1 py-2.5 text-sm text-foreground hover:bg-muted/60 transition-colors flex items-center justify-center gap-1.5 border-r border-border"
-                >
-                  <ArrowDownToLine className="w-3 h-3" /> Borrow now
-                </button>
-                <button
-                  onClick={() => onSupply(m)}
-                  className="flex-1 py-2.5 text-sm text-[hsl(var(--success))] hover:bg-accent/10 transition-colors flex items-center justify-center gap-1.5"
-                >
-                  <ArrowUpFromLine className="w-3 h-3" /> Supply for yield
-                </button>
-              </div>
+              <p className="mt-3 text-[11px] text-muted-foreground">Advanced markets remain available for repay, withdraw, and lab collateral flows.</p>
             </div>
-          ))}
+          )}
         </div>
-        {markets.some((m) => m.isLegacy) && (
-          <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5 text-accent" />
-            <span>Legacy/testnet markets remain available for repay, withdraw, and lab collateral flows.</span>
-          </div>
-        )}
+
+        <CreditHarmonyPanelCard title="Borrow privately" eyebrow="FHE transaction">
+          {!primary ? (
+            <p className="text-sm text-muted-foreground">No Credit market configured yet.</p>
+          ) : (
+            <BorrowForm market={primary} markets={markets} onSelect={selectMarket} onRefresh={onRefresh} onGoToCollateral={onSetup} />
+          )}
+        </CreditHarmonyPanelCard>
       </div>
 
       <div className="rounded-2xl hairline bg-accent/10 p-5">
         <div className="flex items-start gap-3">
           <Lock className="w-5 h-5 text-accent mt-0.5 shrink-0" />
           <div className="space-y-1.5">
-            <p className="text-sm font-medium text-foreground">Fully encrypted positions</p>
+            <p className="text-sm font-medium text-foreground">Fully encrypted borrow flow</p>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Borrow amounts, collateral, and recipients are encrypted on-chain. No one — including Obscura — can see your position size.
+              Borrow amounts, collateral changes, and recipient handles remain encrypted on-chain. Position values only reveal when you explicitly request a view decrypt.
             </p>
           </div>
         </div>
@@ -470,6 +530,61 @@ function VaultsTab({ vaults, onRefresh }: { vaults: CreditVaultMeta[]; onRefresh
   );
 }
 
+function EarnTab({
+  markets,
+  vaults,
+  onRefreshMarkets,
+  onRefreshVaults,
+  onSelectMarket,
+}: {
+  markets: (CreditMarketMeta & { totalSupplyAssets?: bigint; totalBorrowAssets?: bigint; utilizationBps?: bigint })[];
+  vaults: CreditVaultMeta[];
+  onRefreshMarkets: () => void;
+  onRefreshVaults: () => void;
+  onSelectMarket: (m: CreditMarketMeta) => void;
+}) {
+  const primary = markets[0];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+        <CreditHarmonyPanelCard title="Supply private USDC" eyebrow="Default earn path">
+          {primary ? (
+            <SupplyForm market={primary} markets={markets} onSelect={onSelectMarket} onRefresh={onRefreshMarkets} />
+          ) : (
+            <p className="text-sm text-muted-foreground">No Credit market configured yet.</p>
+          )}
+        </CreditHarmonyPanelCard>
+        <div className="rounded-2xl hairline bg-card p-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Earn strategy</p>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Direct supply keeps the main Credit path aligned with Pay-backed ocUSDC. Vaults remain available below for curated testnet allocation and strategy checks.
+          </p>
+          {primary && (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <CreditHarmonyStatChip label="Pool supplied" value={`$${(Number(primary.totalSupplyAssets ?? 0n) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+              <CreditHarmonyStatChip label="Utilization" value={`${(Number(primary.utilizationBps ?? 0n) / 100).toFixed(1)}%`} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Advanced/Testnet</p>
+            <h3 className="mt-1 font-display text-2xl">Curated vaults</h3>
+          </div>
+          <button type="button" onClick={onRefreshVaults} className="inline-flex h-9 items-center gap-1.5 rounded-full hairline px-3 text-xs hover:bg-muted">
+            <RefreshCcw className="h-3.5 w-3.5" /> Refresh
+          </button>
+        </div>
+        <VaultsTab vaults={vaults} onRefresh={onRefreshVaults} />
+      </div>
+    </div>
+  );
+}
+
 // ─── Liquidations tab ─────────────────────────────────────────────────────
 function LiquidationsTab({ markets }: { markets: CreditMarketMeta[] }) {
   const { auctions, refresh, submitBid, settle } = useCreditAuctions();
@@ -606,6 +721,41 @@ function CreditNotificationsPanel() {
   );
 }
 
+function RiskTab({ markets }: { markets: CreditMarketMeta[] }) {
+  const primary = markets[0];
+  const utilization = primary?.utilizationBps === undefined ? null : Number(primary.utilizationBps) / 100;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+        <CreditReputationPanel />
+        <div className="space-y-4">
+          <div className="rounded-2xl hairline bg-card p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Public market risk</p>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              These are public pool metrics. Your supplied, borrowed, and collateral amounts stay hidden until you reveal them from Position.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <CreditHarmonyStatChip label="LLTV" value={primary ? `${primary.lltvBps / 100}%` : "—"} />
+              <CreditHarmonyStatChip label="Utilization" value={utilization === null ? "—" : `${utilization.toFixed(1)}%`} />
+            </div>
+          </div>
+          <CreditNotificationsPanel />
+        </div>
+      </div>
+
+      <ActivityFeed
+        mode="private"
+        defaultFilter="credit"
+        filters={["credit", "all"]}
+        title="Credit risk activity"
+        eyebrow="Realtime · Shared index"
+        emptyMessage="No indexed Credit activity for this wallet yet. Generic risk, auction, and score events will appear here after the worker indexes them."
+      />
+    </div>
+  );
+}
+
 function SettingsSlideOver({
   open,
   onClose,
@@ -652,6 +802,7 @@ function SettingsSlideOver({
                 </div>
               </CreditHarmonyPanelCard>
               <CreditNotificationsPanel />
+              <CreditReputationPanel compact />
               <div>
                 <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Credit setup</div>
                 <SettingsPanel markets={markets} approved={approved} />
@@ -659,10 +810,6 @@ function SettingsSlideOver({
               <div>
                 <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Credit Score</div>
                 <CreditScoreRing />
-              </div>
-              <div>
-                <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Private History</div>
-                <PrivateExplorer markets={markets} />
               </div>
             </div>
           </motion.div>
@@ -712,27 +859,29 @@ const CreditPage = () => {
 
   const handleBorrowFromMarket = useCallback((m: CreditMarketMeta) => {
     setActiveMarketAddress(m.address);
-    setTab("position");
+    setTab("borrow");
   }, []);
 
   const handleSupplyFromMarket = useCallback((m: CreditMarketMeta) => {
     setActiveMarketAddress(m.address);
-    setTab("vaults");
+    setTab("earn");
   }, []);
 
   const harmonySidebar = [
-    { key: "overview", label: "Overview", active: tab === "overview", onClick: () => setTab("overview") },
+    { key: "overview", label: "Overview", mobileLabel: "Home", icon: Landmark, active: tab === "overview", onClick: () => setTab("overview") },
     {
-      key: "markets",
-      label: "Markets",
+      key: "borrow",
+      label: "Borrow",
       badge: workspaceMarkets.length ? String(workspaceMarkets.length) : undefined,
-      active: tab === "markets",
-      onClick: () => setTab("markets"),
+      mobileLabel: "Borrow",
+      icon: ArrowDownToLine,
+      active: tab === "borrow",
+      onClick: () => setTab("borrow"),
     },
-    { key: "vaults", label: "Vaults", active: tab === "vaults", onClick: () => setTab("vaults") },
-    { key: "position", label: "Positions", active: tab === "position", onClick: () => setTab("position") },
-    { key: "liquidations", label: "Liquidations", active: tab === "liquidations", onClick: () => setTab("liquidations") },
-    { key: "risk", label: "Risk", active: false, onClick: () => setTab("position") },
+    { key: "position", label: "Position", mobileLabel: "Pos", icon: WalletCards, active: tab === "position", onClick: () => setTab("position") },
+    { key: "earn", label: "Earn", mobileLabel: "Earn", icon: Coins, active: tab === "earn", onClick: () => setTab("earn") },
+    { key: "liquidations", label: "Liquidations", mobileLabel: "Liq", icon: Gavel, active: tab === "liquidations", onClick: () => setTab("liquidations") },
+    { key: "risk", label: "Risk", mobileLabel: "Risk", icon: Gauge, active: tab === "risk", onClick: () => setTab("risk") },
   ];
 
   return (
@@ -786,9 +935,9 @@ const CreditPage = () => {
               <CreditHarmonyOverview
                 markets={workspaceMarkets}
                 vaults={vaults}
-                onSupply={() => setTab("vaults")}
-                onBorrow={() => setTab("position")}
-                onOpenVault={() => setTab("vaults")}
+                onSupply={() => setTab("earn")}
+                onBorrow={() => setTab("borrow")}
+                onOpenVault={() => setTab("earn")}
               />
               <div className="mt-10">
                 <ActivityFeed
@@ -802,9 +951,9 @@ const CreditPage = () => {
               </div>
             </>
           )}
-          {tab === "markets" && (
+          {tab === "borrow" && (
             <CreditHarmonyTabShell
-              tab="markets"
+              tab="borrow"
               actions={
                 <button
                   type="button"
@@ -815,13 +964,14 @@ const CreditPage = () => {
                 </button>
               }
             >
-              <MarketsTab
+              <BorrowTab
                 markets={workspaceMarkets}
                 showingAdvanced={showAdvancedMarkets}
                 onToggleAdvanced={() => setShowAdvancedMarkets((value) => !value)}
                 onRefresh={refreshMarkets}
-                onBorrow={handleBorrowFromMarket}
-                onSupply={handleSupplyFromMarket}
+                onSetup={() => setSetupOpen(true)}
+                onSelectMarket={handleBorrowFromMarket}
+                onGoEarn={() => setTab("earn")}
               />
             </CreditHarmonyTabShell>
           )}
@@ -834,9 +984,9 @@ const CreditPage = () => {
               )}
             </CreditHarmonyTabShell>
           )}
-          {tab === "vaults" && (
+          {tab === "earn" && (
             <CreditHarmonyTabShell
-              tab="vaults"
+              tab="earn"
               actions={
                 <button
                   type="button"
@@ -847,12 +997,23 @@ const CreditPage = () => {
                 </button>
               }
             >
-              <VaultsTab vaults={vaults} onRefresh={refreshVaults} />
+              <EarnTab
+                markets={workspaceMarkets}
+                vaults={vaults}
+                onRefreshMarkets={refreshMarkets}
+                onRefreshVaults={refreshVaults}
+                onSelectMarket={handleSupplyFromMarket}
+              />
             </CreditHarmonyTabShell>
           )}
           {tab === "liquidations" && (
             <CreditHarmonyTabShell tab="liquidations">
               <LiquidationsTab markets={workspaceMarkets} />
+            </CreditHarmonyTabShell>
+          )}
+          {tab === "risk" && (
+            <CreditHarmonyTabShell tab="risk">
+              <RiskTab markets={workspaceMarkets} />
             </CreditHarmonyTabShell>
           )}
         </motion.div>

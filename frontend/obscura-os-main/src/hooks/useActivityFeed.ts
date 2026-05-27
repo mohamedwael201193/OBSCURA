@@ -46,6 +46,8 @@ export interface ActivityItem {
   created_at:       string;
 }
 
+export type ActivityRealtimeStatus = "idle" | "connecting" | "listening" | "polling" | "error";
+
 const creditContractEventNames = (
   prefixes: string[],
   events: string[],
@@ -111,6 +113,9 @@ interface UseActivityFeedResult {
   loadMore:   () => void;
   hasMore:    boolean;
   refresh:    () => void;
+  realtimeStatus: ActivityRealtimeStatus;
+  lastEventAt: string | null;
+  lastRefreshAt: string | null;
 }
 
 export function useActivityFeed(initialFilter: ActivityEventType = "all"): UseActivityFeedResult {
@@ -123,6 +128,9 @@ export function useActivityFeed(initialFilter: ActivityEventType = "all"): UseAc
   const [filter,    setFilter]    = useState<ActivityEventType>(initialFilter);
   const [page,      setPage]      = useState(0);
   const [hasMore,   setHasMore]   = useState(false);
+  const [realtimeStatus, setRealtimeStatus] = useState<ActivityRealtimeStatus>("idle");
+  const [lastEventAt, setLastEventAt] = useState<string | null>(null);
+  const [lastRefreshAt, setLastRefreshAt] = useState<string | null>(null);
 
   const channelRef = useRef<ReturnType<NonNullable<typeof supabase>["channel"]> | null>(null);
   const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -152,6 +160,7 @@ export function useActivityFeed(initialFilter: ActivityEventType = "all"): UseAc
       const newItems = (data ?? []) as ActivityItem[];
       setHasMore(newItems.length === PAGE_SIZE);
       setItems((prev) => replace ? newItems : [...prev, ...newItems]);
+      setLastRefreshAt(new Date().toISOString());
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -161,14 +170,19 @@ export function useActivityFeed(initialFilter: ActivityEventType = "all"): UseAc
 
   // ── Initial fetch + re-fetch on wallet/filter change ──────────────────────
   useEffect(() => {
-    if (!wallet) { setItems([]); return; }
+    if (!wallet) { setItems([]); setRealtimeStatus("idle"); return; }
     setPage(0);
     fetchPage(0, true);
   }, [wallet, filter, fetchPage]);
 
   // ── Realtime subscription ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!wallet || !supabase) return;
+    if (!wallet || !supabase) {
+      setRealtimeStatus(wallet ? "error" : "idle");
+      return;
+    }
+
+    setRealtimeStatus("connecting");
 
     const channel = supabase
       .channel(`activity:${wallet}`)
@@ -186,11 +200,16 @@ export function useActivityFeed(initialFilter: ActivityEventType = "all"): UseAc
 
           const allowed = EVENT_TYPE_FILTERS[filter];
           if (allowed.length === 0 || allowed.includes(newItem.event_name)) {
+            setLastEventAt(new Date().toISOString());
             setItems((prev) => [newItem, ...prev]);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setRealtimeStatus("listening");
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") setRealtimeStatus("polling");
+        else setRealtimeStatus("connecting");
+      });
 
     channelRef.current = channel;
 
@@ -215,6 +234,6 @@ export function useActivityFeed(initialFilter: ActivityEventType = "all"): UseAc
   }, [fetchPage]);
 
   return useMemo(() => ({
-    items, isLoading, error, filter, setFilter, loadMore, hasMore, refresh,
-  }), [items, isLoading, error, filter, loadMore, hasMore, refresh]);
+    items, isLoading, error, filter, setFilter, loadMore, hasMore, refresh, realtimeStatus, lastEventAt, lastRefreshAt,
+  }), [items, isLoading, error, filter, loadMore, hasMore, refresh, realtimeStatus, lastEventAt, lastRefreshAt]);
 }

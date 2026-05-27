@@ -175,7 +175,10 @@ describe("Pay P0.4 privacy gates", () => {
     expect(activityHook).toContain('"AuctionSettled"');
     expect(activityFeed).toContain('{ key: "credit",   label: "Credit" }');
     expect(creditPage).toContain('defaultFilter="credit"');
+    expect(creditPage).toContain('type CreditTab = "overview" | "borrow" | "position" | "earn" | "liquidations" | "risk"');
+    expect(creditPage).toContain("CreditReputationPanel");
     expect(creditPage).toContain("Advanced/Testnet");
+    expect(activityHook).toContain("realtimeStatus");
     expect(workerIndexer).toContain("0x1Ec113297c7F9516A6604aa3b18C180559a6f551");
 
     for (const source of [workerNotifications, apiNotifications]) {
@@ -204,8 +207,10 @@ describe("Pay P0.5/P1.1/P1.2 stabilization gates", () => {
     expect(migration).toContain("REVOKE INSERT, UPDATE, DELETE ON obscura_reputation_events FROM anon, authenticated");
   });
 
-  it("derives Pay reputation without raw amounts, notes, labels, or decrypted values", () => {
+  it("derives Pay, Credit, and Vote reputation without raw amounts, notes, labels, or decrypted values", () => {
     const reputationSource = readWorkspace("backend/obscura-worker/src/reputation.ts");
+    const indexerSource = readWorkspace("backend/obscura-worker/src/indexer/index.ts");
+    const apiSource = readWorkspace("backend/obscura-api/src/reputation.ts");
 
     for (const signalType of [
       "private_payment_sent",
@@ -214,9 +219,17 @@ describe("Pay P0.5/P1.1/P1.2 stabilization gates", () => {
       "escrow_redeemed",
       "invoice_paid",
       "subscription_consumed",
+      "credit_repaid",
+      "vote_participated",
+      "governance_vote_cast",
+      "governance_proposed",
     ]) {
       expect(reputationSource).toContain(signalType);
     }
+    expect(indexerSource).toContain("ObscuraVote");
+    expect(indexerSource).toContain("ObscuraGovernor");
+    expect(indexerSource).toContain("sanitizeActivityArgs");
+    expect(apiSource).toContain('["pay", "credit", "vote"]');
     expect(reputationSource).toContain("obscura_reputation_events");
     expect(reputationSource).not.toMatch(/activity\.args\.(amount|encryptedAmount|note|memo|label|recipientLabel)/i);
     expect(reputationSource).not.toMatch(/decrypt|decryptForView|getOrCreateSelfPermit/i);
@@ -229,6 +242,7 @@ describe("Pay P0.5/P1.1/P1.2 stabilization gates", () => {
     expect(indexerSource).toContain("insertReputationSignalsForActivity(activity)");
     expect(indexerSource).toContain("reputation signal error");
     expect(apiSource).toContain("totalCappedWeight");
+    expect(apiSource).toContain('sourceApp: "all"');
     expect(apiSource).toContain("tierFor");
     expect(apiSource).not.toContain("event_ref");
   });
@@ -238,6 +252,7 @@ describe("Pay P0.5/P1.1/P1.2 stabilization gates", () => {
 
     expect(shellSource).not.toContain("sidebar.slice(0, 5)");
     expect(shellSource).toContain("sidebar.map");
+    expect(shellSource).toContain("mobileLabel");
     expect(shellSource).toContain("truncate");
   });
 

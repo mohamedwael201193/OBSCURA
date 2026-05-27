@@ -109,3 +109,50 @@
 - Redeploy frontend/API/worker to publish these local code changes; no deploy was performed in this session.
 - After redeploy, perform live wallet flow: shield Pay `ocUSDC`, approve Credit Router/operator flow, supply, add collateral, borrow, repay, and confirm Credit activity rows appear in shared feed.
 - Trigger a safe Credit test event after worker redeploy and confirm `credit.*`/specific aliases send generic push payloads without amounts or exact health factor values.
+
+---
+
+# Credit Wave 5 - C3/C4/C5 Production-Readiness Execution
+
+## Completed
+
+- C3 rebuilt the active Credit workspace around Overview, Borrow, Position, Earn, Liquidations, and Risk without adding a duplicate product shell.
+- Borrow and Earn now lead with the canonical Pay-backed private USDC path; legacy/testnet markets stay available but are demoted under advanced/testnet affordances.
+- Overview now uses live public market data for liquidity, utilization, borrow APY, and supply APY, while private wallet state remains masked/reveal-on-demand.
+- Risk and Settings now use shared notifications, shared activity, and aggregate reputation instead of stale direct explorer flows.
+- Added `CreditReputationPanel` to show combined Pay, Credit, and Governance reputation signals in Credit surfaces.
+- Restyled Borrow, onboarding, score reveal, and alert drawer components to match the Harmony app system while preserving FHE transaction/reveal behavior.
+- Mobile Credit navigation now uses short labels: Home, Borrow, Pos, Earn, Liq, Risk.
+
+## Shared Activity / Realtime / Notifications
+
+- `useActivityFeed` now exposes realtime status, last event time, and last refresh time while preserving participant-scoped Supabase filtering.
+- Shared `ActivityFeed` renders realtime/polling/connecting/idle state and last sync copy.
+- Credit surfaces continue to use the existing `obscura_activity`, notification prefs, and push subscription infrastructure; no new tables or services were introduced.
+- API CORS defaults now include local Vite origins plus production, merged with env-provided origins.
+
+## Reputation / Vote Integration
+
+- Worker indexer now watches live `ObscuraVote` and `ObscuraGovernor` contracts through the existing activity pipeline.
+- Governor event args are sanitized before insertion so large proposal/vote payloads do not pollute activity rows.
+- Worker reputation derivation now emits `source_app='vote'` signals for vote/governance activity.
+- API reputation summary now aggregates Pay, Credit, and Vote sources through the existing `/reputation/:wallet` endpoint.
+
+## Verification
+
+- VS Code diagnostics on edited files: no errors.
+- `npm run test -- src/test/pay-final-p0.test.ts` in `frontend/obscura-os-main`: passed, 19 tests.
+- `npm run build` in `frontend/obscura-os-main`: passed, with existing Rollup/bundle-size warnings only.
+- `npm run build` in `backend/obscura-api`: passed.
+- `npm run build` in `backend/obscura-worker`: passed.
+- `npm run compile` in `contracts-hardhat`: passed, nothing to compile.
+- `scripts/test-e2e.ps1`: passed, 12 PASS / 0 WARN / 0 FAIL.
+- Existing Chrome CDP verification used only `chromium.connectOverCDP("http://127.0.0.1:9222")`.
+- Local integrated browser check verified Borrow, Earn, Risk, aggregate reputation, realtime status, mobile labels, `/reputation` 200, `/prefs` 200, Supabase activity 200, and no console errors or failed requests.
+
+## Deployment Status
+
+- No live deploy was completed in this session.
+- Direct Vercel deploy was blocked because `npx vercel whoami` required account authentication.
+- Render services have `autoDeploy: true` in `render.yaml`; Vercel/Render should publish after an authenticated commit/push or dashboard-triggered deploy.
+- After deployment, verify live worker health reflects the expanded indexed contract set and run a live Credit activity/reputation smoke event.

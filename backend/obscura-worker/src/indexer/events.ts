@@ -262,3 +262,114 @@ export const CREDIT_SCORE_EVENTS = [
     ],
   },
 ] as const;
+
+export const VOTE_EVENTS = [
+  {
+    type: "event" as const,
+    name: "ProposalCreated",
+    inputs: [
+      { name: "proposalId", type: "uint256", indexed: true },
+      { name: "title", type: "string", indexed: false },
+      { name: "numOptions", type: "uint8", indexed: false },
+      { name: "deadline", type: "uint256", indexed: false },
+      { name: "category", type: "uint8", indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "VoteCast",
+    inputs: [
+      { name: "proposalId", type: "uint256", indexed: true },
+      { name: "voter", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "VoteChanged",
+    inputs: [
+      { name: "proposalId", type: "uint256", indexed: true },
+      { name: "voter", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "VoteFinalized",
+    inputs: [{ name: "proposalId", type: "uint256", indexed: true }],
+  },
+  {
+    type: "event" as const,
+    name: "ProposalCancelled",
+    inputs: [{ name: "proposalId", type: "uint256", indexed: true }],
+  },
+  {
+    type: "event" as const,
+    name: "DeadlineExtended",
+    inputs: [
+      { name: "proposalId", type: "uint256", indexed: true },
+      { name: "newDeadline", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "DelegateSet",
+    inputs: [
+      { name: "delegator", type: "address", indexed: true },
+      { name: "delegatee", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "DelegateRemoved",
+    inputs: [
+      { name: "delegator", type: "address", indexed: true },
+      { name: "formerDelegatee", type: "address", indexed: true },
+    ],
+  },
+] as const;
+
+export const GOVERNOR_EVENTS = [
+  {
+    type: "event" as const,
+    name: "ProposalCreated",
+    inputs: [
+      { name: "proposalId", type: "uint256", indexed: false },
+      { name: "proposer", type: "address", indexed: false },
+      { name: "targets", type: "address[]", indexed: false },
+      { name: "values", type: "uint256[]", indexed: false },
+      { name: "signatures", type: "string[]", indexed: false },
+      { name: "calldatas", type: "bytes[]", indexed: false },
+      { name: "voteStart", type: "uint256", indexed: false },
+      { name: "voteEnd", type: "uint256", indexed: false },
+      { name: "description", type: "string", indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "VoteCast",
+    inputs: [
+      { name: "voter", type: "address", indexed: true },
+      { name: "proposalId", type: "uint256", indexed: false },
+      { name: "support", type: "uint8", indexed: false },
+      { name: "weight", type: "uint256", indexed: false },
+      { name: "reason", type: "string", indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "ProposalQueued",
+    inputs: [
+      { name: "proposalId", type: "uint256", indexed: false },
+      { name: "etaSeconds", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "ProposalExecuted",
+    inputs: [{ name: "proposalId", type: "uint256", indexed: false }],
+  },
+  {
+    type: "event" as const,
+    name: "ProposalCanceled",
+    inputs: [{ name: "proposalId", type: "uint256", indexed: false }],
+  },
+] as const;

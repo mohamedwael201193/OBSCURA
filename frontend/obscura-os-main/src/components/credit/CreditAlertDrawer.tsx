@@ -10,11 +10,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { useCreditAlerts, type AlertCategory } from "@/hooks/useCreditAlerts";
 
 const CATEGORY: Record<AlertCategory, { icon: React.ElementType; color: string; tint: string }> = {
-  liquidation: { icon: ShieldAlert, color: "text-red-300",     tint: "bg-red-500/10 border-red-500/30" },
-  auction:     { icon: Gavel,       color: "text-amber-300",   tint: "bg-amber-500/10 border-amber-500/30" },
-  faucet:      { icon: Droplet,     color: "text-cyan-300",    tint: "bg-cyan-500/10 border-cyan-500/30" },
-  interest:    { icon: TrendingUp,  color: "text-violet-300",  tint: "bg-violet-500/10 border-violet-500/30" },
-  info:        { icon: Info,        color: "text-white/60",    tint: "bg-white/5 border-white/15" },
+  liquidation: { icon: ShieldAlert, color: "text-destructive",          tint: "bg-destructive/10 border-destructive/25" },
+  auction:     { icon: Gavel,       color: "text-amber-700",            tint: "bg-amber-500/10 border-amber-500/25" },
+  faucet:      { icon: Droplet,     color: "text-[hsl(var(--accent))]", tint: "bg-accent/10 border-accent/25" },
+  interest:    { icon: TrendingUp,  color: "text-[hsl(var(--success))]", tint: "bg-accent/10 border-accent/25" },
+  info:        { icon: Info,        color: "text-muted-foreground",     tint: "bg-muted/50 border-border" },
 };
 
 function ago(ts: number): string {
@@ -36,32 +36,32 @@ export default function CreditAlertDrawer() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="relative h-9 w-9 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/75 transition-colors"
+        className="relative flex h-10 w-10 items-center justify-center rounded-full hairline text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         aria-label={`${unreadCount} unread alerts`}
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-[9px] text-white font-medium flex items-center justify-center">
+          <span className="absolute -right-1 -top-1 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-medium text-destructive-foreground">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-[88vw] sm:w-[400px] bg-[#06090c]/96 backdrop-blur-2xl border-l border-white/10 p-0">
-          <SheetHeader className="px-5 pt-5 pb-3 border-b border-white/8">
-            <SheetTitle className="text-sm tracking-[0.18em] uppercase text-white/70 font-mono flex items-center gap-2">
+        <SheetContent side="right" className="w-[88vw] sm:w-[400px] bg-card/95 backdrop-blur-2xl border-l border-border p-0 text-foreground">
+          <SheetHeader className="border-b border-border px-5 pb-3 pt-5">
+            <SheetTitle className="flex items-center gap-2 font-mono text-sm uppercase tracking-[0.18em] text-muted-foreground">
               <Bell className="w-3.5 h-3.5" /> Alerts
-              {unreadCount > 0 && <span className="text-[10px] text-violet-300">({unreadCount} new)</span>}
+              {unreadCount > 0 && <span className="text-[10px] text-foreground">({unreadCount} new)</span>}
             </SheetTitle>
           </SheetHeader>
 
-          <div className="px-3 py-3 flex items-center gap-2 border-b border-white/8 text-[11px]">
+          <div className="flex items-center gap-2 border-b border-border px-3 py-3 text-[11px]">
             <button
               type="button"
               onClick={markAllRead}
               disabled={unreadCount === 0}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded text-white/70 hover:text-white disabled:opacity-30"
+              className="inline-flex items-center gap-1 rounded px-2 py-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
             >
               <CheckCheck className="w-3 h-3" /> Mark read
             </button>
@@ -69,20 +69,20 @@ export default function CreditAlertDrawer() {
               type="button"
               onClick={clear}
               disabled={alerts.length === 0}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded text-white/70 hover:text-red-300 disabled:opacity-30"
+              className="inline-flex items-center gap-1 rounded px-2 py-1 text-muted-foreground hover:text-destructive disabled:opacity-30"
             >
               <Trash2 className="w-3 h-3" /> Clear
             </button>
             <div className="ml-auto">
               {permission === "granted" ? (
-                <span className="inline-flex items-center gap-1 text-[hsl(var(--success))]/80">
+                <span className="inline-flex items-center gap-1 text-[hsl(var(--success))]">
                   <Bell className="w-3 h-3" /> Browser notifications on
                 </span>
               ) : (
                 <button
                   type="button"
                   onClick={() => void requestPermission()}
-                  className="inline-flex items-center gap-1 text-violet-300 hover:text-violet-200"
+                  className="inline-flex items-center gap-1 text-foreground hover:opacity-75"
                 >
                   <BellOff className="w-3 h-3" /> Enable notifications
                 </button>
@@ -92,8 +92,8 @@ export default function CreditAlertDrawer() {
 
           <div className="overflow-y-auto h-[calc(100vh-130px)] px-3 py-3">
             {alerts.length === 0 ? (
-              <div className="mt-8 text-center text-[12px] text-white/40">
-                <BellOff className="w-6 h-6 mx-auto mb-2 text-white/20" />
+              <div className="mt-8 text-center text-[12px] text-muted-foreground">
+                <BellOff className="w-6 h-6 mx-auto mb-2 text-muted-foreground/50" />
                 No alerts yet. You'll be notified when your health factor or auctions need attention.
               </div>
             ) : (
@@ -111,9 +111,9 @@ export default function CreditAlertDrawer() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline justify-between gap-2">
                             <span className={`text-[12px] font-medium ${c.color}`}>{a.title}</span>
-                            <span className="text-[9.5px] text-white/40 font-mono">{ago(a.createdAt)}</span>
+                            <span className="font-mono text-[9.5px] text-muted-foreground">{ago(a.createdAt)}</span>
                           </div>
-                          <p className="mt-0.5 text-[11px] text-white/65 leading-snug">{a.body}</p>
+                          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{a.body}</p>
                         </div>
                       </div>
                     </li>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 
 const REPUTATION_URL = (
@@ -28,6 +28,8 @@ interface UseReputationSummaryResult {
   summary: ReputationSummary | null;
   isLoading: boolean;
   error: string | null;
+  refresh: () => void;
+  lastFetchedAt: string | null;
 }
 
 export function useReputationSummary(): UseReputationSummaryResult {
@@ -36,11 +38,19 @@ export function useReputationSummary(): UseReputationSummaryResult {
   const [summary, setSummary] = useState<ReputationSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
+
+  const refresh = useCallback(() => {
+    setRefreshNonce((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     if (!wallet) {
       setSummary(null);
       setError(null);
+      setIsLoading(false);
+      setLastFetchedAt(null);
       return;
     }
 
@@ -53,7 +63,10 @@ export function useReputationSummary(): UseReputationSummaryResult {
         if (!response.ok) throw new Error(`Reputation request failed (${response.status})`);
         return response.json() as Promise<ReputationSummary>;
       })
-      .then(setSummary)
+      .then((next) => {
+        setSummary(next);
+        setLastFetchedAt(new Date().toISOString());
+      })
       .catch((err: Error) => {
         if (err.name !== "AbortError") setError(err.message);
       })
@@ -62,7 +75,13 @@ export function useReputationSummary(): UseReputationSummaryResult {
       });
 
     return () => controller.abort();
-  }, [wallet]);
+  }, [wallet, refreshNonce]);
 
-  return { summary, isLoading, error };
+  useEffect(() => {
+    if (!wallet) return;
+    const id = window.setInterval(refresh, 60_000);
+    return () => window.clearInterval(id);
+  }, [wallet, refresh]);
+
+  return { summary, isLoading, error, refresh, lastFetchedAt };
 }

@@ -64,7 +64,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
   const fmt6 = (v: bigint) =>
     (Number(v) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 4 });
 
-  const hfColor = healthFactor === null ? "text-white/40" : healthFactor >= 1.5 ? "text-foreground" : healthFactor >= 1.1 ? "text-amber-400" : "text-red-400";
+  const hfColor = healthFactor === null ? "text-muted-foreground" : healthFactor >= 1.5 ? "text-foreground" : healthFactor >= 1.1 ? "text-amber-600" : "text-destructive";
 
   const submit = async () => {
     if (!amount || !destResolved) return;
@@ -116,45 +116,45 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
       {/* Max borrowable — plaintext computed from public shadow + LLTV config */}
       {maxBorrowable > 0n && (
         <div className="flex items-center gap-2 rounded-lg hairline bg-muted/50 px-3 py-2">
-          <span className="text-[10px] text-white/40 uppercase tracking-wider">Max Borrowable</span>
-          <span className="text-[9px] text-white/20 ml-1">(public)</span>
-          <span className="ml-auto font-mono text-[13px] text-violet-300">{fmt6(maxBorrowable)} {market.loanSymbol}</span>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Max Borrowable</span>
+          <span className="ml-1 text-[9px] text-muted-foreground/70">(public)</span>
+          <span className="ml-auto font-mono text-[13px] text-foreground">{fmt6(maxBorrowable)} {market.loanSymbol}</span>
         </div>
       )}
 
       {/* Health Factor tile */}
       <div className="flex items-center gap-2 rounded-lg hairline bg-muted/50 px-3 py-2">
-        <Activity className="w-3.5 h-3.5 text-white/40" />
-        <span className="text-[10px] text-white/40 uppercase tracking-wider">Health Factor</span>
+        <Activity className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Health Factor</span>
         <span className={`ml-auto font-mono text-[13px] font-semibold ${hfColor}`}>
           {healthFactor === null ? "—" : healthFactor.toFixed(2)}
         </span>
       </div>
 
-      <label className="text-[11px] uppercase tracking-wider text-white/50">Market</label>
+      <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Market</label>
       <select
         value={market.address ?? ""}
         onChange={(e) => {
           const next = markets.find((m) => m.address === (e.target.value as `0x${string}`));
           if (next) onSelect(next);
         }}
-        className="bg-[#0d0d14] text-white border border-white/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+        className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent/50"
       >
         {markets.map((m) => (
-          <option key={m.address} value={m.address} className="bg-[#0d0d14] text-white">
+          <option key={m.address} value={m.address} className="bg-background text-foreground">
             {m.label}
           </option>
         ))}
       </select>
 
-      <label className="text-[11px] uppercase tracking-wider text-white/50">Amount ({market.loanSymbol})</label>
+      <label className="text-[11px] uppercase tracking-wider text-muted-foreground">Amount ({market.loanSymbol})</label>
       <input
         inputMode="decimal"
         value={amount}
         onFocus={preWarm.onFocus}
         onChange={(e) => setAmount(e.target.value)}
         placeholder="0.0"
-        className="border-border bg-background rounded-md px-3 py-2 text-sm focus:outline-none focus:border-violet-500/40"
+        className="rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-accent/50"
       />
       <PercentChips
         max={maxBorrowable}
@@ -163,34 +163,34 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
         accent="violet"
       />
 
-      <label className="text-[11px] uppercase tracking-wider text-white/50 flex items-center gap-1.5">
+      <label className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
         <Lock className="w-3 h-3" /> Encrypted destination (optional)
       </label>
       <input
         value={dest}
         onChange={(e) => setDest(e.target.value)}
         placeholder={address ?? "0x…"}
-        className="border-border bg-background rounded-md px-3 py-2 text-xs font-mono focus:outline-none focus:border-violet-500/40"
+        className="rounded-md border border-border bg-background px-3 py-2 font-mono text-xs focus:outline-none focus:border-accent/50"
       />
-      <p className="text-[11px] text-white/45 -mt-1">
+      <p className="-mt-1 text-[11px] text-muted-foreground">
         Borrow proceeds are sent by the market as encrypted {market.loanSymbol}. The optional destination is reserved for compatible router flows.
       </p>
 
       {/* Pre-flight warnings — shown before user signs, no FHE needed */}
       {noCollateral && (
         <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-3 grid gap-2">
-          <p className="text-[11px] text-amber-300/90 flex items-start gap-1.5">
+          <p className="flex items-start gap-1.5 text-[11px] text-amber-700">
             <ShieldAlert className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
             <span>
               <span className="font-semibold">No collateral deposited.</span>{" "}
               Supplying to earn interest (Supply tab) is separate from depositing collateral to borrow against.
-              You need to supply <span className="text-amber-200 font-mono">{market.collateralSymbol}</span> as collateral first.
+              You need to supply <span className="font-mono text-amber-800">{market.collateralSymbol}</span> as collateral first.
             </span>
           </p>
           {onGoToCollateral && (
             <button
               onClick={onGoToCollateral}
-              className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] bg-amber-500/15 border border-amber-500/30 text-amber-200 hover:bg-amber-500/25 transition-colors"
+              className="self-start inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/15 px-3 py-1.5 text-[11px] text-amber-800 transition-colors hover:bg-amber-500/25"
             >
               Supply Collateral <ArrowRight className="w-3 h-3" />
             </button>
@@ -198,19 +198,19 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
         </div>
       )}
       {!noCollateral && wouldBreakLLTV && (
-        <p className="text-[11px] text-red-300/80 flex items-center gap-1.5">
+        <p className="flex items-center gap-1.5 text-[11px] text-destructive">
           <ShieldAlert className="w-3 h-3 flex-shrink-0" />
           Amount exceeds max borrowable ({fmt6(maxBorrowable)} {market.loanSymbol}). Reduce amount or add more collateral.
         </p>
       )}
       {!noCollateral && maxBorrowable === 0n && (
-        <p className="text-[11px] text-amber-300/80 flex items-center gap-1.5">
+        <p className="flex items-center gap-1.5 text-[11px] text-amber-700">
           <AlertTriangle className="w-3 h-3 flex-shrink-0" />
           Max borrowable is 0 — your collateral is fully utilized. Repay debt or add collateral.
         </p>
       )}
       {!noCollateral && noLiquidity && (
-        <p className="text-[11px] text-orange-300/80 flex items-center gap-1.5">
+        <p className="flex items-center gap-1.5 text-[11px] text-amber-700">
           <AlertTriangle className="w-3 h-3 flex-shrink-0" />
           Insufficient pool liquidity — only {fmt6(availableLiquidity)} {market.loanSymbol} available to borrow.
           Supply {market.loanSymbol} to the pool first to create lending liquidity.
@@ -220,13 +220,13 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
       <button
         disabled={!amount || !destResolved || busy || noCollateral || wouldBreakLLTV || noLiquidity}
         onClick={submit}
-        className="mt-2 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm bg-violet-500/15 border border-violet-500/40 text-violet-100 hover:bg-violet-500/25 disabled:opacity-50"
+        className="mt-2 inline-flex items-center justify-center gap-2 rounded-md border border-foreground/15 bg-foreground px-4 py-2.5 text-sm text-background hover:opacity-90 disabled:opacity-50"
       >
         <ArrowDownToLine className="w-4 h-4" />
         Borrow privately
       </button>
       <FHEStepper status={fheStatus.status} error={fheStatus.error} />
-      {msg && <p className="text-xs text-white/60">{msg}</p>}
+      {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
     </div>
   );
 };

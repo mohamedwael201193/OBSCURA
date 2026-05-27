@@ -20,6 +20,12 @@ const PAY_SIGNAL_CAPS: Record<string, number> = {
   credit_vault_deposited: 20,
   credit_vault_withdrew: 10,
   credit_score_updated: 10,
+  vote_participated: 20,
+  vote_changed: 10,
+  vote_delegated: 10,
+  vote_delegation_removed: 5,
+  governance_vote_cast: 20,
+  governance_proposed: 10,
 };
 
 interface ReputationEventRow {
@@ -98,7 +104,7 @@ reputationRouter.get("/reputation/:wallet", async (req: Request, res: Response) 
       .from("obscura_reputation_events")
       .select("source_app, signal_type, signal_weight, created_at, public_context")
       .eq("wallet", wallet)
-      .in("source_app", ["pay", "credit"])
+      .in("source_app", ["pay", "credit", "vote"])
       .order("created_at", { ascending: false })
       .limit(500);
 

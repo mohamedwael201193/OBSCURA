@@ -4,7 +4,7 @@
  * Uses useCreditScoreValue() but does NOT trigger on mount — the value is
  * only fetched after the user clicks "Reveal". After 30s it auto-hides.
  *
- * Visual: SVG ring with violet glow when revealed, gray dashed when hidden.
+ * Visual: Harmony card with dashed hidden ring until explicitly revealed.
  */
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
@@ -45,20 +45,20 @@ export default function CreditScoreRing() {
     "Building";
 
   const tierColor =
-    value === null ? "rgb(120,120,140)" :
-    value >= 800 ? "rgb(34,197,94)" :
-    value >= 650 ? "rgb(139,92,246)" :
-    value >= 500 ? "rgb(245,158,11)" :
-    "rgb(248,113,113)";
+    value === null ? "hsl(var(--muted-foreground))" :
+    value >= 800 ? "hsl(var(--success))" :
+    value >= 650 ? "hsl(var(--accent))" :
+    value >= 500 ? "rgb(217,119,6)" :
+    "hsl(var(--destructive))";
 
   return (
     <div className="rounded-2xl hairline bg-card p-5">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[9.5px] tracking-[0.22em] uppercase text-violet-400/60 font-mono flex items-center gap-1.5">
+          <div className="font-mono text-[9.5px] uppercase tracking-[0.22em] text-muted-foreground flex items-center gap-1.5">
             <Award className="w-3 h-3" /> Credit score
           </div>
-          <h3 className="mt-1 text-base text-white/90">Encrypted reputation</h3>
+          <h3 className="mt-1 text-base text-foreground">Encrypted on-chain score</h3>
         </div>
         <div className="flex items-center gap-1.5">
           {revealed && (
@@ -66,7 +66,7 @@ export default function CreditScoreRing() {
               type="button"
               onClick={refresh}
               disabled={loading}
-              className="text-[10.5px] text-white/55 hover:text-white inline-flex items-center gap-1 px-2 py-1 rounded border border-white/10 hover:border-white/20 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-full hairline px-2 py-1 text-[10.5px] text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
             >
               <RefreshCcw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> Refresh
             </button>
@@ -75,7 +75,7 @@ export default function CreditScoreRing() {
             type="button"
             onClick={() => (revealed ? setRevealed(false) : void reveal())}
             disabled={loading}
-            className="text-[10.5px] inline-flex items-center gap-1 px-2 py-1 rounded border border-violet-500/30 bg-violet-500/10 hover:bg-violet-500/20 text-violet-200 disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-[10.5px] text-background hover:opacity-90 disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : revealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
             {revealed ? "Hide" : PRIVACY_COPY.reveal}
@@ -86,7 +86,7 @@ export default function CreditScoreRing() {
       <div className="mt-4 flex items-center justify-center">
         <div className="relative w-[140px] h-[140px]">
           <svg viewBox="0 0 140 140" className="w-full h-full -rotate-90">
-            <circle cx="70" cy="70" r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+            <circle cx="70" cy="70" r={R} fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
             <motion.circle
               cx="70" cy="70" r={R}
               fill="none"
@@ -105,14 +105,14 @@ export default function CreditScoreRing() {
             <div className="text-3xl font-light tabular-nums" style={{ color: tierColor }}>
               {value === null ? PRIVACY_COPY.hiddenGlyph : value.toString()}
             </div>
-            <div className="text-[9.5px] tracking-[0.18em] uppercase text-white/45 font-mono">{tier}</div>
+            <div className="font-mono text-[9.5px] uppercase tracking-[0.18em] text-muted-foreground">{tier}</div>
           </div>
         </div>
       </div>
 
-      <p className="mt-3 text-center text-[10.5px] text-white/40">
+      <p className="mt-3 text-center text-[10.5px] text-muted-foreground">
         {revealed
-          ? "Auto-hides after 30s · only you can decrypt this value"
+          ? "Auto-hides after 30s. Only you can decrypt this value."
           : PRIVACY_COPY.hidden}
       </p>
     </div>

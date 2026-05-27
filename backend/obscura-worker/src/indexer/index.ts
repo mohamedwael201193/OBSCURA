@@ -17,6 +17,8 @@ import {
   CREDIT_MARKET_EVENTS,
   CREDIT_SCORE_EVENTS,
   CREDIT_VAULT_EVENTS,
+  GOVERNOR_EVENTS,
+  VOTE_EVENTS,
 } from "./events";
 import { insertActivity, getLastIndexedBlock } from "../db";
 import { dispatchActivityNotification } from "../notifications";
@@ -112,6 +114,8 @@ const CONTRACTS = {
   ObscuraConfidentialEscrow:      "0x293810A2081114CcE0c98A709a0c31aE07c01D75" as Address,
   ObscuraInsuranceSubscriptionV2: "0xEA9Fc5800F41d090dFB90f9735F4CF3824d6743D" as Address,
   ObscuraStealthRegistry:         "0xa36e791a611D36e2C817a7DA0f41547D30D4917d" as Address,
+  ObscuraVote:                    "0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730" as Address,
+  ObscuraGovernor:                "0xE4807C9F90a0da8F5B5bafa4361B15ff855b7186" as Address,
   // Legacy (historical indexing only)
   ObscuraPayStreamV2:             "0xb2fF39C496131d4AFd01d189569aF6FEBaC54d2C" as Address,
   ObscuraInsuranceSubscription:   "0x0CCE5DA9E447e7B4A400fC53211dd29C51CA8102" as Address,
@@ -124,6 +128,8 @@ const INDEXER_CONTRACTS: readonly ContractConfig[] = [
   { contractName: "ObscuraConfidentialEscrow",      address: CONTRACTS.ObscuraConfidentialEscrow,      events: ESCROW_EVENTS,    live: true  },
   { contractName: "ObscuraInsuranceSubscriptionV2", address: CONTRACTS.ObscuraInsuranceSubscriptionV2, events: INSURANCE_EVENTS, live: true  },
   { contractName: "ObscuraStealthRegistry",         address: CONTRACTS.ObscuraStealthRegistry,         events: STEALTH_EVENTS,   live: true  },
+  { contractName: "ObscuraVote",                    address: CONTRACTS.ObscuraVote,                    events: VOTE_EVENTS,      live: true  },
+  { contractName: "ObscuraGovernor",                address: CONTRACTS.ObscuraGovernor,                events: GOVERNOR_EVENTS,  live: true  },
   { contractName: "ObscuraPayStreamV2",             address: CONTRACTS.ObscuraPayStreamV2,             events: PAYSTREAM_EVENTS, live: false },
   { contractName: "ObscuraInsuranceSubscription",   address: CONTRACTS.ObscuraInsuranceSubscription,   events: INSURANCE_EVENTS, live: false },
   ...envContracts("CreditMarket", CREDIT_MARKET_EVENTS, CREDIT_MARKET_DEFAULTS),
@@ -212,6 +218,31 @@ function extractWallets(args: Record<string, unknown>): string[] {
     .map((a) => a.toLowerCase());
 }
 
+function serializeArgs(args: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(args).map(([k, v]) => [
+      k,
+      typeof v === "bigint" ? v.toString() : v,
+    ])
+  );
+}
+
+function sanitizeActivityArgs(
+  contractName: string,
+  eventName: string,
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  if (contractName === "ObscuraGovernor" && eventName === "VoteCast") {
+    return serializeArgs({ voter: args.voter, proposalId: args.proposalId });
+  }
+
+  if (contractName === "ObscuraGovernor" && eventName === "ProposalCreated") {
+    return serializeArgs({ proposer: args.proposer, proposalId: args.proposalId });
+  }
+
+  return serializeArgs(args);
+}
+
 async function handleLog(
   contractName: string,
   contractAddress: Address,
@@ -231,12 +262,7 @@ async function handleLog(
     event_name:       `${contractName}.${log.eventName}`,
     wallet:           primaryWallet,
     participants:     wallets,
-    args: Object.fromEntries(
-      Object.entries(args).map(([k, v]) => [
-        k,
-        typeof v === "bigint" ? v.toString() : v,
-      ])
-    ),
+    args: sanitizeActivityArgs(contractName, log.eventName, args),
   });
 
   const { activity, inserted } = result;

@@ -91,3 +91,4 @@ docs/
 !frontend/obscura-os-main/src/components/docs/
 scripts/test-e2e.ps1
 chrome-profile/
+launch.js

@@ -2,31 +2,36 @@ import type { ReactNode } from "react";
 import { Lock, Network, ShieldCheck, Wallet } from "lucide-react";
 import { HarmonyFormCard, HarmonyPageIntro } from "@/components/harmony/harmony-ui";
 
-export type CreditHarmonyTabKey = "markets" | "position" | "vaults" | "liquidations";
+export type CreditHarmonyTabKey = "borrow" | "position" | "earn" | "liquidations" | "risk";
 
 const TAB_META: Record<
   CreditHarmonyTabKey,
   { eyebrow: string; title: string; description: string }
 > = {
-  markets: {
-    eyebrow: "Lend · Public rates",
-    title: "Markets",
-    description: "Browse lending markets, supply for yield, or open an encrypted borrow position.",
+  borrow: {
+    eyebrow: "Private USDC · Borrow",
+    title: "Borrow",
+    description: "Use the Pay-backed private USDC market by default. Legacy markets stay behind Advanced/Testnet.",
   },
   position: {
     eyebrow: "Portfolio · Encrypted",
     title: "Your position",
     description: "Collateral, borrow, and supply balances stay sealed until you reveal them with a permit.",
   },
-  vaults: {
-    eyebrow: "Curated · Strategy",
-    title: "Vaults",
-    description: "Deposit ocUSDC into risk-tiered vaults that route liquidity across encrypted markets.",
+  earn: {
+    eyebrow: "Private USDC · Earn",
+    title: "Earn",
+    description: "Supply Pay-backed ocUSDC directly, then use vaults only when you want curated allocation.",
   },
   liquidations: {
     eyebrow: "Auctions · Sealed bids",
     title: "Liquidations",
     description: "Undercollateralized positions open sealed auctions — bids are encrypted, no MEV sniping.",
+  },
+  risk: {
+    eyebrow: "Reputation · Alerts · Activity",
+    title: "Risk",
+    description: "Review broad reputation categories, generic alerts, and indexed Credit activity without exposing amounts.",
   },
 };
 

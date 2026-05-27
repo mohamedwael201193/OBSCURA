@@ -18,8 +18,18 @@ import { relayRouter, ENTRY_POINT, PAYMASTER_ADDR } from "./relay";
 import { notificationsRouter, startNotificationListener } from "./notifications";
 import { reputationRouter } from "./reputation";
 
-const PORT           = parseInt(process.env.PORT ?? "3000");
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "http://localhost:5173").split(",");
+const PORT = parseInt(process.env.PORT ?? "3000");
+const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "https://obscura-os-nine.vercel.app",
+];
+const ALLOWED_ORIGINS = Array.from(new Set([
+  ...DEFAULT_ALLOWED_ORIGINS,
+  ...(process.env.ALLOWED_ORIGINS ?? "").split(","),
+].map((origin) => origin.trim()).filter(Boolean)));
 
 const app = express();
 

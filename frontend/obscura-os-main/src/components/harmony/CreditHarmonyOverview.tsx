@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { ArrowUpRight, Layers, ShieldAlert } from "lucide-react";
+import { ArrowDownToLine, ArrowUpRight, Layers, ShieldAlert, WalletCards } from "lucide-react";
+import { CreditReputationPanel } from "@/components/credit/CreditReputationPanel";
 import { HarmonyEncryptedValue } from "@/components/harmony/HarmonyEncryptedValue";
 import {
   HarmonyKpi,
@@ -9,25 +10,16 @@ import {
 } from "@/components/harmony/harmony-ui";
 import type { CreditMarketMeta } from "@/hooks/useCreditMarkets";
 import type { CreditVaultMeta } from "@/hooks/useCreditVaults";
+import { useUtilizationApr } from "@/hooks/useCredit";
 
-function Sparkline() {
-  const pts = [40, 42, 38, 50, 55, 48, 60, 58, 65, 62, 70, 72, 68, 75, 78, 80, 76, 82, 85, 84, 90, 88, 92, 94, 95, 93, 96, 98, 97, 99];
-  const max = 100;
-  const min = 30;
-  const W = 600;
-  const H = 80;
-  const path = pts
-    .map((p, i) => {
-      const x = (i / (pts.length - 1)) * W;
-      const y = H - ((p - min) / (max - min)) * H;
-      return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-20 w-full text-[hsl(var(--success))]" preserveAspectRatio="none">
-      <path d={path} fill="none" stroke="currentColor" strokeWidth="2" />
-    </svg>
-  );
+function formatUsd(value?: bigint) {
+  if (value === undefined) return "—";
+  return `$${(Number(value) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
+function formatPercentBps(value?: bigint | number) {
+  if (value === undefined) return "—";
+  return `${(Number(value) / 100).toFixed(1)}%`;
 }
 
 function RiskRow({ k, v }: { k: string; v: string }) {
@@ -53,6 +45,13 @@ export function CreditHarmonyOverview({
   onOpenVault: () => void;
 }) {
   const primary = markets[0];
+  const totalSupplied = markets.reduce((sum, market) => sum + (market.totalSupplyAssets ?? 0n), 0n);
+  const totalBorrowed = markets.reduce((sum, market) => sum + (market.totalBorrowAssets ?? 0n), 0n);
+  const availableLiquidity = totalSupplied >= totalBorrowed ? totalSupplied - totalBorrowed : 0n;
+  const utilizationBps = totalSupplied > 0n ? Number((totalBorrowed * 10000n) / totalSupplied) : Number(primary?.utilizationBps ?? 0n);
+  const { aprBps } = useUtilizationApr(primary?.utilizationBps);
+  const borrowApy = aprBps === null ? "—" : `${(aprBps / 100).toFixed(2)}%`;
+  const supplyApy = aprBps === null ? "—" : `${((aprBps * utilizationBps) / 10000 / 100).toFixed(2)}%`;
 
   return (
     <>
@@ -64,14 +63,17 @@ export function CreditHarmonyOverview({
             <button
               type="button"
               onClick={onSupply}
-              className="h-10 rounded-full bg-foreground px-4 text-sm font-medium text-background"
+              className="inline-flex h-10 items-center gap-2 rounded-full bg-foreground px-4 text-sm font-medium text-background"
             >
+              <WalletCards className="h-3.5 w-3.5" />
               Supply
             </button>
-            <button type="button" onClick={onBorrow} className="h-10 rounded-full hairline px-4 text-sm">
+            <button type="button" onClick={onBorrow} className="inline-flex h-10 items-center gap-2 rounded-full hairline px-4 text-sm">
+              <ArrowDownToLine className="h-3.5 w-3.5" />
               Borrow
             </button>
-            <button type="button" onClick={onOpenVault} className="h-10 rounded-full hairline px-4 text-sm">
+            <button type="button" onClick={onOpenVault} className="inline-flex h-10 items-center gap-2 rounded-full hairline px-4 text-sm">
+              <Layers className="h-3.5 w-3.5" />
               Open vault
             </button>
           </>
@@ -80,17 +82,17 @@ export function CreditHarmonyOverview({
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <HarmonyKpiGrid>
-          <HarmonyKpi label="Net worth">
+          <HarmonyKpi label="Private position">
             <HarmonyEncryptedValue value="$—" size="md" />
           </HarmonyKpi>
           <HarmonyKpi label="Borrow APY">
-            <span className="font-display text-3xl">—</span>
+            <span className="font-display text-3xl">{borrowApy}</span>
           </HarmonyKpi>
-          <HarmonyKpi label="Health factor">
-            <span className="font-display text-3xl text-[hsl(var(--success))]">—</span>
+          <HarmonyKpi label="Utilization">
+            <span className="font-display text-3xl text-[hsl(var(--success))]">{formatPercentBps(utilizationBps)}</span>
           </HarmonyKpi>
-          <HarmonyKpi label="Available to borrow">
-            <span className="font-display text-3xl cipher-shimmer text-muted-foreground">••••••</span>
+          <HarmonyKpi label="Pool liquidity">
+            <span className="font-display text-3xl">{formatUsd(availableLiquidity)}</span>
           </HarmonyKpi>
         </HarmonyKpiGrid>
       </motion.div>
@@ -103,13 +105,10 @@ export function CreditHarmonyOverview({
               {primary?.label ?? "Select market"}
             </span>
           </div>
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Collateral</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Supplied</p>
               <p className="mt-2 font-display text-3xl cipher-shimmer text-muted-foreground">••••••</p>
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                <div className="h-full w-[72%] bg-[hsl(var(--success))]" />
-              </div>
               <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 Encrypted on-chain
               </p>
@@ -118,15 +117,25 @@ export function CreditHarmonyOverview({
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Borrow</p>
               <p className="mt-2 font-display text-3xl cipher-shimmer text-muted-foreground">••••••</p>
               <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Revealed only with permit
+                Reveal from Position
+              </p>
+            </div>
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Collateral</p>
+              <p className="mt-2 font-display text-3xl cipher-shimmer text-muted-foreground">••••••</p>
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Hidden by default
               </p>
             </div>
           </div>
-          <div className="mt-8">
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Health factor · 30d
+          <div className="mt-8 rounded-xl bg-muted/50 p-4">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-muted-foreground">Next best step</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground">Borrow workspace</span>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Start in Borrow to source Pay-backed private USDC, approve the router, and submit a single encrypted borrow flow.
             </p>
-            <Sparkline />
           </div>
         </div>
 
@@ -135,27 +144,61 @@ export function CreditHarmonyOverview({
             <ShieldAlert className="h-4 w-4 text-accent" />
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] opacity-70">Risk · Encrypted</span>
           </div>
-          <p className="mt-4 font-display text-3xl leading-tight">No liquidator can read your position.</p>
+          <p className="mt-4 font-display text-3xl leading-tight">Risk is managed without exposing position size.</p>
           <p className="mt-3 text-sm opacity-70">
-            Only the threshold network can trigger reveals at the liquidation boundary.
+            Liquidations and score changes flow through the shared activity worker and generic notifications.
           </p>
           <div className="mt-6 space-y-2 font-mono text-[11px]">
-            <RiskRow k="Oracle" v="Chainlink" />
+            <RiskRow k="Feed" v="Supabase realtime" />
             <RiskRow k="Liq. bonus" v="5%" />
             <RiskRow k="LLTV" v={primary ? `${primary.lltvBps / 100}%` : "—"} />
-            <RiskRow k="Keeper" v="dry-run · ok" />
+            <RiskRow k="Notifications" v="shared dispatcher" />
           </div>
         </div>
       </div>
 
-      <HarmonySection title="Markets" hint="Risk profiles. All positions encrypted by default.">
-        <div className="overflow-hidden rounded-2xl hairline bg-card">
+      <div className="mt-6">
+        <CreditReputationPanel compact />
+      </div>
+
+      <HarmonySection title="Borrow market" hint="Live public pool metrics. Personal balances stay encrypted.">
+        <div className="grid gap-3 md:hidden">
+          {markets.map((m) => (
+            <div key={m.address} className="rounded-2xl hairline bg-card p-5">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-base font-medium leading-snug">{m.label}</p>
+                <span className="rounded-full bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">LLTV {m.lltvBps / 100}%</span>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Supplied</p>
+                  <p className="mt-1 font-mono text-foreground">{formatUsd(m.totalSupplyAssets)}</p>
+                </div>
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Borrowed</p>
+                  <p className="mt-1 font-mono text-foreground">{formatUsd(m.totalBorrowAssets)}</p>
+                </div>
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Est. supply APY</p>
+                  <p className="mt-1 font-mono text-[hsl(var(--success))]">{m.address === primary?.address ? supplyApy : "—"}</p>
+                </div>
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Utilization</p>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <span className="block h-full bg-accent" style={{ width: `${Math.min(100, Number(m.utilizationBps ?? 0n) / 100)}%` }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden overflow-hidden rounded-2xl hairline bg-card md:block">
           <div className="grid grid-cols-12 bg-surface px-6 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
             <span className="col-span-4">Market</span>
-            <span className="col-span-2">Collateral</span>
+            <span className="col-span-2">Supplied</span>
+            <span className="col-span-2">Borrowed</span>
             <span className="col-span-1">LLTV</span>
-            <span className="col-span-2">Supply APY</span>
-            <span className="col-span-2">Borrow APY</span>
+            <span className="col-span-2">Est. supply APY</span>
             <span className="col-span-1 text-right">Util</span>
           </div>
           {markets.map((m) => (
@@ -164,13 +207,13 @@ export function CreditHarmonyOverview({
               className="grid grid-cols-12 items-center border-t border-border px-6 py-4 transition-colors hover:bg-muted/40"
             >
               <span className="col-span-4 font-medium">{m.label}</span>
-              <span className="col-span-2 text-sm text-muted-foreground">{m.collateralSymbol}</span>
+              <span className="col-span-2 font-mono text-sm text-muted-foreground">{formatUsd(m.totalSupplyAssets)}</span>
+              <span className="col-span-2 font-mono text-sm text-muted-foreground">{formatUsd(m.totalBorrowAssets)}</span>
               <span className="col-span-1 font-mono text-sm">{m.lltvBps / 100}%</span>
-              <span className="col-span-2 font-mono text-sm text-[hsl(var(--success))]">—</span>
-              <span className="col-span-2 font-mono text-sm">—</span>
+              <span className="col-span-2 font-mono text-sm text-[hsl(var(--success))]">{m.address === primary?.address ? supplyApy : "—"}</span>
               <span className="col-span-1 flex items-center justify-end gap-2">
                 <span className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                  <span className="block h-full bg-accent" style={{ width: "60%" }} />
+                  <span className="block h-full bg-accent" style={{ width: `${Math.min(100, Number(m.utilizationBps ?? 0n) / 100)}%` }} />
                 </span>
               </span>
             </div>

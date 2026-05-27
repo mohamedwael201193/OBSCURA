@@ -178,6 +178,9 @@ export function ActivityFeed({
     loadMore,
     hasMore,
     refresh,
+    realtimeStatus,
+    lastEventAt,
+    lastRefreshAt,
   } = useActivityFeed(defaultFilter);
 
   useEffect(() => {
@@ -193,6 +196,16 @@ export function ActivityFeed({
   const tabs = mode === "public"
     ? FILTER_TABS.filter((tab) => tab.key === "all")
     : FILTER_TABS.filter((tab) => !allowedFilters || allowedFilters.has(tab.key));
+  const statusLabel = realtimeStatus === "listening"
+    ? "Realtime on"
+    : realtimeStatus === "polling"
+      ? "Polling fallback"
+      : realtimeStatus === "connecting"
+        ? "Connecting"
+        : realtimeStatus === "error"
+          ? "Feed unavailable"
+          : "Idle";
+  const statusTime = lastEventAt ?? lastRefreshAt;
 
   return (
     <HarmonyFormCard
@@ -223,6 +236,14 @@ export function ActivityFeed({
         >
           <RefreshCw className="h-3.5 w-3.5" />
         </button>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1 rounded-full hairline px-2.5 py-1">
+          <span className={["h-1.5 w-1.5 rounded-full", realtimeStatus === "listening" ? "bg-[hsl(var(--success))]" : realtimeStatus === "polling" ? "bg-amber-400" : "bg-muted-foreground"].join(" ")} />
+          {statusLabel}
+        </span>
+        {statusTime && <span>Last sync {new Date(statusTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
       </div>
 
       {/* States */}

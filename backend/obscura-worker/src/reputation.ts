@@ -29,8 +29,16 @@ type CreditSignalType =
   | "credit_vault_withdrew"
   | "credit_score_updated";
 
-type ReputationSourceApp = "pay" | "credit";
-type ReputationSignalType = PaySignalType | CreditSignalType;
+type VoteSignalType =
+  | "vote_participated"
+  | "vote_changed"
+  | "vote_delegated"
+  | "vote_delegation_removed"
+  | "governance_vote_cast"
+  | "governance_proposed";
+
+type ReputationSourceApp = "pay" | "credit" | "vote";
+type ReputationSignalType = PaySignalType | CreditSignalType | VoteSignalType;
 
 interface ReputationEventRecord {
   wallet: string;
@@ -135,6 +143,15 @@ function makeCreditSignal(
   relation: string,
 ): ReputationEventRecord | null {
   return makeSignal(activity, walletValue, signalType, relation, "credit");
+}
+
+function makeVoteSignal(
+  activity: StoredActivityRecord,
+  walletValue: unknown,
+  signalType: VoteSignalType,
+  relation: string,
+): ReputationEventRecord | null {
+  return makeSignal(activity, walletValue, signalType, relation, "vote");
 }
 
 async function findLinkedActivity(
@@ -261,6 +278,42 @@ async function deriveCreditSignals(activity: StoredActivityRecord): Promise<Repu
   return signals;
 }
 
+async function deriveVoteSignals(activity: StoredActivityRecord): Promise<ReputationEventRecord[]> {
+  const signals: ReputationEventRecord[] = [];
+  const add = (signal: ReputationEventRecord | null) => {
+    if (!signal) return;
+    const duplicate = signals.some((existing) =>
+      existing.wallet === signal.wallet && existing.signal_type === signal.signal_type,
+    );
+    if (!duplicate) signals.push(signal);
+  };
+
+  switch (activity.event_name) {
+    case "ObscuraVote.VoteCast":
+      add(makeVoteSignal(activity, activity.args.voter, "vote_participated", "voter"));
+      break;
+    case "ObscuraVote.VoteChanged":
+      add(makeVoteSignal(activity, activity.args.voter, "vote_changed", "voter"));
+      break;
+    case "ObscuraVote.DelegateSet":
+      add(makeVoteSignal(activity, activity.args.delegator, "vote_delegated", "delegator"));
+      break;
+    case "ObscuraVote.DelegateRemoved":
+      add(makeVoteSignal(activity, activity.args.delegator, "vote_delegation_removed", "delegator"));
+      break;
+    case "ObscuraGovernor.VoteCast":
+      add(makeVoteSignal(activity, activity.args.voter, "governance_vote_cast", "voter"));
+      break;
+    case "ObscuraGovernor.ProposalCreated":
+      add(makeVoteSignal(activity, activity.args.proposer, "governance_proposed", "proposer"));
+      break;
+    default:
+      break;
+  }
+
+  return signals;
+}
+
 async function upsertReputationSignals(signals: ReputationEventRecord[]): Promise<number> {
   if (signals.length === 0) return 0;
 
@@ -285,6 +338,7 @@ export async function insertReputationSignalsForActivity(activity: StoredActivit
     const signals = [
       ...(await derivePaySignals(activity)),
       ...(await deriveCreditSignals(activity)),
+      ...(await deriveVoteSignals(activity)),
     ];
     const inserted = await upsertReputationSignals(signals);
     if (signals.length > 0) {

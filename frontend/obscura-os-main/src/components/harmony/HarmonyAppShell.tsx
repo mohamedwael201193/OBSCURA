@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Banknote, Coins, LayoutGrid, Plus, Search, Settings, Vote } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import NavRightSlot from "@/components/elite/NavRightSlot";
 import { cn } from "@/lib/utils";
 import ObscuraLogo from "@/components/brand/ObscuraLogo";
@@ -8,6 +9,8 @@ export type HarmonySidebarItem = {
   key: string;
   label: string;
   badge?: string;
+  icon?: LucideIcon;
+  mobileLabel?: string;
   active?: boolean;
   onClick?: () => void;
   href?: string;
@@ -159,6 +162,8 @@ export function HarmonyAppShell({
         {/* Mobile bottom nav — visible only on small screens */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex h-[68px] items-stretch border-t border-border bg-background">
           {sidebar.map((item) => {
+            const Icon = item.icon;
+            const mobileLabel = item.mobileLabel ?? item.label;
             const inner = (
               <div className="flex min-w-0 flex-col items-center gap-0.5">
                 <span
@@ -167,18 +172,17 @@ export function HarmonyAppShell({
                     item.active ? "bg-foreground/10" : "",
                   )}
                 >
-                  <span className={cn("text-[10px] font-medium", item.active ? "text-foreground" : "text-muted-foreground/60")}>
-                    {item.label.slice(0, 2)}
-                  </span>
+                  {Icon ? (
+                    <Icon className={cn("h-3.5 w-3.5", item.active ? "text-foreground" : "text-muted-foreground/60")} />
+                  ) : (
+                    <span className={cn("text-[10px] font-medium", item.active ? "text-foreground" : "text-muted-foreground/60")}>
+                      {item.label.slice(0, 2)}
+                    </span>
+                  )}
                 </span>
                 <span className={cn("max-w-full truncate px-0.5 text-[9px] sm:text-[10px]", item.active ? "text-foreground font-medium" : "text-muted-foreground/60")}>
-                  {item.label}
+                  {mobileLabel}
                 </span>
-                {item.badge && (
-                  <span className="absolute top-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground">
-                    {item.badge}
-                  </span>
-                )}
               </div>
             );
             const btnClass = cn(

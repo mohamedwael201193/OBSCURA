@@ -1026,6 +1026,7 @@ export function useMarketPosition(market?: `0x${string}`) {
   const [maxBorrowableAmt, setMaxBorrowableAmt] = useState<bigint | null>(null);
   const [loading, setLoading] = useState(false);
   const [sharesLoading, setSharesLoading] = useState(false);
+  const [decryptError, setDecryptError] = useState<string | null>(null);
 
   // refresh — public plaintext shadow reads only (no FHE, auto on mount)
   const refresh = useCallback(async () => {
@@ -1058,8 +1059,13 @@ export function useMarketPosition(market?: `0x${string}`) {
 
   // decryptShares — FHE decrypt of supply/borrow/collateral handles (manual, user-triggered)
   const decryptShares = useCallback(async () => {
-    if (!publicClient || !walletClient || !market || !address) return;
+    if (!publicClient || !walletClient || !market || !address) {
+      const message = "Connect your wallet to reveal encrypted position values";
+      setDecryptError(message);
+      throw new Error(message);
+    }
     setSharesLoading(true);
+    setDecryptError(null);
     try {
       const [supplyHandle, position] = await Promise.all([
         publicClient.readContract({
@@ -1087,8 +1093,13 @@ export function useMarketPosition(market?: `0x${string}`) {
       setMySupply(s);
       setMyBorrow(b);
       setMyCollateral(c);
-    } catch {
-      // ignore decrypt errors (e.g. wallet not connected, no position yet)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to reveal encrypted position";
+      setDecryptError(message);
+      setMySupply(null);
+      setMyBorrow(null);
+      setMyCollateral(null);
+      throw error;
     } finally {
       setSharesLoading(false);
     }
@@ -1103,9 +1114,10 @@ export function useMarketPosition(market?: `0x${string}`) {
     setMySupply(null);
     setMyBorrow(null);
     setMyCollateral(null);
+    setDecryptError(null);
   }, []);
 
-  return { mySupply, myBorrow, myCollateral, plainCollateral, plainBorrow, maxBorrowableAmt, loading, sharesLoading, refresh, decryptShares, resetDecrypted };
+  return { mySupply, myBorrow, myCollateral, plainCollateral, plainBorrow, maxBorrowableAmt, loading, sharesLoading, decryptError, refresh, decryptShares, resetDecrypted };
 }
 
 // ─────────────────────────────────────────────────────────────────────────

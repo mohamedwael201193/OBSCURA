@@ -73,13 +73,11 @@ import CreditScoreRing from "@/components/credit/CreditScoreRing";
 import SettingsPanel from "@/components/credit/SettingsPanel";
 import HealthRibbon from "@/components/credit/HealthRibbon";
 import LiquidationAlertCenter from "@/components/credit/LiquidationAlertCenter";
-import CreditOnboarding from "@/components/credit/CreditOnboarding";
 import CreditAlertDrawer from "@/components/credit/CreditAlertDrawer";
 import { CreditReputationPanel } from "@/components/credit/CreditReputationPanel";
 import EncryptedTile from "@/components/credit/EncryptedTile";
 import HealthBar from "@/components/credit/HealthBar";
 import SetupSheet from "@/components/credit/SetupSheet";
-import { useCreditOnboarding } from "@/hooks/useCreditOnboarding";
 import { useCreditAlerts } from "@/hooks/useCreditAlerts";
 import { ActivityFeed } from "@/components/harmony/ActivityFeed";
 import { useNotificationPrefs } from "@/hooks/useNotificationPrefs";
@@ -259,6 +257,7 @@ function PositionTab({
   const [selectedAddr, setSelectedAddr] = useState<`0x${string}` | undefined>(markets[0]?.address);
   const [revealed, setRevealed] = useState(false);
   const [action, setAction] = useState<PosAction>(null);
+  const [revealError, setRevealError] = useState<string | null>(null);
 
   const market = useMemo(
     () => markets.find((m) => m.address === selectedAddr) ?? markets[0],
@@ -275,8 +274,14 @@ function PositionTab({
   }, [market, pos.plainBorrow, pos.plainCollateral]);
 
   const handleRevealAll = useCallback(async () => {
-    await pos.decryptShares();
-    setRevealed(true);
+    setRevealError(null);
+    try {
+      await pos.decryptShares();
+      setRevealed(true);
+    } catch (error) {
+      setRevealed(false);
+      setRevealError(error instanceof Error ? error.message : "Unable to reveal encrypted position");
+    }
   }, [pos]);
 
   const fmt = (v: bigint | null) =>
@@ -289,7 +294,7 @@ function PositionTab({
           {markets.map((m) => (
             <button
               key={m.address ?? m.label}
-              onClick={() => { setSelectedAddr(m.address); setRevealed(false); setAction(null); }}
+              onClick={() => { setSelectedAddr(m.address); setRevealed(false); setAction(null); setRevealError(null); }}
               className={`shrink-0 px-3 py-1.5 rounded-lg border text-[10px] font-mono transition-all ${
                 m.address === selectedAddr
                   ? "border-accent/40 bg-accent/15 text-foreground"
@@ -339,6 +344,11 @@ function PositionTab({
             onExpire={() => setRevealed(false)} accent="amber"
           />
         </div>
+        {(revealError || pos.decryptError) && (
+          <p className="mt-3 rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-destructive/80">
+            {revealError ?? pos.decryptError}
+          </p>
+        )}
       </div>
 
       <HealthBar hf={hfNum} loading={pos.loading} />
@@ -830,7 +840,6 @@ const CreditPage = () => {
 
   const { markets, refresh: refreshMarkets } = useCreditMarkets();
   const { vaults, refresh: refreshVaults } = useCreditVaults();
-  const onboarding = useCreditOnboarding();
   const { unreadCount } = useCreditAlerts();
 
   const canonicalMarkets = useMemo(
@@ -1038,7 +1047,6 @@ const CreditPage = () => {
       />
 
       {isConnected && <LiquidationAlertCenter />}
-      <CreditOnboarding open={onboarding.open} onComplete={onboarding.complete} onDismiss={onboarding.dismiss} />
     </HarmonyAppShell>
   );
 };

@@ -2,10 +2,9 @@
  * SetupSheet — single bottom-sheet onboarding for new users.
  *
  * Collapses the setup flow into one sheet:
- *  Step 1: Claim test funds (faucet: ocUSDC + ocWETH + ocOBS in one tx)
- *  Step 2: Canonical market uses the direct encrypted market flow; legacy
- *          markets approve Router as operator on ocUSDC (7-day expiry)
- *  Step 3: Collateral amount → Borrow amount → Confirm
+ *  Step 1: Use private USDC from Pay
+ *  Step 2: Enter collateral and borrow amount
+ *  Step 3: Confirm the encrypted market flow
  *
  * Privacy rules:
  *  - FHE encryption is shown via the 5-step stepper
@@ -299,12 +298,17 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
     }
   }, [address, publicClient, walletClient, writeContractAsync, routerAddr, marketAddr, collateralAmt, borrowAmt, stealthToggle, fhe, onSuccess, isCanonical, collateralTokenAddress, supplyCollateralDirect, borrowDirect]);
 
-  const steps: { key: SetupStep; label: string; icon: React.ReactNode }[] = [
-    { key: "funding",  label: isCanonical ? "Private USDC" : "Test funds", icon: <Droplet className="w-4 h-4" /> },
-    { key: "operator", label: isCanonical ? "Market route" : "Approve Router",  icon: <ShieldCheck className="w-4 h-4" /> },
-    { key: "borrow",   label: "Borrow now",      icon: <ArrowDownToLine className="w-4 h-4" /> },
-  ];
-  const stepIdx = step === "done" ? 3 : steps.findIndex((s) => s.key === step);
+  const steps: { key: SetupStep; label: string; icon: React.ReactNode }[] = isCanonical
+    ? [
+      { key: "funding", label: "Private USDC", icon: <Droplet className="w-4 h-4" /> },
+      { key: "borrow", label: "Borrow", icon: <ArrowDownToLine className="w-4 h-4" /> },
+    ]
+    : [
+      { key: "funding", label: "Test funds", icon: <Droplet className="w-4 h-4" /> },
+      { key: "operator", label: "Approve", icon: <ShieldCheck className="w-4 h-4" /> },
+      { key: "borrow", label: "Borrow", icon: <ArrowDownToLine className="w-4 h-4" /> },
+    ];
+  const stepIdx = step === "done" ? steps.length : steps.findIndex((s) => s.key === step);
 
   return (
     <AnimatePresence>
@@ -326,7 +330,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
             {/* Handle + close */}
             <div className="flex items-center justify-between px-5 pt-4 pb-2">
               <div className="w-8 h-1 rounded-full bg-border mx-auto absolute left-0 right-0 top-2" />
-              <span className="text-sm font-medium text-foreground">Get started with Obscura Credit</span>
+              <span className="text-sm font-medium text-foreground">Start private credit</span>
               <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
                 <X className="w-4 h-4" />
               </button>
@@ -358,7 +362,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                     {isCanonical ? (
                       <>
                         <p className="text-sm text-muted-foreground mb-4">
-                          The default Credit market uses the same private USDC balance as Pay. Shield USDC in Pay, then open an encrypted borrow position from that balance.
+                          Credit uses the same private ocUSDC balance as Pay. Shield in Pay once, then borrow or earn from that encrypted balance here.
                         </p>
                         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">Pay-backed ocUSDC · no faucet · reusable balance</p>
                         <button

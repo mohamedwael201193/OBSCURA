@@ -7,7 +7,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import { arbitrumSepolia } from "viem/chains";
-import { formatUnits, parseUnits } from "viem";
+import { createWalletClient, custom, formatUnits, parseUnits } from "viem";
 import {
   USDC_ARB_SEPOLIA,
   ERC20_APPROVE_ABI,
@@ -46,9 +46,9 @@ const USDC_BALANCE_ABI = [
 ] as const;
 
 export function useOcUSDCBalance() {
-  const { address } = useAccount();
-  const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
+  const { address, connector, chainId } = useAccount();
+  const publicClient = usePublicClient({ chainId: arbitrumSepolia.id });
+  const { data: walletClient } = useWalletClient({ account: address });
   const { writeContractAsync } = useWriteContract();
   const [decrypted, setDecrypted] = useState<bigint | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,14 +86,40 @@ export function useOcUSDCBalance() {
   }, [address, publicClient, refetch]);
 
   const reveal = useCallback(async () => {
-    if (!publicClient || !walletClient || !address) {
-      setError("Wallet not connected");
-      return;
-    }
     setBusy(true);
     setError(null);
     try {
-      await initFHEClient(publicClient, walletClient);
+      const ensureArbSepolia = async (request?: (args: { method: string; params?: any[] }) => Promise<any>) => {
+        if (!request) return;
+        const activeChainId = await request({ method: "eth_chainId" }).catch(() => null);
+        if (typeof activeChainId === "string" && activeChainId.toLowerCase() !== "0x66eee") {
+          await request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x66eee" }] });
+        }
+      };
+
+      let activeWalletClient = chainId === arbitrumSepolia.id ? walletClient : undefined;
+      if ((!activeWalletClient || chainId !== arbitrumSepolia.id) && address && connector) {
+        if (chainId !== arbitrumSepolia.id && connector.switchChain) {
+          await connector.switchChain({ chainId: arbitrumSepolia.id });
+        }
+        const provider = await connector.getProvider();
+        if (provider) {
+          const request = (provider as any).request?.bind(provider);
+          await ensureArbSepolia(request);
+          activeWalletClient = createWalletClient({
+            account: address,
+            transport: custom(provider as any),
+          });
+        }
+      }
+
+      if (!publicClient || !activeWalletClient || !address) {
+        throw new Error("Wallet not connected");
+      }
+
+      await ensureArbSepolia((activeWalletClient as any).request?.bind(activeWalletClient));
+
+      await initFHEClient(publicClient, activeWalletClient);
       await getOrCreatePermit();
 
       const result = await refetch();
@@ -111,6 +137,7 @@ export function useOcUSDCBalance() {
         setTrackedUnits(address, plain);
         setTrackedCusdc(getTrackedFormatted(address));
       }
+      return plain;
     } catch (e) {
       const msg = (e as Error).message || "Decrypt failed";
       console.error("[ocUSDC reveal]", e);
@@ -119,7 +146,7 @@ export function useOcUSDCBalance() {
     } finally {
       setBusy(false);
     }
-  }, [publicClient, walletClient, address, refetch, trackedCusdc]);
+  }, [publicClient, walletClient, address, connector, chainId, refetch, trackedCusdc]);
 
   const approveStream = useCallback(
     async (durationDays: number) => {

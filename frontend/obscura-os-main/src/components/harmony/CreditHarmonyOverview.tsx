@@ -1,7 +1,7 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowDownToLine, ArrowUpRight, Layers, ShieldAlert, WalletCards } from "lucide-react";
+import { ArrowDownToLine, ArrowUpRight, Eye, EyeOff, Layers, Loader2, ShieldAlert, WalletCards } from "lucide-react";
 import { CreditReputationPanel } from "@/components/credit/CreditReputationPanel";
-import { HarmonyEncryptedValue } from "@/components/harmony/HarmonyEncryptedValue";
 import {
   HarmonyKpi,
   HarmonyKpiGrid,
@@ -11,6 +11,7 @@ import {
 import type { CreditMarketMeta } from "@/hooks/useCreditMarkets";
 import type { CreditVaultMeta } from "@/hooks/useCreditVaults";
 import { useUtilizationApr } from "@/hooks/useCredit";
+import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
 
 function formatUsd(value?: bigint) {
   if (value === undefined) return "—";
@@ -22,6 +23,56 @@ function formatUsd(value?: bigint) {
 function formatPercentBps(value?: bigint | number) {
   if (value === undefined) return "—";
   return `${(Number(value) / 100).toFixed(1)}%`;
+}
+
+function formatOcusdc(value: bigint) {
+  const amount = Number(value) / 1e6;
+  const maximumFractionDigits = amount > 0 && amount < 1 ? 6 : 4;
+  return amount.toLocaleString(undefined, { maximumFractionDigits });
+}
+
+function CreditPrivateBalanceKpi() {
+  const { decrypted, busy, error, reveal } = useOcUSDCBalance();
+  const [revealed, setRevealed] = useState(false);
+  const display = decrypted === null ? null : formatOcusdc(decrypted);
+
+  const handleReveal = async () => {
+    if (display !== null) {
+      setRevealed(true);
+      return;
+    }
+    setRevealed(false);
+    try {
+      const plain = await reveal();
+      setRevealed(plain !== null);
+    } catch {
+      setRevealed(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-baseline gap-3">
+        <span className="font-display text-2xl tabular-nums">
+          {revealed && display !== null ? display : <span className="cipher-shimmer text-muted-foreground">••••••</span>}
+        </span>
+        <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">ocUSDC</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => revealed ? setRevealed(false) : void handleReveal()}
+          disabled={busy}
+          className="inline-flex h-7 items-center gap-1.5 rounded-full hairline px-2.5 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+        >
+          {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : revealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+          {busy ? "Decrypting" : revealed ? "Hide" : "Reveal"}
+        </button>
+        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70">Pay balance</span>
+      </div>
+      {error && <p className="text-xs leading-relaxed text-destructive/80">{error}</p>}
+    </div>
+  );
 }
 
 function RiskRow({ k, v }: { k: string; v: string }) {
@@ -84,8 +135,8 @@ export function CreditHarmonyOverview({
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <HarmonyKpiGrid>
-          <HarmonyKpi label="Private position">
-            <HarmonyEncryptedValue value="—" symbol="ocUSDC" size="md" />
+          <HarmonyKpi label="Private balance">
+            <CreditPrivateBalanceKpi />
           </HarmonyKpi>
           <HarmonyKpi label="Borrow APY">
             <span className="font-display text-3xl">{borrowApy}</span>

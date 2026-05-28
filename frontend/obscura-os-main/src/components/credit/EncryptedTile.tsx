@@ -85,7 +85,7 @@ export default function EncryptedTile({
         setSecondsLeft((s) => {
           if (s <= 1) {
             clearInterval(timerRef.current!);
-            onExpire?.();
+            setTimeout(() => onExpire?.(), 0);
             return 0;
           }
           return s - 1;

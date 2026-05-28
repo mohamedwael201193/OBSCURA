@@ -15,6 +15,7 @@ import {
   Shield,
   User,
   Landmark,
+  Vote as VoteIcon,
   RefreshCw,
   AlertCircle,
   Loader2,
@@ -39,6 +40,7 @@ const FILTER_TABS: { key: ActivityEventType; label: string }[] = [
   { key: "escrow",   label: "Escrow" },
   { key: "stealth",  label: "Stealth" },
   { key: "credit",   label: "Credit" },
+  { key: "vote",     label: "Vote" },
 ];
 
 // ─── Event icon mapping ───────────────────────────────────────────────────────
@@ -50,6 +52,7 @@ function EventIcon({ eventName }: { eventName: string }) {
   if (eventName.includes("Escrow"))     return <Shield         className="h-4 w-4 text-[#2D6A4F]" />;
   if (eventName.includes("Stealth"))    return <User           className="h-4 w-4 text-[#2D6A4F]" />;
   if (eventName.includes("Credit"))     return <Landmark       className="h-4 w-4 text-[#2D6A4F]" />;
+  if (eventName.includes("ObscuraVote") || eventName.includes("ObscuraGovernor")) return <VoteIcon className="h-4 w-4 text-[#2D6A4F]" />;
   return <ArrowUpRight className="h-4 w-4 text-muted-foreground" />;
 }
 
@@ -101,6 +104,25 @@ function eventLabel(eventName: string): string {
   if (eventName.includes("CreditScore") || eventName.startsWith("CreditScore")) {
     const suffix = eventName.split(".").pop();
     if (suffix === "ScoreUpdated") return "Credit tier updated";
+  }
+  if (eventName.startsWith("ObscuraVote")) {
+    const suffix = eventName.split(".").pop();
+    if (suffix === "ProposalCreated") return "Private proposal opened";
+    if (suffix === "VoteCast") return "Private vote recorded";
+    if (suffix === "VoteChanged") return "Private vote updated";
+    if (suffix === "VoteFinalized") return "Final totals available";
+    if (suffix === "ProposalCancelled") return "Private proposal cancelled";
+    if (suffix === "DeadlineExtended") return "Voting deadline extended";
+    if (suffix === "DelegateSet") return "Delegate selected";
+    if (suffix === "DelegateRemoved") return "Delegation removed";
+  }
+  if (eventName.startsWith("ObscuraGovernor")) {
+    const suffix = eventName.split(".").pop();
+    if (suffix === "ProposalCreated") return "Executable proposal opened";
+    if (suffix === "VoteCast") return "Executable vote recorded";
+    if (suffix === "ProposalQueued") return "Executable proposal queued";
+    if (suffix === "ProposalExecuted") return "Executable proposal executed";
+    if (suffix === "ProposalCanceled") return "Executable proposal cancelled";
   }
   return map[eventName] ?? eventName.split(".").pop() ?? eventName;
 }

@@ -13,6 +13,8 @@ import { injected, walletConnect } from 'wagmi/connectors';
  * Tenderly is intentionally placed LAST — its free tier aggressively rate-limits
  * FHE operations (multiple `getTransactionReceipt` polls + `estimateFeesPerGas`
  * bursts in a single two-step tx). publicnode and drpc have higher burst limits.
+ * Browser transports must also be CORS-clean; server-only public endpoints stay
+ * in the worker where browser preflights do not apply.
  */
 const customArbRpc = (import.meta as { env?: Record<string, string> }).env?.VITE_ARBITRUM_SEPOLIA_RPC;
 
@@ -20,7 +22,6 @@ const arbSepoliaTransports = [
   ...(customArbRpc ? [http(customArbRpc, { batch: true, retryCount: 3, timeout: 15_000 })] : []),
   http('https://arbitrum-sepolia-rpc.publicnode.com', { batch: true, retryCount: 2, timeout: 15_000 }),
   http('https://arbitrum-sepolia.drpc.org', { batch: true, retryCount: 2, timeout: 15_000 }),
-  http('https://endpoints.omniatech.io/v1/arbitrum/sepolia/public', { batch: true, retryCount: 2, timeout: 15_000 }),
   http('https://sepolia-rollup.arbitrum.io/rpc', { batch: true, retryCount: 2, timeout: 15_000 }),
   http('https://arbitrum-sepolia.gateway.tenderly.co', { batch: true, retryCount: 1, timeout: 15_000 }),
 ];

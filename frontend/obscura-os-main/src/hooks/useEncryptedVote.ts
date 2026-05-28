@@ -41,6 +41,7 @@ export function useEncryptedVote() {
         const maxPriorityFeePerGas = baseFee;
 
         // Submit encrypted vote to contract
+        fheStatus.setStep(FHEStepStatus.SENDING);
         const hash = await writeContractAsync({
           address: OBSCURA_VOTE_ADDRESS,
           abi: OBSCURA_VOTE_ABI,
@@ -54,6 +55,12 @@ export function useEncryptedVote() {
         });
 
         setTxHash(hash);
+        fheStatus.setStep(FHEStepStatus.SETTLING);
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== 'success') {
+          throw new Error('Vote transaction reverted');
+        }
+
         fheStatus.setStep(FHEStepStatus.READY);
         return hash;
       } catch (error) {

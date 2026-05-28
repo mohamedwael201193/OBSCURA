@@ -25,6 +25,11 @@ const DURATION_PRESETS = [
   { label: "Custom", seconds: 0 },
 ];
 
+function formatWriteError(error: unknown, fallback: string): string {
+  const txError = error as { shortMessage?: string; message?: string };
+  return txError.shortMessage ?? txError.message ?? fallback;
+}
+
 interface CreateProposalFormProps {
   onSuccess?: () => void;
 }
@@ -55,6 +60,7 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
   const [category, setCategory] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   // Use chain time so the custom deadline picker defaults to the correct blockchain time
   const chainNow = useChainTime();
@@ -147,16 +153,23 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
         maxPriorityFeePerGas,
       });
 
+      setIsConfirming(true);
+      const receipt = await publicClient!.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") {
+        throw new Error("Proposal creation transaction reverted");
+      }
+
       setTxHash(hash);
       setTitle("");
       setDescription("");
       setOptions(["Yes", "No"]);
       setSelectedTemplate(0);
       setQuorum("0");
-      // Navigate to proposals list after a short delay so the user can see the success state
-      setTimeout(() => onSuccess?.(), 2000);
-    } catch (err: any) {
-      setError(err.shortMessage ?? err.message ?? "Failed to create proposal");
+      window.setTimeout(() => onSuccess?.(), 1200);
+    } catch (err: unknown) {
+      setError(formatWriteError(err, "Failed to create proposal"));
+    } finally {
+      setIsConfirming(false);
     }
   }
 
@@ -375,7 +388,7 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
         {txHash && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-400/5 border border-emerald-400/20 text-foreground text-xs">
             <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-            <span>Proposal created!</span>
+            <span>Proposal confirmed!</span>
             <a
               href={`https://sepolia.arbiscan.io/tx/${txHash}`}
               target="_blank"
@@ -389,7 +402,7 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
 
         <motion.button
           type="submit"
-          disabled={!isConnected || !hasClaimed || isPending || !OBSCURA_VOTE_ADDRESS}
+          disabled={!isConnected || !hasClaimed || isPending || isConfirming || !OBSCURA_VOTE_ADDRESS}
           whileHover={{ scale: 1.005 }}
           whileTap={{ scale: 0.99 }}
           className="btn-pay btn-pay-emerald w-full py-2.5"
@@ -400,6 +413,8 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
             ? "Claim $OBS First"
             : isPending
             ? "Sign in Wallet..."
+            : isConfirming
+            ? "Confirming..."
             : "Create Proposal"}
         </motion.button>
       </form>

@@ -30,7 +30,8 @@ export type ActivityEventType =
   | "invoice"
   | "escrow"
   | "stealth"
-  | "credit";
+  | "credit"
+  | "vote";
 
 export interface ActivityItem {
   id:               number;
@@ -80,6 +81,26 @@ export const CREDIT_ACTIVITY_EVENT_NAMES = [
   ...creditContractEventNames(CREDIT_SCORE_PREFIXES, ["ScoreUpdated"]),
 ];
 
+export const VOTE_ACTIVITY_EVENT_NAMES = [
+  ...creditContractEventNames(["ObscuraVote"], [
+    "ProposalCreated",
+    "VoteCast",
+    "VoteChanged",
+    "VoteFinalized",
+    "ProposalCancelled",
+    "DeadlineExtended",
+    "DelegateSet",
+    "DelegateRemoved",
+  ]),
+  ...creditContractEventNames(["ObscuraGovernor"], [
+    "ProposalCreated",
+    "VoteCast",
+    "ProposalQueued",
+    "ProposalExecuted",
+    "ProposalCanceled",
+  ]),
+];
+
 const EVENT_TYPE_FILTERS: Record<ActivityEventType, string[]> = {
   all:      [],
   sent:     ["ObscuraPay.PaymentSent"],
@@ -102,6 +123,7 @@ const EVENT_TYPE_FILTERS: Record<ActivityEventType, string[]> = {
   ],
   stealth:  ["ObscuraStealthRegistry.Announcement", "ObscuraStealthRegistry.MetaAddressSet"],
   credit:   CREDIT_ACTIVITY_EVENT_NAMES,
+  vote:     VOTE_ACTIVITY_EVENT_NAMES,
 };
 
 interface UseActivityFeedResult {

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import SectionDiagram from "@/components/elite/SectionDiagram";
+import { ActivityFeed } from "@/components/harmony/ActivityFeed";
 import { HarmonyAppShell } from "@/components/harmony/HarmonyAppShell";
 import { HarmonyFormCard } from "@/components/harmony/harmony-ui";
 import { HarmonyHowItWorks } from "@/components/harmony/HarmonyHowItWorks";
@@ -303,6 +304,13 @@ const VotePage = () => {
                 <RewardsPanel />
               </div>
             </VoteHarmonyPanelCard>
+            <ActivityFeed
+              defaultFilter="vote"
+              filters={["vote"]}
+              title="Recent Vote activity"
+              eyebrow="Shared activity"
+              emptyMessage="No indexed Vote activity found for this wallet yet."
+            />
           </VoteHarmonyTabShell>
         );
 

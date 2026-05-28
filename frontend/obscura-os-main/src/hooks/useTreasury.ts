@@ -115,7 +115,7 @@ export function useAttachSpend(): UseAttachSpendReturn {
 
       setStatus(FHEStepStatus.SENDING);
       setStepIndex(1);
-      await writeContractAsync({
+      const hash = await writeContractAsync({
         address: OBSCURA_TREASURY_ADDRESS,
         abi: OBSCURA_TREASURY_ABI,
         functionName: "attachSpend",
@@ -126,8 +126,15 @@ export function useAttachSpend(): UseAttachSpendReturn {
         maxFeePerGas: 200_000_000n,
         maxPriorityFeePerGas: 1_000_000n,
       });
-      setStatus(FHEStepStatus.READY);
+      setStatus(FHEStepStatus.SETTLING);
       setStepIndex(2);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") {
+        throw new Error("Attach spend transaction reverted");
+      }
+
+      setStatus(FHEStepStatus.READY);
+      setStepIndex(3);
     } catch (e: unknown) {
       setStatus(FHEStepStatus.ERROR);
       const msg = e instanceof Error ? e.message : String(e);

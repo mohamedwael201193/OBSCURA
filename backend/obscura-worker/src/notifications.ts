@@ -59,6 +59,12 @@ function endpointHash(sub: webpush.PushSubscription): string {
   return createHash("sha256").update(sub.endpoint).digest("hex").slice(0, 12);
 }
 
+function activityUrl(eventName: string): string {
+  if (eventName.startsWith("Credit")) return `${FRONTEND_URL}/credit`;
+  if (eventName.startsWith("ObscuraVote.") || eventName.startsWith("ObscuraGovernor.")) return `${FRONTEND_URL}/vote`;
+  return `${FRONTEND_URL}/pay?tab=activity`;
+}
+
 function candidateWallets(activity: StoredActivityRecord): string[] {
   const wallets = new Set<string>();
   for (const participant of activity.participants ?? []) {
@@ -74,9 +80,7 @@ function candidateWallets(activity: StoredActivityRecord): string[] {
 
 function buildPayload(activity: StoredActivityRecord, wallet: string): string {
   const eventLabel = activity.event_name.split(".").pop() ?? "Activity";
-  const url = activity.event_name.startsWith("Credit")
-    ? `${FRONTEND_URL}/credit`
-    : `${FRONTEND_URL}/pay?tab=activity`;
+  const url = activityUrl(activity.event_name);
   const sentAt = new Date().toISOString();
 
   return JSON.stringify({
@@ -99,8 +103,66 @@ function buildPayload(activity: StoredActivityRecord, wallet: string): string {
 }
 
 function notificationAliases(eventName: string): string[] {
-  if (!eventName.startsWith("Credit")) return [];
   const suffix = eventName.split(".").pop() ?? "";
+
+  if (eventName.startsWith("ObscuraVote.")) {
+    const aliases = ["vote.*"];
+    switch (suffix) {
+      case "ProposalCreated":
+        aliases.push("vote.proposal_created");
+        break;
+      case "VoteCast":
+        aliases.push("vote.cast");
+        break;
+      case "VoteChanged":
+        aliases.push("vote.changed");
+        break;
+      case "VoteFinalized":
+        aliases.push("vote.finalized");
+        break;
+      case "ProposalCancelled":
+        aliases.push("vote.cancelled");
+        break;
+      case "DeadlineExtended":
+        aliases.push("vote.deadline_extended");
+        break;
+      case "DelegateSet":
+        aliases.push("vote.delegated");
+        break;
+      case "DelegateRemoved":
+        aliases.push("vote.undelegated");
+        break;
+      default:
+        break;
+    }
+    return aliases;
+  }
+
+  if (eventName.startsWith("ObscuraGovernor.")) {
+    const aliases = ["vote.*", "governor.*"];
+    switch (suffix) {
+      case "ProposalCreated":
+        aliases.push("governor.proposal_created");
+        break;
+      case "VoteCast":
+        aliases.push("governor.vote_cast");
+        break;
+      case "ProposalQueued":
+        aliases.push("governor.queued");
+        break;
+      case "ProposalExecuted":
+        aliases.push("governor.executed");
+        break;
+      case "ProposalCanceled":
+        aliases.push("governor.cancelled");
+        break;
+      default:
+        break;
+    }
+    return aliases;
+  }
+
+  if (!eventName.startsWith("Credit")) return [];
   const aliases = ["credit.*"];
 
   switch (suffix) {

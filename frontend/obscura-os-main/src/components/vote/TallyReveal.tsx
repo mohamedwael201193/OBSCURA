@@ -69,6 +69,11 @@ function exportCSV(title: string, options: string[], tallies: TallyResultData[])
   URL.revokeObjectURL(url);
 }
 
+function formatWriteError(error: unknown, fallback: string): string {
+  const txError = error as { shortMessage?: string; cause?: { reason?: string }; message?: string };
+  return txError.shortMessage ?? txError.cause?.reason ?? txError.message ?? fallback;
+}
+
 function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: TallyFilter }) {
   const { address } = useAccount();
   const publicClient = usePublicClient();
@@ -80,6 +85,7 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
   const { writeContractAsync, isPending: isFinalizePending } = useWriteContract();
   const [error, setError] = useState<string | null>(null);
   const [finalizeTxHash, setFinalizeTxHash] = useState<string | null>(null);
+  const [isFinalizeConfirming, setIsFinalizeConfirming] = useState(false);
 
   // Must be called before any early return to satisfy Rules of Hooks
   const now = useChainTime();
@@ -138,11 +144,16 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
         maxPriorityFeePerGas,
       });
       setFinalizeTxHash(hash);
-      setTimeout(() => refetchProposal(), 3000);
-    } catch (err: any) {
-      // Prefer the decoded revert reason (shortMessage) over raw message
-      const msg: string = err.shortMessage ?? err.cause?.reason ?? err.message ?? "Finalization failed";
-      setError(msg);
+      setIsFinalizeConfirming(true);
+      const receipt = await publicClient!.waitForTransactionReceipt({ hash });
+      if (receipt.status !== "success") {
+        throw new Error("Finalize transaction reverted");
+      }
+      await refetchProposal();
+    } catch (err: unknown) {
+      setError(formatWriteError(err, "Finalization failed"));
+    } finally {
+      setIsFinalizeConfirming(false);
     }
   }
 
@@ -150,8 +161,8 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
     setError(null);
     try {
       await decryptTally();
-    } catch (err: any) {
-      setError(err.message ?? "Decryption failed");
+    } catch (err: unknown) {
+      setError(formatWriteError(err, "Decryption failed"));
     }
   }
 
@@ -211,13 +222,13 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
           {quorumMet && isCreator && (
           <motion.button
             onClick={handleFinalize}
-            disabled={isFinalizePending}
+            disabled={isFinalizePending || isFinalizeConfirming}
             whileHover={{ scale: 1.005 }}
             whileTap={{ scale: 0.99 }}
             className="btn-pay btn-pay-amber w-full py-2.5"
           >
             <Unlock className="w-3.5 h-3.5 inline mr-2" />
-            {isFinalizePending ? "Finalizing..." : "Finalize My Proposal"}
+            {isFinalizePending ? "Sign in Wallet..." : isFinalizeConfirming ? "Confirming..." : "Finalize My Proposal"}
           </motion.button>
           )}
           {finalizeTxHash && (

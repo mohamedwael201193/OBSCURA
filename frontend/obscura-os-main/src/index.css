@@ -1344,6 +1344,26 @@
   background: #f7f9f2 !important;
 }
 
+.obscura-app .app-wallet-slot button[aria-label="Disconnect wallet"] {
+  display: inline-grid;
+  height: 1.75rem !important;
+  width: 1.75rem !important;
+  place-items: center;
+  border: 0 !important;
+  border-radius: 9999px !important;
+  background: rgba(24, 40, 14, 0.06) !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  color: rgba(24, 40, 14, 0.55) !important;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.obscura-app .app-wallet-slot button[aria-label="Disconnect wallet"]:hover {
+  background: rgba(220, 38, 38, 0.08) !important;
+  color: rgb(220, 38, 38) !important;
+}
+
 /* Remap common dark-glass utility patterns inside app workspace */
 .obscura-app [class*="border-white/"],
 .obscura-app [class*="border-white\\/"] {

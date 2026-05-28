@@ -30,11 +30,23 @@ const ALLOWED_ORIGINS = Array.from(new Set([
   ...DEFAULT_ALLOWED_ORIGINS,
   ...(process.env.ALLOWED_ORIGINS ?? "").split(","),
 ].map((origin) => origin.trim()).filter(Boolean)));
+const LOOPBACK_DEV_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
+
+function corsOrigin(
+  origin: string | undefined,
+  callback: (err: Error | null, allow?: boolean) => void,
+) {
+  if (!origin || ALLOWED_ORIGINS.includes(origin) || LOOPBACK_DEV_ORIGIN.test(origin)) {
+    callback(null, true);
+    return;
+  }
+  callback(new Error(`Origin ${origin} not allowed by CORS`));
+}
 
 const app = express();
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-app.use(cors({ origin: ALLOWED_ORIGINS, methods: ["GET", "POST", "DELETE", "OPTIONS"] }));
+app.use(cors({ origin: corsOrigin, methods: ["GET", "POST", "DELETE", "OPTIONS"] }));
 app.use(express.json({ limit: 16384 })); // 16 KB
 
 // ─── Health check ─────────────────────────────────────────────────────────────

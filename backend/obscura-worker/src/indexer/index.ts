@@ -4,7 +4,7 @@
  * Watches events from all active Obscura Pay contracts on Arbitrum Sepolia
  * and persists them to Supabase for the activity feed + Realtime.
  */
-import { createPublicClient, http, type Log, type Address } from "viem";
+import { createPublicClient, fallback, http, type Log, type Address } from "viem";
 import { arbitrumSepolia } from "viem/chains";
 import {
   PAY_EVENTS,
@@ -24,7 +24,15 @@ import { insertActivity, getLastIndexedBlock } from "../db";
 import { dispatchActivityNotification } from "../notifications";
 import { insertReputationSignalsForActivity } from "../reputation";
 
-const RPC_URL  = process.env.RPC_URL ?? "https://sepolia-rollup.arbitrum.io/rpc";
+const RPC_URL  = process.env.RPC_URL;
+const RPC_FALLBACK_URLS = [
+  ...(RPC_URL ? [RPC_URL] : []),
+  "https://arbitrum-sepolia-rpc.publicnode.com",
+  "https://arbitrum-sepolia.drpc.org",
+  "https://endpoints.omniatech.io/v1/arbitrum/sepolia/public",
+  "https://sepolia-rollup.arbitrum.io/rpc",
+  "https://arbitrum-sepolia.gateway.tenderly.co",
+].filter((url, index, urls) => urls.indexOf(url) === index);
 const CHAIN_ID = 421614;
 const MAX_GET_LOGS_BLOCKS = 10;
 const GET_LOGS_CHUNK_BLOCKS = Math.min(
@@ -180,7 +188,10 @@ export function getIndexerHealth(): IndexerHealthSnapshot {
 
 const client = createPublicClient({
   chain: arbitrumSepolia,
-  transport: http(RPC_URL),
+  transport: fallback(
+    RPC_FALLBACK_URLS.map((url) => http(url, { batch: true, retryCount: 2, timeout: 15_000 })),
+    { rank: false, retryCount: 1 },
+  ),
 });
 
 const recoveredDuplicateDispatches = new Set<string>();
@@ -470,7 +481,7 @@ function watchContract(
 
 // ─── Entry ────────────────────────────────────────────────────────────────────
 export async function startIndexer(): Promise<() => void> {
-  console.log(`[indexer] Starting RPC=${RPC_URL} chunkSize=${GET_LOGS_CHUNK_BLOCKS} retries=${GET_LOGS_RETRIES} livePollMs=${LIVE_POLL_MS} startupRecentBlocks=${STARTUP_RECENT_BLOCKS}`);
+  console.log(`[indexer] Starting RPCs=${RPC_FALLBACK_URLS.length} primary=${RPC_FALLBACK_URLS[0] ?? "none"} chunkSize=${GET_LOGS_CHUNK_BLOCKS} retries=${GET_LOGS_RETRIES} livePollMs=${LIVE_POLL_MS} startupRecentBlocks=${STARTUP_RECENT_BLOCKS}`);
   indexerHealth.status = "running";
 
   let startupBlock: bigint | undefined;

@@ -132,7 +132,7 @@ export function HarmonyAppShell({
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4 md:px-8">
-          <div className="flex min-w-0 items-center gap-3 text-muted-foreground">
+          <div className="flex min-w-0 flex-1 items-center gap-3 text-muted-foreground">
             <Link to="/" className="md:hidden" aria-label="Obscura home">
               <ObscuraLogo showWordmark={false} size="sm" tone="light" markClassName="h-7 w-7" />
             </Link>
@@ -140,11 +140,11 @@ export function HarmonyAppShell({
             <input
               readOnly
               placeholder={search}
-              className="w-full max-w-xs bg-transparent text-sm outline-none placeholder:text-muted-foreground/60 sm:max-w-sm md:max-w-md"
+              className="hidden w-full max-w-xs bg-transparent text-sm outline-none placeholder:text-muted-foreground/60 sm:block sm:max-w-sm md:max-w-md"
               aria-label={search}
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <Link
               to="/pay"
               className="hidden h-9 items-center gap-1.5 rounded-full hairline px-3 text-sm hover:bg-muted sm:inline-flex"

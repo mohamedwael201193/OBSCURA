@@ -452,15 +452,15 @@ export function useCreditMarket(market?: `0x${string}`) {
         );
       }
 
-      const fees = await estimateCappedFees(publicClient);
+      const fees = await withRateLimitRetry(() => estimateCappedFees(publicClient));
       fhe.setStep(FHEStepStatus.SENDING);
-      const hash = await writeContractAsync({
+      const hash = await withRateLimitRetry(() => writeContractAsync({
         address: market, abi: CREDIT_MARKET_ABI, functionName: "borrow",
         args: [amount, enc[0]],
         account: address, chain: arbitrumSepolia,
         maxFeePerGas: fees.maxFeePerGas, maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
         gas: CREDIT_GAS_CAPS.borrow,
-      });
+      }));
       const r = await publicClient.waitForTransactionReceipt({ hash });
       if (r.status !== "success") {
         throw new Error(

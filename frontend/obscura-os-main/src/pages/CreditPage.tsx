@@ -141,7 +141,7 @@ function BorrowTab({
             <div className="mt-4 grid gap-3">
               {[
                 { label: "Use Pay-backed private USDC", body: "Shield once in Pay, then reuse that encrypted balance in Credit." },
-                { label: "Approve the Credit Router", body: "A time-boxed operator approval lets the router move encrypted ocUSDC for this market." },
+                { label: "Commit encrypted collateral", body: "Credit moves ocUSDC directly through the market, so collateral accounting stays aligned with Pay-backed private USDC." },
                 { label: "Borrow against encrypted collateral", body: "Amounts are encrypted before transaction submit and settle through the existing FHE flow." },
               ].map((item, index) => (
                 <div key={item.label} className="grid grid-cols-[auto_1fr] gap-3 rounded-xl bg-muted/50 p-3">
@@ -280,7 +280,7 @@ function PositionTab({
   }, [pos]);
 
   const fmt = (v: bigint | null) =>
-    v === null ? null : (Number(v) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    v === null ? null : (Number(v) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 6 });
 
   return (
     <div className="space-y-5">

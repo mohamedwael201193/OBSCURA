@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useConnect, useDisconnect, useAccount, useBalance, useChainId, useSwitchChain } from "wagmi";
 import { arbitrumSepolia } from "wagmi/chains";
 import { formatUnits } from "viem";
@@ -9,14 +9,68 @@ type WalletConnectProps = {
   tone?: "dark" | "light";
 };
 
+type EthereumProvider = {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+  on?: (event: "chainChanged", handler: (chainId: string) => void) => void;
+  removeListener?: (event: "chainChanged", handler: (chainId: string) => void) => void;
+};
+
+const getEthereumProvider = () => {
+  if (typeof window === "undefined") return undefined;
+  return (window as Window & { ethereum?: EthereumProvider }).ethereum;
+};
+
 export default function WalletConnect({ tone = "dark" }: WalletConnectProps) {
   const [open, setOpen] = useState(false);
+  const [walletChainId, setWalletChainId] = useState<number | null>(null);
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { data: balance } = useBalance({ address, chainId: arbitrumSepolia.id });
   const { switchChain } = useSwitchChain();
+  const activeChainId = walletChainId ?? chainId;
+
+  useEffect(() => {
+    const ethereum = getEthereumProvider();
+    if (!ethereum || !isConnected) {
+      setWalletChainId(null);
+      return;
+    }
+
+    let mounted = true;
+    const syncChainId = (nextChainId: string) => {
+      setWalletChainId(Number(nextChainId));
+    };
+
+    ethereum
+      .request({ method: "eth_chainId" })
+      .then((nextChainId) => {
+        if (mounted && typeof nextChainId === "string") syncChainId(nextChainId);
+      })
+      .catch(() => {
+        if (mounted) setWalletChainId(chainId);
+      });
+
+    ethereum.on?.("chainChanged", syncChainId);
+    return () => {
+      mounted = false;
+      ethereum.removeListener?.("chainChanged", syncChainId);
+    };
+  }, [chainId, isConnected]);
+
+  const switchToArbSepolia = async () => {
+    const ethereum = getEthereumProvider();
+    if (ethereum) {
+      await ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: `0x${arbitrumSepolia.id.toString(16)}` }],
+      });
+      setWalletChainId(arbitrumSepolia.id);
+      return;
+    }
+    switchChain({ chainId: arbitrumSepolia.id });
+  };
 
   const light = tone === "light";
 
@@ -77,10 +131,12 @@ export default function WalletConnect({ tone = "dark" }: WalletConnectProps) {
     );
   }
 
-  if (isConnected && address && chainId !== arbitrumSepolia.id) {
+  if (isConnected && address && activeChainId !== arbitrumSepolia.id) {
     return (
       <button
-        onClick={() => switchChain({ chainId: arbitrumSepolia.id })}
+        onClick={() => {
+          void switchToArbSepolia();
+        }}
         className="rounded-sm border border-amber-500/40 px-5 py-2 font-mono text-xs uppercase tracking-[0.15em] text-amber-600 transition-colors duration-300 hover:bg-amber-500/10"
       >
         Switch to Arb Sepolia
@@ -94,8 +150,8 @@ export default function WalletConnect({ tone = "dark" }: WalletConnectProps) {
     : "";
 
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="flex flex-col items-end leading-tight">
+    <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+      <div className="hidden flex-col items-end leading-tight sm:flex">
         <span className={cn("font-mono text-[10px] uppercase tracking-widest", networkLabel)}>
           Arb Sepolia
         </span>
@@ -103,31 +159,32 @@ export default function WalletConnect({ tone = "dark" }: WalletConnectProps) {
           <span className={cn("font-mono text-[10px]", balanceText)}>{ethBalance}</span>
         ) : null}
       </div>
-      <button
-        type="button"
+      <div
+        aria-label={`Connected wallet ${displayName}`}
         className={cn(
-          "group flex items-center gap-2 rounded-sm border px-3.5 py-2 font-mono text-xs transition-colors duration-300",
+          "group flex shrink-0 items-center gap-2 rounded-sm border px-3.5 py-2 font-mono text-xs transition-colors duration-300",
           walletBtn,
         )}
       >
         <span className={cn("size-2 shrink-0 rounded-full animate-pulse", statusDot)} />
-        <span className={addressText}>{displayName}</span>
-        <span
-          onClick={(e) => {
-            e.stopPropagation();
+        <span className={cn("max-w-[8rem] truncate", addressText)}>{displayName}</span>
+        <button
+          type="button"
+          onClick={() => {
             disconnect();
           }}
           title="Disconnect"
+          aria-label="Disconnect wallet"
           className={cn(
-            "ml-0.5 cursor-pointer text-[10px] transition-colors",
+            "ml-0.5 rounded-sm px-1 text-[10px] transition-colors",
             light
               ? "text-forest/45 group-hover:text-red-600"
               : "text-muted-foreground group-hover:text-red-400",
           )}
         >
           ✕
-        </span>
-      </button>
+        </button>
+      </div>
     </div>
   );
 }

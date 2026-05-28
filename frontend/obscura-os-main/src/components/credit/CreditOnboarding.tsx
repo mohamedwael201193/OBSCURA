@@ -4,7 +4,7 @@
  * Steps:
  *   1. Welcome — what Obscura Credit is (privacy guarantees)
  *   2. Use Pay-backed private USDC
- *   3. Approve the Credit Router
+ *   3. Borrow or earn from one line
  *   4. Reveal only on demand
  *
  * Stored in localStorage via useCreditOnboarding so it only shows once.

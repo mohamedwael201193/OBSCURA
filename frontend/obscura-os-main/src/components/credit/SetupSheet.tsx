@@ -3,19 +3,21 @@
  *
  * Collapses the setup flow into one sheet:
  *  Step 1: Claim test funds (faucet: ocUSDC + ocWETH + ocOBS in one tx)
- *  Step 2: Approve Router as operator on ocUSDC (7-day expiry)
- *  Step 3: Collateral amount → Borrow amount → Confirm (Router.setupAndBorrow)
+ *  Step 2: Canonical market uses the direct encrypted market flow; legacy
+ *          markets approve Router as operator on ocUSDC (7-day expiry)
+ *  Step 3: Collateral amount → Borrow amount → Confirm
  *
  * Privacy rules:
  *  - FHE encryption is shown via the 5-step stepper
  *  - No auto-decrypt
  *  - Amounts are encrypted before being sent to the contract
  *
- * The stealth disburse toggle wires Router.setupAndBorrowStealth instead.
+ * The stealth disburse toggle wires Router.setupAndBorrowStealth for legacy markets.
  */
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
+import { arbitrumSepolia } from "viem/chains";
 import {
   X,
   Droplet,
@@ -26,6 +28,7 @@ import {
   Loader2,
 } from "lucide-react";
 import FHEStepper from "@/components/shared/FHEStepper";
+import { useCreditMarket } from "@/hooks/useCredit";
 import { useFHEStatus } from "@/hooks/useFHEStatus";
 import { FHEStepStatus } from "@/lib/constants";
 import { encryptAmount, initFHEClient } from "@/lib/fhe";
@@ -60,6 +63,7 @@ type SetupStep = "funding" | "operator" | "borrow" | "done";
 export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSheetProps) {
   const { address } = useAccount();
   const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
   const { writeContractAsync } = useWriteContract();
   const fhe = useFHEStatus();
 
@@ -77,6 +81,11 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
   const loanSymbol = market?.loanSymbol ?? "ocUSDC";
   const collateralSymbol = market?.collateralSymbol ?? "ocUSDC";
   const routerAddr = CREDIT_ROUTER_ADDRESS;
+  const {
+    supplyCollateral: supplyCollateralDirect,
+    borrow: borrowDirect,
+    fheStatus: directFheStatus,
+  } = useCreditMarket(marketAddr);
 
   const openPay = useCallback(() => {
     window.location.href = "/pay";
@@ -152,7 +161,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
 
   // Approve Router as operator on ocUSDC (7-day expiry)
   const handleOperator = useCallback(async () => {
-    if (!address || !publicClient || !routerAddr) return;
+    if (!address || !publicClient || !walletClient || !routerAddr) return;
     setBusy(true);
     setError(null);
     fhe.setStep(FHEStepStatus.SENDING);
@@ -170,6 +179,9 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
           address: token,
           functionName: "setOperator",
           args: [routerAddr, BigInt(until)],
+          account: address,
+          chain: arbitrumSepolia,
+          gas: 150_000n,
           ...fees,
         });
         await publicClient.waitForTransactionReceipt({ hash: h1 });
@@ -183,11 +195,12 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
     } finally {
       setBusy(false);
     }
-  }, [address, publicClient, writeContractAsync, routerAddr, fhe, loanTokenAddress, collateralTokenAddress]);
+  }, [address, publicClient, walletClient, writeContractAsync, routerAddr, fhe, loanTokenAddress, collateralTokenAddress]);
 
-  // setupAndBorrow via Router (single tx)
+  // Canonical Pay-backed market uses the proven direct market path; legacy
+  // markets keep the router path for testnet compatibility.
   const handleSetup = useCallback(async () => {
-    if (!address || !publicClient || !routerAddr || !marketAddr) return;
+    if (!address || !publicClient || !walletClient || !routerAddr || !marketAddr) return;
     const collPlain = BigInt(Math.round(parseFloat(collateralAmt || "0") * 1e6));
     const borrPlain = BigInt(Math.round(parseFloat(borrowAmt || "0") * 1e6));
     if (!collPlain || !borrPlain) { setError("Enter collateral and borrow amounts"); return; }
@@ -197,14 +210,24 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
     fhe.setStep(FHEStepStatus.ENCRYPTING);
 
     try {
-      const fheClient = await initFHEClient();
+      if (isCanonical) {
+        if (!collateralTokenAddress) throw new Error("Collateral token address not configured");
+        await supplyCollateralDirect(collPlain, collateralTokenAddress);
+        await new Promise((resolve) => setTimeout(resolve, 10_000));
+        await borrowDirect(borrPlain, address);
+        setStep("done");
+        onSuccess?.();
+        return;
+      }
+
+      await initFHEClient(publicClient, walletClient);
 
       // Encrypt collateral push (transfer to market)
-      const encCollPush   = await encryptAmount(fheClient, collPlain);
+      const encCollPush   = await encryptAmount(collPlain);
       // Encrypt collateral for market (supplyCollateralFor)
-      const encCollMarket = await encryptAmount(fheClient, collPlain);
+      const encCollMarket = await encryptAmount(collPlain);
       // Encrypt borrow
-      const encBorrow     = await encryptAmount(fheClient, borrPlain);
+      const encBorrow     = await encryptAmount(borrPlain);
 
       fhe.setStep(FHEStepStatus.COMPUTING);
 
@@ -222,19 +245,23 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
           args: [
             marketAddr,
             collPlain,
-            encCollPush,
-            encCollMarket,
+            encCollPush[0],
+            encCollMarket[0],
             borrPlain,
-            encBorrow,
+            encBorrow[0],
             address, // stealthAddress = self for testnet (eaddress not supported)
             "0x",    // ephemeralPubKey placeholder
             "0x00",  // viewTag placeholder
             "0x",    // metadata placeholder
           ],
+          account: address,
+          chain: arbitrumSepolia,
           gas: CREDIT_GAS_CAPS.borrow * 2n,
           ...fees,
         });
         fhe.setStep(FHEStepStatus.SETTLING);
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== "success") throw new Error("Setup transaction reverted");
         await awaitCoFHESettle(publicClient, hash);
       } else {
         const hash = await writeContractAsync({
@@ -245,15 +272,19 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
             marketAddr,
             0n,          // shieldAmt = 0 (pre-shielded)
             collPlain,
-            encCollPush,
-            encCollMarket,
+            encCollPush[0],
+            encCollMarket[0],
             borrPlain,
-            encBorrow,
+            encBorrow[0],
           ],
+          account: address,
+          chain: arbitrumSepolia,
           gas: CREDIT_GAS_CAPS.borrow * 2n,
           ...fees,
         });
         fhe.setStep(FHEStepStatus.SETTLING);
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== "success") throw new Error("Setup transaction reverted");
         await awaitCoFHESettle(publicClient, hash);
       }
 
@@ -266,11 +297,11 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
     } finally {
       setBusy(false);
     }
-  }, [address, publicClient, writeContractAsync, routerAddr, marketAddr, collateralAmt, borrowAmt, stealthToggle, fhe, onSuccess]);
+  }, [address, publicClient, walletClient, writeContractAsync, routerAddr, marketAddr, collateralAmt, borrowAmt, stealthToggle, fhe, onSuccess, isCanonical, collateralTokenAddress, supplyCollateralDirect, borrowDirect]);
 
   const steps: { key: SetupStep; label: string; icon: React.ReactNode }[] = [
     { key: "funding",  label: isCanonical ? "Private USDC" : "Test funds", icon: <Droplet className="w-4 h-4" /> },
-    { key: "operator", label: "Approve Router",  icon: <ShieldCheck className="w-4 h-4" /> },
+    { key: "operator", label: isCanonical ? "Market route" : "Approve Router",  icon: <ShieldCheck className="w-4 h-4" /> },
     { key: "borrow",   label: "Borrow now",      icon: <ArrowDownToLine className="w-4 h-4" /> },
   ];
   const stepIdx = step === "done" ? 3 : steps.findIndex((s) => s.key === step);
@@ -327,7 +358,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                     {isCanonical ? (
                       <>
                         <p className="text-sm text-muted-foreground mb-4">
-                          The default Credit market uses the same private USDC balance as Pay. Shield USDC in Pay, then come back to approve the Credit Router.
+                          The default Credit market uses the same private USDC balance as Pay. Shield USDC in Pay, then open an encrypted borrow position from that balance.
                         </p>
                         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">Pay-backed ocUSDC · no faucet · reusable balance</p>
                         <button
@@ -338,7 +369,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                           <ExternalLink className="w-4 h-4" /> Open Pay
                         </button>
                         <button
-                          onClick={() => setStep("operator")}
+                          onClick={() => setStep("borrow")}
                           className="w-full mt-2 py-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                         >
                           Continue with private USDC
@@ -448,7 +479,11 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                       Borrow now
                     </button>
 
-                    <FHEStepper status={fhe.status} error={fhe.error ?? undefined} className="mt-3" />
+                    <FHEStepper
+                      status={isCanonical ? directFheStatus.status : fhe.status}
+                      error={isCanonical ? directFheStatus.error ?? undefined : fhe.error ?? undefined}
+                      className="mt-3"
+                    />
                   </motion.div>
                 )}
 

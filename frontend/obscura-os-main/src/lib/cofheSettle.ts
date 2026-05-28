@@ -36,12 +36,9 @@ export async function awaitCoFHESettle(
     await sleep(POLL_INTERVAL_MS);
     onTick?.(Date.now() - start);
 
-    try {
-      const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
-      if (receipt?.status === "success") return;
-    } catch {
-      // receipt not yet indexed — keep polling
-    }
+    const receipt = await publicClient.getTransactionReceipt({ hash: txHash }).catch(() => null);
+    if (receipt?.status === "success") return;
+    if (receipt?.status === "reverted") throw new Error("Transaction reverted before CoFHE settlement");
   }
 
   // Fallback: wait the balance of 8 s (at most) so CoFHE task queue drains

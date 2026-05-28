@@ -14,7 +14,9 @@ import { useUtilizationApr } from "@/hooks/useCredit";
 
 function formatUsd(value?: bigint) {
   if (value === undefined) return "—";
-  return `$${(Number(value) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  const amount = Number(value) / 1e6;
+  const maximumFractionDigits = amount > 0 && amount < 1 ? 6 : 2;
+  return `$${amount.toLocaleString(undefined, { maximumFractionDigits })}`;
 }
 
 function formatPercentBps(value?: bigint | number) {
@@ -83,7 +85,7 @@ export function CreditHarmonyOverview({
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <HarmonyKpiGrid>
           <HarmonyKpi label="Private position">
-            <HarmonyEncryptedValue value="$—" size="md" />
+            <HarmonyEncryptedValue value="—" symbol="ocUSDC" size="md" />
           </HarmonyKpi>
           <HarmonyKpi label="Borrow APY">
             <span className="font-display text-3xl">{borrowApy}</span>
@@ -91,7 +93,7 @@ export function CreditHarmonyOverview({
           <HarmonyKpi label="Utilization">
             <span className="font-display text-3xl text-[hsl(var(--success))]">{formatPercentBps(utilizationBps)}</span>
           </HarmonyKpi>
-          <HarmonyKpi label="Pool liquidity">
+          <HarmonyKpi label="Borrowable liquidity">
             <span className="font-display text-3xl">{formatUsd(availableLiquidity)}</span>
           </HarmonyKpi>
         </HarmonyKpiGrid>
@@ -110,31 +112,31 @@ export function CreditHarmonyOverview({
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Supplied</p>
               <p className="mt-2 font-display text-3xl cipher-shimmer text-muted-foreground">••••••</p>
               <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Encrypted on-chain
+                ocUSDC · encrypted
               </p>
             </div>
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Borrow</p>
               <p className="mt-2 font-display text-3xl cipher-shimmer text-muted-foreground">••••••</p>
               <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Reveal from Position
+                ocUSDC · reveal in Position
               </p>
             </div>
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Collateral</p>
               <p className="mt-2 font-display text-3xl cipher-shimmer text-muted-foreground">••••••</p>
               <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                Hidden by default
+                ocUSDC · hidden by default
               </p>
             </div>
           </div>
           <div className="mt-8 rounded-xl bg-muted/50 p-4">
             <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="text-muted-foreground">Next best step</span>
-              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground">Borrow workspace</span>
+              <span className="text-muted-foreground">Primary path</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground">Direct market</span>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Start in Borrow to source Pay-backed private USDC, approve the router, and submit a single encrypted borrow flow.
+              Use Pay-backed ocUSDC from Pay, commit encrypted collateral directly to the market, then borrow after settlement.
             </p>
           </div>
         </div>
@@ -161,7 +163,7 @@ export function CreditHarmonyOverview({
         <CreditReputationPanel compact />
       </div>
 
-      <HarmonySection title="Borrow market" hint="Live public pool metrics. Personal balances stay encrypted.">
+      <HarmonySection title="Borrow market" hint="Live public pool metrics. Wallet balances stay encrypted until Position reveal.">
         <div className="grid gap-3 md:hidden">
           {markets.map((m) => (
             <div key={m.address} className="rounded-2xl hairline bg-card p-5">
@@ -222,7 +224,7 @@ export function CreditHarmonyOverview({
       </HarmonySection>
 
       {vaults.length > 0 && (
-        <HarmonySection title="Vaults" hint="Curated allocation across encrypted markets.">
+        <HarmonySection title="Vaults" hint="Advanced allocation for strategy checks and lab markets.">
           <div className="grid gap-6 md:grid-cols-2">
             {vaults.slice(0, 2).map((v) => (
               <div key={v.address} className="rounded-2xl hairline bg-card p-6">

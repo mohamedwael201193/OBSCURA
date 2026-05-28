@@ -163,11 +163,17 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { p
   );
 }
 
-export default function ProposalList({ onVote }: { onVote?: (id: number) => void }) {
+export default function ProposalList({
+  onVote,
+  initialFilter = "active",
+}: {
+  onVote?: (id: number) => void;
+  initialFilter?: StatusFilter;
+}) {
   const { data: count, isLoading, refetch } = useProposalCount();
   const proposalCount = Number(count ?? 0);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialFilter);
   const now = useChainTime();
 
   // Instantly refetch when a new proposal is created on-chain
@@ -247,18 +253,14 @@ export default function ProposalList({ onVote }: { onVote?: (id: number) => void
         </div>
       ) : (
         <div className="space-y-2">
+          {statusFilter !== "all" && (
+            <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              Showing {statusFilter} proposals first. If nothing is listed, no {statusFilter} proposal is available for this wallet right now. Use All to review closed history and revealable results.
+            </div>
+          )}
           {Array.from({ length: proposalCount }, (_, i) => (
             <ProposalRow key={i} proposalId={BigInt(i)} searchQuery={searchQuery} statusFilter={statusFilter} onVote={onVote} now={now} />
           ))}
-          {/* Empty filter result */}
-          {statusFilter !== "all" && Array.from({ length: proposalCount }).every((_, i) => {
-            // We can't easily check filter matches without fetching — just show a hint if filter is active
-            return false;
-          }) && (
-            <div className="text-sm text-muted-foreground/50 text-center py-4">
-              No {statusFilter} proposals.
-            </div>
-          )}
         </div>
       )}
     </div>

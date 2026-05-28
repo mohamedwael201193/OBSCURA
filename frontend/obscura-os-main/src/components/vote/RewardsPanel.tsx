@@ -98,11 +98,23 @@ export function RewardsPanel() {
 
   const [fundInput, setFundInput] = useState("");
   const [activeTab, setActiveTab] = useState<"earn" | "withdraw" | "fund">("earn");
+  const [tabMessage, setTabMessage] = useState<string | null>(null);
 
   const poolEth = poolWei ? parseFloat(formatEther(poolWei as bigint)).toFixed(4) : "0";
   const pendingEth = pendingWei ? parseFloat(formatEther(pendingWei as bigint)).toFixed(4) : "0";
   const hasPending = pendingWei && (pendingWei as bigint) > 0n;
   const poolInsufficient = hasPending && poolWei !== undefined && (poolWei as bigint) < (pendingWei as bigint);
+
+  const selectTab = (tab: "earn" | "withdraw" | "fund") => {
+    setActiveTab(tab);
+    if (tab === "earn") {
+      setTabMessage("Reward claims appear after you vote privately and that proposal is finalized.");
+    } else if (tab === "withdraw") {
+      setTabMessage(hasPending ? "Reveal your encrypted reward balance before withdrawing." : "No reward balance is ready to withdraw yet.");
+    } else {
+      setTabMessage("Funding adds ETH to the shared voter reward pool.");
+    }
+  };
 
   return (
     <div className={vh.panel}>
@@ -130,8 +142,14 @@ export function RewardsPanel() {
           { key: "fund", label: "Fund pool" },
         ]}
         active={activeTab}
-        onChange={setActiveTab}
+        onChange={selectTab}
       />
+
+      {tabMessage && (
+        <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          {tabMessage}
+        </div>
+      )}
 
       {/* Earn Rewards */}
       {activeTab === "earn" && (
@@ -148,6 +166,12 @@ export function RewardsPanel() {
               {Array.from({ length: proposalCount }, (_, i) => (
                 <ProposalRewardRow key={i} proposalId={i} voterAddress={address!} />
               ))}
+              <div className="rounded-lg border border-dashed border-border bg-background/50 px-3 py-3 text-center">
+                <p className="text-xs font-medium text-foreground">No reward claim is ready if this list is empty.</p>
+                <p className="mt-1 text-xs text-muted-foreground/60">
+                  Vote on an active private proposal, wait for finalization, then return here to claim.
+                </p>
+              </div>
               <p className="pt-3 text-center text-xs text-muted-foreground/45">
                 Eligible finalized proposals appear here after you vote privately.
               </p>
@@ -167,6 +191,11 @@ export function RewardsPanel() {
                 <div>
                   <p className="text-xs text-muted-foreground/50 mb-0.5">Pending Reward</p>
                   <p className="text-2xl font-bold text-foreground">{pendingEth} ETH</p>
+                  {!hasPending && (
+                    <p className="mt-1 text-xs text-muted-foreground/60">
+                      Nothing is withdrawable yet. Finalized proposals you voted on must be claimed first.
+                    </p>
+                  )}
                 </div>
 
                 {/* Step 1: Request withdrawal (triggers FHE.allow for private decryption) */}

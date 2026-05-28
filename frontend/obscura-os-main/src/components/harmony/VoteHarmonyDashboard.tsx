@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
 import { BarChart3, RotateCcw, ShieldCheck, Vote as VoteIcon } from "lucide-react";
 export function VoteHarmonyDashboard({
-  onNewProposal,
-  onDelegate,
+  onVote,
+  onParticipation,
+  onOpenProposals,
 }: {
-  onNewProposal: () => void;
-  onDelegate: () => void;
+  onVote: () => void;
+  onParticipation: () => void;
+  onOpenProposals: () => void;
 }) {
   return (
     <>
@@ -22,12 +24,12 @@ export function VoteHarmonyDashboard({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onNewProposal}
+            onClick={onVote}
             className="h-10 rounded-full bg-foreground px-4 text-sm font-medium text-background"
           >
             Vote privately
           </button>
-          <button type="button" onClick={onDelegate} className="h-10 rounded-full hairline px-4 text-sm">
+          <button type="button" onClick={onParticipation} className="h-10 rounded-full hairline px-4 text-sm">
             Participation
           </button>
         </div>
@@ -37,7 +39,7 @@ export function VoteHarmonyDashboard({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="mt-8 grid gap-3 md:grid-cols-3"
+        className="mt-8 hidden gap-3 md:grid md:grid-cols-3"
       >
         {[
           { i: VoteIcon, l: "Vote", v: "Private choice", c: "text-emerald-600" },
@@ -69,10 +71,10 @@ export function VoteHarmonyDashboard({
           </div>
           <button
             type="button"
-            onClick={onNewProposal}
+            onClick={onOpenProposals}
             className="h-10 shrink-0 rounded-full hairline px-4 text-sm font-medium hover:bg-muted"
           >
-            Open proposals
+            Review proposals
           </button>
         </div>
       </div>

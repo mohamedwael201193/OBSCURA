@@ -47,12 +47,46 @@ describe("Vote V2/V3 information architecture", () => {
 
     expect(votePage).toContain('type ProposalMode = "browse" | "create" | "vote" | "results"');
     expect(votePage).toContain("Vote privately");
+    expect(votePage).toContain('onClick={() => openProposals("vote")}');
     expect(votePage).toContain("Create");
     expect(votePage).toContain("Results");
     expect(proposalList).toContain("Vote privately");
     expect(castVote).toContain("Change Private Vote");
     expect(castVote).toContain("Submit Private Vote");
+    expect(castVote).toContain("Show my vote");
+    expect(castVote).toContain("Change vote");
     expect(tallyReveal).toContain("Decrypt Public Tally");
     expect(tallyReveal).toContain("Individual votes remain permanently encrypted");
+  });
+
+  it("keeps Vote notifications reachable without leaking choices", () => {
+    const votePage = readSource("pages/VotePage.tsx");
+    const notificationsPanel = readSource("components/vote/VoteNotificationsPanel.tsx");
+    const shell = readSource("components/harmony/HarmonyAppShell.tsx");
+
+    expect(votePage).toContain("VoteNotificationsPanel");
+    expect(votePage).toContain("Vote settings");
+    expect(votePage).toContain('onSettingsClick={() => setSettingsOpen(true)}');
+    expect(shell).toContain("onSettingsClick");
+    expect(notificationsPanel).toContain("Save Vote alerts");
+    expect(notificationsPanel).toContain("vote.*");
+    expect(notificationsPanel).toContain("governor.*");
+    expect(notificationsPanel).toContain("never include the option you chose");
+    expect(notificationsPanel).not.toContain("args.support");
+    expect(notificationsPanel).not.toMatch(/against|abstain/i);
+  });
+
+  it("improves mobile and empty-state polish", () => {
+    const dashboard = readSource("components/harmony/VoteHarmonyDashboard.tsx");
+    const proposalList = readSource("components/vote/ProposalList.tsx");
+    const rewards = readSource("components/vote/RewardsPanel.tsx");
+
+    expect(dashboard).toContain("hidden gap-3 md:grid");
+    expect(dashboard).toContain("Review proposals");
+    expect(proposalList).toContain('initialFilter = "active"');
+    expect(proposalList).toContain("Showing {statusFilter} proposals first");
+    expect(rewards).toContain("Reward claims appear after you vote privately");
+    expect(rewards).toContain("No reward claim is ready if this list is empty");
+    expect(rewards).toContain("Nothing is withdrawable yet");
   });
 });

@@ -27,11 +27,13 @@ export function HarmonyAppShell({
   sidebar,
   children,
   searchPlaceholder,
+  onSettingsClick,
 }: {
   appName: "Pay" | "Credit" | "Vote" | "Ecosystem";
   sidebar: HarmonySidebarItem[];
   children: React.ReactNode;
   searchPlaceholder?: string;
+  onSettingsClick?: () => void;
 }) {
   const { pathname } = useLocation();
   const search = searchPlaceholder ?? `Search ${appName.toLowerCase()}…`;
@@ -74,6 +76,7 @@ export function HarmonyAppShell({
           </Link>
           <button
             type="button"
+            onClick={onSettingsClick}
             className="grid h-10 w-10 place-items-center rounded-xl text-muted-foreground hover:bg-muted"
             aria-label="Settings"
           >

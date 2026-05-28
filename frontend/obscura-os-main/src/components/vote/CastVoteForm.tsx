@@ -67,6 +67,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
   const [error, setError] = useState<string | null>(null);
   const [votedOptionIndex, setVotedOptionIndex] = useState<number | null>(null);
   const [wasRevote, setWasRevote] = useState(false);
+  const [showSubmittedChoice, setShowSubmittedChoice] = useState(false);
 
   // Sync to parent-provided initial proposal id
   useEffect(() => {
@@ -100,6 +101,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
     if (selectedOption === null || !selectedProposal || proposalId === undefined) return;
     setError(null);
     setVotedOptionIndex(null);
+    setShowSubmittedChoice(false);
     const wasAlreadyVoted = !!alreadyVoted;
     try {
       await castVote(proposalId, selectedOption);
@@ -179,6 +181,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
             onChange={(e) => {
               setSelectedProposal(e.target.value);
               setSelectedOption(null);
+              setShowSubmittedChoice(false);
               reset();
               setError(null);
             }}
@@ -309,6 +312,28 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
                   Your ballot is sealed on Arbitrum Sepolia. No one can see which option you chose.
                   Only the aggregate tally is revealed after finalization.
                 </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSubmittedChoice((visible) => !visible)}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full bg-green-400/10 px-3 text-xs font-medium text-green-300 hover:bg-green-400/15"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    {showSubmittedChoice ? "Hide my vote" : "Show my vote"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { reset(); setVotedOptionIndex(null); setSelectedOption(null); setShowSubmittedChoice(false); setError(null); }}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-green-400/20 px-3 text-xs font-medium text-green-300 hover:bg-green-400/10"
+                  >
+                    Change vote
+                  </button>
+                </div>
+                {showSubmittedChoice && (
+                  <div className="mt-2 rounded-lg border border-green-400/20 bg-green-400/5 px-3 py-2 text-xs text-green-300">
+                    Shown only on this device: {(optionLabels as string[])?.[votedOptionIndex] ?? `Option ${votedOptionIndex}`}.
+                  </div>
+                )}
                 <div className="text-xs text-muted-foreground/60 mt-2">
                   TX:{" "}
                   <a
@@ -397,7 +422,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
         {txHash && (
           <button
             type="button"
-            onClick={() => { reset(); setVotedOptionIndex(null); setSelectedOption(null); setError(null); }}
+            onClick={() => { reset(); setVotedOptionIndex(null); setSelectedOption(null); setShowSubmittedChoice(false); setError(null); }}
             className="btn-pay btn-pay-ghost w-full py-2.5"
           >
             Change this vote or choose another proposal

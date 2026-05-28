@@ -114,3 +114,29 @@ Date: 2026-05-28, after V2/V3 patch.
 - Passed: focused Vitest suite `npm test -- src/test/vote-final-v1.test.ts src/test/vote-final-v2-v3.test.ts` (9/9).
 - Passed: full frontend Vitest suite `npm test` (29/29).
 - Passed: frontend build `npm run build` with existing Browserslist/Rollup/chunk-size warnings only.
+
+## V2/V3 Final Polish Pass
+
+Date: 2026-05-29.
+
+- Performed a targeted UI/UX audit only against remaining V2/V3 gaps. Did not re-test completed V0/V1 shared activity, notifications routing, receipt handling, reveal, delegation, rewards funding, or treasury funding transactions.
+- Desktop audit confirmed the simplified four-section IA and no stale default-path copy (`Institutional governance`, `OBS · sealed`, `DAO · Treasury`, setup guide, OBS claim framing) in the checked Vote surfaces.
+- Fixed primary voting reachability: the Overview `Vote privately` CTA and sidebar/mobile `Proposals` now open the actual `Cast Private Vote` flow instead of stopping at the proposal list. Proposal browsing remains available through `Review proposals` and secondary proposal actions.
+- Fixed proposal-list clarity: proposal lists now default to active proposals and show an explicit note when no active proposals are available for the wallet, with `All` preserved for closed history and revealable results.
+- Added post-vote UX controls in `CastVoteForm`: a confirmed vote can expose a user-triggered `Show my vote` local display and a `Change vote` path without auto-decrypting or leaking choices by default.
+- Improved mobile hierarchy: the explanatory Vote/Revote/Reveal tile stack is hidden on mobile, bringing the privacy note and `Review proposals` action much higher. Mobile 390x844 retest showed no wide elements, no horizontal overflow, and four readable bottom-nav labels.
+- Improved Rewards UX: clicking reward tabs now shows clear feedback; empty earn/withdraw states explain why no reward claim or withdrawal is ready instead of silently doing nothing.
+- Added Vote notification UX using the existing shared notification hook and aliases: `VoteNotificationsPanel` exposes Enable push, Save Vote alerts, Repair browser, Test push, event categories, and privacy copy. It is visible in Participation and in a Vote settings drawer opened by the shared shell Settings button.
+- Fixed Settings reachability for Vote by wiring `HarmonyAppShell` `onSettingsClick` and adding a Vote settings drawer. No new notification system was created.
+- Browser verification after the patch confirmed: `Vote privately` renders `Cast Private Vote`, Create renders proposal creation, Results renders explicit aggregate reveal, Participation renders Rewards/Delegation/Activity/Vote notifications, Advanced renders Treasury/Governor only, and Vote settings renders notification controls.
+- DOM center hit-tests for desktop buttons (`Vote privately`, `Participation`, `Review proposals`, proposal mode actions) land on the intended button elements; no app overlay or z-index blocker was found.
+- The existing VS Code/Playwright browser session still has an external coordinate-scaling issue: a raw pointer sent to `(1211,217)` arrives in-page near `(2084,373)`, so locator clicks report `<html>` interception even when `elementFromPoint` at the real button center is correct. This is not caused by a visible app overlay after the shell layering fixes.
+- Live encrypted cast/revote final validation remains blocked by scenario availability: the connected wallet created proposal #5 and creators cannot vote on their own proposals; no active non-self proposal is currently available. A second funded, OBS-eligible wallet or a proposal created by another wallet is required to complete this final transaction path.
+
+## V2/V3 Final Verification Log
+
+- Passed: editor diagnostics on all final V2/V3 touched frontend files.
+- Passed: changed-file ESLint check for all final V2/V3 touched frontend files.
+- Passed: focused Vitest suite `npm test -- src/test/vote-final-v1.test.ts src/test/vote-final-v2-v3.test.ts` (11/11).
+- Passed: full frontend Vitest suite `npm test` (31/31).
+- Passed: frontend build `npm run build` with existing Browserslist/Rollup/chunk-size warnings only.

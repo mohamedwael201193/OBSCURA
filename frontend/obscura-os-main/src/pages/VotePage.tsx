@@ -6,9 +6,11 @@ import {
   AlertTriangle,
   Home,
   Plus,
+  Settings,
   ShieldCheck,
   UserRound,
   Vote,
+  X,
 } from "lucide-react";
 
 import { ActivityFeed } from "@/components/harmony/ActivityFeed";
@@ -31,6 +33,7 @@ import { DelegationPanel } from "@/components/vote/DelegationPanel";
 import { TreasuryPanel } from "@/components/vote/TreasuryPanel";
 import { RewardsPanel } from "@/components/vote/RewardsPanel";
 import { GovernorPanel } from "@/components/vote/GovernorPanel";
+import { VoteNotificationsPanel } from "@/components/vote/VoteNotificationsPanel";
 import { useVoteOwner, useVoteRole } from "@/hooks/useProposals";
 import { Role } from "@/lib/constants";
 
@@ -51,6 +54,7 @@ const VotePage = () => {
   const [section, setSection] = useState<VoteSection>("overview");
   const [proposalMode, setProposalMode] = useState<ProposalMode>("browse");
   const [jumpProposalId, setJumpProposalId] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const openProposals = (mode: ProposalMode = "browse", proposalId?: number | string) => {
     setSection("proposals");
@@ -62,7 +66,7 @@ const VotePage = () => {
     <>
       <button
         type="button"
-        onClick={() => openProposals("browse")}
+        onClick={() => openProposals("vote")}
         className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors ${
           proposalMode === "browse" || proposalMode === "vote"
             ? "bg-foreground text-background"
@@ -170,13 +174,14 @@ const VotePage = () => {
         return (
           <div className="space-y-6">
             <VoteHarmonyDashboard
-              onNewProposal={() => openProposals("browse")}
-              onDelegate={() => setSection("participation")}
+              onVote={() => openProposals("vote")}
+              onParticipation={() => setSection("participation")}
+              onOpenProposals={() => openProposals("browse")}
             />
 
             <HarmonyFormCard title="Proposals needing attention" eyebrow="Private proposals">
               <div className="harmony-form-inner -mx-2">
-                <ProposalList onVote={(id) => openProposals("vote", id)} />
+                <ProposalList onVote={(id) => openProposals("vote", id)} initialFilter="active" />
               </div>
             </HarmonyFormCard>
           </div>
@@ -207,6 +212,7 @@ const VotePage = () => {
                 <RewardsPanel />
               </div>
             </VoteHarmonyPanelCard>
+            <VoteNotificationsPanel />
             {!isConnected ? (
               <VoteHarmonyNotConnected message="Connect your wallet to manage delegation." />
             ) : (
@@ -259,7 +265,7 @@ const VotePage = () => {
       mobileLabel: "Vote",
       icon: Vote,
       active: section === "proposals",
-      onClick: () => openProposals("browse"),
+      onClick: () => openProposals("vote"),
     },
     {
       key: "participation",
@@ -280,7 +286,7 @@ const VotePage = () => {
   ];
 
   return (
-    <HarmonyAppShell appName="Vote" sidebar={harmonySidebar} searchPlaceholder="Search vote…">
+    <HarmonyAppShell appName="Vote" sidebar={harmonySidebar} searchPlaceholder="Search vote…" onSettingsClick={() => setSettingsOpen(true)}>
       {wrongNetwork && (
         <motion.div
           initial={{ opacity: 0, y: -6 }}
@@ -307,6 +313,47 @@ const VotePage = () => {
         >
           {renderActiveSection()}
         </motion.div>
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {settingsOpen && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSettingsOpen(false)}
+            />
+            <motion.div
+              className="fixed right-0 top-0 bottom-0 z-50 w-full overflow-y-auto border-l hairline bg-card shadow-2xl sm:w-[430px]"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            >
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/95 px-5 py-4 backdrop-blur">
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Settings className="h-4 w-4" /> Vote settings
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(false)}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="Close Vote settings"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="space-y-5 px-5 py-5">
+                <VoteNotificationsPanel />
+                <div className="rounded-xl border border-border bg-muted/40 px-3 py-3 text-xs text-muted-foreground">
+                  Vote alerts are generic. They can tell you a proposal needs action or a tally is ready, but never which option you selected.
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
       </AnimatePresence>
     </HarmonyAppShell>
   );

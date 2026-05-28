@@ -99,7 +99,7 @@ export function CreditReputationPanel({ compact = false }: { compact?: boolean }
             </div>
             <p className="mt-4 font-display text-4xl leading-none">{tier}</p>
             <p className="mt-3 text-sm opacity-70">
-              Built from capped Pay, Credit, and governance signals. Raw counterparties, notes, and amounts stay out of this panel.
+              Built from capped Pay, Credit, and governance signals. Higher tiers unlock larger beta borrow limits without exposing raw counterparties, notes, or amounts.
             </p>
             <div className="mt-5 flex flex-wrap gap-2 text-[11px]">
               <span className="rounded-full bg-background/10 px-2.5 py-1 font-mono">Score {summary?.totalCappedWeight ?? 0}</span>
@@ -118,6 +118,7 @@ export function CreditReputationPanel({ compact = false }: { compact?: boolean }
         {!error && !summary && !isLoading && (
           <p className="mt-4 text-sm text-muted-foreground">
             No reputation signals have been indexed for this wallet yet. Pay activity, repayments, and governance participation will appear as broad categories after indexing.
+            New wallets can still test Credit with a small beta limit.
           </p>
         )}
         {lastFetchedAt && (

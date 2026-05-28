@@ -6,6 +6,41 @@ let cofheClient: any = null;
 let isInitializing = false;
 let lastConnectedAccount: string | null = null;
 
+const FHE_KEY_STORAGE_PREFIX = 'obscura:cofhe:';
+
+function createSameOriginFheKeyStorage() {
+  if (typeof window === 'undefined') return null;
+  return {
+    getItem: async (name: string) => window.localStorage.getItem(`${FHE_KEY_STORAGE_PREFIX}${name}`),
+    setItem: async (name: string, value: any) => {
+      window.localStorage.setItem(`${FHE_KEY_STORAGE_PREFIX}${name}`, typeof value === 'string' ? value : JSON.stringify(value));
+    },
+    removeItem: async (name: string) => {
+      window.localStorage.removeItem(`${FHE_KEY_STORAGE_PREFIX}${name}`);
+    },
+  };
+}
+
+function isStorageHubError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /storage hub|rehydrat|indexDBKeyval|keys store|iframe storage/i.test(message);
+}
+
+async function retryStorageHubOnce<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (!isStorageHubError(error)) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    try {
+      return await run();
+    } catch (retryError) {
+      if (!isStorageHubError(retryError)) throw retryError;
+      throw new Error('CoFHE local key storage is still starting. Refresh Credit and retry the private action.');
+    }
+  }
+}
+
 export type StepCallback = (step: string, context?: any) => void;
 
 /**
@@ -29,7 +64,10 @@ export async function initFHEClient(
     try {
       const { createCofheClient, createCofheConfig } = await import('@cofhe/sdk/web');
       const { arbSepolia } = await import('@cofhe/sdk/chains');
-      const config = createCofheConfig({ supportedChains: [arbSepolia] });
+      const config = createCofheConfig({
+        supportedChains: [arbSepolia],
+        fheKeyStorage: createSameOriginFheKeyStorage(),
+      });
       cofheClient = createCofheClient(config);
     } finally {
       isInitializing = false;
@@ -67,12 +105,12 @@ export async function encryptAmount(
 ): Promise<any> {
   if (!cofheClient) throw new Error('FHE client not initialized');
 
-  const result = await cofheClient
+  const result = await retryStorageHubOnce(() => cofheClient
     .encryptInputs([Encryptable.uint64(amount)])
     .onStep((step: string, ctx: any) => {
       onStep?.(step, ctx);
     })
-    .execute();
+    .execute());
 
   return result;
 }
@@ -87,12 +125,12 @@ export async function encryptAddress(
 ): Promise<any> {
   if (!cofheClient) throw new Error('FHE client not initialized');
 
-  const result = await cofheClient
+  const result = await retryStorageHubOnce(() => cofheClient
     .encryptInputs([Encryptable.address(address)])
     .onStep((step: string, ctx: any) => {
       onStep?.(step, ctx);
     })
-    .execute();
+    .execute());
 
   return result;
 }
@@ -108,12 +146,12 @@ export async function encryptAddressAndAmount(
 ): Promise<any> {
   if (!cofheClient) throw new Error('FHE client not initialized');
 
-  const result = await cofheClient
+  const result = await retryStorageHubOnce(() => cofheClient
     .encryptInputs([Encryptable.address(address), Encryptable.uint64(amount)])
     .onStep((step: string, ctx: any) => {
       onStep?.(step, ctx);
     })
-    .execute();
+    .execute());
 
   return result;
 }

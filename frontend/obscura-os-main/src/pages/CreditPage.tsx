@@ -81,6 +81,7 @@ import SetupSheet from "@/components/credit/SetupSheet";
 import { useCreditAlerts } from "@/hooks/useCreditAlerts";
 import { ActivityFeed } from "@/components/harmony/ActivityFeed";
 import { useNotificationPrefs } from "@/hooks/useNotificationPrefs";
+import { BETA_POOL_LABEL } from "@/hooks/useBetaBorrowLimit";
 
 const CREDIT_NOTIFICATION_TYPES = [
   "credit.borrowed",
@@ -134,9 +135,9 @@ function BorrowTab({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <CreditHarmonyStatChip label="Pool supplied" value={formatCreditUsd(totalSupplied)} />
-        <CreditHarmonyStatChip label="Pool borrowed" value={formatCreditUsd(totalBorrowed)} />
-        <CreditHarmonyStatChip label="Available" value={formatCreditUsd(availableLiquidity)} />
+        <CreditHarmonyStatChip label="Beta pool supplied" value={formatCreditUsd(totalSupplied)} />
+        <CreditHarmonyStatChip label="Private credit open" value={formatCreditUsd(totalBorrowed)} />
+        <CreditHarmonyStatChip label="Beta liquidity" value={formatCreditUsd(availableLiquidity)} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
@@ -145,7 +146,7 @@ function BorrowTab({
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Start here</p>
-                <p className="mt-1 text-sm text-muted-foreground">One private balance powers Pay and Credit.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Private money builds reputation, then unlocks private credit from the beta pool.</p>
               </div>
               <button type="button" onClick={onSetup} className="btn-pay btn-pay-ghost btn-pay-sm">
                 <ShieldCheck className="h-3.5 w-3.5" /> Guided setup
@@ -153,9 +154,9 @@ function BorrowTab({
             </div>
             <div className="mt-4 grid gap-2">
               {[
-                { label: "Shield in Pay", body: "Reuse the same private ocUSDC here." },
-                { label: "Add collateral", body: "Commit encrypted collateral to the market." },
-                { label: "Borrow", body: "Receive encrypted ocUSDC after settlement." },
+                { label: "Start with Pay", body: "Make USDC private once and reuse the same ocUSDC here." },
+                { label: "Add reputation", body: "Pay, Credit, and Vote signals raise beta access over time." },
+                { label: "Borrow privately", body: `Draw from ${BETA_POOL_LABEL} after collateral settles.` },
               ].map((item, index) => (
                 <div key={item.label} className="grid grid-cols-[auto_1fr] gap-3 rounded-xl border border-border/60 bg-muted/30 p-3">
                   <span className="grid h-6 w-6 place-items-center rounded-full bg-foreground text-[11px] font-medium text-background">{index + 1}</span>
@@ -179,7 +180,7 @@ function BorrowTab({
           {primary ? (
             <div className="overflow-hidden rounded-2xl hairline bg-card">
               <div className="border-b border-border p-4">
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Default market</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Canonical beta market</p>
               </div>
               <div className="p-4">
                 <MarketCard market={primary} compact />
@@ -230,7 +231,7 @@ function BorrowTab({
                   </button>
                 ))}
               </div>
-              <p className="mt-3 text-[11px] text-muted-foreground">Advanced markets remain available for repay, withdraw, and alternate collateral flows.</p>
+              <p className="mt-3 text-[11px] text-muted-foreground">Legacy markets remain hidden for cleanup, repay, withdraw, and alternate collateral flows.</p>
             </div>
           )}
         </div>
@@ -569,7 +570,7 @@ function EarnTab({
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-        <CreditHarmonyPanelCard title="Supply private USDC" eyebrow="Default earn path">
+        <CreditHarmonyPanelCard title="Supply to Beta Liquidity Pool" eyebrow="Early access liquidity">
           {primary ? (
             <SupplyForm market={primary} markets={markets} onSelect={onSelectMarket} onRefresh={onRefreshMarkets} />
           ) : (
@@ -579,7 +580,7 @@ function EarnTab({
         <div className="rounded-2xl hairline bg-card p-5">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Earn strategy</p>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Direct supply keeps the main Credit path aligned with Pay-backed ocUSDC. Vaults remain available below for curated allocation and strategy checks.
+            Direct supply adds real Pay-backed ocUSDC to {BETA_POOL_LABEL}. Vaults remain available below for curated allocation and strategy checks.
           </p>
           {primary && (
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -911,12 +912,12 @@ const CreditPage = () => {
 
   return (
     <HarmonyAppShell appName="Credit" sidebar={harmonySidebar} searchPlaceholder="Search credit…">
-      <div className="mb-6 flex flex-wrap items-center justify-end gap-2">
+      <div className="relative z-20 mb-6 flex scroll-mt-20 flex-wrap items-center justify-end gap-2">
         {isConnected && (
           <button
             type="button"
             onClick={() => setSetupOpen(true)}
-            className="inline-flex h-10 items-center gap-1.5 rounded-full hairline px-4 text-sm hover:bg-muted"
+            className="inline-flex h-10 scroll-mt-20 items-center gap-1.5 rounded-full hairline px-4 text-sm hover:bg-muted"
           >
             <Droplet className="h-3.5 w-3.5" /> Set up credit
           </button>

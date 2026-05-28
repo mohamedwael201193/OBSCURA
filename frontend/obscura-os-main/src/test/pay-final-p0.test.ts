@@ -177,7 +177,8 @@ describe("Pay P0.4 privacy gates", () => {
     expect(creditPage).toContain('defaultFilter="credit"');
     expect(creditPage).toContain('type CreditTab = "overview" | "borrow" | "position" | "earn" | "liquidations" | "risk"');
     expect(creditPage).toContain("CreditReputationPanel");
-    expect(creditPage).toContain("Advanced/Testnet");
+    expect(creditPage).toContain("Canonical beta market");
+    expect(creditPage).toContain("Legacy markets remain hidden");
     expect(activityHook).toContain("realtimeStatus");
     expect(workerIndexer).toContain("0x1Ec113297c7F9516A6604aa3b18C180559a6f551");
 

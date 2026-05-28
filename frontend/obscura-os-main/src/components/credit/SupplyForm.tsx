@@ -21,6 +21,7 @@ import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
 import EncryptedValue from "@/components/shared/EncryptedValue";
 import FHEStepper from "@/components/shared/FHEStepper";
 import PercentChips from "@/components/shared/PercentChips";
+import { BETA_POOL_LABEL } from "@/hooks/useBetaBorrowLimit";
 
 interface Props {
   market: CreditMarketMeta;
@@ -163,8 +164,8 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
       {/* Supply privacy note */}
       {tab === "supply" && (
         <p className="text-[11px] text-white/40">
-          Private supply settles in two steps: {market.loanSymbol} moves first, then your supply shares update.
-          Your position stays private.
+          Private supply adds real {market.loanSymbol} to {market.isCanonical ? BETA_POOL_LABEL : "this market"} in two wallet-confirmed steps.
+          Your lender position stays private.
         </p>
       )}
 
@@ -178,7 +179,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
         ) : (
           <ArrowDownToLine className="w-4 h-4" />
         )}
-        {tab === "supply" ? "Supply to market" : "Withdraw from market"}
+        {tab === "supply" ? (market.isCanonical ? "Supply to Beta Pool" : "Supply to market") : "Withdraw from market"}
       </button>
 
       <FHEStepper status={fheStatus.status} error={fheStatus.error} />

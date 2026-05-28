@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowDownToLine, ArrowUpRight, Eye, EyeOff, Layers, Loader2, ShieldAlert, WalletCards } from "lucide-react";
+import { ArrowDownToLine, ArrowUpRight, Eye, EyeOff, Landmark, Layers, Loader2, ShieldAlert, WalletCards } from "lucide-react";
 import { CreditReputationPanel } from "@/components/credit/CreditReputationPanel";
 import {
   HarmonyKpi,
@@ -12,6 +12,7 @@ import type { CreditMarketMeta } from "@/hooks/useCreditMarkets";
 import type { CreditVaultMeta } from "@/hooks/useCreditVaults";
 import { useUtilizationApr } from "@/hooks/useCredit";
 import { useOcUSDCBalance } from "@/hooks/useOcUSDCBalance";
+import { BETA_LIQUIDITY_TARGET, BETA_POOL_LABEL, formatBetaOcusdc } from "@/hooks/useBetaBorrowLimit";
 
 function formatUsd(value?: bigint) {
   if (value === undefined) return "—";
@@ -144,11 +145,37 @@ export function CreditHarmonyOverview({
           <HarmonyKpi label="Utilization">
             <span className="font-display text-3xl text-[hsl(var(--success))]">{formatPercentBps(utilizationBps)}</span>
           </HarmonyKpi>
-          <HarmonyKpi label="Borrowable liquidity">
+          <HarmonyKpi label="Beta liquidity">
             <span className="font-display text-3xl">{formatUsd(availableLiquidity)}</span>
+            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Live borrowable</p>
           </HarmonyKpi>
         </HarmonyKpiGrid>
       </motion.div>
+
+      <div className="mt-5 rounded-2xl hairline bg-card p-5">
+        <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr] md:items-center">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Early Access Liquidity</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Landmark className="h-4 w-4 text-[hsl(var(--success))]" />
+              <p className="font-display text-2xl">{BETA_POOL_LABEL}</p>
+            </div>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              Real Pay-backed ocUSDC supplied from the current treasury wallet. No synthetic TVL, no extra market, no faucet path.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-1">
+            <div className="rounded-xl bg-muted/50 px-3 py-2">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Beta target</p>
+              <p className="mt-1 font-mono text-sm text-foreground">{formatBetaOcusdc(BETA_LIQUIDITY_TARGET)} ocUSDC</p>
+            </div>
+            <div className="rounded-xl bg-muted/50 px-3 py-2">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Narrative</p>
+              <p className="mt-1 text-sm text-muted-foreground">Private money -&gt; private reputation -&gt; private credit -&gt; private governance.</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-3">
         <div className="rounded-2xl hairline bg-card p-6 lg:col-span-2">
@@ -187,7 +214,7 @@ export function CreditHarmonyOverview({
               <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-foreground">Direct market</span>
             </div>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Use Pay-backed ocUSDC from Pay, commit encrypted collateral directly to the market, then borrow after settlement.
+              Use Pay-backed ocUSDC from Pay, build reputation through Pay/Credit/Vote, then borrow from the beta pool after settlement.
             </p>
           </div>
         </div>
@@ -199,7 +226,7 @@ export function CreditHarmonyOverview({
           </div>
           <p className="mt-4 font-display text-3xl leading-tight">Risk is managed without exposing position size.</p>
           <p className="mt-3 text-sm opacity-70">
-            Liquidations and score changes flow through the shared activity worker and generic notifications.
+            Reputation-aware limits keep early liquidity usable while encrypted positions remain hidden by default.
           </p>
           <div className="mt-6 space-y-2 font-mono text-[11px]">
             <RiskRow k="Feed" v="Supabase realtime" />
@@ -214,7 +241,7 @@ export function CreditHarmonyOverview({
         <CreditReputationPanel compact />
       </div>
 
-      <HarmonySection title="Borrow market" hint="Live public pool metrics. Wallet balances stay encrypted until Position reveal.">
+      <HarmonySection title="Beta Liquidity Pool" hint="Live public pool metrics from the canonical Pay-backed ocUSDC market. Wallet balances stay encrypted until reveal.">
         <div className="grid gap-3 md:hidden">
           {markets.map((m) => (
             <div key={m.address} className="rounded-2xl hairline bg-card p-5">
@@ -274,12 +301,12 @@ export function CreditHarmonyOverview({
         </div>
       </HarmonySection>
 
-      <HarmonySection title="Earn options" hint="Direct supply is the default path. Vaults live in Earn when you want curated allocation.">
+      <HarmonySection title="Earn options" hint="Direct supply is the beta treasury path. Vaults live in Earn when you want curated allocation.">
         <div className="rounded-2xl hairline bg-card p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Pay-backed ocUSDC</p>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Keep the overview focused, then move to Earn for direct supply, withdrawals, and advanced vault management.
+              Move to Earn for direct supply into the beta pool, withdrawals, and advanced vault management.
             </p>
           </div>
           <button

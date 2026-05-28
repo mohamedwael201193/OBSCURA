@@ -13,7 +13,7 @@
  *
  * The stealth disburse toggle wires Router.setupAndBorrowStealth for legacy markets.
  */
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
 import { arbitrumSepolia } from "viem/chains";
@@ -27,7 +27,8 @@ import {
   Loader2,
 } from "lucide-react";
 import FHEStepper from "@/components/shared/FHEStepper";
-import { useCreditMarket } from "@/hooks/useCredit";
+import { useCreditMarket, useMarketPosition } from "@/hooks/useCredit";
+import { BETA_POOL_LABEL, formatBetaOcusdc, parseOcusdcInput, useBetaBorrowLimit } from "@/hooks/useBetaBorrowLimit";
 import { useFHEStatus } from "@/hooks/useFHEStatus";
 import { FHEStepStatus } from "@/lib/constants";
 import { encryptAmount, initFHEClient } from "@/lib/fhe";
@@ -85,6 +86,15 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
     borrow: borrowDirect,
     fheStatus: directFheStatus,
   } = useCreditMarket(marketAddr);
+  const setupPosition = useMarketPosition(marketAddr);
+  const availableLiquidity = useMemo(() => {
+    const supplied = market?.totalSupplyAssets ?? 0n;
+    const borrowed = market?.totalBorrowAssets ?? 0n;
+    return supplied >= borrowed ? supplied - borrowed : 0n;
+  }, [market?.totalBorrowAssets, market?.totalSupplyAssets]);
+  const betaLimit = useBetaBorrowLimit(availableLiquidity, setupPosition.plainBorrow ?? 0n);
+  const requestedBorrow = parseOcusdcInput(borrowAmt);
+  const setupExceedsBetaLimit = requestedBorrow > 0n && requestedBorrow > betaLimit.remaining;
 
   const openPay = useCallback(() => {
     window.location.href = "/pay";
@@ -200,9 +210,13 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
   // markets keep the router path for testnet compatibility.
   const handleSetup = useCallback(async () => {
     if (!address || !publicClient || !walletClient || !routerAddr || !marketAddr) return;
-    const collPlain = BigInt(Math.round(parseFloat(collateralAmt || "0") * 1e6));
-    const borrPlain = BigInt(Math.round(parseFloat(borrowAmt || "0") * 1e6));
+    const collPlain = parseOcusdcInput(collateralAmt);
+    const borrPlain = parseOcusdcInput(borrowAmt);
     if (!collPlain || !borrPlain) { setError("Enter collateral and borrow amounts"); return; }
+    if (borrPlain > betaLimit.remaining) {
+      setError(`Beta borrow cap allows ${formatBetaOcusdc(betaLimit.remaining)} ${loanSymbol} more for this wallet right now.`);
+      return;
+    }
 
     setBusy(true);
     setError(null);
@@ -296,7 +310,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
     } finally {
       setBusy(false);
     }
-  }, [address, publicClient, walletClient, writeContractAsync, routerAddr, marketAddr, collateralAmt, borrowAmt, stealthToggle, fhe, onSuccess, isCanonical, collateralTokenAddress, supplyCollateralDirect, borrowDirect]);
+  }, [address, publicClient, walletClient, writeContractAsync, routerAddr, marketAddr, collateralAmt, borrowAmt, betaLimit.remaining, loanSymbol, stealthToggle, fhe, onSuccess, isCanonical, collateralTokenAddress, supplyCollateralDirect, borrowDirect]);
 
   const steps: { key: SetupStep; label: string; icon: React.ReactNode }[] = isCanonical
     ? [
@@ -363,9 +377,9 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                     {isCanonical ? (
                       <>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Credit uses the same private ocUSDC balance as Pay. Shield in Pay once, then borrow or earn from that encrypted balance here.
+                          Private money from Pay builds private reputation, then unlocks private Credit inside one ocUSDC system.
                         </p>
-                        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">Pay-backed ocUSDC · no faucet · reusable balance</p>
+                        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-5">Pay-backed ocUSDC · beta liquidity pool · no faucet</p>
                         <button
                           type="button"
                           onClick={openPay}
@@ -440,7 +454,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                           inputMode="decimal"
                           value={collateralAmt}
                           onChange={(e) => setCollateralAmt(e.target.value)}
-                          placeholder="e.g. 1000"
+                          placeholder="e.g. 1.0"
                           className="w-full border-border bg-background rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-violet-500/40"
                         />
                       </div>
@@ -453,7 +467,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                           inputMode="decimal"
                           value={borrowAmt}
                           onChange={(e) => setBorrowAmt(e.target.value)}
-                          placeholder="e.g. 500"
+                          placeholder="e.g. 0.25"
                           className="w-full border-border bg-background rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-violet-500/40"
                         />
                       </div>
@@ -474,10 +488,27 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                           </div>
                         </label>
                       )}
+                      {isCanonical && (
+                        <div className="rounded-xl hairline bg-muted/50 px-3 py-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Beta borrow limit</span>
+                            <span className="font-mono text-xs text-foreground">{formatBetaOcusdc(betaLimit.remaining)} {loanSymbol}</span>
+                          </div>
+                          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                            {betaLimit.tierLabel} tier · {BETA_POOL_LABEL}. Pay, Credit, and Vote activity raise access over time.
+                          </p>
+                        </div>
+                      )}
                     </div>
 
+                    {setupExceedsBetaLimit && (
+                      <p className="mb-3 rounded-lg border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2 text-[11px] leading-relaxed text-amber-700">
+                        Borrow amount exceeds your current beta limit. Reduce it to {formatBetaOcusdc(betaLimit.remaining)} {loanSymbol} or build more reputation first.
+                      </p>
+                    )}
+
                     <button
-                      disabled={busy || !collateralAmt || !borrowAmt}
+                      disabled={busy || !collateralAmt || !borrowAmt || setupExceedsBetaLimit}
                       onClick={handleSetup}
                       className="btn-pay btn-pay-emerald w-full py-3 disabled:opacity-50 flex items-center justify-center gap-2"
                     >

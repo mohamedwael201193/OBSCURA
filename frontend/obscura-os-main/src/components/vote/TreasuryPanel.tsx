@@ -277,7 +277,7 @@ export function TreasuryPanel() {
       {activeTab === "fund" && (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground/50">
-            Deposit ETH into the DAO treasury. Funds are disbursed only by successful governance votes with a 48h timelock.
+            Deposit ETH into the protocol treasury. Funds are disbursed only by successful advanced governance actions with a timelock.
           </p>
           <div className="flex gap-2">
             <input type="number" step="0.001" placeholder="ETH amount (e.g. 0.1)"

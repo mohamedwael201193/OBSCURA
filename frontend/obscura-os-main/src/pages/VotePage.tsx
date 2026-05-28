@@ -1,37 +1,32 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAccount, useChainId } from "wagmi";
 import {
-  FileText,
-  CheckSquare,
   BarChart3,
-  Settings,
-  Coins,
   AlertTriangle,
+  Home,
+  Plus,
+  ShieldCheck,
+  UserRound,
+  Vote,
 } from "lucide-react";
 
-import SectionDiagram from "@/components/elite/SectionDiagram";
 import { ActivityFeed } from "@/components/harmony/ActivityFeed";
 import { HarmonyAppShell } from "@/components/harmony/HarmonyAppShell";
 import { HarmonyFormCard } from "@/components/harmony/harmony-ui";
-import { HarmonyHowItWorks } from "@/components/harmony/HarmonyHowItWorks";
 import { VoteHarmonyDashboard } from "@/components/harmony/VoteHarmonyDashboard";
 import {
   VoteHarmonyNotConnected,
   VoteHarmonyPanelCard,
-  VoteHarmonySubNav,
   VoteHarmonyTabShell,
 } from "@/components/harmony/VoteHarmonyTabShell";
 
-import VoteDashboard from "@/components/vote/VoteDashboard";
 import ProposalList from "@/components/vote/ProposalList";
 import CastVoteForm from "@/components/vote/CastVoteForm";
 import TallyReveal from "@/components/vote/TallyReveal";
 import CreateProposalForm from "@/components/vote/CreateProposalForm";
 import VotingHistory from "@/components/vote/VotingHistory";
 import AdminControls from "@/components/vote/AdminControls";
-import ClaimDailyObsForm from "@/components/pay/ClaimDailyObsForm";
-import { VoteSetupGuide } from "@/components/vote/VoteSetupGuide";
 import { DelegationPanel } from "@/components/vote/DelegationPanel";
 import { TreasuryPanel } from "@/components/vote/TreasuryPanel";
 import { RewardsPanel } from "@/components/vote/RewardsPanel";
@@ -39,56 +34,8 @@ import { GovernorPanel } from "@/components/vote/GovernorPanel";
 import { useVoteOwner, useVoteRole } from "@/hooks/useProposals";
 import { Role } from "@/lib/constants";
 
-type Tab = "dashboard" | "voting" | "governor" | "delegate" | "treasury" | "rewards";
-type VotingSubTab = "create" | "proposals" | "cast" | "results";
-
-const votingSubTabs: { key: VotingSubTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: "create", label: "Create", icon: Settings },
-  { key: "proposals", label: "Proposals", icon: FileText },
-  { key: "cast", label: "Cast Vote", icon: CheckSquare },
-  { key: "results", label: "Results", icon: BarChart3 },
-];
-
-const dashboardSteps = [
-  { title: "Connect wallet", description: "Connect your wallet on Arbitrum Sepolia." },
-  {
-    title: "Claim $OBS tokens",
-    description: (
-      <>
-        Use the faucet on the <span className="font-medium text-foreground">Overview</span> to claim 100 $OBS every 24 hours.
-      </>
-    ),
-  },
-  {
-    title: "Browse proposals",
-    description: (
-      <>
-        Open <span className="font-medium text-foreground">Proposals</span> to see live polls, deadlines, and quorum.
-      </>
-    ),
-  },
-  {
-    title: "Cast your vote",
-    description: (
-      <>
-        Pick an option in <span className="font-medium text-foreground">Cast Vote</span>. The choice is encrypted before it leaves your browser.
-      </>
-    ),
-  },
-  {
-    title: "Revote anytime",
-    description:
-      "Change your mind before the deadline — vote-buying becomes irrational because the buyer can't verify the final ballot.",
-  },
-  {
-    title: "Reveal results",
-    description: (
-      <>
-        After deadline, anyone can call reveal in <span className="font-medium text-foreground">Results</span>. Aggregate counts go public — individual votes stay private forever.
-      </>
-    ),
-  },
-];
+type VoteSection = "overview" | "proposals" | "participation" | "advanced";
+type ProposalMode = "browse" | "create" | "vote" | "results";
 
 const VotePage = () => {
   const { address, isConnected } = useAccount();
@@ -101,73 +48,90 @@ const VotePage = () => {
   const chainId = useChainId();
   const wrongNetwork = isConnected && chainId !== 421614;
 
-  const [tab, setTab] = useState<Tab>("dashboard");
-  const [votingSubTab, setVotingSubTab] = useState<VotingSubTab>("create");
+  const [section, setSection] = useState<VoteSection>("overview");
+  const [proposalMode, setProposalMode] = useState<ProposalMode>("browse");
   const [jumpProposalId, setJumpProposalId] = useState("");
 
-  const handleGuideNavigate = (tabKey: string, subTab?: string) => {
-    setTab(tabKey as Tab);
-    if (subTab) setVotingSubTab(subTab as VotingSubTab);
+  const openProposals = (mode: ProposalMode = "browse", proposalId?: number | string) => {
+    setSection("proposals");
+    setProposalMode(mode);
+    if (proposalId !== undefined) setJumpProposalId(String(proposalId));
   };
 
-  const renderVotingContent = () => {
-    switch (votingSubTab) {
-      case "proposals":
-        return (
-          <>
-            <VoteHarmonyPanelCard title="Browse all polls" eyebrow="Proposals">
-              <div className="harmony-form-inner">
-                <ProposalList
-                  onVote={(id) => {
-                    setJumpProposalId(String(id));
-                    setVotingSubTab("cast");
-                  }}
-                />
-              </div>
-            </VoteHarmonyPanelCard>
-            <SectionDiagram flow="vote-cast" />
-          </>
-        );
-      case "cast":
+  const proposalActions = (
+    <>
+      <button
+        type="button"
+        onClick={() => openProposals("browse")}
+        className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors ${
+          proposalMode === "browse" || proposalMode === "vote"
+            ? "bg-foreground text-background"
+            : "hairline hover:bg-muted"
+        }`}
+      >
+        <Vote className="h-4 w-4" />
+        Vote privately
+      </button>
+      <button
+        type="button"
+        onClick={() => openProposals("create")}
+        className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors ${
+          proposalMode === "create" ? "bg-foreground text-background" : "hairline hover:bg-muted"
+        }`}
+      >
+        <Plus className="h-4 w-4" />
+        Create
+      </button>
+      <button
+        type="button"
+        onClick={() => openProposals("results")}
+        className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors ${
+          proposalMode === "results" ? "bg-foreground text-background" : "hairline hover:bg-muted"
+        }`}
+      >
+        <BarChart3 className="h-4 w-4" />
+        Results
+      </button>
+    </>
+  );
+
+  const renderProposalContent = () => {
+    switch (proposalMode) {
+      case "vote":
         if (!isConnected) {
           return <VoteHarmonyNotConnected message="Connect your wallet to cast an encrypted vote." />;
         }
         return (
           <>
-            <VoteHarmonyPanelCard title="Encrypt your choice" eyebrow="Cast vote">
+            <VoteHarmonyPanelCard title="Vote on proposal" eyebrow="Private ballot">
               <div className="harmony-form-inner">
                 <CastVoteForm initialProposalId={jumpProposalId} />
               </div>
             </VoteHarmonyPanelCard>
-            <VoteHarmonyPanelCard title="Voting history" eyebrow="Your activity">
+            <VoteHarmonyPanelCard title="Your ballot history" eyebrow="Private verification">
               <div className="harmony-form-inner">
                 <VotingHistory />
               </div>
             </VoteHarmonyPanelCard>
-            <SectionDiagram flow="vote-cast" />
           </>
         );
       case "results":
         return (
-          <>
-            <VoteHarmonyPanelCard title="Reveal aggregate tallies" eyebrow="Results">
-              <div className="harmony-form-inner">
-                <TallyReveal />
-              </div>
-            </VoteHarmonyPanelCard>
-            <SectionDiagram flow="vote-tally" />
-          </>
+          <VoteHarmonyPanelCard title="Reveal aggregate totals" eyebrow="Results">
+            <div className="harmony-form-inner">
+              <TallyReveal />
+            </div>
+          </VoteHarmonyPanelCard>
         );
       case "create":
-      default:
         if (!isConnected) {
           return <VoteHarmonyNotConnected message="Connect your wallet to create proposals." />;
         }
         return (
           <>
-            <VoteHarmonyPanelCard title="Launch a proposal" eyebrow="Create">
+            <VoteHarmonyPanelCard title="Create a private proposal" eyebrow="Secondary action">
               <div className="harmony-form-inner">
-                <CreateProposalForm onSuccess={() => setVotingSubTab("proposals")} />
+                <CreateProposalForm onSuccess={() => openProposals("browse")} />
               </div>
             </VoteHarmonyPanelCard>
             {isAdmin && (
@@ -177,133 +141,81 @@ const VotePage = () => {
                 </div>
               </VoteHarmonyPanelCard>
             )}
-            <SectionDiagram flow="obs-claim" />
+          </>
+        );
+      case "browse":
+      default:
+        return (
+          <>
+            <VoteHarmonyPanelCard title="Private proposals" eyebrow="Needs action">
+              <div className="harmony-form-inner">
+                <ProposalList onVote={(id) => openProposals("vote", id)} />
+              </div>
+            </VoteHarmonyPanelCard>
+            {isConnected && (
+              <VoteHarmonyPanelCard title="Your ballot history" eyebrow="Private verification">
+                <div className="harmony-form-inner">
+                  <VotingHistory />
+                </div>
+              </VoteHarmonyPanelCard>
+            )}
           </>
         );
     }
   };
 
   const renderActiveSection = () => {
-    switch (tab) {
-      case "dashboard":
+    switch (section) {
+      case "overview":
         return (
           <div className="space-y-6">
             <VoteHarmonyDashboard
-              onNewProposal={() => {
-                setTab("voting");
-                setVotingSubTab("create");
-              }}
-              onDelegate={() => setTab("delegate")}
+              onNewProposal={() => openProposals("browse")}
+              onDelegate={() => setSection("participation")}
             />
 
-            <HarmonyFormCard title="Get started with ObscuraVote" eyebrow="Setup guide">
-              <VoteSetupGuide onNavigate={handleGuideNavigate} />
-            </HarmonyFormCard>
-
-            <div
-              id="obs-claim-banner"
-              className="flex flex-wrap items-center gap-4 rounded-2xl hairline bg-card p-4"
-            >
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
-                <Coins className="h-4 w-4 text-foreground" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium leading-tight text-foreground">Get $OBS governance tokens</div>
-                <div className="mt-0.5 text-sm text-muted-foreground">
-                  You need $OBS to vote. Claim 100 free tokens every 24 hours.
-                </div>
-              </div>
-              <div className="shrink-0">
-                <ClaimDailyObsForm compact />
-              </div>
-            </div>
-
-            <HarmonyFormCard title="Active proposals" eyebrow="Live">
-              <div className="harmony-form-inner">
-                <VoteDashboard />
-              </div>
-            </HarmonyFormCard>
-
-            <HarmonyFormCard title="Proposals" eyebrow="All polls">
-              <p className="mb-4 text-sm text-muted-foreground">All votes confidential by default.</p>
+            <HarmonyFormCard title="Proposals needing attention" eyebrow="Private proposals">
               <div className="harmony-form-inner -mx-2">
-                <ProposalList
-                  onVote={(id) => {
-                    setJumpProposalId(String(id));
-                    setTab("voting");
-                    setVotingSubTab("cast");
-                  }}
-                />
+                <ProposalList onVote={(id) => openProposals("vote", id)} />
               </div>
             </HarmonyFormCard>
-
-            <SectionDiagram flow="vote-cast" />
-            <HarmonyHowItWorks
-              title="How it works — Encrypted Voting"
-              steps={dashboardSteps}
-              footnote={
-                <>
-                  Your individual vote is sealed forever — even after results are revealed. Powered by{" "}
-                  <span className="font-medium text-foreground">Fhenix CoFHE</span>, every vote stays encrypted while the
-                  contract aggregates them.
-                </>
-              }
-            />
           </div>
         );
 
-      case "voting":
+      case "proposals":
         return (
-          <VoteHarmonyTabShell tab="voting" sub={votingSubTab}>
-            <VoteHarmonySubNav active={votingSubTab} onChange={setVotingSubTab} items={votingSubTabs} />
+          <VoteHarmonyTabShell tab="proposals" sub={proposalMode} actions={proposalActions}>
             <AnimatePresence mode="wait">
               <motion.div
-                key={votingSubTab}
+                key={proposalMode}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
               >
-                {renderVotingContent()}
+                {renderProposalContent()}
               </motion.div>
             </AnimatePresence>
           </VoteHarmonyTabShell>
         );
 
-      case "delegate":
+      case "participation":
         return (
-          <VoteHarmonyTabShell tab="delegate">
+          <VoteHarmonyTabShell tab="participation">
+            <VoteHarmonyPanelCard title="Participation profile" eyebrow="Rewards">
+              <div className="harmony-form-inner">
+                <RewardsPanel />
+              </div>
+            </VoteHarmonyPanelCard>
             {!isConnected ? (
-              <VoteHarmonyNotConnected message="Connect your wallet to manage vote delegation." />
+              <VoteHarmonyNotConnected message="Connect your wallet to manage delegation." />
             ) : (
-              <VoteHarmonyPanelCard title="Vote delegation" eyebrow="Delegation">
+              <VoteHarmonyPanelCard title="Delegation" eyebrow="Public power routing">
                 <div className="harmony-form-inner">
                   <DelegationPanel />
                 </div>
               </VoteHarmonyPanelCard>
             )}
-          </VoteHarmonyTabShell>
-        );
-
-      case "treasury":
-        return (
-          <VoteHarmonyTabShell tab="treasury">
-            <VoteHarmonyPanelCard title="DAO treasury" eyebrow="Treasury">
-              <div className="harmony-form-inner">
-                <TreasuryPanel />
-              </div>
-            </VoteHarmonyPanelCard>
-          </VoteHarmonyTabShell>
-        );
-
-      case "rewards":
-        return (
-          <VoteHarmonyTabShell tab="rewards">
-            <VoteHarmonyPanelCard title="Voter participation" eyebrow="Participation">
-              <div className="harmony-form-inner">
-                <RewardsPanel />
-              </div>
-            </VoteHarmonyPanelCard>
             <ActivityFeed
               defaultFilter="vote"
               filters={["vote"]}
@@ -314,11 +226,16 @@ const VotePage = () => {
           </VoteHarmonyTabShell>
         );
 
-      case "governor":
+      case "advanced":
         return (
-          <VoteHarmonyTabShell tab="governor">
-            <VoteHarmonyPanelCard title="Executable proposals" eyebrow="OZ Governor · Timelock · 2-day delay">
+          <VoteHarmonyTabShell tab="advanced">
+            <VoteHarmonyPanelCard title="Private proposal treasury" eyebrow="Advanced">
               <div className="harmony-form-inner">
+                <TreasuryPanel />
+              </div>
+            </VoteHarmonyPanelCard>
+            <VoteHarmonyPanelCard title="Executable governance" eyebrow="Public Governor · Timelock">
+              <div className="harmony-form-inner -mx-2">
                 <GovernorPanel wrongNetwork={wrongNetwork} />
               </div>
             </VoteHarmonyPanelCard>
@@ -328,21 +245,38 @@ const VotePage = () => {
   };
 
   const harmonySidebar = [
-    { key: "dashboard", label: "Overview", active: tab === "dashboard", onClick: () => setTab("dashboard") },
     {
-      key: "voting",
-      label: "Proposals",
-      badge: "Polls",
-      active: tab === "voting",
-      onClick: () => {
-        setTab("voting");
-        setVotingSubTab("proposals");
-      },
+      key: "overview",
+      label: "Overview",
+      mobileLabel: "Home",
+      icon: Home,
+      active: section === "overview",
+      onClick: () => setSection("overview"),
     },
-    { key: "treasury", label: "Treasury", active: tab === "treasury", onClick: () => setTab("treasury") },
-    { key: "delegate", label: "Delegation", active: tab === "delegate", onClick: () => setTab("delegate") },
-    { key: "rewards", label: "Participation", active: tab === "rewards", onClick: () => setTab("rewards") },
-    { key: "governor", label: "Executable", active: tab === "governor", onClick: () => setTab("governor") },
+    {
+      key: "proposals",
+      label: "Proposals",
+      mobileLabel: "Vote",
+      icon: Vote,
+      active: section === "proposals",
+      onClick: () => openProposals("browse"),
+    },
+    {
+      key: "participation",
+      label: "Participation",
+      mobileLabel: "Profile",
+      icon: UserRound,
+      active: section === "participation",
+      onClick: () => setSection("participation"),
+    },
+    {
+      key: "advanced",
+      label: "Advanced Governance",
+      mobileLabel: "Advanced",
+      icon: ShieldCheck,
+      active: section === "advanced",
+      onClick: () => setSection("advanced"),
+    },
   ];
 
   return (
@@ -365,7 +299,7 @@ const VotePage = () => {
 
       <AnimatePresence mode="wait">
         <motion.div
-          key={tab}
+          key={section}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}

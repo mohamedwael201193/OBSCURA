@@ -155,7 +155,7 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { p
             onClick={() => onVote(Number(proposalId))}
             className="flex items-center gap-1 text-[11px] text-foreground hover:underline"
           >
-            Vote on this <ArrowRight className="w-3 h-3" />
+            Vote privately <ArrowRight className="w-3 h-3" />
           </button>
         </div>
       )}
@@ -194,8 +194,8 @@ export default function ProposalList({ onVote }: { onVote?: (id: number) => void
           <FileText className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Browse Proposals</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">All governance polls</p>
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Private Proposals</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Vote privately</p>
         </div>
         <button
           onClick={() => refetch()}
@@ -243,7 +243,7 @@ export default function ProposalList({ onVote }: { onVote?: (id: number) => void
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <FileText className="w-8 h-8 text-muted-foreground/20" />
           <div className="text-sm text-muted-foreground/60">No proposals yet.</div>
-          <div className="text-[11px] text-muted-foreground/40">Switch to the Create tab to launch the first governance poll.</div>
+            <div className="text-[11px] text-muted-foreground/40">Create a private proposal when you are ready for voters.</div>
         </div>
       ) : (
         <div className="space-y-2">

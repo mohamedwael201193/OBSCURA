@@ -181,15 +181,14 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
           <Plus className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Proposal</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Multi-option encrypted governance</p>
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Create Private Proposal</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Multi-option vote</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">FHE</span>
       </div>
 
       <div className="text-[12px] text-muted-foreground/55 leading-relaxed border-l-2 border-emerald-500/20 pl-3">
-        Create a multi-option proposal. Use a template or define custom choices (2–10).
-        Set a quorum (0 = no minimum). After the deadline, anyone can finalize to reveal tallies.
+        Create a simple proposal with two to ten choices. After the deadline, finalization reveals aggregate totals only.
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -198,10 +197,10 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
           <div className="flex items-start gap-2 p-3 bg-yellow-400/5 border border-yellow-400/20 rounded-md">
             <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
             <div>
-              <div className="text-sm text-yellow-400 font-semibold">$OBS Tokens Required</div>
+              <div className="text-sm text-yellow-400 font-semibold">Beta access required</div>
               <div className="text-xs text-yellow-400/70 mt-0.5">
-                You need to claim $OBS tokens at least once before creating a proposal.
-                Go to the <strong className="text-yellow-400">Dashboard</strong> and claim your free 100 $OBS, then come back.
+                This deployed testnet contract requires one faucet claim before creating a proposal.
+                Unlock beta access first, then come back.
               </div>
             </div>
           </div>
@@ -237,7 +236,7 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Increase treasury allocation by 10%"
+            placeholder="e.g. Choose the next private beta improvement"
             className="pay-input"
             maxLength={TITLE_MAX}
           />
@@ -410,7 +409,7 @@ export default function CreateProposalForm({ onSuccess }: CreateProposalFormProp
           {!isConnected
             ? "Connect Wallet"
             : !hasClaimed
-            ? "Claim $OBS First"
+            ? "Unlock Beta Access First"
             : isPending
             ? "Sign in Wallet..."
             : isConfirming

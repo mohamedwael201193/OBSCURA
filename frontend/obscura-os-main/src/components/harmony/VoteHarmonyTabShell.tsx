@@ -2,45 +2,35 @@ import type { ComponentType, ReactNode } from "react";
 import { Lock, Network, ShieldCheck, Wallet } from "lucide-react";
 import { HarmonyFormCard, HarmonyPageIntro } from "@/components/harmony/harmony-ui";
 
-export type VoteHarmonyTabKey = "voting" | "delegate" | "treasury" | "rewards" | "governor";
-export type VoteVotingSubKey = "create" | "proposals" | "cast" | "results";
+export type VoteHarmonyTabKey = "proposals" | "participation" | "advanced";
+export type VoteVotingSubKey = "browse" | "create" | "vote" | "results";
 
 const TAB_META: Record<
   VoteHarmonyTabKey,
   { eyebrow: string; title: string; description: string }
 > = {
-  voting: {
-    eyebrow: "Governance · Polls",
-    title: "Proposals & voting",
-    description: "Create polls, browse active ballots, cast encrypted votes, and reveal aggregate results after deadline.",
+  proposals: {
+    eyebrow: "Private proposals",
+    title: "Proposals",
+    description: "Browse proposals, cast a private vote, change it before the deadline, and reveal only final totals.",
   },
-  delegate: {
-    eyebrow: "Power · Delegation",
-    title: "Delegation",
-    description: "Delegate voting power while keeping individual ballots sealed on-chain.",
-  },
-  treasury: {
-    eyebrow: "DAO · Treasury",
-    title: "Treasury",
-    description: "Track protocol treasury balances and encrypted allocation proposals.",
-  },
-  rewards: {
-    eyebrow: "Participation · Rewards",
+  participation: {
+    eyebrow: "Participation",
     title: "Participation",
-    description: "Voter participation metrics and reward eligibility — without exposing how you voted.",
+    description: "Track contribution, rewards, delegation, and recent activity without exposing vote choices.",
   },
-  governor: {
-    eyebrow: "Executable · Timelock",
-    title: "Executable proposals",
-    description: "OpenZeppelin Governor proposals queued through the timelock with a 2-day execution delay.",
+  advanced: {
+    eyebrow: "Advanced governance",
+    title: "Advanced Governance",
+    description: "Protocol-operator actions for treasury requests, public Governor proposals, and timelock execution.",
   },
 };
 
 const SUB_META: Record<VoteVotingSubKey, string> = {
-  create: "Launch a new encrypted poll or manage admin controls.",
-  proposals: "Browse all live and closed polls with quorum and deadline status.",
-  cast: "Encrypt your choice before it leaves the browser. Revote anytime before deadline.",
-  results: "Reveal aggregate tallies after the voting window closes.",
+  browse: "Open an active proposal to vote privately. Create and results stay secondary to the voting path.",
+  create: "Create a private proposal when the choice is ready for voters.",
+  vote: "Choose an option, submit an encrypted ballot, and change it before the deadline if needed.",
+  results: "Finalize closed proposals and explicitly reveal aggregate totals only.",
 };
 
 export function VoteHarmonyTabShell({

@@ -37,7 +37,7 @@ export function HarmonyAppShell({
   const search = searchPlaceholder ?? `Search ${appName.toLowerCase()}…`;
 
   return (
-    <div className="obscura-app flex min-h-screen bg-background text-foreground">
+    <div className="obscura-app isolate flex min-h-screen bg-background text-foreground">
       {/* App switcher rail */}
       <aside className="hidden w-16 shrink-0 flex-col items-center gap-1 border-r border-border bg-surface py-4 md:flex">
         <Link
@@ -131,7 +131,7 @@ export function HarmonyAppShell({
 
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4 md:px-8">
+        <header className="relative z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4 md:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-3 text-muted-foreground">
             <Link to="/" className="md:hidden" aria-label="Obscura home">
               <ObscuraLogo showWordmark={false} size="sm" tone="light" markClassName="h-7 w-7" />
@@ -157,10 +157,10 @@ export function HarmonyAppShell({
             </div>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1300px] px-4 py-10 md:px-8 md:py-14 pb-24 md:pb-14">{children}</main>
+        <main className="relative z-10 mx-auto w-full max-w-[1300px] px-4 py-8 pb-24 md:px-8 md:py-14 md:pb-14">{children}</main>
 
         {/* Mobile bottom nav — visible only on small screens */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex h-[68px] items-stretch border-t border-border bg-background">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-[68px] items-stretch border-t border-border bg-background md:hidden">
           {sidebar.map((item) => {
             const Icon = item.icon;
             const mobileLabel = item.mobileLabel ?? item.label;
@@ -186,7 +186,7 @@ export function HarmonyAppShell({
               </div>
             );
             const btnClass = cn(
-              "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-center transition-colors",
+              "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-2 text-center transition-colors",
               item.active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
             );
             if (item.href) {

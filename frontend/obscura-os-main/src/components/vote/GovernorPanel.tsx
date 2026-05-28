@@ -540,9 +540,9 @@ export function GovernorPanel({ wrongNetwork = false }: { wrongNetwork?: boolean
       {govTab === "new" && <NewProposalForm onCreated={refresh} />}
 
       <p className="pt-2 text-center text-sm text-muted-foreground">
-        Powered by OpenZeppelin Governor · TimelockController ·{" "}
+        Public executable governance · TimelockController ·{" "}
         <span className="text-foreground/65">2-day delay</span> ·{" "}
-        <span className="text-foreground/80">privacy-preserved ballots</span>
+        <span className="text-foreground/80">private proposals stay separate</span>
       </p>
     </div>
   );

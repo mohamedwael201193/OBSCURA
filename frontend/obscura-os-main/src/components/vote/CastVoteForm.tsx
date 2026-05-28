@@ -28,6 +28,15 @@ interface CastVoteFormProps {
   initialProposalId?: string;
 }
 
+const getVoteErrorMessage = (error: unknown) => {
+  if (error && typeof error === "object") {
+    const maybeError = error as { shortMessage?: unknown; message?: unknown };
+    if (typeof maybeError.shortMessage === "string") return maybeError.shortMessage;
+    if (typeof maybeError.message === "string") return maybeError.message;
+  }
+  return "Vote failed";
+};
+
 export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormProps) {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
@@ -96,8 +105,8 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
       await castVote(proposalId, selectedOption);
       setVotedOptionIndex(selectedOption);
       setWasRevote(wasAlreadyVoted);
-    } catch (err: any) {
-      setError(err.shortMessage ?? err.message ?? "Vote failed");
+    } catch (err: unknown) {
+      setError(getVoteErrorMessage(err));
     }
   }
 
@@ -109,15 +118,15 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
           <Vote className="w-4 h-4 text-foreground" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Cast Encrypted Vote</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">FHE-sealed ballot</p>
+          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Cast Private Vote</h3>
+          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted ballot</p>
         </div>
         <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">FHE</span>
       </div>
 
       <div className="text-[12px] text-muted-foreground/55 leading-relaxed border-l-2 border-emerald-500/20 pl-3">
-        Your vote is encrypted client-side via FHE before submission. No one — including the
-        contract — can see your individual choice. You can revote at any time before the deadline.
+        Your choice is encrypted before submission. You can change it before the deadline, and only
+        final totals are revealed.
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -126,10 +135,10 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
           <div className="flex items-start gap-2 p-3 bg-yellow-400/5 border border-yellow-400/20 rounded-md">
             <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
             <div>
-              <div className="text-sm text-yellow-400 font-semibold">OBS Tokens Required</div>
+              <div className="text-sm text-yellow-400 font-semibold">Beta access required</div>
               <div className="text-xs text-yellow-400/70 mt-0.5">
-                You must claim daily $OBS tokens before voting. Go to the{" "}
-                <Link to="/pay" className="underline text-foreground">Pay app</Link> and click "Claim Daily OBS" first.
+                This testnet contract requires one faucet claim before voting. Open the{" "}
+                <Link to="/pay" className="underline text-foreground">Pay app</Link> and unlock beta access first.
               </div>
             </div>
           </div>
@@ -143,7 +152,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
               <div className="text-violet-300 font-semibold mb-0.5">Vote delegated</div>
               <div className="text-violet-400/70">
                 You have delegated your vote. Your delegate votes on your behalf with combined weight.
-                Go to the <span className="font-semibold text-violet-300">Delegation</span> tab to undelegate if you want to vote directly.
+                Open Participation to undelegate if you want to vote directly.
               </div>
             </div>
           </div>
@@ -215,14 +224,14 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
                 <Timer className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div className="text-xs text-amber-400/80">
                   <span className="font-semibold text-amber-400">Voting period ended.</span> This proposal hasn’t been finalized yet.
-                  Switch to the <span className="font-semibold">Results</span> tab to finalize and reveal the tally.
+                  Open Results to finalize and reveal the aggregate tally.
                 </div>
               </div>
             )}
 
             {alreadyVoted && isActive && (
               <div className="text-xs text-foreground">
-                You have already voted — submitting will change your vote (anti-coercion revote)
+                You have already voted. Submitting again changes your private vote before the deadline.
               </div>
             )}
             {isOwnProposal && (
@@ -297,9 +306,8 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
                   {wasRevote ? "Vote changed — privately." : "Vote sealed — privately."}
                 </div>
                 <div className="text-xs text-green-400/70 mt-1 leading-relaxed">
-                  Your ballot is an encrypted ciphertext on Arbitrum Sepolia.
-                  No one — not the contract, not the admin, not block explorers —
-                  can see which option you chose. Only the aggregate tally is revealed after finalization.
+                  Your ballot is sealed on Arbitrum Sepolia. No one can see which option you chose.
+                  Only the aggregate tally is revealed after finalization.
                 </div>
                 <div className="text-xs text-muted-foreground/60 mt-2">
                   TX:{" "}
@@ -320,10 +328,8 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
             <div className="flex items-center gap-2 p-3 bg-emerald-400/5 border border-emerald-400/20 rounded-lg">
               <Eye className="w-4 h-4 text-foreground shrink-0" />
               <div className="text-xs text-foreground/80">
-                Want to confirm your vote? Use{" "}
-                <span className="text-foreground font-semibold">Verify My Vote</span>{" "}
-                in the Voting History tab — your wallet can self-decrypt its own ballot via{" "}
-                <span className="font-mono text-foreground">FHE.allow</span>.
+                Want to confirm later? Use <span className="text-foreground font-semibold">Verify My Vote</span>{" "}
+                in your ballot history. To change this vote, clear the success state and submit another option before the deadline.
               </div>
             </div>
           </motion.div>
@@ -368,8 +374,8 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
             <div className="flex-1">
               <div className="text-foreground font-semibold mb-0.5">Ready to cast your encrypted vote?</div>
               <div className="text-muted-foreground/70">
-                You’ve selected <span className="text-foreground font-semibold">“{(optionLabels as string[])?.[selectedOption] ?? `Option ${selectedOption}`}”</span> on <span className="text-foreground/80">{proposal?.title}</span>.
-                Once confirmed, the ballot is sealed — only you can see your choice, even after results are revealed.
+                You selected <span className="text-foreground font-semibold">“{(optionLabels as string[])?.[selectedOption] ?? `Option ${selectedOption}`}”</span> on <span className="text-foreground/80">{proposal?.title}</span>.
+                Once confirmed, the ballot is sealed. Submitting again before the deadline changes your private vote.
               </div>
             </div>
           </motion.div>
@@ -384,7 +390,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
             whileTap={{ scale: 0.99 }}
             className="btn-pay btn-pay-emerald w-full py-2.5"
           >
-            {isTxPending ? "Submitting..." : alreadyVoted ? "Change Vote (Encrypted)" : "Cast Vote (Encrypted)"}
+            {isTxPending ? "Submitting..." : alreadyVoted ? "Change Private Vote" : "Submit Private Vote"}
           </motion.button>
         )}
 
@@ -394,7 +400,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
             onClick={() => { reset(); setVotedOptionIndex(null); setSelectedOption(null); setError(null); }}
             className="btn-pay btn-pay-ghost w-full py-2.5"
           >
-            Vote on another proposal
+            Change this vote or choose another proposal
           </button>
         )}
       </form>

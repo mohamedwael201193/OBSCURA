@@ -59,3 +59,58 @@ Scope: execute only Phase V0 documentation alignment and Phase V1 safety/shared 
 
 - Real encrypted cast/revote cannot be manually verified until an active proposal exists and the connected wallet passes the deployed eligibility gate.
 - V2 navigation collapse, first-viewport simplification, and OBS-centric UI copy cleanup are intentionally not executed in this V0/V1 pass.
+
+## V2/V3 Pre-Implementation Live QA Retest
+
+Date: 2026-05-28, after V0/V1 deploy.
+
+- Existing local browser session reused at `http://127.0.0.1:5175/vote` with wallet `0xf76e6b0920e9332ff4410f6dd53f01722abc71a3` on Arbitrum Sepolia.
+- Baseline reload showed wallet connected, OBS already claimed, and no Omnia/RPC/CORS failed requests or console errors.
+- Normal Playwright/user-like clicks failed on desktop and mobile for key navigation/buttons (`New proposal`, sidebar `Proposals`, mobile proposal controls) because the layout/header/html layer intercepts pointer events; direct DOM clicks were required to continue QA.
+- Created real proposal #5 `QA private vote 08:16:58 PM`; UI waited from wallet signing to `Proposal confirmed!`. Tx: `0x468d4e7a6455d7b69bed8470bed06483ef1ecb93c64bd517f9cb09bd24f4f1ff`.
+- Encrypted cast/revote could not be fully tested with the single connected wallet: proposal #5 expired quickly and the app correctly blocks creators from voting on their own proposals. A second funded/eligible wallet or active non-self proposal is required.
+- Finalized proposal #5 after deadline. The row changed to `Finalized — tally is publicly decryptable`, but the finalize tx link was not retained visibly after the state transition.
+- Explicit `Decrypt Public Tally` worked for proposal #5 and showed aggregate-only `Yes 0`, `No 0`, `Total: 0 votes`; no individual ballot/support/reason leak was found.
+- Delegation live-tested with temporary delegate `0x1111111111111111111111111111111111111111`; direct voting disabled while delegated. Tx: `0x6fcb89fb198f82f8dbcca9d0da6ec03e7ae16275d676ec4732e2484a7783e42f`.
+- Delegation removal live-tested and returned to `Voting directly`. Tx: `0x85eb56d2432bf2d9a5081109b7a33f0838ffdd3a65e0280389ffcdca9eea7955`.
+- Shared Vote activity realtime feed showed `Delegate selected` and `Delegation removed` with generic labels and tx links; no vote-choice leak detected.
+- Rewards: `Earn rewards` produced no visible feedback when no eligible voted proposals existed. `Withdraw` correctly showed `Request Withdrawal` disabled at `0 ETH`. `Fund pool` succeeded with `0.0001 ETH`; reward pool read updated from `0.0020 ETH` to `0.0021 ETH`. Tx: `0xec6444fce15874fb5f0f066c23344925a4380081b133ca4a5db71b10a53dff0b`.
+- Treasury: `Fund treasury` opens a `Deposit` action. Deposit of `0.0001 ETH` succeeded and treasury balance refreshed to `0.0001 ETH`. Tx: `0x949ba6052fbec2f27283cf2f5e6c8b7bff7873e02a55f141ff871a5b5b947891`.
+- Treasury attach-spend form opened with proposal ID, recipient, and encrypted amount fields; not submitted because all available proposals were ended/finalized and forcing a spend attachment against finalized proposal state would likely be invalid.
+- Notification preferences/test-push controls were not reachable from the Vote page; the global Settings button did not open a visible panel in this session.
+- Desktop and mobile still show stale/cluttered copy: `Institutional governance · Confidential`, `OBS · sealed`, `Treasury`, `DAO · Treasury`, `All governance polls`, setup guide, and diagrams.
+- Mobile 390px regressed from the earlier V1 check: no broad page scroll overflow, but SVG diagrams render at 640px wide and bottom nav labels overlap (`OvOverview`, `PrProposals`, etc.). First useful proposal workflow remains far below the first viewport.
+
+## V2/V3 Implementation and Retest
+
+Date: 2026-05-28, after V2/V3 patch.
+
+- Scope executed only V2/V3: four-section Vote IA and proposal flow simplification. No duplicate systems were added.
+- `VotePage.tsx` now uses four top-level sections: Overview, Proposals, Participation, and Advanced Governance. Treasury and Governor moved under Advanced, while Rewards, Delegation, and shared Vote activity moved under Participation.
+- Overview copy simplified to private voting, revote-before-deadline, and aggregate reveal. Removed the default setup guide, diagrams, OBS claim framing, and governance-heavy hero language.
+- Proposals now default to the voting path with secondary Create and Results modes. `CastVoteForm`, `CreateProposalForm`, `ProposalList`, and `TallyReveal` copy now emphasizes private choices, encrypted ballots, explicit aggregate reveal, and revote before deadline.
+- `TallyReveal` now keeps the finalize transaction link visible outside the `canFinalize` branch after proposal state refresh.
+- `RewardsPanel` now gives visible empty-state feedback for `Earn rewards` when no eligible finalized voted proposals exist.
+- `TreasuryPanel` and `GovernorPanel` copy now frames those surfaces as advanced/public operator workflows, not primary Vote onboarding.
+- `HarmonyAppShell` root/header/main layering was adjusted while debugging pointer interception. Header is now relative instead of sticky, the root uses an isolated stacking context, and main content has explicit local stacking.
+- Added `src/test/vote-final-v2-v3.test.ts` source regression gates for four-section IA, removal of stale first-screen copy, proposal modes, and explicit reveal preservation.
+
+## V2/V3 Browser Retest
+
+- Existing local browser session reused at `http://127.0.0.1:5175/vote` with wallet `0xf76e6b0920e9332ff4410f6dd53f01722abc71a3`.
+- Desktop reload showed the new four-section IA and simplified first viewport: `Private governance`, `Obscura Vote`, `Vote privately`, `Participation`, and tiles for Vote/Revote/Reveal.
+- Stale default-path copy was not present after patch: no `Institutional governance`, `OBS · sealed`, `DAO · Treasury`, `All governance polls`, setup guide, or OBS claim prompt in the checked surfaces.
+- Proposal modes verified in-browser: Vote privately, Create, and Results all render the intended focused copy and controls.
+- Participation verified in-browser: Rewards, Delegation, and shared Vote activity appear together.
+- Advanced Governance verified in-browser: Treasury and Governor appear only in the advanced section.
+- Mobile 390x844 reload showed no wide elements or horizontal overflow and the bottom nav reduced cleanly to four readable items: Home, Vote, Profile, Advanced.
+- The existing Playwright browser session has a coordinate-scaling issue: a pointer sent to `(1211,217)` arrives in-page near `(2084,373)`, causing raw locator/mouse clicks to hit `<html>`/nearby layers. With compensated coordinates and DOM event checks, the actual target buttons receive click events and route correctly. This appears to be a browser-session/tool coordinate mismatch rather than a React handler or DOM hit-target failure.
+- Encrypted cast/revote is still blocked by available test state: the connected wallet created proposal #5 and creators cannot vote on their own proposal; currently there is no active non-self proposal for this wallet.
+
+## V2/V3 Verification Log
+
+- Passed: editor diagnostics on all V2/V3 touched frontend files.
+- Passed: changed-file ESLint check for all V2/V3 touched frontend files.
+- Passed: focused Vitest suite `npm test -- src/test/vote-final-v1.test.ts src/test/vote-final-v2-v3.test.ts` (9/9).
+- Passed: full frontend Vitest suite `npm test` (29/29).
+- Passed: frontend build `npm run build` with existing Browserslist/Rollup/chunk-size warnings only.

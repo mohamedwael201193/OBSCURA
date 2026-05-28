@@ -118,8 +118,8 @@ export function RewardsPanel() {
       </div>
 
       <VoteNotice icon={Info}>
-        Your accumulated reward balance is stored as a <span className={vh.emphasis}>Fhenix FHE euint64</span> on-chain.
-        Nobody can see your total — not other voters, not observers. Only you can decrypt it via the Fhenix gateway after requesting withdrawal.
+        Your accumulated reward balance is stored as a private encrypted value on-chain.
+        Nobody can see your total — not other voters, not observers. Reveal and withdrawal are user-triggered.
         You earn <span className={vh.emphasis}>{REWARD_PER_VOTE_ETH} ETH</span> per finalized proposal you voted on.
       </VoteNotice>
 
@@ -148,6 +148,9 @@ export function RewardsPanel() {
               {Array.from({ length: proposalCount }, (_, i) => (
                 <ProposalRewardRow key={i} proposalId={i} voterAddress={address!} />
               ))}
+              <p className="pt-3 text-center text-xs text-muted-foreground/45">
+                Eligible finalized proposals appear here after you vote privately.
+              </p>
             </div>
           )}
         </div>

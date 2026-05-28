@@ -86,7 +86,7 @@ function RiskRow({ k, v }: { k: string; v: string }) {
 
 export function CreditHarmonyOverview({
   markets,
-  vaults,
+  vaults: _vaults,
   onSupply,
   onBorrow,
   onOpenVault,
@@ -127,7 +127,7 @@ export function CreditHarmonyOverview({
             </button>
             <button type="button" onClick={onOpenVault} className="inline-flex h-10 items-center gap-2 rounded-full hairline px-4 text-sm">
               <Layers className="h-3.5 w-3.5" />
-              Open vault
+              Earn
             </button>
           </>
         }
@@ -274,34 +274,23 @@ export function CreditHarmonyOverview({
         </div>
       </HarmonySection>
 
-      {vaults.length > 0 && (
-        <HarmonySection title="Vaults" hint="Advanced allocation for strategy checks and lab markets.">
-          <div className="grid gap-6 md:grid-cols-2">
-            {vaults.slice(0, 2).map((v) => (
-              <div key={v.address} className="rounded-2xl hairline bg-card p-6">
-                <div className="flex items-center justify-between">
-                  <Layers className="h-5 w-5 text-accent" />
-                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Vault</span>
-                </div>
-                <p className="mt-4 font-display text-2xl">{v.name}</p>
-                <div className="mt-6 flex items-end justify-between">
-                  <div>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Net APY</p>
-                    <p className="mt-1 font-display text-3xl">—</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={onOpenVault}
-                    className="inline-flex h-10 items-center gap-1.5 rounded-full bg-foreground px-4 text-sm text-background"
-                  >
-                    Deposit <ArrowUpRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
+      <HarmonySection title="Earn options" hint="Direct supply is the default path. Vaults live in Earn when you want curated allocation.">
+        <div className="rounded-2xl hairline bg-card p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Pay-backed ocUSDC</p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Keep the overview focused, then move to Earn for direct supply, withdrawals, and advanced vault management.
+            </p>
           </div>
-        </HarmonySection>
-      )}
+          <button
+            type="button"
+            onClick={onOpenVault}
+            className="mt-4 inline-flex h-10 items-center gap-1.5 rounded-full bg-foreground px-4 text-sm text-background sm:mt-0"
+          >
+            Open Earn <ArrowUpRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </HarmonySection>
     </>
   );
 }

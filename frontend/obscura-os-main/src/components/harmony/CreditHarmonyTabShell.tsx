@@ -11,7 +11,7 @@ const TAB_META: Record<
   borrow: {
     eyebrow: "Private USDC · Borrow",
     title: "Borrow",
-    description: "Use the Pay-backed private USDC market by default. Legacy markets stay behind Advanced/Testnet.",
+    description: "Borrow against the Pay-backed private USDC market by default. Advanced markets stay tucked away until you need them.",
   },
   position: {
     eyebrow: "Portfolio · Encrypted",
@@ -64,7 +64,7 @@ export function CreditHarmonyNotConnected({ message }: { message: string }) {
         <p className="mx-auto max-w-sm text-sm leading-relaxed text-muted-foreground">{message}</p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1 rounded-full hairline px-2.5 py-1">
-            <Lock className="h-3 w-3" /> FHE encrypted
+            <Lock className="h-3 w-3" /> Encrypted
           </span>
           <span className="inline-flex items-center gap-1 rounded-full hairline px-2.5 py-1">
             <Network className="h-3 w-3" /> Arbitrum Sepolia

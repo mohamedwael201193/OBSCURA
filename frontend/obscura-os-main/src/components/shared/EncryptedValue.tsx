@@ -3,10 +3,10 @@
  * Used by both ObscuraPay and ObscuraCredit surfaces.
  *
  * Five visual states:
- *  • null / loading  → shield + animated shimmer ring + "FHE Encrypted" badge
- *  • pending         → pulsing lock + "Awaiting CoFHE settle ~6-8s" (two-step gap)
+ *  • null / loading  → shield + animated shimmer ring + "Encrypted" badge
+ *  • pending         → pulsing lock + private settlement copy (two-step gap)
  *  • decrypting      → spinning lock + "Decrypting…"
- *  • revealed        → green shield + formatted value + "on-chain decrypted" caption
+ *  • revealed        → green shield + formatted value + reveal caption
  */
 import { motion, AnimatePresence } from "framer-motion";
 import { ShieldCheck, Eye, EyeOff, Loader2, Lock, Hourglass } from "lucide-react";
@@ -123,7 +123,7 @@ export default function EncryptedValue({
               >
                 <Hourglass className={`w-3.5 h-3.5 ${a.text}`} />
               </motion.div>
-              <span className={`text-[11px] font-medium ${a.text}`}>Awaiting CoFHE settle ~6-8s</span>
+              <span className={`text-[11px] font-medium ${a.text}`}>Settling privately ~6-8s</span>
             </motion.div>
           ) : loading ? (
             <motion.div
@@ -159,7 +159,7 @@ export default function EncryptedValue({
             >
               <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[9px] font-semibold tracking-widest uppercase ${a.badge}`}>
                 <Lock className="w-2 h-2" />
-                FHE Encrypted
+                Encrypted
               </span>
             </motion.div>
           )}
@@ -170,10 +170,10 @@ export default function EncryptedValue({
       <div className="relative flex items-center justify-between gap-2">
         <p className="text-[9px] text-white/25">
           {revealed
-            ? "on-chain decrypted"
+            ? "visible to you"
             : pending
-            ? "CoFHE task in queue"
-            : "encrypted on FHENix · tap reveal"}
+            ? "private settlement pending"
+            : "Private until reveal"}
         </p>
         {/* Hide button — only when value is shown */}
         {revealed && (

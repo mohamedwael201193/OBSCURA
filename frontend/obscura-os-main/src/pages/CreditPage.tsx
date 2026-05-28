@@ -93,6 +93,13 @@ const CREDIT_NOTIFICATION_TYPES = [
   "credit.score_tier_changed",
 ] as const;
 
+function formatCreditUsd(value?: bigint | null) {
+  if (value === undefined || value === null) return "—";
+  const amount = Number(value) / 1e6;
+  const maximumFractionDigits = amount > 0 && amount < 1 ? 6 : 2;
+  return `$${amount.toLocaleString(undefined, { maximumFractionDigits })}`;
+}
+
 // ─── Tab types ────────────────────────────────────────────────────────────
 type CreditTab = "overview" | "borrow" | "position" | "earn" | "liquidations" | "risk";
 
@@ -126,27 +133,35 @@ function BorrowTab({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <CreditHarmonyStatChip label="Pool supplied" value={`$${(Number(totalSupplied) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-        <CreditHarmonyStatChip label="Pool borrowed" value={`$${(Number(totalBorrowed) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-        <CreditHarmonyStatChip label="Available" value={`$${(Number(availableLiquidity) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <CreditHarmonyStatChip label="Pool supplied" value={formatCreditUsd(totalSupplied)} />
+        <CreditHarmonyStatChip label="Pool borrowed" value={formatCreditUsd(totalBorrowed)} />
+        <CreditHarmonyStatChip label="Available" value={formatCreditUsd(availableLiquidity)} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="space-y-4">
           <div className="rounded-2xl hairline bg-card p-5">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Borrow path</p>
-            <div className="mt-4 grid gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Start here</p>
+                <p className="mt-1 text-sm text-muted-foreground">One private balance powers Pay and Credit.</p>
+              </div>
+              <button type="button" onClick={onSetup} className="btn-pay btn-pay-ghost btn-pay-sm">
+                <ShieldCheck className="h-3.5 w-3.5" /> Guided setup
+              </button>
+            </div>
+            <div className="mt-4 grid gap-2">
               {[
-                { label: "Use Pay-backed private USDC", body: "Shield once in Pay, then reuse that encrypted balance in Credit." },
-                { label: "Commit encrypted collateral", body: "Credit moves ocUSDC directly through the market, so collateral accounting stays aligned with Pay-backed private USDC." },
-                { label: "Borrow against encrypted collateral", body: "Amounts are encrypted before transaction submit and settle through the existing FHE flow." },
+                { label: "Shield in Pay", body: "Reuse the same private ocUSDC here." },
+                { label: "Add collateral", body: "Commit encrypted collateral to the market." },
+                { label: "Borrow", body: "Receive encrypted ocUSDC after settlement." },
               ].map((item, index) => (
-                <div key={item.label} className="grid grid-cols-[auto_1fr] gap-3 rounded-xl bg-muted/50 p-3">
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-foreground text-xs font-medium text-background">{index + 1}</span>
+                <div key={item.label} className="grid grid-cols-[auto_1fr] gap-3 rounded-xl border border-border/60 bg-muted/30 p-3">
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-foreground text-[11px] font-medium text-background">{index + 1}</span>
                   <div>
                     <p className="text-sm font-medium text-foreground">{item.label}</p>
-                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{item.body}</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{item.body}</p>
                   </div>
                 </div>
               ))}
@@ -195,13 +210,13 @@ function BorrowTab({
               className="rounded-full hairline px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
               aria-pressed={showingAdvanced}
             >
-              {showingAdvanced ? "Hide testnet" : "Advanced/Testnet"}
+              {showingAdvanced ? "Hide advanced" : "Advanced"}
             </button>
           </div>
 
           {showingAdvanced && markets.length > 1 && (
             <div className="rounded-2xl hairline bg-card p-4">
-              <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Legacy/testnet markets</p>
+              <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Advanced markets</p>
               <div className="space-y-2">
                 {markets.slice(1).map((m) => (
                   <button
@@ -211,16 +226,16 @@ function BorrowTab({
                     className="w-full rounded-xl hairline bg-muted/40 p-3 text-left hover:bg-muted"
                   >
                     <span className="block text-sm text-foreground">{m.label}</span>
-                    <span className="mt-1 block text-[11px] text-muted-foreground">{m.riskTier} · {m.lltvBps / 100}% LLTV · lab market</span>
+                    <span className="mt-1 block text-[11px] text-muted-foreground">{m.riskTier} · {m.lltvBps / 100}% LLTV · advanced market</span>
                   </button>
                 ))}
               </div>
-              <p className="mt-3 text-[11px] text-muted-foreground">Advanced markets remain available for repay, withdraw, and lab collateral flows.</p>
+              <p className="mt-3 text-[11px] text-muted-foreground">Advanced markets remain available for repay, withdraw, and alternate collateral flows.</p>
             </div>
           )}
         </div>
 
-        <CreditHarmonyPanelCard title="Borrow privately" eyebrow="FHE transaction">
+        <CreditHarmonyPanelCard title="Borrow privately" eyebrow="Private transaction">
           {!primary ? (
             <p className="text-sm text-muted-foreground">No Credit market configured yet.</p>
           ) : (
@@ -229,15 +244,11 @@ function BorrowTab({
         </CreditHarmonyPanelCard>
       </div>
 
-      <div className="rounded-2xl hairline bg-accent/10 p-5">
-        <div className="flex items-start gap-3">
-          <Lock className="w-5 h-5 text-accent mt-0.5 shrink-0" />
-          <div className="space-y-1.5">
-            <p className="text-sm font-medium text-foreground">Fully encrypted borrow flow</p>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Borrow amounts, collateral changes, and recipient handles remain encrypted on-chain. Position values only reveal when you explicitly request a view decrypt.
-            </p>
-          </div>
+      <div className="rounded-2xl hairline bg-card px-5 py-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 text-foreground"><Lock className="h-3.5 w-3.5" /> Encrypted by default</span>
+          <span>Pay-backed ocUSDC</span>
+          <span>Reveal from Position only</span>
         </div>
       </div>
     </div>
@@ -568,11 +579,11 @@ function EarnTab({
         <div className="rounded-2xl hairline bg-card p-5">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Earn strategy</p>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Direct supply keeps the main Credit path aligned with Pay-backed ocUSDC. Vaults remain available below for curated testnet allocation and strategy checks.
+            Direct supply keeps the main Credit path aligned with Pay-backed ocUSDC. Vaults remain available below for curated allocation and strategy checks.
           </p>
           {primary && (
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <CreditHarmonyStatChip label="Pool supplied" value={`$${(Number(primary.totalSupplyAssets ?? 0n) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <CreditHarmonyStatChip label="Pool supplied" value={formatCreditUsd(primary.totalSupplyAssets)} />
               <CreditHarmonyStatChip label="Utilization" value={`${(Number(primary.utilizationBps ?? 0n) / 100).toFixed(1)}%`} />
             </div>
           )}
@@ -582,7 +593,7 @@ function EarnTab({
       <div>
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Advanced/Testnet</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Advanced options</p>
             <h3 className="mt-1 font-display text-2xl">Curated vaults</h3>
           </div>
           <button type="button" onClick={onRefreshVaults} className="inline-flex h-9 items-center gap-1.5 rounded-full hairline px-3 text-xs hover:bg-muted">
@@ -714,13 +725,18 @@ function CreditNotificationsPanel() {
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {CREDIT_NOTIFICATION_TYPES.map((event) => (
-            <span key={event} className="rounded-full bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">
-              {event}
-            </span>
-          ))}
-        </div>
+        <details className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2">
+          <summary className="cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground">
+            Credit alert categories
+          </summary>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {CREDIT_NOTIFICATION_TYPES.map((event) => (
+              <span key={event} className="rounded-full bg-card px-2 py-1 font-mono text-[10px] text-muted-foreground">
+                {event.replace("credit.", "")}
+              </span>
+            ))}
+          </div>
+        </details>
 
         <p className="text-xs text-muted-foreground">
           Credit alerts use the same activity rows and push dispatcher as Pay. Messages stay generic and never include position amounts.
@@ -745,7 +761,7 @@ function RiskTab({ markets }: { markets: CreditMarketMeta[] }) {
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               These are public pool metrics. Your supplied, borrowed, and collateral amounts stay hidden until you reveal them from Position.
             </p>
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <CreditHarmonyStatChip label="LLTV" value={primary ? `${primary.lltvBps / 100}%` : "—"} />
               <CreditHarmonyStatChip label="Utilization" value={utilization === null ? "—" : `${utilization.toFixed(1)}%`} />
             </div>
@@ -796,10 +812,10 @@ function SettingsSlideOver({
               <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
             </div>
             <div className="px-5 py-4 space-y-7">
-              <CreditHarmonyPanelCard title="Advanced/Testnet markets" eyebrow="Legacy access">
+              <CreditHarmonyPanelCard title="Advanced markets" eyebrow="Optional access">
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="text-muted-foreground">
-                    {showingAdvanced ? "Legacy markets are visible in the main Credit workspace." : "Main Credit paths show only the Pay-backed private USDC market."}
+                    {showingAdvanced ? "Advanced markets are visible in the main Credit workspace." : "Main Credit paths show only the Pay-backed private USDC market."}
                   </span>
                   <button
                     type="button"

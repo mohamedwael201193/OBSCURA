@@ -78,7 +78,7 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
   return (
     <div className="grid gap-3">
       {/* Position summary */}
-      <div className="grid grid-cols-2 gap-2 mb-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-1">
         <EncryptedValue
           label="Your Supply"
           value={pos.mySupply}
@@ -163,8 +163,8 @@ const SupplyForm = ({ market, markets, onSelect, onRefresh }: Props) => {
       {/* Supply privacy note */}
       {tab === "supply" && (
         <p className="text-[11px] text-white/40">
-          Two-step FHE: {market.loanSymbol} is transferred, then supply shares are credited.
-          Your position amount is private on-chain.
+          Private supply settles in two steps: {market.loanSymbol} moves first, then your supply shares update.
+          Your position stays private.
         </p>
       )}
 

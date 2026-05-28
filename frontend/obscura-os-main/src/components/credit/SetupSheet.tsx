@@ -322,8 +322,9 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
           />
 
           {/* Sheet */}
+          <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-0 pointer-events-none sm:px-4">
           <motion.div
-            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl hairline bg-card shadow-2xl"
+            className="pointer-events-auto w-full rounded-t-3xl hairline bg-card shadow-2xl sm:max-w-[720px]"
             initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
           >
@@ -355,7 +356,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
             </div>
 
             {/* Step content */}
-            <div className="px-5 py-4 pb-8 max-h-[70vh] overflow-y-auto">
+            <div className="px-5 py-4 pb-8 max-h-[70vh] overflow-y-auto sm:px-7">
               <AnimatePresence mode="wait">
                 {step === "funding" && (
                   <motion.div key="funding" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
@@ -457,21 +458,22 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
                         />
                       </div>
 
-                      {/* Stealth toggle */}
-                      <label className="flex items-center gap-3 cursor-pointer py-1">
-                        <div
-                          onClick={() => setStealthToggle((v) => !v)}
-                          className={`w-9 h-5 rounded-full transition-colors border relative ${stealthToggle ? "bg-violet-600/70 border-violet-500/50" : "bg-muted border-border"}`}
-                        >
-                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${stealthToggle ? "translate-x-4" : "translate-x-0.5"}`} />
-                        </div>
-                        <div>
-                          <span className="text-[11px] text-foreground">Disburse to private address</span>
-                          <p className="text-[9px] text-muted-foreground mt-0.5">
-                            Announces borrow via stealth registry (testnet: funds go to your wallet)
-                          </p>
-                        </div>
-                      </label>
+                      {!isCanonical && (
+                        <label className="flex items-center gap-3 cursor-pointer py-1">
+                          <div
+                            onClick={() => setStealthToggle((v) => !v)}
+                            className={`w-9 h-5 rounded-full transition-colors border relative ${stealthToggle ? "bg-violet-600/70 border-violet-500/50" : "bg-muted border-border"}`}
+                          >
+                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${stealthToggle ? "translate-x-4" : "translate-x-0.5"}`} />
+                          </div>
+                          <div>
+                            <span className="text-[11px] text-foreground">Disburse to private address</span>
+                            <p className="text-[9px] text-muted-foreground mt-0.5">
+                              Legacy router path for compatible testnet markets.
+                            </p>
+                          </div>
+                        </label>
+                      )}
                     </div>
 
                     <button
@@ -514,6 +516,7 @@ export default function SetupSheet({ open, onClose, market, onSuccess }: SetupSh
               )}
             </div>
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

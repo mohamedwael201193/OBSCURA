@@ -105,7 +105,7 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
   return (
     <div className="grid gap-3">
       {/* Position summary — FHE encrypted, explicit reveal */}
-      <div className="grid grid-cols-2 gap-2 mb-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-1">
         <EncryptedValue
           label="Collateral"
           value={pos.myCollateral}
@@ -214,8 +214,8 @@ const SupplyCollateralForm = ({ market, markets, onSelect, onRefresh }: Props) =
       {/* Privacy note for supply */}
       {tab === "supply" && (
         <p className="text-[11px] text-white/40">
-          Two-step FHE: collateral is transferred then the encrypted handle is settled.
-          Amount is private on-chain.
+          Collateral settles privately, then your borrowing power updates.
+          Your amount stays private.
         </p>
       )}
 

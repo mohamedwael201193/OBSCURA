@@ -132,10 +132,9 @@ export default function EncryptedValue({
               exit={{ opacity: 0, scale: 0.95 }}
               className="flex items-center gap-2"
             >
-              {/* FHE Encrypted badge */}
               <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[9px] font-semibold tracking-widest uppercase ${a.badge}`}>
                 <Lock className="w-2 h-2" />
-                FHE Encrypted
+                Encrypted
               </span>
             </motion.div>
           )}
@@ -146,8 +145,8 @@ export default function EncryptedValue({
       <div className="relative flex items-center justify-between gap-2">
         <p className="text-[9px] text-white/25">
           {revealed
-            ? "on-chain decrypted"
-            : "encrypted on FHENix · tap reveal"}
+            ? "visible to you"
+            : "Private until reveal"}
         </p>
         {onReveal && !revealed && (
           <motion.button

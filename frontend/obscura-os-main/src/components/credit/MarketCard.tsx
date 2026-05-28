@@ -51,7 +51,7 @@ const MarketCard = ({ market, onAction, active, compact }: Props) => {
           {market.isCanonical ? "CORE" : market.status === "legacy" ? "LEGACY" : "TEST"}
         </span>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div className="rounded-md bg-black/20 px-2.5 py-2">
           <div className="text-[10px] uppercase tracking-wider text-white/40">Supplied</div>
           <div className="text-[12px] font-mono text-foreground">{supplied}</div>

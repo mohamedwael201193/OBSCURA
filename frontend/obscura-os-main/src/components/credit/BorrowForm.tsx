@@ -95,7 +95,7 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
   return (
     <div className="grid gap-3">
       {/* Position tiles — FHE encrypted, explicit reveal */}
-      <div className="grid grid-cols-2 gap-2 mb-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-1">
         <EncryptedValue
           label="Your Collateral"
           value={pos.myCollateral}
@@ -163,18 +163,22 @@ const BorrowForm = ({ market, markets, onSelect, onRefresh, onGoToCollateral }: 
         accent="violet"
       />
 
-      <label className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-        <Lock className="w-3 h-3" /> Encrypted destination (optional)
-      </label>
-      <input
-        value={dest}
-        onChange={(e) => setDest(e.target.value)}
-        placeholder={address ?? "0x…"}
-        className="rounded-md border border-border bg-background px-3 py-2 font-mono text-xs focus:outline-none focus:border-accent/50"
-      />
-      <p className="-mt-1 text-[11px] text-muted-foreground">
-        Borrow proceeds are sent by the market as encrypted {market.loanSymbol}. The optional destination is reserved for compatible router flows.
-      </p>
+      <details className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+        <summary className="flex cursor-pointer select-none items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground hover:text-foreground">
+          <Lock className="w-3 h-3" /> Advanced destination
+        </summary>
+        <div className="mt-3 space-y-2">
+          <input
+            value={dest}
+            onChange={(e) => setDest(e.target.value)}
+            placeholder={address ?? "0x…"}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs focus:outline-none focus:border-accent/50"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Leave blank to receive encrypted {market.loanSymbol} in your connected wallet.
+          </p>
+        </div>
+      </details>
 
       {/* Pre-flight warnings — shown before user signs, no FHE needed */}
       {noCollateral && (

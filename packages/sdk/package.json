@@ -1,5 +1,5 @@
 {
-  "name": "@obscura/sdk",
+  "name": "@obscura-fhe/sdk",
   "version": "1.0.0",
   "description": "Official TypeScript SDK for Obscura Pay, Credit, and Vote on Arbitrum Sepolia",
   "type": "module",

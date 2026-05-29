@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@obscura/sdk` are documented in this file.
+All notable changes to `@obscura-fhe/sdk` are documented in this file.
 
 ## [1.0.0] - 2026-05-29
 

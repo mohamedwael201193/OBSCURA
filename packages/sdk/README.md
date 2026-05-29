@@ -1,13 +1,13 @@
-# @obscura/sdk
+# @obscura-fhe/sdk
 
-Official TypeScript SDK for **Obscura Pay**, **Credit**, and **Vote** on Arbitrum Sepolia.
+Official TypeScript SDK for **Obscura Pay**, **Credit**, and Vote on Arbitrum Sepolia.
 
 Privacy-first DeFi with FHE (Fully Homomorphic Encryption). Framework-agnostic — works in Node.js, browsers, and automation scripts.
 
 ## Install
 
 ```bash
-npm install @obscura/sdk viem
+npm install @obscura-fhe/sdk viem
 ```
 
 `viem` is a peer dependency (v2+).
@@ -15,7 +15,7 @@ npm install @obscura/sdk viem
 ## Quick start
 
 ```typescript
-import { ObscuraSDK } from "@obscura/sdk";
+import { ObscuraSDK } from "@obscura-fhe/sdk";
 
 const sdk = ObscuraSDK.create({
   supabaseAnonKey: process.env.OBSCURA_SUPABASE_ANON_KEY, // required for activity feed
@@ -76,7 +76,7 @@ ObscuraSDK.create({
 Encrypted contract inputs require a host-supplied `FheProvider` (typically wrapping `@cofhe/sdk`):
 
 ```typescript
-import type { FheProvider } from "@obscura/sdk";
+import type { FheProvider } from "@obscura-fhe/sdk";
 
 const fhe: FheProvider = {
   async encryptUint64(value, { contractAddress }) {

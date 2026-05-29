@@ -1,56 +1,89 @@
 # Obscura SDK Memory Log
 
-> Living log for `@obscura/sdk` v1 development.
+> Living log for `@obscura-fhe/sdk` v1 development and release.
 
-## Status: v1.0.0 READY
+## Status: PUBLISHED v1.0.0
 
 | Gate | Status |
 |------|--------|
 | Architecture plan | ✅ `packages/sdk/SDK_ARCHITECTURE.md` |
 | Package scaffold | ✅ `packages/sdk/` |
-| Build | ✅ `npm run build` — ESM + CJS + DTS |
-| Typecheck | ✅ `npm run typecheck` |
-| Tests | ✅ 14/14 passed |
-| Examples | ✅ `npm run example:basic` — live API verified |
+| Build | ✅ ESM + CJS + DTS |
+| Typecheck | ✅ |
+| Tests | ✅ 14/14 |
+| Examples | ✅ |
+| Git push | ✅ `5a3985b` (initial SDK) + scope rename commit |
+| npm publish | ✅ `@obscura-fhe/sdk@1.0.0` |
+
+---
+
+## Final Audit (2026-05-29)
+
+### Checks passed
+- `npm run typecheck` ✅
+- `npm run test` ✅ 14/14
+- `npm run build` ✅
+- `npm pack` ✅ 10 files, 36.4 kB
+- ESM import from tarball ✅
+- CJS require from tarball ✅
+- No secrets in package defaults ✅
+- No local-path references in published files ✅
+- `prepublishOnly` runs typecheck + test + build ✅
+
+### Publish scope fix
+- **Issue:** `@obscura/sdk` publish failed — `mohamed-wael` account lacks `@obscura` org access (404).
+- **Fix:** Renamed to `@obscura-fhe/sdk` matching npm org [obscura-fhe](https://www.npmjs.com/settings/obscura-fhe).
+- **Republish attempt:** E403 "cannot publish over previously published versions: 1.0.0" — confirms live on registry.
+
+### Published package contents (10 files)
+```
+CHANGELOG.md
+LICENSE
+README.md
+package.json
+dist/index.js
+dist/index.cjs
+dist/index.d.ts
+dist/index.d.cts
+dist/index.js.map
+dist/index.cjs.map
+```
+
+---
+
+## Release Record
+
+| Field | Value |
+|-------|-------|
+| **npm package** | `@obscura-fhe/sdk` |
+| **Version** | `1.0.0` |
+| **Access** | public |
+| **Package size** | 36.4 kB (177.4 kB unpacked) |
+| **npm URL** | https://www.npmjs.com/package/@obscura-fhe/sdk |
+| **Install** | `npm install @obscura-fhe/sdk viem` |
+| **Git commit (initial SDK)** | `5a3985b` |
+| **Publish timestamp (UTC)** | ~2026-05-29T22:52:00Z |
+| **npm org** | obscura-fhe |
+
+> **Note:** Original target name was `@obscura/sdk`. Published under `@obscura-fhe/sdk` because that is the owned npm organization. To use `@obscura/sdk`, claim/create the `@obscura` npm org separately.
 
 ---
 
 ## Architecture Decisions
 
-### AD-001: Framework-agnostic core
-- **Decision:** No React/wagmi dependencies. viem as peer dependency.
-- **Rationale:** SDK must run in Node scripts, browsers, and future MCP servers.
+### AD-001 through AD-007
+See prior entries — unchanged.
 
-### AD-002: Injectable FHE provider
-- **Decision:** `FheProvider` interface; `@cofhe/sdk` not bundled.
-- **Rationale:** FHE requires wallet/browser context; host app supplies encrypt/decrypt.
-
-### AD-003: Transaction builder pattern
-- **Decision:** Write methods return `ContractCall` objects, not signed txs.
-- **Rationale:** Signers vary (EOA, AA, hardware); SDK stays signer-agnostic.
-
-### AD-004: Embedded deployment registry
-- **Decision:** Ship defaults in `src/config/defaults.ts`; overridable via config.
-- **Rationale:** Zero-config for Arbitrum Sepolia; sync from `arb-sepolia.json` on redeploy.
-
-### AD-005: Activity via Supabase direct
-- **Decision:** Activity module uses `@supabase/supabase-js`, not REST.
-- **Rationale:** Matches frontend; no `/activity` API route exists.
-
-### AD-006: API base URL unified
-- **Decision:** Reputation + notifications share `apiUrl` (obscura-api).
-- **Rationale:** Matches production (`https://obscura-api-n62v.onrender.com`).
-
-### AD-007: Supabase anon key not embedded
-- **Decision:** Consumer must pass `supabaseAnonKey`; no secret in package defaults.
-- **Rationale:** Security; key is env-specific though public/RLS-scoped.
+### AD-008: npm scope `@obscura-fhe`
+- **Decision:** Publish as `@obscura-fhe/sdk`, not `@obscura/sdk`.
+- **Rationale:** npm org `obscura-fhe` is owned; `@obscura` scope unavailable to publish account.
 
 ---
 
 ## Public API Surface
 
 ```typescript
-import { ObscuraSDK } from '@obscura/sdk';
+import { ObscuraSDK } from '@obscura-fhe/sdk';
 
 const sdk = ObscuraSDK.create({
   supabaseAnonKey: process.env.OBSCURA_SUPABASE_ANON_KEY,
@@ -60,103 +93,38 @@ const sdk = ObscuraSDK.create({
 
 sdk.pay | sdk.credit | sdk.vote | sdk.reputation | sdk.activity | sdk.notifications
 sdk.encodeCall(call)
-sdk.sendCall(call, account)  // requires walletClient
+sdk.sendCall(call, account)
 ```
 
 ---
 
-## Module APIs (v1.0.0)
+## Test Results (final)
 
-### Reputation
-- `getSummary(wallet)` → `ReputationSummary`
-
-### Notifications
-- `getVapidPublicKey()` → `string`
-- `getPrefs(wallet)` → `NotificationPrefs | null`
-- `savePrefs(prefs)` → `void`
-- `subscribe(wallet, subscription)` → `void`
-- `unsubscribe(wallet)` → `void`
-
-### Activity
-- `listForWallet(wallet, options?)` → `ActivityListResult`
-- `getEventFilters()` → `ActivityEventFilterMap`
-
-### Pay
-- `getShieldedBalance(account)` → `bigint` (ctHash)
-- `buildShield(amount, encrypted?)` → `ContractCall`
-- `buildUnshield(to, amount, encrypted?)` → `ContractCall`
-- `buildTransfer(to, amount, encrypted?)` → `ContractCall`
-
-### Credit
-- `getMarketAddress(override?)` → `Address`
-- `buildSupplyCollateral(amount, encrypted?, market?)` → `ContractCall`
-- `buildBorrow(amount, encrypted?, market?)` → `ContractCall`
-- `buildRepay(amount, encrypted?, market?)` → `ContractCall`
-
-### Vote
-- `getProposalCount()` → `bigint`
-- `getProposal(id)` → `ProposalState`
-- `buildCastVote(proposalId, optionIndex, encrypted?)` → `ContractCall`
-- `buildDelegate(delegatee)` → `ContractCall`
+| Run | Build | Typecheck | Tests | Example |
+|-----|-------|-----------|-------|---------|
+| Pre-publish | ✅ | ✅ | 14/14 | ✅ |
+| prepublishOnly (on publish) | ✅ | ✅ | 14/14 | — |
 
 ---
 
-## Breaking Changes
+## Security Note
 
-_None (initial v1.0.0 release)._
-
----
-
-## Test Results
-
-| Run | Date | Build | Typecheck | Tests | Example | Notes |
-|-----|------|-------|-----------|-------|---------|-------|
-| 1 | 2026-05-29 | ✅ | ✅ | 14/14 ✅ | ✅ | Live reputation + VAPID OK |
-
-### Test coverage
-- Utils (wallet normalize, InEuint64 serialize)
-- Activity event filters (pay/credit/vote namespaces)
-- ObscuraSDK factory + module wiring
-- Pay/Credit/Vote tx encoding via viem
-- FheRequiredError when no provider
-- Reputation HTTP mock
-- Notifications 404 → null
-- Activity supabase-not-configured guard
-
----
-
-## Example Output (2026-05-29)
-
-```
-Reputation tier: reliable (24 weight)
-VAPID key prefix: BIgVcwUhCL93...
-Transfer calldata length: 458 chars
-Activity vote events: 10
-```
-
----
-
-## Fixes Applied
-
-1. **PowerShell CI:** use `;` not `&&` for command chains on Windows.
-2. **Notifications 404:** use `HttpError.status === 404` for missing prefs.
-3. **Supabase key:** removed placeholder JWT from defaults — required via config.
+npm publish token was used for CI-style publish. **Rotate the token** in npm account settings — it was exposed in chat.
 
 ---
 
 ## Remaining Work (post-v1)
 
-- [ ] npm publish to registry
-- [ ] Optional: `@obscura/sdk/fhe-cofhe` adapter package wrapping `@cofhe/sdk`
-- [ ] Optional: integration tests with `OBSCURA_INTEGRATION=1`
-- [ ] Optional: activity realtime `subscribe()` helper
-- [ ] Sync addresses script from `contracts-hardhat/deployments/arb-sepolia.json`
-- [ ] MCP layer (explicitly deferred)
+- [ ] Confirm npm registry propagation + install from clean machine
+- [ ] Optional: claim `@obscura` npm org and alias/republish if brand requires exact name
+- [ ] Optional: `@obscura-fhe/sdk/fhe-cofhe` adapter package
+- [ ] MCP layer (deferred)
 
 ---
 
 ## References
 
-- Architecture bible: `OBSCURA_PROTOCOL_ARCHITECTURE_v1.md`
-- SDK architecture: `packages/sdk/SDK_ARCHITECTURE.md`
-- Publish checklist: `packages/sdk/PUBLISH_CHECKLIST.md`
+- npm: https://www.npmjs.com/package/@obscura-fhe/sdk
+- npm org: https://www.npmjs.com/settings/obscura-fhe
+- GitHub: https://github.com/mohamedwael201193/OBSCURA/tree/main/packages/sdk
+- Architecture: `OBSCURA_PROTOCOL_ARCHITECTURE_v1.md`

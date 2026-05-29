@@ -230,3 +230,125 @@ Date: 2026-05-29.
 - Worker/API privacy payload regression tests (V6).
 - Contract test expansion for delegation/treasury/governor lifecycles (V6).
 
+## V6 Production Hardening and Final Validation
+
+Date: 2026-05-29.
+
+Scope: QA/security/release validation only — no new roadmap phases. Browser-first matrix against `http://127.0.0.1:5175/vote` with wallet `0xf76e6b0920e9332ff4410f6dd53f01722abc71a3` on Arbitrum Sepolia `421614`.
+
+### Phase checklist verification (V0–V5)
+
+| Phase | Status | Evidence |
+|-------|--------|----------|
+| V0 docs alignment | PASS | Four-section IA live; stale OBS/DAO copy removed from Vote surfaces (V2/V3 audit) |
+| V1 receipt + shared infra | PASS | `useEncryptedVote`, `useTreasury`, `CreateProposalForm`, `TallyReveal` wait for confirmed receipts; `vote-final-v1.test.ts` |
+| V2/V3 UX polish | PASS | Overview KPIs, proposal wizard, CastVoteForm detail card, mobile nav, notification panel; browser verified |
+| V4 Participation identity | PASS | `VoteParticipationProfile`, collapsible sections, shared `useReputationSummary`; browser shows tier Steady, score 17 |
+| V5 Advanced governance | PASS | `VoteAdvancedIntro`, Treasury/Governor sub-nav, confirm dialogs, calldata `<details>`; browser verified |
+| V6 hardening | PARTIAL | Vitest + Playwright added; privacy gates pass; contract tests missing; two-wallet tx E2E incomplete |
+
+### Browser matrix results
+
+**Overview** — PASS
+- KPI grid: 7 proposals, Steady tier, participation score 17, Encrypted privacy mode
+- Vote/Revote/Reveal explainer tiles visible
+- Recommended next step CTA present
+- Active proposals card lists open items (proposal #6 active)
+
+**Proposals** — PASS
+- Sub-nav Browse / Vote / Create / Results all switch modes (300ms animation delay observed)
+- Vote mode: proposal #6 detail card — status, deadline 29d left, 1 voter, privacy copy, Approve/Reject/Abstain options
+- Create mode: 4-step wizard (Basics → Choices → Schedule → Review), templates, validation fields
+- Results mode: TallyReveal with user-triggered `Decrypt Public Tally` buttons (no auto-decrypt)
+- Filters All/Active/Ended/Finalized/Cancelled present in browse mode
+
+**Participation** — PASS
+- Participation profile: tier, score, on-chain votes (1), indexed activity (2), category standing copy
+- Ballot history timeline with filters All/Voted/Needs vote/Missed
+- Collapsible Delegation, Rewards, Vote alerts sections
+- Activity feed: "Private vote recorded", delegation events — no choice labels
+
+**Advanced Governance** — PASS
+- Lifecycle intro (Draft → Vote → Queue → Execute) with irreversible warnings
+- Treasury sub-panel: balance, attach spend, spend requests #3/#4
+- Governor tab available (Treasury default)
+
+**Settings drawer** — PASS
+- Opens from shell Settings; Vote notifications panel with privacy copy
+- Enable push / Save / Repair / Test controls present (disabled without subscription — expected)
+
+**Mobile (390×844 CDP + Playwright)** — PASS
+- No horizontal overflow (`scrollWidth === clientWidth`)
+- Bottom nav labels: Home, Vote, Profile, Advanced
+- Primary vote CTA reachable
+
+### Two-wallet validation
+
+**Partial PASS (read-only / UI evidence)**
+- Active proposal #6: "Should Obscura Credit increase the maximum borrow ratio from 75% to 80%?" — deadline 6/28/2026, **1 voter** (cast by non-creator wallet)
+- Connected wallet is proposal creator for #0–#5; can vote on #6 (not creator)
+- Activity feed shows prior `Private vote recorded` (block 271855417) without ballot leak
+
+**Manual tx steps still required (user phone approval):**
+
+1. **Wallet B (original voter on #6)** — connect, go Proposals → Vote → select #6 → pick different option → submit **Change Private Vote** → confirm receipt on Arb Sepolia
+2. **Wallet A (current `0xf76e…`)** — select #6 → pick Approve/Reject/Abstain → **Submit Private Vote** → confirm receipt
+3. **After deadline or test proposal** — Results → Finalize → **Decrypt Public Tally** (explicit click only) → verify aggregate counts only
+4. **Verify my vote** — Participation → Ballot history → **Verify my vote** (user-triggered decrypt only)
+
+### Privacy audit
+
+| Check | Result |
+|-------|--------|
+| No auto-decrypt on mount | PASS — grep: no `useEffect` + `decryptForView` in vote components |
+| Tally/self-vote decrypt user-triggered | PASS — `useVoteTally` / `useMyVote` in `useCallback` only |
+| On-chain VoteCast event fields | PASS — only `proposalId`, `voter` in ABI |
+| Activity indexer Governor sanitization | PASS — strips `support`/`reason` |
+| Notification payloads | PASS — generic "Activity detected for 0x…" body |
+| Activity feed Vote filter | PASS — "Private vote recorded/updated", no for/against labels |
+| Reputation signals | PASS — `vote_participated` uses voter wallet only, weight 1, no amounts |
+| Participation profile | PASS — tiers/counts only, no financial history |
+
+### Integration audit (Pay / Credit / Vote)
+
+- Shared `useReputationSummary` + `reputationCategories.ts` wired into Vote Participation and Credit panel — PASS
+- Shared Supabase activity feed with `vote` filter on Vote Participation — PASS
+- Shared worker notifications route Vote/Governor to `/vote` — PASS
+- Shared reputation worker derives Vote signals without duplicate system — PASS
+- Production Vercel/Render deployments not re-audited in this session — **GAP**
+
+### Automated testing
+
+- `npm test` (vitest): **42/42 PASS** (includes new `vote-final-v6.test.ts` 6/6)
+- `npm run build`: **PASS** (chunk size warnings only)
+- `npx playwright test tests/vote-navigation.spec.ts`: **4/4 PASS** after selector fixes + chromium install
+- `contracts-hardhat/test/ObscuraVote*.test.ts`: **MISSING** — no Vote contract tests exist (V6 blocker)
+
+### V6 artifacts added
+
+- `frontend/obscura-os-main/src/test/vote-final-v6.test.ts` — privacy payload + decrypt lifecycle gates
+- `frontend/obscura-os-main/tests/vote-navigation.spec.ts` — desktop/mobile Vote navigation
+- `playwright.config.ts` — default base URL `http://127.0.0.1:5175`
+
+### UX weaknesses (non-blocking for private beta)
+
+- Overview KPI "proposals" count is total on-chain (7), not active-only — can mislead when most are ended
+- Section transitions use 300ms AnimatePresence — snapshot immediately after click may show stale section (not a functional bug)
+- Mobile bottom nav buttons lack `aria-label` — accessibility gap; Playwright must target text not role name
+- TallyReveal / some Advanced panels less polished than V4/V5 surfaces (known from UX polish wave)
+- Settings notification controls disabled until push subscription — correct but may confuse first-time users
+
+### Remaining blockers
+
+1. **ObscuraVote contract test suite** — revote, finalize, delegation, treasury, rewards, Governor queue/execute (V6 exit criterion)
+2. **Two-wallet cast/revote/reveal tx E2E** — UI ready; needs manual wallet B revote + wallet A first vote on #6 with confirmed receipts
+3. **External security audit** — not started (mainnet gate)
+4. **Fhenix CoFHE mainnet GA** — not confirmed (mainnet gate)
+5. **Production deployment smoke** — Vercel/Render/Supabase not validated in this V6 pass
+
+### Production readiness scores (V6 exit)
+
+- **Production readiness:** 78/100 — private beta ready; mainnet blocked
+- **Privacy readiness:** 92/100 — architecture and payloads validated; pending two-wallet tx proof
+- **Launch recommendation:** **Approve private beta UX** on Arbitrum Sepolia; **do not launch mainnet** until contract tests, external audit, CoFHE GA, and two-wallet E2E complete
+

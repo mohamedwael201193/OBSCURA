@@ -11,7 +11,10 @@ const NAV_LINKS = [
 ] as const;
 
 const navLinkClass =
-  "text-sm font-bold text-black transition-opacity hover:opacity-65";
+  "font-mono text-xs font-semibold uppercase tracking-[0.16em] text-[#0a0f08] transition-opacity hover:opacity-70";
+
+const launchAppClass =
+  "hidden inline-flex items-center justify-center rounded-full bg-forest px-6 py-2.5 font-mono text-xs font-semibold uppercase tracking-[0.14em] text-lime-accent transition-opacity hover:opacity-90 sm:inline-flex";
 
 export default function SpadeLandingNav() {
   const [scrolled, setScrolled] = useState(false);
@@ -31,8 +34,8 @@ export default function SpadeLandingNav() {
       )}
     >
       <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between px-5 lg:px-8">
-        <Link to="/" className="transition-opacity hover:opacity-85" aria-label="Obscura home">
-          <ObscuraLogo size="sm" tone="light" />
+        <Link to="/" className="inline-flex" aria-label="Obscura home">
+          <ObscuraLogo size="nav" tone="light" />
         </Link>
 
         <nav className="flex items-center gap-6 sm:gap-8" aria-label="Main navigation">
@@ -44,10 +47,7 @@ export default function SpadeLandingNav() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link
-            to="/pay"
-            className="hidden rounded-full bg-sage-2 px-4 py-2 text-sm font-medium text-forest transition-colors hover:bg-sage-3 sm:inline-block"
-          >
+          <Link to="/pay" className={launchAppClass}>
             Launch App
           </Link>
           <NavRightSlot tone="light" />

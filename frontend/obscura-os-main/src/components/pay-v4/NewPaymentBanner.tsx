@@ -73,8 +73,8 @@ export default function NewPaymentBanner({ onOpenInbox }: { onOpenInbox: () => v
         void registration.showNotification("Obscura - new private payment", {
           body: "You have a new encrypted payment waiting in your stealth inbox.",
           tag: item.id,
-          icon: "/favicon.ico",
-          badge: "/favicon.ico",
+          icon: "/favicon.png",
+          badge: "/favicon.png",
           data: { url: `${window.location.origin}/pay?tab=getpaid&sub=inbox` },
         });
       }).catch(() => undefined);

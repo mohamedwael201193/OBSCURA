@@ -268,7 +268,7 @@ export default function SectionDiagram({ flow, className = "" }: SectionDiagramP
                 y={n.y + 26}
                 fill={C.ink}
                 fontSize="11"
-                fontFamily="Instrument Serif, Georgia, serif"
+                fontFamily="Sora, ui-sans-serif, system-ui, sans-serif"
                 fontWeight="500"
               >
                 {n.label}

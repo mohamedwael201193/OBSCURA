@@ -32,7 +32,7 @@ export default function AppIconRail({ active }: { active?: AppModuleKey }) {
         className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-forest/10 bg-white shadow-[0_8px_24px_rgba(24,40,14,0.08)] transition-transform hover:scale-105"
         aria-label="Obscura home"
       >
-        <ObscuraLogo showWordmark={false} size="sm" tone="light" markClassName="h-7 w-7" />
+        <ObscuraLogo showWordmark={false} size="sm" tone="light" />
       </Link>
 
       {MODULES.map((mod) => {

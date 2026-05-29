@@ -28,7 +28,7 @@ export default function AppTopBar({
       )}
     >
       <Link to="/" className="flex shrink-0 items-center sm:hidden" aria-label="Obscura home">
-        <ObscuraLogo showWordmark={false} size="sm" tone="light" markClassName="h-7 w-7" />
+        <ObscuraLogo showWordmark={false} size="sm" tone="light" />
       </Link>
       <div className="relative hidden max-w-sm flex-1 sm:block">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-forest/35" />
@@ -44,7 +44,7 @@ export default function AppTopBar({
       <div className="ml-auto flex items-center gap-2">
         <Link
           to="/pay"
-          className="hidden items-center gap-1 rounded-full border border-forest/12 bg-white px-3 py-1.5 text-xs font-medium text-forest sm:inline-flex"
+          className="hidden items-center gap-1 rounded-full border border-forest/12 bg-white px-3 py-1.5 font-mono text-xs font-medium uppercase tracking-[0.12em] text-forest sm:inline-flex"
         >
           <Plus className="h-3.5 w-3.5" />
           New

@@ -1,6 +1,7 @@
 import { Link, NavLink } from "react-router-dom";
 import NavRightSlot from "@/components/elite/NavRightSlot";
 import ObscuraLogo from "@/components/brand/ObscuraLogo";
+import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { label: "Pay", href: "/pay" },
@@ -10,18 +11,21 @@ const NAV_LINKS = [
   { label: "Docs", href: "#docs", anchor: true },
 ];
 
+const navLinkClass =
+  "font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground transition hover:text-foreground";
+
 export default function VaultLandingNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-border-subtle bg-background/70 backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-3.5 md:px-8">
-        <Link to="/" className="shrink-0 transition-opacity hover:opacity-85" aria-label="Obscura home">
-          <ObscuraLogo size="sm" tone="light" />
+        <Link to="/" className="shrink-0 inline-flex" aria-label="Obscura home">
+          <ObscuraLogo size="nav" tone="light" />
         </Link>
 
-        <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex" aria-label="Main navigation">
+        <nav className="hidden items-center gap-7 md:flex" aria-label="Main navigation">
           {NAV_LINKS.map((link) =>
             link.anchor ? (
-              <a key={link.href} href={link.href} className="transition hover:text-foreground">
+              <a key={link.href} href={link.href} className={navLinkClass}>
                 {link.label}
               </a>
             ) : (
@@ -29,7 +33,7 @@ export default function VaultLandingNav() {
                 key={link.href}
                 to={link.href}
                 className={({ isActive }) =>
-                  isActive ? "text-foreground transition" : "transition hover:text-foreground"
+                  cn(navLinkClass, isActive && "text-foreground")
                 }
               >
                 {link.label}
@@ -48,7 +52,7 @@ export default function VaultLandingNav() {
           </span>
           <Link
             to="/pay"
-            className="rounded-full bg-brand-ink px-5 py-2 text-sm text-brand-soft transition hover:opacity-90"
+            className="rounded-full bg-brand-ink px-5 py-2 font-mono text-xs uppercase tracking-[0.14em] text-brand-soft transition hover:opacity-90"
           >
             Launch app
           </Link>

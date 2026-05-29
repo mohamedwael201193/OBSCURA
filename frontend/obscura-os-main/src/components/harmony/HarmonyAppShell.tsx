@@ -47,7 +47,12 @@ export function HarmonyAppShell({
           className="mb-2 grid h-10 w-10 place-items-center rounded-xl border border-border bg-card shadow-sm"
           aria-label="Home"
         >
-          <ObscuraLogo showWordmark={false} size="sm" tone="light" markClassName="h-6 w-6" />
+          <ObscuraLogo
+            showWordmark={false}
+            size="sm"
+            tone="light"
+            markClassName="!h-7 !w-auto !aspect-[399/480]"
+          />
         </Link>
         {apps.map((app) => {
           const active = pathname.startsWith(app.to);
@@ -88,12 +93,12 @@ export function HarmonyAppShell({
       {/* App sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface lg:flex">
         <div className="border-b border-border px-6 py-5">
-          <Link to="/" className="inline-flex transition-opacity hover:opacity-85" aria-label="Obscura home">
-            <ObscuraLogo size="sm" tone="light" />
+          <Link to="/" className="inline-flex" aria-label="Obscura home">
+            <ObscuraLogo size="md" tone="light" />
           </Link>
           <p className="mt-1 font-display text-2xl">{appName}</p>
         </div>
-        <nav className="flex-1 space-y-0.5 px-3 py-4 text-sm">
+        <nav className="flex-1 space-y-0.5 px-3 py-4 font-mono text-xs uppercase tracking-[0.12em]">
           {sidebar.map((item) => {
             const inner = (
               <>
@@ -137,7 +142,7 @@ export function HarmonyAppShell({
         <header className="relative z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4 md:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-3 text-muted-foreground">
             <Link to="/" className="md:hidden" aria-label="Obscura home">
-              <ObscuraLogo showWordmark={false} size="sm" tone="light" markClassName="h-7 w-7" />
+              <ObscuraLogo showWordmark={false} size="sm" tone="light" />
             </Link>
             <Search className="h-4 w-4 shrink-0" />
             <input
@@ -150,7 +155,7 @@ export function HarmonyAppShell({
           <div className="flex shrink-0 items-center gap-2">
             <Link
               to="/pay"
-              className="hidden h-9 items-center gap-1.5 rounded-full hairline px-3 text-sm hover:bg-muted sm:inline-flex"
+              className="hidden h-9 items-center gap-1.5 rounded-full hairline px-3 font-mono text-xs uppercase tracking-[0.12em] hover:bg-muted sm:inline-flex"
             >
               <Plus className="h-3.5 w-3.5" />
               New
@@ -183,7 +188,7 @@ export function HarmonyAppShell({
                     </span>
                   )}
                 </span>
-                <span className={cn("max-w-full truncate px-0.5 text-[9px] sm:text-[10px]", item.active ? "text-foreground font-medium" : "text-muted-foreground/60")}>
+                <span className={cn("max-w-full truncate px-0.5 font-mono text-[9px] uppercase tracking-[0.14em] sm:text-[10px]", item.active ? "text-foreground font-medium" : "text-muted-foreground/60")}>
                   {mobileLabel}
                 </span>
               </div>

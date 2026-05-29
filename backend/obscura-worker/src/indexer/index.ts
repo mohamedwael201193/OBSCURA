@@ -18,6 +18,8 @@ import {
   CREDIT_SCORE_EVENTS,
   CREDIT_VAULT_EVENTS,
   GOVERNOR_EVENTS,
+  REWARDS_EVENTS,
+  TREASURY_EVENTS,
   VOTE_EVENTS,
 } from "./events";
 import { insertActivity, getLastIndexedBlock } from "../db";
@@ -124,6 +126,8 @@ const CONTRACTS = {
   ObscuraStealthRegistry:         "0xa36e791a611D36e2C817a7DA0f41547D30D4917d" as Address,
   ObscuraVote:                    "0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730" as Address,
   ObscuraGovernor:                "0xE4807C9F90a0da8F5B5bafa4361B15ff855b7186" as Address,
+  ObscuraTreasury:                "0x89252ee3f920978EEfDB650760fe56BA1Ede8c08" as Address,
+  ObscuraRewards:                 "0x435ea117404553A6868fbe728A7A284FCEd15BC2" as Address,
   // Legacy (historical indexing only)
   ObscuraPayStreamV2:             "0xb2fF39C496131d4AFd01d189569aF6FEBaC54d2C" as Address,
   ObscuraInsuranceSubscription:   "0x0CCE5DA9E447e7B4A400fC53211dd29C51CA8102" as Address,
@@ -138,6 +142,8 @@ const INDEXER_CONTRACTS: readonly ContractConfig[] = [
   { contractName: "ObscuraStealthRegistry",         address: CONTRACTS.ObscuraStealthRegistry,         events: STEALTH_EVENTS,   live: true  },
   { contractName: "ObscuraVote",                    address: CONTRACTS.ObscuraVote,                    events: VOTE_EVENTS,      live: true  },
   { contractName: "ObscuraGovernor",                address: CONTRACTS.ObscuraGovernor,                events: GOVERNOR_EVENTS,  live: true  },
+  { contractName: "ObscuraTreasury",                address: CONTRACTS.ObscuraTreasury,                events: TREASURY_EVENTS,  live: true  },
+  { contractName: "ObscuraRewards",                 address: CONTRACTS.ObscuraRewards,                 events: REWARDS_EVENTS,   live: true  },
   { contractName: "ObscuraPayStreamV2",             address: CONTRACTS.ObscuraPayStreamV2,             events: PAYSTREAM_EVENTS, live: false },
   { contractName: "ObscuraInsuranceSubscription",   address: CONTRACTS.ObscuraInsuranceSubscription,   events: INSURANCE_EVENTS, live: false },
   ...envContracts("CreditMarket", CREDIT_MARKET_EVENTS, CREDIT_MARKET_DEFAULTS),
@@ -249,6 +255,22 @@ function sanitizeActivityArgs(
 
   if (contractName === "ObscuraGovernor" && eventName === "ProposalCreated") {
     return serializeArgs({ proposer: args.proposer, proposalId: args.proposalId });
+  }
+
+  if (contractName === "ObscuraTreasury" && eventName === "SpendExecuted") {
+    return serializeArgs({ proposalId: args.proposalId, recipient: args.recipient });
+  }
+
+  if (contractName === "ObscuraRewards" && eventName === "RewardAccrued") {
+    return serializeArgs({ proposalId: args.proposalId, voter: args.voter });
+  }
+
+  if (contractName === "ObscuraRewards" && eventName === "RewardWithdrawn") {
+    return serializeArgs({ voter: args.voter });
+  }
+
+  if (contractName === "ObscuraRewards" && eventName === "RewardsFunded") {
+    return serializeArgs({ from: args.from });
   }
 
   return serializeArgs(args);

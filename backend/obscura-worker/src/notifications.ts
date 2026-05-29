@@ -61,7 +61,12 @@ function endpointHash(sub: webpush.PushSubscription): string {
 
 function activityUrl(eventName: string): string {
   if (eventName.startsWith("Credit")) return `${FRONTEND_URL}/credit`;
-  if (eventName.startsWith("ObscuraVote.") || eventName.startsWith("ObscuraGovernor.")) return `${FRONTEND_URL}/vote`;
+  if (
+    eventName.startsWith("ObscuraVote.")
+    || eventName.startsWith("ObscuraGovernor.")
+    || eventName.startsWith("ObscuraTreasury.")
+    || eventName.startsWith("ObscuraRewards.")
+  ) return `${FRONTEND_URL}/vote`;
   return `${FRONTEND_URL}/pay?tab=activity`;
 }
 
@@ -155,6 +160,48 @@ function notificationAliases(eventName: string): string[] {
         break;
       case "ProposalCanceled":
         aliases.push("governor.cancelled");
+        break;
+      default:
+        break;
+    }
+    return aliases;
+  }
+
+  if (eventName.startsWith("ObscuraTreasury.")) {
+    const aliases = ["vote.*", "treasury.*"];
+    switch (suffix) {
+      case "SpendAttached":
+        aliases.push("treasury.spend_attached");
+        break;
+      case "FinalizationRecorded":
+        aliases.push("treasury.timelock_started");
+        break;
+      case "SpendExecuted":
+        aliases.push("treasury.spend_executed");
+        break;
+      case "FundsReceived":
+        aliases.push("treasury.funded");
+        break;
+      default:
+        break;
+    }
+    return aliases;
+  }
+
+  if (eventName.startsWith("ObscuraRewards.")) {
+    const aliases = ["vote.*", "rewards.*"];
+    switch (suffix) {
+      case "RewardAccrued":
+        aliases.push("rewards.accrued");
+        break;
+      case "WithdrawalRequested":
+        aliases.push("rewards.withdrawal_requested");
+        break;
+      case "RewardWithdrawn":
+        aliases.push("rewards.withdrawn");
+        break;
+      case "RewardsFunded":
+        aliases.push("rewards.funded");
         break;
       default:
         break;

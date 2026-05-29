@@ -52,7 +52,10 @@ function EventIcon({ eventName }: { eventName: string }) {
   if (eventName.includes("Escrow"))     return <Shield         className="h-4 w-4 text-[#2D6A4F]" />;
   if (eventName.includes("Stealth"))    return <User           className="h-4 w-4 text-[#2D6A4F]" />;
   if (eventName.includes("Credit"))     return <Landmark       className="h-4 w-4 text-[#2D6A4F]" />;
-  if (eventName.includes("ObscuraVote") || eventName.includes("ObscuraGovernor")) return <VoteIcon className="h-4 w-4 text-[#2D6A4F]" />;
+  if (eventName.includes("ObscuraVote") || eventName.includes("ObscuraGovernor")
+    || eventName.includes("ObscuraTreasury") || eventName.includes("ObscuraRewards")) {
+    return <VoteIcon className="h-4 w-4 text-[#2D6A4F]" />;
+  }
   return <ArrowUpRight className="h-4 w-4 text-muted-foreground" />;
 }
 
@@ -123,6 +126,21 @@ function eventLabel(eventName: string): string {
     if (suffix === "ProposalQueued") return "Executable proposal queued";
     if (suffix === "ProposalExecuted") return "Executable proposal executed";
     if (suffix === "ProposalCanceled") return "Executable proposal cancelled";
+  }
+  if (eventName.startsWith("ObscuraTreasury")) {
+    const suffix = eventName.split(".").pop();
+    if (suffix === "SpendAttached") return "Treasury spend attached";
+    if (suffix === "FinalizationRecorded") return "Treasury timelock started";
+    if (suffix === "SpendExecuted") return "Treasury spend executed";
+    if (suffix === "FundsReceived") return "Treasury deposit received";
+    if (suffix === "TimelockDurationUpdated") return "Treasury timelock updated";
+  }
+  if (eventName.startsWith("ObscuraRewards")) {
+    const suffix = eventName.split(".").pop();
+    if (suffix === "RewardAccrued") return "Voter reward accrued";
+    if (suffix === "WithdrawalRequested") return "Reward withdrawal requested";
+    if (suffix === "RewardWithdrawn") return "Voter reward withdrawn";
+    if (suffix === "RewardsFunded") return "Reward pool funded";
   }
   return map[eventName] ?? eventName.split(".").pop() ?? eventName;
 }

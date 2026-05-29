@@ -196,24 +196,12 @@ task("deploy-gov", "Deploy ObscuraTreasury and ObscuraRewards (Wave 3 governance
     });
     console.log(`\nSaved to deployments/${network.name}.json`);
 
-    // Auto-update frontend .env
-    const frontendEnvPath = path.join(__dirname, "..", "..", "frontend", "obscura-os-main", ".env");
-    if (fs.existsSync(frontendEnvPath)) {
-      let envContent = fs.readFileSync(frontendEnvPath, "utf8");
-
-      const upsert = (content: string, key: string, value: string) =>
-        content.includes(`${key}=`)
-          ? content.replace(new RegExp(`${key}=.*`), `${key}=${value}`)
-          : content + `\n${key}=${value}`;
-
-      envContent = upsert(envContent, "VITE_OBSCURA_TREASURY_ADDRESS", treasuryAddress);
-      envContent = upsert(envContent, "VITE_OBSCURA_REWARDS_ADDRESS", rewardsAddress);
-
-      fs.writeFileSync(frontendEnvPath, envContent);
-      console.log(`\nAuto-updated frontend .env:`);
-      console.log(`  VITE_OBSCURA_TREASURY_ADDRESS=${treasuryAddress}`);
-      console.log(`  VITE_OBSCURA_REWARDS_ADDRESS=${rewardsAddress}`);
-    }
+    // Auto-update frontend ABIs + .env
+    const { execSync } = await import("child_process");
+    execSync("npx hardhat run scripts/sync-vote-abis.ts", {
+      cwd: path.join(__dirname, ".."),
+      stdio: "inherit",
+    });
 
     return { treasuryAddress, rewardsAddress };
   }

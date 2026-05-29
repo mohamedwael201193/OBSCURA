@@ -35,7 +35,11 @@ type VoteSignalType =
   | "vote_delegated"
   | "vote_delegation_removed"
   | "governance_vote_cast"
-  | "governance_proposed";
+  | "governance_proposed"
+  | "treasury_spend_attached"
+  | "treasury_spend_executed"
+  | "vote_reward_accrued"
+  | "vote_reward_withdrawn";
 
 type ReputationSourceApp = "pay" | "credit" | "vote";
 type ReputationSignalType = PaySignalType | CreditSignalType | VoteSignalType;
@@ -306,6 +310,18 @@ async function deriveVoteSignals(activity: StoredActivityRecord): Promise<Reputa
       break;
     case "ObscuraGovernor.ProposalCreated":
       add(makeVoteSignal(activity, activity.args.proposer, "governance_proposed", "proposer"));
+      break;
+    case "ObscuraTreasury.SpendAttached":
+      add(makeVoteSignal(activity, activity.args.recipient, "treasury_spend_attached", "recipient"));
+      break;
+    case "ObscuraTreasury.SpendExecuted":
+      add(makeVoteSignal(activity, activity.args.recipient, "treasury_spend_executed", "recipient"));
+      break;
+    case "ObscuraRewards.RewardAccrued":
+      add(makeVoteSignal(activity, activity.args.voter, "vote_reward_accrued", "voter"));
+      break;
+    case "ObscuraRewards.RewardWithdrawn":
+      add(makeVoteSignal(activity, activity.args.voter, "vote_reward_withdrawn", "voter"));
       break;
     default:
       break;

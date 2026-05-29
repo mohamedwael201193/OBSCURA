@@ -99,6 +99,19 @@ export const VOTE_ACTIVITY_EVENT_NAMES = [
     "ProposalExecuted",
     "ProposalCanceled",
   ]),
+  ...creditContractEventNames(["ObscuraTreasury"], [
+    "FundsReceived",
+    "SpendAttached",
+    "FinalizationRecorded",
+    "SpendExecuted",
+    "TimelockDurationUpdated",
+  ]),
+  ...creditContractEventNames(["ObscuraRewards"], [
+    "RewardAccrued",
+    "WithdrawalRequested",
+    "RewardWithdrawn",
+    "RewardsFunded",
+  ]),
 ];
 
 const EVENT_TYPE_FILTERS: Record<ActivityEventType, string[]> = {

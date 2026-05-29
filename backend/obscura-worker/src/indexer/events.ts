@@ -327,6 +327,83 @@ export const VOTE_EVENTS = [
   },
 ] as const;
 
+export const TREASURY_EVENTS = [
+  {
+    type: "event" as const,
+    name: "FundsReceived",
+    inputs: [
+      { name: "from", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "SpendAttached",
+    inputs: [
+      { name: "proposalId", type: "uint256", indexed: true },
+      { name: "recipient", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "FinalizationRecorded",
+    inputs: [
+      { name: "proposalId", type: "uint256", indexed: true },
+      { name: "timelockEnds", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "SpendExecuted",
+    inputs: [
+      { name: "proposalId", type: "uint256", indexed: true },
+      { name: "recipient", type: "address", indexed: true },
+      { name: "amountWei", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "TimelockDurationUpdated",
+    inputs: [
+      { name: "oldDuration", type: "uint256", indexed: false },
+      { name: "newDuration", type: "uint256", indexed: false },
+    ],
+  },
+] as const;
+
+export const REWARDS_EVENTS = [
+  {
+    type: "event" as const,
+    name: "RewardAccrued",
+    inputs: [
+      { name: "proposalId", type: "uint256", indexed: true },
+      { name: "voter", type: "address", indexed: true },
+      { name: "rewardGwei", type: "uint64", indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "WithdrawalRequested",
+    inputs: [{ name: "voter", type: "address", indexed: true }],
+  },
+  {
+    type: "event" as const,
+    name: "RewardWithdrawn",
+    inputs: [
+      { name: "voter", type: "address", indexed: true },
+      { name: "amountWei", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event" as const,
+    name: "RewardsFunded",
+    inputs: [
+      { name: "from", type: "address", indexed: true },
+      { name: "amountWei", type: "uint256", indexed: false },
+    ],
+  },
+] as const;
+
 export const GOVERNOR_EVENTS = [
   {
     type: "event" as const,

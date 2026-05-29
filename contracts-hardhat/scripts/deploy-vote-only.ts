@@ -24,14 +24,9 @@ async function main() {
   fs.writeFileSync(deploymentsFile, JSON.stringify(data, null, 2));
   console.log("Updated deployments/arb-sepolia.json");
 
-  // Update frontend .env
-  const envFile = path.join(__dirname, "..", "..", "frontend", "obscura-os-main", ".env");
-  if (fs.existsSync(envFile)) {
-    let env = fs.readFileSync(envFile, "utf8");
-    env = env.replace(/VITE_OBSCURA_VOTE_ADDRESS=.*/, `VITE_OBSCURA_VOTE_ADDRESS=${voteAddress}`);
-    fs.writeFileSync(envFile, env);
-    console.log("Updated frontend/.env");
-  }
+  console.log("\nSyncing frontend ABIs from artifacts…");
+  const { execSync } = await import("child_process");
+  execSync("npx hardhat run scripts/sync-vote-abis.ts", { cwd: path.join(__dirname, ".."), stdio: "inherit" });
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

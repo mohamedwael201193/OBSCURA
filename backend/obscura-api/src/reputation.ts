@@ -26,6 +26,10 @@ const PAY_SIGNAL_CAPS: Record<string, number> = {
   vote_delegation_removed: 5,
   governance_vote_cast: 20,
   governance_proposed: 10,
+  treasury_spend_attached: 10,
+  treasury_spend_executed: 10,
+  vote_reward_accrued: 20,
+  vote_reward_withdrawn: 20,
 };
 
 interface ReputationEventRow {

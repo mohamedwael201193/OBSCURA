@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "compile": "hardhat compile",
+    "compile": "hardhat compile && hardhat run scripts/sync-vote-abis.ts",
     "test": "hardhat test",
     "deploy:arb-sepolia": "hardhat deploy-obscura --network arb-sepolia",
-    "interact": "hardhat run tasks/interact.ts --network arb-sepolia"
+    "interact": "hardhat run tasks/interact.ts --network arb-sepolia",
+    "sync:vote-abis": "hardhat run scripts/sync-vote-abis.ts"
   },
   "devDependencies": {
     "@cofhe/hardhat-plugin": "^0.4.0",

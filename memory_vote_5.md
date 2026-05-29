@@ -838,5 +838,60 @@ Scope: QA/security/release validation only — no new roadmap phases. Browser-fi
 
 ---
 
-**MEMORY FILE STATUS: CLOSED** — 2026-05-29. No further Vote Phase 5 work unless explicitly reopened.
+## INDEXER-GAP-001: Treasury/Rewards indexing + ABI auto-sync (2026-05-29)
+
+**Scope:** Close the three canonical gaps from Vote Bible §55.6 (v1.1).
+
+### Gap 1 — ObscuraTreasury indexer
+
+| Item | Detail |
+|---|---|
+| Status | **COMPLETE** |
+| Worker | `TREASURY_EVENTS` + `ObscuraTreasury` registered in `indexer/index.ts` |
+| Events indexed | `FundsReceived`, `SpendAttached`, `FinalizationRecorded`, `SpendExecuted`, `TimelockDurationUpdated` |
+| Reputation | `treasury_spend_attached`, `treasury_spend_executed` |
+| Privacy | `amountWei` stripped from activity args on `SpendExecuted` |
+| Verification | Worker `npm run build` PASS; `vote-final-v7.test.ts` PASS |
+
+### Gap 2 — ObscuraRewards indexer
+
+| Item | Detail |
+|---|---|
+| Status | **COMPLETE** |
+| Worker | `REWARDS_EVENTS` + `ObscuraRewards` registered in `indexer/index.ts` |
+| Events indexed | `RewardAccrued`, `WithdrawalRequested`, `RewardWithdrawn`, `RewardsFunded` |
+| Reputation | `vote_reward_accrued`, `vote_reward_withdrawn` |
+| Privacy | `rewardGwei` / `amountWei` stripped from activity args |
+| Verification | Worker `npm run build` PASS; `vote-final-v7.test.ts` PASS |
+
+### Gap 3 — ABI auto-sync
+
+| Item | Detail |
+|---|---|
+| Status | **COMPLETE** |
+| Script | `contracts-hardhat/scripts/sync-vote-abis.ts` |
+| npm | `npm run sync:vote-abis`; chained into `npm run compile` |
+| Output | `frontend/obscura-os-main/src/abis/vote/{ObscuraVote,ObscuraTreasury,ObscuraRewards,ObscuraGovernor}.json` |
+| Consumers | `config/contracts.ts`, `abis/ObscuraGovernor.ts` |
+| Deploy hooks | `deploy-vote-only.ts`, `deploy-treasury-only.ts`, `hardhat deploy-gov` |
+| Verification | `npm run build` (frontend) PASS; generated JSON present |
+
+### Frontend / feed updates (minimal)
+
+- `useActivityFeed.ts` — Treasury/Rewards events in `VOTE_ACTIVITY_EVENT_NAMES`
+- `ActivityFeed.tsx` — human labels for treasury/reward events
+- API + worker `notifications.ts` — `treasury.*` / `rewards.*` aliases → `/vote`
+- API `reputation.ts` — caps for new signal types
+
+### Bugs logged
+
+None — all three gaps implemented and verified locally on first pass.
+
+### Documentation
+
+- `vote_wave5_protocol_bible_v1.md` → **v1.2** (§26, §40, §51.7, §54.3, §56, §55 gaps closed)
+
+---
+
+**MEMORY FILE STATUS: CLOSED** — 2026-05-29. Gap closure INDEXER-GAP-001 complete. Reopen only for new Vote scope.
 

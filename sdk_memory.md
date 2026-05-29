@@ -62,6 +62,7 @@ dist/index.cjs.map
 | **npm URL** | https://www.npmjs.com/package/@obscura-fhe/sdk |
 | **Install** | `npm install @obscura-fhe/sdk viem` |
 | **Git commit (initial SDK)** | `5a3985b` |
+| **Git commit (scope + publish)** | `689f72e` |
 | **Publish timestamp (UTC)** | ~2026-05-29T22:52:00Z |
 | **npm org** | obscura-fhe |
 

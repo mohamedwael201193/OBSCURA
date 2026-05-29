@@ -1,0 +1,70 @@
+{
+  "name": "@obscura/sdk",
+  "version": "1.0.0",
+  "description": "Official TypeScript SDK for Obscura Pay, Credit, and Vote on Arbitrum Sepolia",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "example:basic": "tsx examples/basic-usage.ts",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "peerDependencies": {
+    "viem": "^2.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "viem": "^2.29.0",
+    "vitest": "^3.1.0"
+  },
+  "keywords": [
+    "obscura",
+    "fhe",
+    "defi",
+    "privacy",
+    "arbitrum",
+    "cofhe"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mohamedwael201193/OBSCURA.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/mohamedwael201193/OBSCURA/issues"
+  },
+  "homepage": "https://github.com/mohamedwael201193/OBSCURA/tree/main/packages/sdk#readme"
+}

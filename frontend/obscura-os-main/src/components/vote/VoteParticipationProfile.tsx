@@ -23,15 +23,15 @@ import { VoteKpi, VoteNotice, vh } from "@/components/harmony/voteHarmonyUi";
 function CategoryRow({ label, value, icon: Icon }: { label: string; value: number; icon: LucideIcon }) {
   const width = Math.min(100, value * 8);
   return (
-    <div className="rounded-xl hairline bg-card p-3">
+    <div className="rounded-xl border border-border bg-white p-3">
       <div className="flex items-center justify-between gap-3">
         <span className="inline-flex items-center gap-2 text-sm text-foreground">
-          <Icon className="h-3.5 w-3.5 text-[hsl(var(--success))]" /> {label}
+          <Icon className="h-3.5 w-3.5 text-foreground/60" /> {label}
         </span>
         <span className="font-mono text-xs tabular-nums text-muted-foreground">{value}</span>
       </div>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-[hsl(var(--success))]" style={{ width: `${width}%` }} />
+        <div className="h-full rounded-full bg-foreground/70" style={{ width: `${width}%` }} />
       </div>
     </div>
   );
@@ -68,8 +68,8 @@ export function VoteParticipationProfile() {
 
   return (
     <div className="vote-harmony-panel space-y-5">
-      <section className="overflow-hidden rounded-2xl border border-border bg-muted/35">
-        <div className="border-b border-border bg-card/80 p-5 sm:p-6">
+      <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-[0_1px_3px_hsl(145_18%_12%/0.06)]">
+        <div className="border-b border-border p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">

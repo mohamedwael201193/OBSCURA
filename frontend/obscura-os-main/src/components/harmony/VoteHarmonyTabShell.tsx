@@ -48,7 +48,7 @@ export function VoteHarmonyTabShell({
   return (
     <>
       <HarmonyPageIntro eyebrow={meta.eyebrow} title={meta.title} actions={actions} />
-      <p className="mt-4 max-w-2xl text-sm text-muted-foreground">
+      <p className="mt-4 max-w-2xl text-sm leading-relaxed text-foreground/75">
         {sub ? SUB_META[sub] : meta.description}
       </p>
       <div className="mt-10 space-y-6">{children}</div>

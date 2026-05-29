@@ -64,10 +64,16 @@ const VotePage = () => {
   const [jumpProposalId, setJumpProposalId] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [delegationSectionOpen, setDelegationSectionOpen] = useState(false);
+  const [rewardsSectionOpen, setRewardsSectionOpen] = useState(true);
 
   const openParticipationDelegation = useCallback(() => {
     setSection("participation");
     setDelegationSectionOpen(true);
+  }, []);
+
+  const openParticipationRewards = useCallback(() => {
+    setSection("participation");
+    setRewardsSectionOpen(true);
   }, []);
 
   const openProposals = (mode: ProposalMode = "browse", proposalId?: number | string) => {
@@ -81,7 +87,7 @@ const VotePage = () => {
       <button
         type="button"
         onClick={() => openProposals("vote")}
-        className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors ${
+        className={`inline-flex h-11 min-h-[44px] items-center gap-2 rounded-full px-5 text-sm font-semibold transition-colors ${
           proposalMode === "browse" || proposalMode === "vote"
             ? "bg-foreground text-background"
             : "hairline hover:bg-muted"
@@ -93,7 +99,7 @@ const VotePage = () => {
       <button
         type="button"
         onClick={() => openProposals("create")}
-        className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors ${
+        className={`inline-flex h-11 min-h-[44px] items-center gap-2 rounded-full px-5 text-sm font-semibold transition-colors ${
           proposalMode === "create" ? "bg-foreground text-background" : "hairline hover:bg-muted"
         }`}
       >
@@ -103,7 +109,7 @@ const VotePage = () => {
       <button
         type="button"
         onClick={() => openProposals("results")}
-        className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors ${
+        className={`inline-flex h-11 min-h-[44px] items-center gap-2 rounded-full px-5 text-sm font-semibold transition-colors ${
           proposalMode === "results" ? "bg-foreground text-background" : "hairline hover:bg-muted"
         }`}
       >
@@ -141,7 +147,7 @@ const VotePage = () => {
         return (
           <VoteHarmonyPanelCard title="Reveal aggregate totals" eyebrow="Results">
             <div className="harmony-form-inner">
-              <TallyReveal />
+              <TallyReveal onClaimRewards={openParticipationRewards} />
             </div>
           </VoteHarmonyPanelCard>
         );
@@ -242,7 +248,20 @@ const VotePage = () => {
             <VoteHarmonyTabShell tab="participation">
               <VoteParticipationProfile />
 
-              <VoteCollapsibleSection title="Ballot history" eyebrow="Private verification" defaultOpen>
+              <VoteCollapsibleSection
+                title="Rewards"
+                eyebrow="Voter incentives"
+                badge="Claim ETH"
+                defaultOpen
+                open={rewardsSectionOpen}
+                onOpenChange={setRewardsSectionOpen}
+              >
+                <div className="harmony-form-inner -mx-1">
+                  <RewardsPanel />
+                </div>
+              </VoteCollapsibleSection>
+
+              <VoteCollapsibleSection title="Ballot history" eyebrow="Private verification" defaultOpen={false}>
                 <div className="harmony-form-inner -mx-1">
                   {!isConnected ? (
                     <VoteHarmonyNotConnected message="Connect your wallet to review ballot history and verify votes on this device." />
@@ -255,6 +274,7 @@ const VotePage = () => {
               <VoteCollapsibleSection
                 title="Delegation"
                 eyebrow="Public power routing"
+                defaultOpen={false}
                 open={delegationSectionOpen}
                 onOpenChange={setDelegationSectionOpen}
               >
@@ -267,13 +287,7 @@ const VotePage = () => {
                 </div>
               </VoteCollapsibleSection>
 
-              <VoteCollapsibleSection title="Rewards" eyebrow="Reveal on demand">
-                <div className="harmony-form-inner -mx-1">
-                  <RewardsPanel />
-                </div>
-              </VoteCollapsibleSection>
-
-              <VoteCollapsibleSection title="Vote alerts" eyebrow="Notifications">
+              <VoteCollapsibleSection title="Vote alerts" eyebrow="Notifications" defaultOpen={false}>
                 <VoteNotificationsPanel embedded />
               </VoteCollapsibleSection>
 

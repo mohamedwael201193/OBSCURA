@@ -11,10 +11,13 @@ import { FHEStepStatus } from "@/lib/constants";
 
 import { useChainTime } from "@/hooks/useChainTime";
 
+import { VoteStatGrid } from "@/components/harmony/voteHarmonyUi";
+import { VoteRewardPrompt } from "@/components/vote/VoteRewardPrompt";
+
 const BAR_COLORS = [
-  "bg-green-400/60", "bg-red-400/60", "bg-blue-400/60", "bg-yellow-400/60",
-  "bg-purple-400/60", "bg-pink-400/60", "bg-cyan-400/60", "bg-orange-400/60",
-  "bg-emerald-400/60", "bg-indigo-400/60",
+  "bg-foreground/85", "bg-foreground/55", "bg-foreground/40", "bg-foreground/30",
+  "bg-foreground/25", "bg-foreground/20", "bg-foreground/18", "bg-foreground/15",
+  "bg-foreground/12", "bg-foreground/10",
 ];
 
 type TallyFilter = "all" | "action" | "active" | "finalized" | "cancelled";
@@ -47,9 +50,9 @@ function DeadlineCountdown({ deadline }: { deadline: bigint }) {
   );
 }
 const TEXT_COLORS = [
-  "text-green-400", "text-red-400", "text-blue-400", "text-yellow-400",
-  "text-purple-400", "text-pink-400", "text-foreground", "text-orange-400",
-  "text-foreground", "text-indigo-400",
+  "text-foreground", "text-foreground/85", "text-foreground/75", "text-foreground/65",
+  "text-foreground/60", "text-foreground/55", "text-foreground", "text-foreground/50",
+  "text-foreground/45", "text-foreground/40",
 ];
 
 function exportCSV(title: string, options: string[], tallies: TallyResultData[]) {
@@ -74,7 +77,15 @@ function formatWriteError(error: unknown, fallback: string): string {
   return txError.shortMessage ?? txError.cause?.reason ?? txError.message ?? fallback;
 }
 
-function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: TallyFilter }) {
+function TallyResult({
+  proposalId,
+  filter,
+  onClaimRewards,
+}: {
+  proposalId: bigint;
+  filter: TallyFilter;
+  onClaimRewards?: () => void;
+}) {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { proposal, refetch: refetchProposal } = useProposal(proposalId);
@@ -167,27 +178,38 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
   }
 
   return (
-    <div className="rounded-xl hairline bg-card p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-sm text-foreground font-medium">{proposal.title}</div>
-          <div className="text-xs text-muted-foreground flex items-center gap-2">
-            <span>#{proposalId.toString()}</span>
-            <span className="text-foreground/30">|</span>
-            <span>{CATEGORY_LABELS[proposal.category] ?? "General"}</span>
-            <span className="text-foreground/30">|</span>
-            <span>{proposal.totalVoters.toString()} voter{proposal.totalVoters !== 1n ? "s" : ""}</span>
-            {proposal.quorum > 0n && (
-              <>
-                <span className="text-foreground/30">|</span>
-                <span className={quorumMet ? "text-foreground" : "text-red-400"}>
-                  Quorum: {proposal.totalVoters.toString()}/{proposal.quorum.toString()}
-                </span>
-              </>
+    <div className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_3px_hsl(145_18%_12%/0.06)] space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-xs text-muted-foreground">#{proposalId.toString()}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-xs font-medium text-foreground">{CATEGORY_LABELS[proposal.category] ?? "General"}</span>
+            {isFinalized && (
+              <span className="rounded-full border border-foreground bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-background">
+                Finalized
+              </span>
             )}
           </div>
+          <h4 className="mt-1 font-display text-xl font-semibold text-foreground">{proposal.title}</h4>
         </div>
       </div>
+
+      <VoteStatGrid
+        items={[
+          { label: "Voters", value: proposal.totalVoters.toString() },
+          {
+            label: "Quorum",
+            value: proposal.quorum > 0n ? `${proposal.totalVoters}/${proposal.quorum}` : "None",
+            hint: proposal.quorum > 0n ? (quorumMet ? "Met" : "Not met") : undefined,
+          },
+          { label: "Options", value: proposal.numOptions.toString() },
+          {
+            label: "Status",
+            value: isCancelled ? "Cancelled" : isFinalized ? "Finalized" : deadlinePassed ? "Ended" : "Active",
+          },
+        ]}
+      />
 
       {isCancelled && (
         <div className="flex items-center gap-2 text-xs text-red-400">
@@ -234,9 +256,13 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
         </div>
       )}
 
-      {isFinalized && (
-        <div className="text-xs text-green-400">
-          ✓ Finalized — tally is publicly decryptable.
+      {isFinalized && !tallies && (
+        <VoteRewardPrompt proposalId={proposalId} onGoToRewards={onClaimRewards} />
+      )}
+
+      {isFinalized && !tallies && (
+        <div className="rounded-xl border border-border bg-muted/25 px-4 py-3 text-sm text-foreground/75">
+          ✓ Finalized — decrypt the public tally below to reveal aggregate totals.
         </div>
       )}
 
@@ -275,26 +301,28 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
             const winnerPct = Number((winner.votes * 100n) / total);
             const tie = tallies.filter(t => t.votes === maxVotes && maxVotes > 0n).length > 1;
             return (
-              <div className="p-3 bg-emerald-400/5 border border-emerald-400/20 rounded-md flex items-start gap-3">
-                <Trophy className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
+              <div className="rounded-2xl border border-border bg-foreground p-5 text-background">
+                <div className="flex items-start gap-3">
+                <Trophy className="w-5 h-5 shrink-0 mt-0.5 text-background/90" />
+                <div className="space-y-1">
                   {tie ? (
-                    <div className="text-sm text-yellow-400 font-semibold">It&apos;s a tie!</div>
+                    <div className="text-base font-semibold">It&apos;s a tie!</div>
                   ) : (
                     <>
-                      <div className="text-sm text-foreground font-semibold">
-                        Winner: <span className="text-foreground">{options[winnerIdx] ?? `Option ${winnerIdx}`}</span>
+                      <div className="text-lg font-semibold leading-tight">
+                        Winner: {options[winnerIdx] ?? `Option ${winnerIdx}`}
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-sm text-background/75">
                         {winnerPct}% of votes · leads by{" "}
-                        <span className="text-foreground font-mono">{margin.toString()} vote{margin !== 1n ? "s" : ""}</span>
+                        <span className="font-mono font-medium text-background">{margin.toString()} vote{margin !== 1n ? "s" : ""}</span>
                         {" "}({marginPct}% margin)
                       </div>
                     </>
                   )}
-                  <div className="text-[11px] text-muted-foreground/50 mt-1">
+                  <div className="text-xs text-background/60 mt-1">
                     {total.toString()} total votes · Individual ballots stay encrypted forever
                   </div>
+                </div>
                 </div>
               </div>
             );
@@ -328,22 +356,27 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
             );
           })}
 
+          {onClaimRewards && (
+            <VoteRewardPrompt proposalId={proposalId} onGoToRewards={onClaimRewards} compact />
+          )}
+
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Total: {total?.toString()} votes</span>
+            <span className="font-medium text-foreground">Total: {total?.toString()} votes</span>
             <button
+              type="button"
               onClick={() => exportCSV(proposal.title, options, tallies)}
-              className="flex items-center gap-1 text-foreground hover:underline"
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/40"
             >
               <Download className="w-3 h-3" /> Export CSV
             </button>
           </div>
 
           {/* Privacy guarantee note */}
-          <div className="flex items-start gap-2 p-3 bg-secondary/20 rounded-md border border-border">
-            <ShieldCheck className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" />
-            <div className="text-[11px] text-muted-foreground/70 leading-relaxed">
+          <div className="flex items-start gap-2 rounded-xl border border-border bg-white p-4">
+            <ShieldCheck className="w-4 h-4 text-[hsl(var(--success))] shrink-0 mt-0.5" />
+            <div className="text-xs text-foreground/70 leading-relaxed">
               These are aggregate totals made public at finalization. Individual ballots remain encrypted handles on-chain and{" "}
-              <span className="text-foreground/80">are never revealed</span>.
+              <span className="font-semibold text-foreground">are never revealed</span>.
             </div>
           </div>
         </div>
@@ -353,7 +386,7 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
           disabled={!isFinalized || status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
           whileHover={{ scale: 1.005 }}
           whileTap={{ scale: 0.99 }}
-          className="btn-pay btn-pay-emerald w-full py-2.5"
+          className="inline-flex w-full min-h-[2.75rem] items-center justify-center gap-2 rounded-full bg-foreground py-3 text-sm font-semibold text-background disabled:opacity-50"
         >
           <Eye className="w-3.5 h-3.5 inline mr-2" />
           Decrypt Public Tally
@@ -370,7 +403,7 @@ function TallyResult({ proposalId, filter }: { proposalId: bigint; filter: Tally
   );
 }
 
-export default function TallyReveal() {
+export default function TallyReveal({ onClaimRewards }: { onClaimRewards?: () => void }) {
   const { data: count } = useProposalCount();
   const proposalCount = Number(count ?? 0);
   const [filter, setFilter] = useState<TallyFilter>("all");
@@ -394,26 +427,27 @@ export default function TallyReveal() {
           <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Vote Results</h3>
           <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Finalize &amp; decrypt tallies</p>
         </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">On-chain</span>
+        <span className="ml-auto shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-foreground">
+          On-chain
+        </span>
       </div>
 
-      <div className="text-[12px] text-muted-foreground/55 leading-relaxed border-l-2 border-emerald-500/20 pl-3">
+      <div className="rounded-xl border border-border bg-white px-4 py-3 text-sm leading-relaxed text-foreground/75">
         After finalization, anyone can reveal aggregate totals. Individual votes remain permanently encrypted.
       </div>
 
       {/* Filter tabs */}
       {proposalCount > 0 && (
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex flex-wrap gap-2">
           {filterTabs.map((f) => (
             <button
               key={f.key}
+              type="button"
               onClick={() => setFilter(f.key)}
-              className={`px-2.5 py-1 text-[11px] rounded-md border transition-all ${
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
                 filter === f.key
-                  ? f.key === "action"
-                    ? "border-amber-400/50 text-amber-400 bg-amber-400/10"
-                    : "border-emerald-400/50 text-foreground bg-emerald-400/10"
-                  : "border-border text-muted-foreground hover:border-emerald-500/30"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-white text-muted-foreground hover:border-foreground/30 hover:text-foreground"
               }`}
             >
               {f.key === "action" && <Timer className="w-2.5 h-2.5 inline mr-1" />}
@@ -431,7 +465,7 @@ export default function TallyReveal() {
       ) : (
         <div className="space-y-3">
           {Array.from({ length: proposalCount }, (_, i) => (
-            <TallyResult key={i} proposalId={BigInt(i)} filter={filter} />
+            <TallyResult key={i} proposalId={BigInt(i)} filter={filter} onClaimRewards={onClaimRewards} />
           ))}
         </div>
       )}

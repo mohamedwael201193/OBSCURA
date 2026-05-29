@@ -89,7 +89,7 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { p
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-2xl border border-border border-l-4 bg-card p-4 ${cfg} transition-colors hover:bg-muted/20`}
+      className={`rounded-2xl border border-border border-l-4 bg-white p-5 shadow-[0_1px_2px_hsl(145_18%_12%/0.04)] ${cfg} transition-colors hover:border-foreground/20`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
@@ -151,7 +151,7 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { p
           <button
             type="button"
             onClick={() => onVote(Number(proposalId))}
-            className="inline-flex min-h-[40px] items-center gap-2 rounded-full bg-foreground px-4 text-xs font-medium text-background"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background shadow-sm"
           >
             Vote privately <ArrowRight className="h-3.5 w-3.5" />
           </button>

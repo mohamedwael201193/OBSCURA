@@ -84,7 +84,7 @@ const blocksToHours = (n?: bigint | null) => {
 
 const NotConnected = ({ message }: { message: string }) => (
   <Card className="p-10 text-center">
-    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-3">
+    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted border border-border mb-3">
       <WalletIcon className="w-5 h-5 text-foreground" />
     </div>
     <div className="font-display text-[15px] text-foreground mb-1">Wallet not connected</div>
@@ -110,7 +110,7 @@ const VotesBar = ({
   return (
     <div className="space-y-1.5">
       <div className="flex h-1.5 rounded overflow-hidden bg-muted">
-        <div className="bg-emerald-500/80" style={{ width: `${pct(forVotes)}%` }} />
+        <div className="bg-foreground/80" style={{ width: `${pct(forVotes)}%` }} />
         <div className="bg-red-500/70" style={{ width: `${pct(against)}%` }} />
         <div className="bg-zinc-500/70" style={{ width: `${pct(abstain)}%` }} />
       </div>
@@ -197,7 +197,7 @@ const ProposalCard = ({ row }: { row: ProposalRow }) => {
                 </Badge>
               )}
               {hasVoted && (
-                <Badge variant="outline" className="bg-emerald-500/10 text-[hsl(var(--success))] border-emerald-500/30">
+                <Badge variant="outline" className="border-foreground/20 bg-foreground text-background">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
                   Voted
                 </Badge>
@@ -249,7 +249,7 @@ const ProposalCard = ({ row }: { row: ProposalRow }) => {
               variant="outline"
               onClick={() => doVote(1)}
               disabled={voting || hasVoted || label !== "Active"}
-              className="border-emerald-500/30 text-[hsl(var(--success))] hover:bg-emerald-500/10"
+              className="border-foreground/30 text-foreground hover:bg-muted/60"
             >
               {voting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
               For

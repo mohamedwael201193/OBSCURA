@@ -525,7 +525,7 @@ export default function CreateProposalForm({ onSuccess, embedded = false }: Crea
               disabled={!isConnected || !hasClaimed || isPending || isConfirming || !OBSCURA_VOTE_ADDRESS || isWrongNetwork}
               whileHover={{ scale: 1.005 }}
               whileTap={{ scale: 0.99 }}
-              className="inline-flex h-11 min-h-[44px] w-full items-center justify-center rounded-full bg-foreground px-5 text-sm font-medium text-background disabled:opacity-50 sm:w-auto"
+              className="inline-flex h-12 min-h-[48px] w-full items-center justify-center rounded-full bg-foreground px-6 text-base font-semibold text-background disabled:opacity-50 sm:w-auto"
             >
               {!isConnected
                 ? "Connect wallet"

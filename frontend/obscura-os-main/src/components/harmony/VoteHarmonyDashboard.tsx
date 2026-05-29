@@ -45,7 +45,7 @@ export function VoteHarmonyDashboard({
 
   return (
     <div className="vote-harmony-panel space-y-6">
-      <section className="rounded-2xl border border-border bg-muted/35 p-5 sm:p-8">
+      <section className="rounded-2xl border border-border bg-white p-5 shadow-[0_1px_3px_hsl(145_18%_12%/0.06)] sm:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -103,7 +103,7 @@ export function VoteHarmonyDashboard({
           { i: RotateCcw, l: "Revote", v: "Change before deadline", c: "text-amber-700" },
           { i: BarChart3, l: "Reveal", v: "Totals only, never ballots", c: "text-sky-800" },
         ].map((k) => (
-          <div key={k.l} className="rounded-2xl hairline bg-card p-4">
+          <div key={k.l} className="rounded-2xl border border-border bg-white p-4 shadow-[0_1px_2px_hsl(145_18%_12%/0.04)]">
             <div className="flex items-center gap-2 text-muted-foreground">
               <k.i className={`h-4 w-4 ${k.c}`} />
               <span className="font-mono text-[10px] uppercase tracking-[0.16em]">{k.l}</span>
@@ -113,7 +113,7 @@ export function VoteHarmonyDashboard({
         ))}
       </motion.div>
 
-      <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="rounded-2xl border border-border bg-white p-4 shadow-[0_1px_2px_hsl(145_18%_12%/0.04)] sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-foreground">Recommended next step</p>

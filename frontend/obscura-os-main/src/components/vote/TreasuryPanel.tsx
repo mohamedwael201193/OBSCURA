@@ -73,7 +73,7 @@ function SpendRequestRow({ proposalId }: { proposalId: number }) {
   let badgeClass: string;
   if (reqExecuted) {
     badgeLabel = "Executed";
-    badgeClass = "border-emerald-500/30 bg-emerald-500/10 text-foreground";
+    badgeClass = "border-foreground/20 bg-foreground text-background";
   } else if (timelockElapsed) {
     badgeLabel = "Ready to Execute";
     badgeClass = "border-amber-500/30 bg-amber-500/10 text-amber-400";
@@ -289,7 +289,7 @@ export function TreasuryPanel() {
                   <motion.button onClick={handleAttach}
                     disabled={attaching || attachConfirming || !proposalIdInput || !recipientInput || !ethAmountInput}
                     whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-                    className="flex items-center gap-1.5 btn-pay btn-pay-emerald px-4 py-2 text-sm font-medium text-foreground  disabled:opacity-50 transition-colors">
+                    className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background disabled:opacity-50">
                     {attaching || attachConfirming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
                     {attachConfirming ? "Confirming…" : attaching ? "Encrypting…" : "Attach"}
                   </motion.button>
@@ -322,7 +322,7 @@ export function TreasuryPanel() {
               value={depositInput} onChange={e => setDepositInput(e.target.value)}
               className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none" />
             <button onClick={() => deposit(depositInput)} disabled={depositing || depositConfirming || !depositInput}
-              className="flex items-center gap-1.5 btn-pay btn-pay-emerald px-4 py-2 text-sm font-medium text-foreground  disabled:opacity-50 transition-colors">
+              className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background disabled:opacity-50">
               {depositing || depositConfirming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowDownToLine className="h-3.5 w-3.5" />}
               Deposit
             </button>

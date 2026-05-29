@@ -1,6 +1,7 @@
 import { Award, CheckCircle2, Loader2, RefreshCcw, ShieldCheck, Vote } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { ReputationSummary } from "@/hooks/useReputationSummary";
+import { useReputationSummary, type ReputationSummary } from "@/hooks/useReputationSummary";
+import { cn } from "@/lib/utils";
 import {
   REPUTATION_CATEGORY_SIGNALS,
   REPUTATION_TIER_LABEL,

@@ -118,6 +118,20 @@ export function RewardsPanel() {
 
   return (
     <div className={vh.panel}>
+      <div className="rounded-2xl border-2 border-foreground bg-white p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Voter incentives</p>
+            <p className="mt-1 font-display text-2xl font-semibold text-foreground">{REWARD_PER_VOTE_ETH} ETH per vote</p>
+            <p className="mt-1 text-sm text-foreground/70">Claim after each proposal you voted on is finalized.</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Your pending balance</p>
+            <p className="font-display text-xl font-semibold text-foreground">{isConnected ? `${pendingEth} ETH` : "—"}</p>
+          </div>
+        </div>
+      </div>
+
       <div className={vh.kpiGrid2}>
         <VoteKpi icon={Gift} label="Reward pool" value={`${poolEth} ETH`} />
         <VoteKpi
@@ -264,7 +278,7 @@ export function RewardsPanel() {
           <div className="flex gap-2">
             <input type="number" step="0.001" placeholder="ETH amount (e.g. 0.1)"
               value={fundInput} onChange={e => setFundInput(e.target.value)}
-              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-500/50 focus:outline-none" />
+              className="flex-1 rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-foreground/40 focus:outline-none" />
             <button onClick={() => fund(fundInput)} disabled={funding || fundConfirming || !fundInput}
               className={`${vh.btnPrimary} disabled:opacity-50`}>
               {funding || fundConfirming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Gift className="h-3.5 w-3.5" />}

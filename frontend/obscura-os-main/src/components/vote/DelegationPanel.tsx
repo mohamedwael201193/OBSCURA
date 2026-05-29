@@ -202,7 +202,7 @@ export function DelegationPanel() {
           </div>
         ) : (
           <div className="p-5 flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-white">
               <Shield className="w-5 h-5 text-foreground" />
             </div>
             <div>
@@ -259,7 +259,7 @@ export function DelegationPanel() {
           )}
 
           {isSuccess && txHash && !error && (
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-2 text-[12px] text-foreground">
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-[12px] text-foreground">
               <CheckCircle className="h-3.5 w-3.5 shrink-0" />
               Done!{" "}
               <a

@@ -62,6 +62,25 @@ describe("Vote V6 production hardening gates", () => {
     expect(notificationsSource).not.toMatch(/body:\s*`[^`]*(support|against|abstain|option)/i);
   });
 
+  it("blocks delegated voters with explicit undelegate action on the vote form", () => {
+    const castVoteForm = readSource("components/vote/CastVoteForm.tsx");
+    const votePage = readSource("pages/VotePage.tsx");
+
+    expect(castVoteForm).toContain("Remove delegation to vote");
+    expect(castVoteForm).toContain("onOpenDelegation");
+    expect(castVoteForm).toContain("vote-delegation-block");
+    expect(votePage).toContain("openParticipationDelegation");
+  });
+
+  it("uses wallet session chain for Vote wrong-network detection", () => {
+    const votePage = readSource("pages/VotePage.tsx");
+    const walletConnect = readSource("components/wallet/WalletConnect.tsx");
+
+    expect(votePage).toContain("useIsArbitrumSepolia");
+    expect(votePage).not.toMatch(/useChainId\(\)[\s\S]{0,80}421614/);
+    expect(walletConnect).toContain("useWalletSessionChainId");
+  });
+
   it("ships Playwright navigation coverage for Vote desktop and mobile", () => {
     const spec = readFileSync(resolve(sourceRoot, "..", "tests", "vote-navigation.spec.ts"), "utf8");
 

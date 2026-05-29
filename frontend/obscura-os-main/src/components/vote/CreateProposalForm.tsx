@@ -12,6 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAccount, useWriteContract, usePublicClient, useReadContract } from "wagmi";
+import { useIsArbitrumSepolia } from "@/hooks/useWalletSessionChainId";
 import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS, OBSCURA_TOKEN_ABI, OBSCURA_TOKEN_ADDRESS } from "@/config/contracts";
 import { CATEGORY_LABELS } from "@/hooks/useProposals";
 import { arbitrumSepolia } from "viem/chains";
@@ -60,6 +61,7 @@ interface CreateProposalFormProps {
 
 export default function CreateProposalForm({ onSuccess, embedded = false }: CreateProposalFormProps) {
   const { address, isConnected } = useAccount();
+  const { isWrongNetwork, sessionChainId } = useIsArbitrumSepolia();
   const publicClient = usePublicClient();
   const { writeContractAsync, isPending } = useWriteContract();
 
@@ -172,6 +174,11 @@ export default function CreateProposalForm({ onSuccess, embedded = false }: Crea
     const validationError = validateStep(0) ?? validateStep(1) ?? validateStep(2);
     if (validationError) {
       setError(validationError);
+      return;
+    }
+
+    if (isWrongNetwork) {
+      setError(`Switch your wallet to Arbitrum Sepolia (421614). Current chain: ${sessionChainId ?? "unknown"}.`);
       return;
     }
 
@@ -515,13 +522,15 @@ export default function CreateProposalForm({ onSuccess, embedded = false }: Crea
           ) : (
             <motion.button
               type="submit"
-              disabled={!isConnected || !hasClaimed || isPending || isConfirming || !OBSCURA_VOTE_ADDRESS}
+              disabled={!isConnected || !hasClaimed || isPending || isConfirming || !OBSCURA_VOTE_ADDRESS || isWrongNetwork}
               whileHover={{ scale: 1.005 }}
               whileTap={{ scale: 0.99 }}
               className="inline-flex h-11 min-h-[44px] w-full items-center justify-center rounded-full bg-foreground px-5 text-sm font-medium text-background disabled:opacity-50 sm:w-auto"
             >
               {!isConnected
                 ? "Connect wallet"
+                : isWrongNetwork
+                  ? "Switch to Arb Sepolia"
                 : !hasClaimed
                   ? "Unlock beta access first"
                   : isPending

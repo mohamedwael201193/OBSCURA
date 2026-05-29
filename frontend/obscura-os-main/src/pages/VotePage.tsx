@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAccount, useChainId } from "wagmi";
+import { useAccount } from "wagmi";
+import { useIsArbitrumSepolia } from "@/hooks/useWalletSessionChainId";
 import {
   BarChart3,
   AlertTriangle,
@@ -54,14 +55,20 @@ const VotePage = () => {
   const userRole = (userRoleRaw as number) ?? Role.NONE;
   const isAdmin = userRole === Role.ADMIN || isOwner;
 
-  const chainId = useChainId();
-  const wrongNetwork = isConnected && chainId !== 421614;
+  const { isWrongNetwork: wrongNetwork, sessionChainId } = useIsArbitrumSepolia();
+  const wrongNetworkConnected = isConnected && wrongNetwork;
 
   const [section, setSection] = useState<VoteSection>("overview");
   const [proposalMode, setProposalMode] = useState<ProposalMode>("browse");
   const [advancedMode, setAdvancedMode] = useState<AdvancedMode>("treasury");
   const [jumpProposalId, setJumpProposalId] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [delegationSectionOpen, setDelegationSectionOpen] = useState(false);
+
+  const openParticipationDelegation = useCallback(() => {
+    setSection("participation");
+    setDelegationSectionOpen(true);
+  }, []);
 
   const openProposals = (mode: ProposalMode = "browse", proposalId?: number | string) => {
     setSection("proposals");
@@ -116,7 +123,11 @@ const VotePage = () => {
           <>
             <VoteHarmonyPanelCard title="Vote on proposal" eyebrow="Private ballot">
               <div className="harmony-form-inner">
-                <CastVoteForm initialProposalId={jumpProposalId} embedded />
+                <CastVoteForm
+                  initialProposalId={jumpProposalId}
+                  embedded
+                  onOpenDelegation={openParticipationDelegation}
+                />
               </div>
             </VoteHarmonyPanelCard>
             <VoteHarmonyPanelCard title="Your ballot history" eyebrow="Private verification">
@@ -241,7 +252,12 @@ const VotePage = () => {
                 </div>
               </VoteCollapsibleSection>
 
-              <VoteCollapsibleSection title="Delegation" eyebrow="Public power routing">
+              <VoteCollapsibleSection
+                title="Delegation"
+                eyebrow="Public power routing"
+                open={delegationSectionOpen}
+                onOpenChange={setDelegationSectionOpen}
+              >
                 <div className="harmony-form-inner -mx-1">
                   {!isConnected ? (
                     <VoteHarmonyNotConnected message="Connect your wallet to manage delegation." />
@@ -295,7 +311,7 @@ const VotePage = () => {
                 ) : (
                   <VoteHarmonyPanelCard title="Executable governance" eyebrow="Governor · Timelock">
                     <div className="harmony-form-inner -mx-2">
-                      <GovernorPanel wrongNetwork={wrongNetwork} />
+                      <GovernorPanel wrongNetwork={wrongNetworkConnected} />
                     </div>
                   </VoteHarmonyPanelCard>
                 )}
@@ -343,7 +359,7 @@ const VotePage = () => {
 
   return (
     <HarmonyAppShell appName="Vote" sidebar={harmonySidebar} searchPlaceholder="Search vote…" onSettingsClick={() => setSettingsOpen(true)}>
-      {wrongNetwork && (
+      {wrongNetworkConnected && (
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -353,7 +369,8 @@ const VotePage = () => {
           <div>
             <div className="text-sm font-semibold text-amber-900">Wrong network</div>
             <div className="mt-0.5 text-xs text-amber-800/80">
-              Please switch to <span className="font-semibold">Arbitrum Sepolia</span> (chain ID 421614) in your wallet to use ObscuraVote.
+              Your wallet is on chain <span className="font-semibold">{sessionChainId ?? "unknown"}</span>.
+              Switch to <span className="font-semibold">Arbitrum Sepolia</span> (421614) in MetaMask or use the header switch button before voting or creating proposals.
             </div>
           </div>
         </motion.div>

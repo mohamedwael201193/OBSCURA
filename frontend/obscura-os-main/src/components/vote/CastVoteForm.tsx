@@ -29,6 +29,7 @@ function ProposalOption({ index, now }: { index: number; now: bigint }) {
 interface CastVoteFormProps {
   initialProposalId?: string;
   embedded?: boolean;
+  onOpenDelegation?: () => void;
 }
 
 const getVoteErrorMessage = (error: unknown) => {
@@ -40,7 +41,7 @@ const getVoteErrorMessage = (error: unknown) => {
   return "Vote failed";
 };
 
-export default function CastVoteForm({ initialProposalId = "", embedded = false }: CastVoteFormProps) {
+export default function CastVoteForm({ initialProposalId = "", embedded = false, onOpenDelegation }: CastVoteFormProps) {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
@@ -77,6 +78,13 @@ export default function CastVoteForm({ initialProposalId = "", embedded = false 
     if (initialProposalId) setSelectedProposal(initialProposalId);
   }, [initialProposalId]);
 
+  // Show success UI as soon as tx hash lands (don't wait for receipt polling)
+  useEffect(() => {
+    if (txHash && selectedOption !== null && votedOptionIndex === null) {
+      setVotedOptionIndex(selectedOption);
+    }
+  }, [txHash, selectedOption, votedOptionIndex]);
+
   // Eagerly pre-init FHE SDK so encryption is fast when the user clicks "Cast Vote"
   useEffect(() => {
     if (publicClient && walletClient) {
@@ -97,8 +105,30 @@ export default function CastVoteForm({ initialProposalId = "", embedded = false 
   const hasSelection = selectedProposal !== '';
   const isActive = hasSelection && proposal?.exists && !proposal.isCancelled && now < proposal.deadline && !proposal.isFinalized;
   const isOwnProposal = !!(address && proposal?.creator && address.toLowerCase() === proposal.creator.toLowerCase());
-  // Ended but not yet finalized
   const isEndedNotFinalized = hasSelection && proposal?.exists && !proposal.isCancelled && !proposal.isFinalized && now >= proposal.deadline;
+  const canVote =
+    isConnected &&
+    hasClaimed &&
+    !hasDelegated &&
+    isActive &&
+    !isOwnProposal &&
+    selectedOption !== null &&
+    !isTxPending &&
+    status !== FHEStepStatus.COMPUTING &&
+    status !== FHEStepStatus.ENCRYPTING;
+  const submitBlockedReason = !isConnected
+    ? "Connect your wallet to vote."
+    : !hasClaimed
+      ? "Unlock beta access in Pay before voting."
+      : hasDelegated
+        ? "Your voting power is delegated — remove delegation to cast a ballot yourself."
+        : isOwnProposal
+          ? "Creators cannot vote on their own proposals."
+          : !isActive
+            ? "This proposal is not accepting votes."
+            : selectedOption === null
+              ? "Select an option to continue."
+              : null;
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (selectedOption === null || !selectedProposal || proposalId === undefined) return;
@@ -147,15 +177,25 @@ export default function CastVoteForm({ initialProposalId = "", embedded = false 
           </div>
         )}
 
-        {/* Delegation banner */}
+        {/* Delegation — blocks direct voting */}
         {isConnected && hasDelegated && (
-          <div className="flex items-start gap-2 p-3 bg-violet-500/5 border border-violet-500/20 rounded-md">
-            <Users className="w-4 h-4 text-violet-400 shrink-0 mt-0.5" />
-            <div className="text-xs">
-              <div className="text-violet-300 font-semibold mb-0.5">Vote delegated</div>
-              <div className="text-violet-400/70">
-                You have delegated your vote. Your delegate votes on your behalf with combined weight.
-                Open Participation to undelegate if you want to vote directly.
+          <div className="vote-delegation-block rounded-2xl border border-violet-500/35 bg-violet-500/8 p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-500/15">
+                <Users className="h-5 w-5 text-violet-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-display text-base font-semibold text-foreground">You delegated your vote</div>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  While delegation is active, you cannot submit a private ballot from this wallet. Your delegate votes with your combined weight.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onOpenDelegation?.()}
+                  className="mt-4 inline-flex h-11 min-h-[44px] w-full items-center justify-center rounded-full bg-violet-600 px-5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-violet-700 sm:w-auto"
+                >
+                  Remove delegation to vote
+                </button>
               </div>
             </div>
           </div>
@@ -198,33 +238,36 @@ export default function CastVoteForm({ initialProposalId = "", embedded = false 
             alreadyVoted={!!alreadyVoted}
             isOwnProposal={isOwnProposal}
             isEndedNotFinalized={isEndedNotFinalized}
+            hasDelegated={hasDelegated}
           />
         )}
 
-        {hasSelection && isActive && proposal?.exists && optionLabels && (optionLabels as string[]).length > 0 && (
+        {hasSelection && isActive && !hasDelegated && proposal?.exists && optionLabels && (optionLabels as string[]).length > 0 && (
           <VoteFormField label="Your vote" hint="Select one option. You can change it before the deadline.">
-            <div className="space-y-2">
+            <div className="vote-choice-stack space-y-2.5">
               {(optionLabels as string[]).map((label, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => setSelectedOption(i)}
-                  className={`flex min-h-[48px] w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-all ${
+                  className={`vote-choice-option flex min-h-[52px] w-full items-center gap-3 rounded-2xl border-2 px-4 py-3.5 text-left text-sm transition-all ${
                     selectedOption === i
-                      ? "border-[hsl(var(--success))]/40 bg-[hsl(var(--accent))]/12 text-foreground"
-                      : "hairline text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                      ? "border-[hsl(var(--accent))] bg-[hsl(var(--accent))]/14 text-foreground shadow-sm ring-2 ring-[hsl(var(--accent))]/25"
+                      : "border-border bg-card text-muted-foreground hover:border-[hsl(var(--accent))]/35 hover:bg-muted/50 hover:text-foreground"
                   }`}
                 >
                   <div
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                      selectedOption === i ? "border-[hsl(var(--success))]" : "border-muted-foreground/30"
+                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                      selectedOption === i ? "border-[hsl(var(--accent))] bg-[hsl(var(--accent))]/20" : "border-muted-foreground/25"
                     }`}
                   >
-                    {selectedOption === i && <div className="h-2.5 w-2.5 rounded-full bg-[hsl(var(--success))]" />}
+                    {selectedOption === i && <div className="h-2.5 w-2.5 rounded-full bg-[hsl(var(--accent))]" />}
                   </div>
-                  <span className="text-xs text-muted-foreground">{i + 1}</span>
-                  <span className="flex-1">{label}</span>
-                  {selectedOption === i && <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />}
+                  <span className={`text-xs font-mono uppercase tracking-wider ${selectedOption === i ? "text-[hsl(var(--accent))]" : "text-muted-foreground"}`}>
+                    {i + 1}
+                  </span>
+                  <span className={`flex-1 ${selectedOption === i ? "font-semibold text-foreground" : ""}`}>{label}</span>
+                  {selectedOption === i && <CheckCircle2 className="h-5 w-5 shrink-0 text-[hsl(var(--accent))]" />}
                 </button>
               ))}
             </div>
@@ -343,34 +386,41 @@ export default function CastVoteForm({ initialProposalId = "", embedded = false 
         )}
 
         {/* Confirmation step: shown after option selected, before submit */}
-        {hasSelection && isActive && selectedOption !== null && !txHash && (
+        {hasSelection && isActive && selectedOption !== null && !txHash && !hasDelegated && (
           <motion.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-3 p-3 rounded-lg bg-emerald-400/5 border border-emerald-400/20 text-xs"
+            className="vote-ready-strip flex items-start gap-3 rounded-2xl border border-[hsl(var(--accent))]/35 bg-[hsl(var(--accent))]/10 p-4 text-sm"
           >
-            <ShieldCheck className="w-4 h-4 text-foreground shrink-0 mt-0.5" />
+            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[hsl(var(--accent))]" />
             <div className="flex-1">
-              <div className="text-foreground font-semibold mb-0.5">Ready to cast your encrypted vote?</div>
-              <div className="text-muted-foreground/70">
-                You selected <span className="text-foreground font-semibold">“{(optionLabels as string[])?.[selectedOption] ?? `Option ${selectedOption}`}”</span> on <span className="text-foreground/80">{proposal?.title}</span>.
-                Once confirmed, the ballot is sealed. Submitting again before the deadline changes your private vote.
+              <div className="font-display text-base font-semibold text-foreground">Ready to seal your ballot?</div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                You selected{" "}
+                <span className="font-semibold text-foreground">
+                  “{(optionLabels as string[])?.[selectedOption] ?? `Option ${selectedOption}`}”
+                </span>{" "}
+                on <span className="font-medium text-foreground">{proposal?.title}</span>. Submit again before the deadline to change your private vote.
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* Submit / Confirm */}
-        {!txHash && (
-          <motion.button
-            type="submit"
-            disabled={!isConnected || !hasClaimed || hasDelegated || !isActive || isOwnProposal || selectedOption === null || isTxPending || status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
-            whileHover={{ scale: 1.005 }}
-            whileTap={{ scale: 0.99 }}
-            className="inline-flex h-11 min-h-[44px] w-full items-center justify-center rounded-full bg-foreground py-2.5 text-sm font-medium text-background disabled:opacity-50"
-          >
-            {isTxPending ? "Submitting..." : alreadyVoted ? "Change Private Vote" : "Submit Private Vote"}
-          </motion.button>
+        {!txHash && !hasDelegated && (
+          <div className="vote-submit-zone space-y-2 pt-1">
+            <motion.button
+              type="submit"
+              disabled={!canVote}
+              whileHover={canVote ? { scale: 1.008 } : undefined}
+              whileTap={canVote ? { scale: 0.992 } : undefined}
+              className="inline-flex h-12 min-h-[48px] w-full items-center justify-center rounded-full bg-foreground px-6 text-base font-semibold text-background shadow-lg shadow-foreground/10 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {isTxPending ? "Submitting…" : alreadyVoted ? "Change Private Vote" : "Submit Private Vote"}
+            </motion.button>
+            {!canVote && submitBlockedReason && (
+              <p className="text-center text-xs leading-relaxed text-muted-foreground">{submitBlockedReason}</p>
+            )}
+          </div>
         )}
 
         {txHash && (

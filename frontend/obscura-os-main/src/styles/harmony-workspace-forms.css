@@ -550,3 +550,19 @@
     padding: 1rem;
   }
 }
+
+.obscura-app .vote-harmony-panel .vote-proposal-detail {
+  margin-bottom: 0.25rem;
+}
+
+.obscura-app .vote-harmony-panel .vote-choice-stack {
+  margin-top: 0.25rem;
+}
+
+.obscura-app .vote-harmony-panel .vote-submit-zone {
+  position: sticky;
+  bottom: 0.75rem;
+  z-index: 5;
+  padding-bottom: 0.25rem;
+  background: linear-gradient(to top, hsl(var(--background)) 70%, transparent);
+}

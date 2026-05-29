@@ -56,12 +56,21 @@ export function useEncryptedVote() {
 
         setTxHash(hash);
         fheStatus.setStep(FHEStepStatus.SETTLING);
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        if (receipt.status !== 'success') {
-          throw new Error('Vote transaction reverted');
-        }
+        // Resolve once the tx is broadcast so the UI can show success immediately.
+        // Receipt confirmation continues in the background (WalletConnect can be slow).
+        void publicClient
+          .waitForTransactionReceipt({ hash })
+          .then((receipt) => {
+            if (receipt.status !== 'success') {
+              fheStatus.setStep(FHEStepStatus.ERROR, 'Vote transaction reverted');
+              return;
+            }
+            fheStatus.setStep(FHEStepStatus.READY);
+          })
+          .catch((err: unknown) => {
+            fheStatus.setStep(FHEStepStatus.ERROR, (err as Error).message);
+          });
 
-        fheStatus.setStep(FHEStepStatus.READY);
         return hash;
       } catch (error) {
         fheStatus.setStep(FHEStepStatus.ERROR, (error as Error).message);

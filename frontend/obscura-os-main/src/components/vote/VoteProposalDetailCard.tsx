@@ -24,12 +24,14 @@ export function VoteProposalDetailCard({
   alreadyVoted,
   isOwnProposal,
   isEndedNotFinalized,
+  hasDelegated,
 }: {
   proposal: ProposalData;
   now: bigint;
   alreadyVoted?: boolean;
   isOwnProposal?: boolean;
   isEndedNotFinalized?: boolean;
+  hasDelegated?: boolean;
 }) {
   const status = getProposalStatus(proposal, now);
   const secondsLeft = Number(proposal.deadline - now);
@@ -41,14 +43,14 @@ export function VoteProposalDetailCard({
       : null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-muted/30">
-      <div className="border-b border-border bg-card/80 px-4 py-4 sm:px-5">
+    <div className="vote-proposal-detail overflow-hidden rounded-2xl border border-border bg-card shadow-md ring-1 ring-border/60">
+      <div className="border-b border-border bg-gradient-to-br from-card via-card to-muted/40 px-4 py-5 sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
               Proposal #{proposal.id.toString()} · {catLabel}
             </p>
-            <h4 className="mt-1 font-display text-lg font-semibold leading-snug text-foreground">
+            <h4 className="mt-1 font-display text-xl font-semibold leading-snug tracking-tight text-foreground sm:text-2xl">
               {proposal.title}
             </h4>
             {proposal.description && (
@@ -109,8 +111,13 @@ export function VoteProposalDetailCard({
         </div>
       )}
 
-      {(alreadyVoted || isOwnProposal || isEndedNotFinalized || proposal.isCancelled) && (
-        <div className="space-y-2 border-t border-border px-4 py-4 sm:px-5">
+      {(alreadyVoted || isOwnProposal || isEndedNotFinalized || proposal.isCancelled || hasDelegated) && (
+        <div className="space-y-2 border-t border-border px-4 py-4 sm:px-6">
+          {hasDelegated && status === "active" && (
+            <VoteNotice variant="warn">
+              Delegation is active — remove delegation in Participation before you can vote directly.
+            </VoteNotice>
+          )}
           {proposal.isCancelled && (
             <VoteNotice variant="warn">This proposal was cancelled and can no longer receive votes.</VoteNotice>
           )}

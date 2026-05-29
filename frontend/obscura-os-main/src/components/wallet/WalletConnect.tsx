@@ -1,75 +1,30 @@
-import { useEffect, useState } from "react";
-import { useConnect, useDisconnect, useAccount, useBalance, useChainId, useSwitchChain } from "wagmi";
+import { useState } from "react";
+import { useConnect, useDisconnect, useAccount, useBalance, useSwitchChain } from "wagmi";
 import { arbitrumSepolia } from "wagmi/chains";
 import { formatUnits } from "viem";
 import { cn } from "@/lib/utils";
+import { ARBITRUM_SEPOLIA_CHAIN_ID, useWalletSessionChainId } from "@/hooks/useWalletSessionChainId";
 
 type WalletConnectProps = {
   /** Light nav (landing) uses forest greens for contrast on white */
   tone?: "dark" | "light";
 };
 
-type EthereumProvider = {
-  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-  on?: (event: "chainChanged", handler: (chainId: string) => void) => void;
-  removeListener?: (event: "chainChanged", handler: (chainId: string) => void) => void;
-};
-
-const getEthereumProvider = () => {
-  if (typeof window === "undefined") return undefined;
-  return (window as Window & { ethereum?: EthereumProvider }).ethereum;
-};
-
 export default function WalletConnect({ tone = "dark" }: WalletConnectProps) {
   const [open, setOpen] = useState(false);
-  const [walletChainId, setWalletChainId] = useState<number | null>(null);
   const { address, isConnected } = useAccount();
-  const chainId = useChainId();
+  const sessionChainId = useWalletSessionChainId();
   const { connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
-  const { data: balance } = useBalance({ address, chainId: arbitrumSepolia.id });
-  const { switchChain } = useSwitchChain();
-  const activeChainId = walletChainId ?? chainId;
+  const { data: balance } = useBalance({
+    address,
+    chainId: arbitrumSepolia.id,
+    query: { enabled: sessionChainId === ARBITRUM_SEPOLIA_CHAIN_ID },
+  });
+  const { switchChain, isPending: isSwitching } = useSwitchChain();
 
-  useEffect(() => {
-    const ethereum = getEthereumProvider();
-    if (!ethereum || !isConnected) {
-      setWalletChainId(null);
-      return;
-    }
-
-    let mounted = true;
-    const syncChainId = (nextChainId: string) => {
-      setWalletChainId(Number(nextChainId));
-    };
-
-    ethereum
-      .request({ method: "eth_chainId" })
-      .then((nextChainId) => {
-        if (mounted && typeof nextChainId === "string") syncChainId(nextChainId);
-      })
-      .catch(() => {
-        if (mounted) setWalletChainId(chainId);
-      });
-
-    ethereum.on?.("chainChanged", syncChainId);
-    return () => {
-      mounted = false;
-      ethereum.removeListener?.("chainChanged", syncChainId);
-    };
-  }, [chainId, isConnected]);
-
-  const switchToArbSepolia = async () => {
-    const ethereum = getEthereumProvider();
-    if (ethereum) {
-      await ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: `0x${arbitrumSepolia.id.toString(16)}` }],
-      });
-      setWalletChainId(arbitrumSepolia.id);
-      return;
-    }
-    switchChain({ chainId: arbitrumSepolia.id });
+  const switchToArbSepolia = () => {
+    switchChain({ chainId: ARBITRUM_SEPOLIA_CHAIN_ID });
   };
 
   const light = tone === "light";
@@ -131,15 +86,16 @@ export default function WalletConnect({ tone = "dark" }: WalletConnectProps) {
     );
   }
 
-  if (isConnected && address && activeChainId !== arbitrumSepolia.id) {
+  if (isConnected && address && sessionChainId !== ARBITRUM_SEPOLIA_CHAIN_ID) {
     return (
       <button
         onClick={() => {
-          void switchToArbSepolia();
+          switchToArbSepolia();
         }}
-        className="rounded-sm border border-amber-500/40 px-5 py-2 font-mono text-xs uppercase tracking-[0.15em] text-amber-600 transition-colors duration-300 hover:bg-amber-500/10"
+        disabled={isSwitching}
+        className="rounded-sm border border-amber-500/40 px-5 py-2 font-mono text-xs uppercase tracking-[0.15em] text-amber-600 transition-colors duration-300 hover:bg-amber-500/10 disabled:opacity-60"
       >
-        Switch to Arb Sepolia
+        {isSwitching ? "Switching…" : "Switch to Arb Sepolia"}
       </button>
     );
   }

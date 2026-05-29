@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Vote, AlertCircle, AlertTriangle, ExternalLink, CheckCircle2, ShieldCheck, Timer, Eye, Users } from "lucide-react";
 import { useAccount, useReadContract, usePublicClient, useWalletClient } from "wagmi";
 import { useEncryptedVote } from "@/hooks/useEncryptedVote";
-import { useProposalCount, useProposal, useProposalOptions, useHasVoted, CATEGORY_LABELS } from "@/hooks/useProposals";
+import { useProposalCount, useProposal, useProposalOptions, useHasVoted } from "@/hooks/useProposals";
 import { OBSCURA_TOKEN_ABI, OBSCURA_TOKEN_ADDRESS, OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
 import AsyncStepper from "@/components/shared/AsyncStepper";
 import { FHEStepStatus } from "@/lib/constants";
@@ -12,6 +12,8 @@ import { initFHEClient } from "@/lib/fhe";
 
 import { useChainTime } from "@/hooks/useChainTime";
 import { useDelegateTo, useVoteWeight } from "@/hooks/useDelegation";
+import { VoteProposalDetailCard } from "@/components/vote/VoteProposalDetailCard";
+import { VoteFormField, VotePanelHeader } from "@/components/harmony/voteHarmonyUi";
 
 /** Dropdown option that fetches its own proposal data */
 function ProposalOption({ index, now }: { index: number; now: bigint }) {
@@ -26,6 +28,7 @@ function ProposalOption({ index, now }: { index: number; now: bigint }) {
 
 interface CastVoteFormProps {
   initialProposalId?: string;
+  embedded?: boolean;
 }
 
 const getVoteErrorMessage = (error: unknown) => {
@@ -37,7 +40,7 @@ const getVoteErrorMessage = (error: unknown) => {
   return "Vote failed";
 };
 
-export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormProps) {
+export default function CastVoteForm({ initialProposalId = "", embedded = false }: CastVoteFormProps) {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
@@ -114,22 +117,20 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
-          <Vote className="w-4 h-4 text-foreground" />
-        </div>
-        <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Cast Private Vote</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Encrypted ballot</p>
-        </div>
-        <span className="ml-auto shrink-0 pay-badge pay-badge-emerald">FHE</span>
-      </div>
+      {!embedded && (
+        <VotePanelHeader
+          icon={Vote}
+          title="Cast private vote"
+          subtitle="Your choice is encrypted before submission"
+          badge="Private"
+        />
+      )}
 
-      <div className="text-[12px] text-muted-foreground/55 leading-relaxed border-l-2 border-emerald-500/20 pl-3">
-        Your choice is encrypted before submission. You can change it before the deadline, and only
-        final totals are revealed.
-      </div>
+      {!embedded && (
+        <p className="text-sm leading-relaxed text-muted-foreground border-l-2 border-[hsl(var(--accent))]/40 pl-3">
+          Change your vote before the deadline. Only final totals are revealed — never individual ballots.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* OBS Token requirement */}
@@ -171,11 +172,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
           </div>
         )}
 
-        {/* Proposal selector */}
-        <div>
-          <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
-            Select Proposal
-          </label>
+        <VoteFormField label="Select proposal" hint="Open proposals appear first in the list.">
           <select
             value={selectedProposal}
             onChange={(e) => {
@@ -185,96 +182,53 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
               reset();
               setError(null);
             }}
-            className="pay-select"
+            className="pay-select min-h-[44px]"
           >
-            <option value="">Choose a proposal...</option>
+            <option value="">Choose a proposal…</option>
             {Array.from({ length: proposalCount }, (_, i) => (
               <ProposalOption key={i} index={i} now={now} />
             ))}
           </select>
-        </div>
+        </VoteFormField>
 
-        {/* Proposal info */}
         {hasSelection && proposal?.exists && (
-          <div className="rounded-xl hairline bg-card p-4 space-y-1">
-            <div className="text-sm text-foreground font-medium">{proposal.title}</div>
-            {proposal.description && (
-              <div className="text-xs text-muted-foreground/70">{proposal.description}</div>
-            )}
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
-              <span>Deadline: {new Date(Number(proposal.deadline) * 1000).toLocaleString()}</span>
-              <span className="text-foreground/30">|</span>
-              <span>Category: <span className="text-foreground">{CATEGORY_LABELS[proposal.category] ?? "General"}</span></span>
-              <span className="text-foreground/30">|</span>
-              <span>Voters: {proposal.totalVoters.toString()}</span>
-              {proposal.quorum > 0n && (
-                <>
-                  <span className="text-foreground/30">|</span>
-                  <span>Quorum: {proposal.quorum.toString()}</span>
-                </>
-              )}
-            </div>
-            {proposal.isCancelled && (
-              <div className="text-xs text-red-400 mt-1">This proposal was cancelled.</div>
-            )}
-            {!isActive && !proposal.isCancelled && (
-              <span className="text-yellow-400 text-xs font-mono">
-                {proposal.isFinalized ? "(Finalized)" : "(Ended)"}
-              </span>
-            )}
-            {isEndedNotFinalized && (
-              <div className="flex items-start gap-2 p-3 bg-amber-400/5 border border-amber-400/20 rounded-md">
-                <Timer className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-400/80">
-                  <span className="font-semibold text-amber-400">Voting period ended.</span> This proposal hasn’t been finalized yet.
-                  Open Results to finalize and reveal the aggregate tally.
-                </div>
-              </div>
-            )}
-
-            {alreadyVoted && isActive && (
-              <div className="text-xs text-foreground">
-                You have already voted. Submitting again changes your private vote before the deadline.
-              </div>
-            )}
-            {isOwnProposal && (
-              <div className="text-xs text-red-400 mt-1 font-semibold">
-                You created this proposal. Creators cannot vote on their own proposals.
-              </div>
-            )}
-          </div>
+          <VoteProposalDetailCard
+            proposal={proposal}
+            now={now}
+            alreadyVoted={!!alreadyVoted}
+            isOwnProposal={isOwnProposal}
+            isEndedNotFinalized={isEndedNotFinalized}
+          />
         )}
 
-        {/* Multi-option vote buttons */}
         {hasSelection && isActive && proposal?.exists && optionLabels && (optionLabels as string[]).length > 0 && (
-          <div>
-            <label className="text-[10px] tracking-[0.15em] uppercase text-muted-foreground/50 font-semibold block mb-1.5">
-              Your Vote
-            </label>
+          <VoteFormField label="Your vote" hint="Select one option. You can change it before the deadline.">
             <div className="space-y-2">
               {(optionLabels as string[]).map((label, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => setSelectedOption(i)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-all text-sm text-left ${
+                  className={`flex min-h-[48px] w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-all ${
                     selectedOption === i
-                      ? "border-emerald-400/50 text-foreground bg-emerald-400/10"
-                      : "border-border text-muted-foreground hover:border-emerald-500/30 hover:text-foreground"
+                      ? "border-[hsl(var(--success))]/40 bg-[hsl(var(--accent))]/12 text-foreground"
+                      : "hairline text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                   }`}
                 >
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                    selectedOption === i ? "border-emerald-400" : "border-muted-foreground/30"
-                  }`}>
-                    {selectedOption === i && <div className="w-2 h-2 rounded-full bg-emerald-400" />}
+                  <div
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                      selectedOption === i ? "border-[hsl(var(--success))]" : "border-muted-foreground/30"
+                    }`}
+                  >
+                    {selectedOption === i && <div className="h-2.5 w-2.5 rounded-full bg-[hsl(var(--success))]" />}
                   </div>
-                  <span className="text-xs text-muted-foreground/50 w-4">{i}</span>
-                  {label}
-                  {selectedOption === i && <CheckCircle2 className="w-4 h-4 ml-auto text-foreground" />}
+                  <span className="text-xs text-muted-foreground">{i + 1}</span>
+                  <span className="flex-1">{label}</span>
+                  {selectedOption === i && <CheckCircle2 className="h-4 w-4 text-[hsl(var(--success))]" />}
                 </button>
               ))}
             </div>
-          </div>
+          </VoteFormField>
         )}
 
         {/* FHE stepper */}
@@ -413,7 +367,7 @@ export default function CastVoteForm({ initialProposalId = "" }: CastVoteFormPro
             disabled={!isConnected || !hasClaimed || hasDelegated || !isActive || isOwnProposal || selectedOption === null || isTxPending || status === FHEStepStatus.COMPUTING || status === FHEStepStatus.ENCRYPTING}
             whileHover={{ scale: 1.005 }}
             whileTap={{ scale: 0.99 }}
-            className="btn-pay btn-pay-emerald w-full py-2.5"
+            className="inline-flex h-11 min-h-[44px] w-full items-center justify-center rounded-full bg-foreground py-2.5 text-sm font-medium text-background disabled:opacity-50"
           >
             {isTxPending ? "Submitting..." : alreadyVoted ? "Change Private Vote" : "Submit Private Vote"}
           </motion.button>

@@ -36,7 +36,8 @@ describe("Vote V2/V3 information architecture", () => {
     expect(dashboard).not.toContain("Institutional governance");
     expect(dashboard).not.toContain("OBS · sealed");
     expect(dashboard).not.toContain("Treasury");
-    expect(dashboard).toContain("Cast private votes. Change your mind before the deadline. Only final totals are revealed.");
+    expect(dashboard).toContain("Cast private votes on Arbitrum Sepolia");
+    expect(dashboard).toContain("Only aggregate totals are revealed");
   });
 
   it("makes voting the primary proposal path while preserving explicit reveal", () => {
@@ -81,8 +82,9 @@ describe("Vote V2/V3 information architecture", () => {
     const proposalList = readSource("components/vote/ProposalList.tsx");
     const rewards = readSource("components/vote/RewardsPanel.tsx");
 
-    expect(dashboard).toContain("hidden gap-3 md:grid");
-    expect(dashboard).toContain("Review proposals");
+    expect(dashboard).toContain("vh.kpiGrid");
+    expect(dashboard).toContain("min-h-[44px]");
+    expect(dashboard).toContain("Browse proposals");
     expect(proposalList).toContain('initialFilter = "active"');
     expect(proposalList).toContain("Showing {statusFilter} proposals first");
     expect(rewards).toContain("Reward claims appear after you vote privately");

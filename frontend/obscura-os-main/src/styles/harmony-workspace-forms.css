@@ -525,3 +525,28 @@
   background-color: hsl(var(--accent) / 0.12) !important;
   border-color: hsl(var(--accent) / 0.35) !important;
 }
+
+/* Vote UX polish wave — stronger section separation on ivory Harmony canvas */
+.obscura-app .vote-harmony-panel .harmony-form-inner {
+  padding-top: 0.25rem;
+}
+
+.obscura-app .vote-harmony-panel input.pay-input,
+.obscura-app .vote-harmony-panel select.pay-select,
+.obscura-app .vote-harmony-panel textarea.pay-input {
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+.obscura-app .vote-harmony-panel input.pay-input:focus,
+.obscura-app .vote-harmony-panel select.pay-select:focus,
+.obscura-app .vote-harmony-panel textarea.pay-input:focus {
+  border-color: hsl(var(--accent) / 0.55);
+  box-shadow: 0 0 0 3px hsl(var(--accent) / 0.12);
+}
+
+@media (max-width: 639px) {
+  .obscura-app .vote-harmony-panel .rounded-2xl.hairline.bg-card {
+    padding: 1rem;
+  }
+}

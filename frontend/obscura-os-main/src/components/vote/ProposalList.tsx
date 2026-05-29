@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileText, Clock, CheckCircle, CheckCircle2, Lock, RefreshCw, Search, XCircle, Users, Timer, ArrowRight } from "lucide-react";
+import { FileText, Clock, CheckCircle2, RefreshCw, Search, Users, Timer, ArrowRight } from "lucide-react";
 import { useWatchContractEvent } from "wagmi";
 import { useProposalCount, useProposal, CATEGORY_LABELS } from "@/hooks/useProposals";
 import { OBSCURA_VOTE_ABI, OBSCURA_VOTE_ADDRESS } from "@/config/contracts";
 import { useChainTime } from "@/hooks/useChainTime";
+import { VoteStatusPill, type VoteProposalStatus } from "@/components/harmony/voteHarmonyUi";
 
-type ProposalStatus = "active" | "ended" | "finalized" | "cancelled";
+type ProposalStatus = VoteProposalStatus;
 type StatusFilter = "all" | ProposalStatus;
 
 function getStatus(deadline: bigint, isFinalized: boolean, isCancelled: boolean, now: bigint): ProposalStatus {
@@ -36,11 +37,11 @@ function ProposalRowSkeleton() {
   );
 }
 
-const statusConfig: Record<ProposalStatus, { label: string; color: string; icon: typeof Clock }> = {
-  active: { label: "Active", color: "text-foreground bg-emerald-400/10 border-emerald-400/20", icon: Clock },
-  ended: { label: "Ended", color: "text-amber-400 bg-amber-400/10 border-amber-400/20", icon: Lock },
-  finalized: { label: "Finalized", color: "text-foreground bg-emerald-400/10 border-emerald-400/20", icon: CheckCircle },
-  cancelled: { label: "Cancelled", color: "text-red-400 bg-red-400/10 border-red-400/20", icon: XCircle },
+const statusRail: Record<ProposalStatus, string> = {
+  active: "border-l-[hsl(var(--success))]",
+  ended: "border-l-amber-500",
+  finalized: "border-l-sky-600",
+  cancelled: "border-l-destructive",
 };
 
 function Countdown({ deadline }: { deadline: bigint }) {
@@ -80,7 +81,7 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { p
   // Filter by search
   if (searchQuery && !proposal.title.toLowerCase().includes(searchQuery.toLowerCase())) return null;
 
-  const cfg = statusConfig[status];
+  const cfg = statusRail[status];
   const deadlineDate = new Date(Number(proposal.deadline) * 1000);
   const catLabel = CATEGORY_LABELS[proposal.category] ?? "General";
 
@@ -88,15 +89,15 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { p
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl hairline bg-card p-4 space-y-2 hover:border-border transition-colors"
+      className={`rounded-2xl border border-border border-l-4 bg-card p-4 ${cfg} transition-colors hover:bg-muted/20`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
-          <span className="text-sm text-muted-foreground/50 w-8 shrink-0 mt-0.5">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="mt-0.5 w-8 shrink-0 font-mono text-xs text-muted-foreground">
             #{proposal.id.toString()}
           </span>
           <div className="min-w-0">
-            <div className="text-sm text-foreground font-medium">{proposal.title}</div>
+            <div className="text-sm font-semibold text-foreground">{proposal.title}</div>
             {proposal.description && (
               <div className="text-xs text-muted-foreground/60 mt-0.5 truncate">{proposal.description}</div>
             )}
@@ -134,28 +135,25 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { p
             )}
           </div>
         </div>
-        <span className={`pay-badge border shrink-0 ${cfg.color}`}>
-          <cfg.icon className="w-3 h-3 inline mr-1" />
-          {cfg.label}
-        </span>
+        <VoteStatusPill status={status} />
       </div>
-      <div className="flex items-center justify-between text-xs text-muted-foreground pl-11">
-        <span>Deadline: {deadlineDate.toLocaleString()}</span>
+      <div className="mt-3 flex flex-col gap-2 pl-11 sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-xs text-muted-foreground">Deadline: {deadlineDate.toLocaleString()}</span>
         {status === "active" && (
-          <span className="flex items-center gap-1">
-            <Timer className="w-3 h-3" />
+          <span className="flex items-center gap-1 text-xs text-[hsl(var(--success))]">
+            <Timer className="h-3 w-3" />
             <Countdown deadline={proposal.deadline} />
           </span>
         )}
       </div>
-      {/* Vote shortcut for active proposals */}
       {status === "active" && onVote && (
-        <div className="pl-11">
+        <div className="mt-3 pl-11">
           <button
+            type="button"
             onClick={() => onVote(Number(proposalId))}
-            className="flex items-center gap-1 text-[11px] text-foreground hover:underline"
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-full bg-foreground px-4 text-xs font-medium text-background"
           >
-            Vote privately <ArrowRight className="w-3 h-3" />
+            Vote privately <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
@@ -166,9 +164,11 @@ function ProposalRow({ proposalId, searchQuery, statusFilter, onVote, now }: { p
 export default function ProposalList({
   onVote,
   initialFilter = "active",
+  embedded = false,
 }: {
   onVote?: (id: number) => void;
   initialFilter?: StatusFilter;
+  embedded?: boolean;
 }) {
   const { data: count, isLoading, refetch } = useProposalCount();
   const proposalCount = Number(count ?? 0);
@@ -194,23 +194,36 @@ export default function ProposalList({
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
-          <FileText className="w-4 h-4 text-foreground" />
+      {!embedded && (
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted hairline">
+            <FileText className="h-4 w-4 text-foreground" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-display text-sm font-semibold leading-tight text-foreground">Private proposals</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">Browse, filter, and vote privately</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            title="Refresh proposals"
+            className="ml-auto grid h-10 w-10 place-items-center rounded-full hairline text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
         </div>
-        <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-foreground leading-tight">Private Proposals</h3>
-          <p className="text-[10px] text-muted-foreground/45 tracking-widest mt-0.5 uppercase">Vote privately</p>
-        </div>
+      )}
+
+      {embedded && (
         <button
+          type="button"
           onClick={() => refetch()}
           title="Refresh proposals"
-          className="ml-auto p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
         </button>
-      </div>
+      )}
 
       {/* Search + Filters */}
       <div className="space-y-3">
@@ -224,15 +237,16 @@ export default function ProposalList({
             className="pay-input pl-9"
           />
         </div>
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex flex-wrap gap-2">
           {filters.map((f) => (
             <button
               key={f.key}
+              type="button"
               onClick={() => setStatusFilter(f.key)}
-              className={`px-2.5 py-1 text-[11px] rounded-md border transition-all ${
+              className={`min-h-[36px] rounded-full border px-3 py-1.5 text-[11px] font-medium transition-all ${
                 statusFilter === f.key
-                  ? "border-emerald-400/50 text-foreground bg-emerald-400/10"
-                  : "border-border text-muted-foreground hover:border-emerald-500/30"
+                  ? "border-[hsl(var(--success))]/40 bg-[hsl(var(--accent))]/12 text-foreground"
+                  : "hairline text-muted-foreground hover:bg-muted/60"
               }`}
             >
               {f.label}

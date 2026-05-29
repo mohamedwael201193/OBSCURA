@@ -20,6 +20,7 @@ import { VoteHarmonyDashboard } from "@/components/harmony/VoteHarmonyDashboard"
 import {
   VoteHarmonyNotConnected,
   VoteHarmonyPanelCard,
+  VoteHarmonySubNav,
   VoteHarmonyTabShell,
 } from "@/components/harmony/VoteHarmonyTabShell";
 
@@ -109,12 +110,12 @@ const VotePage = () => {
           <>
             <VoteHarmonyPanelCard title="Vote on proposal" eyebrow="Private ballot">
               <div className="harmony-form-inner">
-                <CastVoteForm initialProposalId={jumpProposalId} />
+                <CastVoteForm initialProposalId={jumpProposalId} embedded />
               </div>
             </VoteHarmonyPanelCard>
             <VoteHarmonyPanelCard title="Your ballot history" eyebrow="Private verification">
               <div className="harmony-form-inner">
-                <VotingHistory />
+                <VotingHistory embedded />
               </div>
             </VoteHarmonyPanelCard>
           </>
@@ -135,7 +136,7 @@ const VotePage = () => {
           <>
             <VoteHarmonyPanelCard title="Create a private proposal" eyebrow="Secondary action">
               <div className="harmony-form-inner">
-                <CreateProposalForm onSuccess={() => openProposals("browse")} />
+                <CreateProposalForm onSuccess={() => openProposals("browse")} embedded />
               </div>
             </VoteHarmonyPanelCard>
             {isAdmin && (
@@ -153,13 +154,13 @@ const VotePage = () => {
           <>
             <VoteHarmonyPanelCard title="Private proposals" eyebrow="Needs action">
               <div className="harmony-form-inner">
-                <ProposalList onVote={(id) => openProposals("vote", id)} />
+                <ProposalList onVote={(id) => openProposals("vote", id)} embedded />
               </div>
             </VoteHarmonyPanelCard>
             {isConnected && (
               <VoteHarmonyPanelCard title="Your ballot history" eyebrow="Private verification">
                 <div className="harmony-form-inner">
-                  <VotingHistory />
+                  <VotingHistory embedded />
                 </div>
               </VoteHarmonyPanelCard>
             )}
@@ -177,11 +178,12 @@ const VotePage = () => {
               onVote={() => openProposals("vote")}
               onParticipation={() => setSection("participation")}
               onOpenProposals={() => openProposals("browse")}
+              onCreate={() => openProposals("create")}
             />
 
-            <HarmonyFormCard title="Proposals needing attention" eyebrow="Private proposals">
-              <div className="harmony-form-inner -mx-2">
-                <ProposalList onVote={(id) => openProposals("vote", id)} initialFilter="active" />
+            <HarmonyFormCard title="Proposals needing attention" eyebrow="Active governance">
+              <div className="harmony-form-inner vote-harmony-panel -mx-2">
+                <ProposalList onVote={(id) => openProposals("vote", id)} initialFilter="active" embedded />
               </div>
             </HarmonyFormCard>
           </div>
@@ -189,19 +191,32 @@ const VotePage = () => {
 
       case "proposals":
         return (
-          <VoteHarmonyTabShell tab="proposals" sub={proposalMode} actions={proposalActions}>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={proposalMode}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              >
-                {renderProposalContent()}
-              </motion.div>
-            </AnimatePresence>
-          </VoteHarmonyTabShell>
+          <div className="vote-harmony-panel">
+            <VoteHarmonyTabShell tab="proposals" sub={proposalMode} actions={proposalActions}>
+              <VoteHarmonySubNav
+                active={proposalMode}
+                onChange={(mode) => openProposals(mode)}
+                items={[
+                  { key: "browse", label: "Browse", icon: Home },
+                  { key: "vote", label: "Vote", icon: Vote },
+                  { key: "create", label: "Create", icon: Plus },
+                  { key: "results", label: "Results", icon: BarChart3 },
+                ]}
+              />
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={proposalMode}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className="mt-6"
+                >
+                  {renderProposalContent()}
+                </motion.div>
+              </AnimatePresence>
+            </VoteHarmonyTabShell>
+          </div>
         );
 
       case "participation":

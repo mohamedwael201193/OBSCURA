@@ -140,3 +140,48 @@ Date: 2026-05-29.
 - Passed: focused Vitest suite `npm test -- src/test/vote-final-v1.test.ts src/test/vote-final-v2-v3.test.ts` (11/11).
 - Passed: full frontend Vitest suite `npm test` (31/31).
 - Passed: frontend build `npm run build` with existing Browserslist/Rollup/chunk-size warnings only.
+
+## Vote UX Polish Wave
+
+Date: 2026-05-29.
+
+Reference benchmark: Walnut Finance command center (`walnut-finance.vercel.app/app`). Obscura Vote target: clearer, calmer, more premium, judge-friendly — not a Walnut clone.
+
+### UX decisions
+
+- **Guided proposal creation:** `CreateProposalForm` is now a four-step wizard (Basics → Choices → Schedule → Review) with progress bar, back/continue navigation, and a dedicated review card before publish. Rationale: single long form felt like internal tooling and intimidated first-time proposers.
+- **Embedded vs standalone headers:** Vote forms accept `embedded` when rendered inside `HarmonyFormCard` panels to avoid duplicate titles and white-on-white stacking. Panel eyebrow/title carries IA; forms carry workflow content only.
+- **Proposal detail confidence panel:** New `VoteProposalDetailCard` surfaces status pill, deadline countdown, participation, quorum progress, and privacy guarantee in a structured card used by `CastVoteForm`. Rationale: voters need status/deadline/participation/actions/privacy at a glance before submitting.
+- **Dashboard mission control:** `VoteHarmonyDashboard` rebuilt with ivory section container, four KPI tiles (proposals, reputation tier, participation score, privacy mode), Vote/Revote/Reveal explainer row, and a “Recommended next step” strip with primary CTA. Wired shared `useReputationSummary` for participation signals (same source as Pay/Credit).
+- **Proposal list hierarchy:** Rows use left status rail colors, `VoteStatusPill`, prominent rounded primary “Vote privately” CTA on active rows, and pill-shaped filter chips. `embedded` mode hides duplicate list header when nested in overview card.
+- **Voting history timeline:** `VotingHistory` uses vertical timeline rails, filter tabs (All / Voted / Needs vote / Missed), and plain-language “Verify my vote” copy — removed FHE.allow jargon.
+- **Proposals sub-nav:** `VoteHarmonySubNav` pill bar added under Proposals tab (Browse / Vote / Create / Results) for faster mode switching on mobile and desktop.
+- **Harmony token reuse:** Extended `voteHarmonyUi.tsx` with `VoteWizardSteps`, `VoteFormField`, `VoteStatusPill`, `VotePanelHeader`, `VoteTimelineRow`. Applied `.vote-harmony-panel` wrapper consistently; added form focus rings and mobile card padding in `harmony-workspace-forms.css`.
+- **Copy discipline:** Removed visible “FHE” badges from Vote forms; replaced with “Private” / “Encrypted” language aligned with Pay/Credit Harmony rules.
+
+### Hierarchy and navigation changes
+
+- Overview: hero → KPI grid → explainer tiles → next-action strip → privacy notice → active proposals card.
+- Proposals: page intro + top actions + sub-nav + mode-specific panel(s).
+- Create flow: wizard steps always visible above step content; primary publish CTA only on review step.
+- Vote flow: proposal select → detail card → option radios (44px min tap) → confirmation strip → primary submit.
+
+### Mobile improvements
+
+- KPI grid visible on all breakpoints (was hidden on mobile).
+- Vote/Revote/Reveal tiles remain visible but compact; forms use min-h 44px controls.
+- Sub-nav shows icons on mobile with labels on sm+.
+- Proposal rows stack deadline/countdown vertically on narrow screens.
+
+### Remaining UX issues
+
+- Live encrypted cast/revote E2E still blocked without second wallet / non-self active proposal (unchanged protocol constraint).
+- Active proposal count KPI shows total on-chain count; per-status active count would need a dedicated indexer or multicall hook.
+- Playwright coordinate-scaling quirk persists for raw pointer clicks; DOM center hit-tests work.
+- TallyReveal and Advanced panels not restyled in this wave (out of priority scope).
+- Walnut comparison: Obscura Vote now leads on governance clarity and privacy copy; Walnut still has stronger masked-value KPI drama — intentional tradeoff for judge-readable plaintext public metrics on Vote.
+
+### Verification
+
+- Browser: reload `http://127.0.0.1:5175/vote` after changes; scroll full pages; check Create wizard, Vote detail card, Overview KPIs, History filters, mobile 390px.
+- Lint + build + focused Vote vitest suites required before merge.

@@ -17,12 +17,12 @@ const TAB_META: Record<
   participation: {
     eyebrow: "Participation",
     title: "Participation",
-    description: "Track contribution, rewards, delegation, and recent activity without exposing vote choices.",
+    description: "Your governance identity — reputation tier, ballot history, delegation, rewards, and indexed activity without exposing vote choices.",
   },
   advanced: {
     eyebrow: "Advanced governance",
     title: "Advanced Governance",
-    description: "Protocol-operator actions for treasury requests, public Governor proposals, and timelock execution.",
+    description: "Treasury timelock spends and public Governor execution for protocol operators. Private voting stays in Proposals.",
   },
 };
 
@@ -98,14 +98,14 @@ export function VoteHarmonyPanelCard({
   );
 }
 
-export function VoteHarmonySubNav({
+export function VoteHarmonySubNav<T extends string>({
   active,
   onChange,
   items,
 }: {
-  active: VoteVotingSubKey;
-  onChange: (k: VoteVotingSubKey) => void;
-  items: { key: VoteVotingSubKey; label: string; icon: ComponentType<{ className?: string }> }[];
+  active: T;
+  onChange: (k: T) => void;
+  items: { key: T; label: string; icon: ComponentType<{ className?: string }> }[];
 }) {
   return (
     <div className="flex gap-1 rounded-full hairline bg-muted/60 p-1">

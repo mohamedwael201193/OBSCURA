@@ -1,46 +1,11 @@
 import { Award, CheckCircle2, Loader2, RefreshCcw, ShieldCheck, Vote } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useReputationSummary, type ReputationSummary } from "@/hooks/useReputationSummary";
-import { cn } from "@/lib/utils";
-
-const CATEGORY_SIGNALS = {
-  pay: [
-    "private_payment_sent",
-    "private_payment_received",
-    "stream_created",
-    "stream_cycle_settled",
-    "escrow_redeemed",
-    "invoice_paid",
-    "subscription_consumed",
-  ],
-  credit: [
-    "credit_liquidity_supplied",
-    "credit_collateral_supplied",
-    "credit_borrowed",
-    "credit_repaid",
-    "credit_vault_deposited",
-    "credit_score_updated",
-  ],
-  governance: [
-    "vote_participated",
-    "vote_changed",
-    "vote_delegated",
-    "governance_vote_cast",
-    "governance_proposed",
-  ],
-} as const;
-
-const TIER_LABEL: Record<ReputationSummary["tier"], string> = {
-  new: "Building",
-  active: "Active",
-  steady: "Steady",
-  reliable: "Reliable",
-};
-
-function categoryScore(summary: ReputationSummary | null, keys: readonly string[]): number {
-  if (!summary) return 0;
-  return keys.reduce((total, key) => total + (summary.signals[key]?.cappedWeight ?? 0), 0);
-}
+import type { ReputationSummary } from "@/hooks/useReputationSummary";
+import {
+  REPUTATION_CATEGORY_SIGNALS,
+  REPUTATION_TIER_LABEL,
+  categoryScore,
+} from "@/lib/reputationCategories";
 
 function lastUpdated(summary: ReputationSummary | null): string {
   if (!summary?.updatedAt) return "No signals yet";
@@ -66,10 +31,10 @@ function CategoryRow({ label, value, icon: Icon }: { label: string; value: numbe
 
 export function CreditReputationPanel({ compact = false }: { compact?: boolean }) {
   const { summary, isLoading, error, refresh, lastFetchedAt } = useReputationSummary();
-  const payScore = categoryScore(summary, CATEGORY_SIGNALS.pay);
-  const creditScore = categoryScore(summary, CATEGORY_SIGNALS.credit);
-  const governanceScore = categoryScore(summary, CATEGORY_SIGNALS.governance);
-  const tier = summary ? TIER_LABEL[summary.tier] : "Private";
+  const payScore = categoryScore(summary, REPUTATION_CATEGORY_SIGNALS.pay);
+  const creditScore = categoryScore(summary, REPUTATION_CATEGORY_SIGNALS.credit);
+  const governanceScore = categoryScore(summary, REPUTATION_CATEGORY_SIGNALS.governance);
+  const tier = summary ? REPUTATION_TIER_LABEL[summary.tier] : "Private";
 
   return (
     <div className={cn("overflow-hidden rounded-2xl hairline bg-card", compact && "h-full")}>

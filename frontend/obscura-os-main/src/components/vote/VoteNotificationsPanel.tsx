@@ -14,7 +14,7 @@ const VOTE_NOTIFICATION_TYPES = [
 
 type BusyAction = "enable" | "repair" | "test" | "vote" | null;
 
-export function VoteNotificationsPanel() {
+export function VoteNotificationsPanel({ embedded = false }: { embedded?: boolean }) {
   const { prefs, isLoading, pushSupported, permission, serviceWorkerReady, enable, repair, testPush, savePrefs } = useNotificationPrefs();
   const [busy, setBusy] = useState<BusyAction>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -48,9 +48,8 @@ export function VoteNotificationsPanel() {
     await savePrefs({ events: [...existing, ...VOTE_NOTIFICATION_TYPES] });
   };
 
-  return (
-    <VoteHarmonyPanelCard title="Vote notifications" eyebrow="Shared alerts">
-      <div className="space-y-4 text-sm">
+  const body = (
+    <div className="space-y-4 text-sm">
         <div className="grid grid-cols-[1fr_auto] gap-y-2 text-xs text-muted-foreground">
           <span>Push alerts</span>
           <span className="font-mono text-foreground/70">{isLoading ? "loading" : prefs?.push_enabled ? "enabled" : "off"}</span>
@@ -123,6 +122,13 @@ export function VoteNotificationsPanel() {
           </p>
         )}
       </div>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <VoteHarmonyPanelCard title="Vote notifications" eyebrow="Shared alerts">
+      {body}
     </VoteHarmonyPanelCard>
   );
 }

@@ -41,6 +41,7 @@ function SpendRequestRow({ proposalId }: { proposalId: number }) {
   const { proposal } = useProposal(BigInt(proposalId));
   const { data: req } = useSpendRequest(BigInt(proposalId));
   const now = useChainTime();
+  const [confirmExecute, setConfirmExecute] = useState(false);
 
   const { record, isPending: recording, txHash: recordTx, error: recordErr } = useRecordFinalization();
   const {
@@ -123,11 +124,34 @@ function SpendRequestRow({ proposalId }: { proposalId: number }) {
           </p>
         )}
         {canExecute && (
-          <button onClick={() => execute(BigInt(proposalId))} disabled={executing}
-            className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-400 hover:bg-amber-500/20 disabled:opacity-50 transition-colors">
-            {executing ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowDownToLine className="h-3 w-3" />}
-            Execute Spend ({reqAmountEth} ETH)
-          </button>
+          confirmExecute ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-destructive/25 bg-destructive/8 px-3 py-2">
+              <span className="text-xs text-destructive">
+                Execute {reqAmountEth} ETH to {reqRecipient.slice(0, 8)}…? This transfer is irreversible.
+              </span>
+              <button
+                type="button"
+                onClick={() => execute(BigInt(proposalId))}
+                disabled={executing}
+                className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground disabled:opacity-50"
+              >
+                {executing ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowDownToLine className="h-3 w-3" />}
+                Confirm execute
+              </button>
+              <button type="button" onClick={() => setConfirmExecute(false)} className="text-xs text-muted-foreground hover:text-foreground">
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmExecute(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-800 hover:bg-amber-500/20 transition-colors"
+            >
+              <ArrowDownToLine className="h-3 w-3" />
+              Execute spend ({reqAmountEth} ETH)
+            </button>
+          )
         )}
         {(recordTx || executeTx) && <TxLink hash={(executeTx ?? recordTx) as `0x${string}` | undefined} />}
       </div>
@@ -208,8 +232,22 @@ export function TreasuryPanel() {
       </div>
 
       <VoteNotice icon={Info}>
-        Spend amounts are sealed with <span className={vh.emphasis}>Fhenix FHE</span> at submission time. Only the proposal creator and recipient can decrypt the amount privately until the vote finalizes. After a 48h timelock, the amount is revealed on-chain and ETH is transferred.
+        Spend amounts stay sealed until execution. After the vote finalizes and timelock elapses, the transfer executes on-chain.
       </VoteNotice>
+
+      <div className="grid gap-2 sm:grid-cols-4">
+        {[
+          "Attach spend",
+          "Vote & finalize",
+          "Start timelock",
+          "Execute transfer",
+        ].map((step, index) => (
+          <div key={step} className="rounded-xl hairline bg-muted/35 px-3 py-2 text-center">
+            <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{index + 1}</p>
+            <p className="mt-1 text-xs font-medium text-foreground">{step}</p>
+          </div>
+        ))}
+      </div>
 
       <VoteTabs tabs={tabItems} active={activeTab} onChange={setActiveTab} />
 

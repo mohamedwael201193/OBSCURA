@@ -185,3 +185,48 @@ Reference benchmark: Walnut Finance command center (`walnut-finance.vercel.app/a
 
 - Browser: reload `http://127.0.0.1:5175/vote` after changes; scroll full pages; check Create wizard, Vote detail card, Overview KPIs, History filters, mobile 390px.
 - Lint + build + focused Vote vitest suites required before merge.
+
+## V4/V5 Participation and Advanced Governance
+
+Date: 2026-05-29.
+
+### V4 — Participation as governance identity layer
+
+- Added `VoteParticipationProfile`: unified profile showing reputation tier, participation score, on-chain votes cast (`voterParticipation`), governance event counts, Pay/Credit/Governance category bars, and standing copy.
+- Extracted shared `lib/reputationCategories.ts` — reused by Vote profile and Credit reputation panel (no parallel reputation system).
+- Reputation source: existing `useReputationSummary` → worker `/reputation/:wallet` API (same as Pay/Credit).
+- Participation page restructured with collapsible sections: Ballot history (default open), Delegation, Rewards, Vote alerts, plus shared `ActivityFeed` (vote filter).
+- `VoteNotificationsPanel` supports `embedded` mode inside collapsible sections.
+
+### V5 — Advanced governance cleanup
+
+- Added `VoteAdvancedIntro`: operator-focused lifecycle (Draft → Vote → Queue → Execute) and irreversible-action warnings.
+- Advanced section split via sub-nav: Treasury | Governor (one panel visible at a time — less clutter).
+- `GovernorPanel`: per-proposal lifecycle hints, raw calldata behind `<details>`, confirm step before Queue/Execute.
+- `TreasuryPanel`: 4-step spend lifecycle strip, plain-language privacy copy, confirm step before execute spend.
+- Top-level sidebar unchanged (4 sections only); treasury/governor not promoted to primary nav.
+
+### Infrastructure reused
+
+| Capability | Source |
+|-----------|--------|
+| Reputation tier/score | `useReputationSummary` + worker reputation indexer |
+| Category signals | `REPUTATION_CATEGORY_SIGNALS` in shared lib |
+| On-chain vote count | `useVoterParticipation` on ObscuraVote |
+| Activity feed | `ActivityFeed` + `useActivityFeed` (Supabase/worker) |
+| Notifications | `VoteNotificationsPanel` + `useNotificationPrefs` |
+| Delegation/Rewards | Existing panels, now nested under Participation |
+
+### Testing
+
+- Passed: `vote-final-v4-v5.test.ts` (5/5), `vote-final-v2-v3.test.ts` (5/5) after sidebar assertion update.
+- Passed: `npm run build`, typecheck clean.
+- Browser: Overview loads; Participation/Advanced sections render after sidebar navigation.
+
+### Remaining before V6
+
+- Playwright desktop/mobile navigation coverage (V6).
+- Two-wallet cast/revote/reveal E2E (V6 manual gate).
+- Worker/API privacy payload regression tests (V6).
+- Contract test expansion for delegation/treasury/governor lifecycles (V6).
+

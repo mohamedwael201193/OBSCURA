@@ -130,6 +130,7 @@ const ProposalCard = ({ row }: { row: ProposalRow }) => {
   const { castVote, isPending: voting } = useCastGovernorVote();
   const { queue, isPending: queueing } = useQueueProposal();
   const { execute, isPending: executing } = useExecuteProposal();
+  const [confirmAction, setConfirmAction] = useState<"queue" | "execute" | null>(null);
 
   const { title, body } = parseProposalDescription(row.description);
   const idStr = `0x${row.proposalId.toString(16).slice(0, 12)}…`;
@@ -150,6 +151,7 @@ const ProposalCard = ({ row }: { row: ProposalRow }) => {
     try {
       const hash = await queue(row);
       toast.success("Queued in timelock", { description: `tx ${hash.slice(0, 10)}…` });
+      setConfirmAction(null);
       refetchState();
     } catch (e) {
       toast.error("Queue failed", { description: (e as Error).message });
@@ -160,11 +162,27 @@ const ProposalCard = ({ row }: { row: ProposalRow }) => {
     try {
       const hash = await execute(row);
       toast.success("Executed", { description: `tx ${hash.slice(0, 10)}…` });
+      setConfirmAction(null);
       refetchState();
     } catch (e) {
       toast.error("Execute failed", { description: (e as Error).message });
     }
   };
+
+  const lifecycleHint =
+    label === "Pending"
+      ? "Waiting to become active."
+      : label === "Active"
+        ? "Cast a public For / Against / Abstain vote."
+        : label === "Succeeded"
+          ? "Queue into the timelock before execution."
+          : label === "Queued"
+            ? "Timelock delay must pass, then execute."
+            : label === "Executed"
+              ? "This proposal has been executed on-chain."
+              : label === "Defeated" || label === "Canceled" || label === "Expired"
+                ? "No further action available."
+                : null;
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
@@ -205,6 +223,21 @@ const ProposalCard = ({ row }: { row: ProposalRow }) => {
           <p className="text-[12.5px] text-muted-foreground/80 leading-relaxed whitespace-pre-wrap">{body}</p>
         )}
 
+        {lifecycleHint && (
+          <p className="rounded-lg hairline bg-muted/40 px-3 py-2 text-xs text-muted-foreground">{lifecycleHint}</p>
+        )}
+
+        {row.calldatas.length > 0 && (
+          <details className="rounded-lg hairline bg-muted/30 px-3 py-2 text-xs">
+            <summary className="cursor-pointer font-medium text-foreground">Raw calldata ({row.calldatas.length})</summary>
+            <div className="mt-2 space-y-2 font-mono text-[10px] text-muted-foreground break-all">
+              {row.calldatas.map((data, index) => (
+                <p key={index}>{data}</p>
+              ))}
+            </div>
+          </details>
+        )}
+
         <VotesBar forVotes={f} against={against} abstain={abstain} />
 
         <Separator className="bg-muted/60" />
@@ -241,16 +274,36 @@ const ProposalCard = ({ row }: { row: ProposalRow }) => {
           </div>
           <div className="flex items-center gap-2">
             {label === "Succeeded" && (
-              <Button size="sm" onClick={doQueue} disabled={queueing}>
-                {queueing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
-                Queue
-              </Button>
+              confirmAction === "queue" ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/8 px-3 py-2">
+                  <span className="text-xs text-amber-900">Queue into timelock? This starts the delay before execution.</span>
+                  <Button size="sm" onClick={doQueue} disabled={queueing}>
+                    {queueing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+                    Confirm queue
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmAction(null)}>Cancel</Button>
+                </div>
+              ) : (
+                <Button size="sm" onClick={() => setConfirmAction("queue")} disabled={queueing}>
+                  Queue
+                </Button>
+              )
             )}
             {label === "Queued" && (
-              <Button size="sm" onClick={doExecute} disabled={executing}>
-                {executing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
-                Execute
-              </Button>
+              confirmAction === "execute" ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-destructive/25 bg-destructive/8 px-3 py-2">
+                  <span className="text-xs text-destructive">Execute irreversible on-chain action?</span>
+                  <Button size="sm" variant="destructive" onClick={doExecute} disabled={executing}>
+                    {executing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+                    Confirm execute
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmAction(null)}>Cancel</Button>
+                </div>
+              ) : (
+                <Button size="sm" onClick={() => setConfirmAction("execute")} disabled={executing}>
+                  Execute
+                </Button>
+              )
             )}
           </div>
         </div>

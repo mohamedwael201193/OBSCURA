@@ -9,6 +9,7 @@ import {
   Settings,
   ShieldCheck,
   UserRound,
+  Vault,
   Vote,
   X,
 } from "lucide-react";
@@ -34,12 +35,16 @@ import { DelegationPanel } from "@/components/vote/DelegationPanel";
 import { TreasuryPanel } from "@/components/vote/TreasuryPanel";
 import { RewardsPanel } from "@/components/vote/RewardsPanel";
 import { GovernorPanel } from "@/components/vote/GovernorPanel";
+import { VoteParticipationProfile } from "@/components/vote/VoteParticipationProfile";
+import { VoteCollapsibleSection } from "@/components/vote/VoteCollapsibleSection";
+import { VoteAdvancedIntro } from "@/components/vote/VoteAdvancedIntro";
 import { VoteNotificationsPanel } from "@/components/vote/VoteNotificationsPanel";
 import { useVoteOwner, useVoteRole } from "@/hooks/useProposals";
 import { Role } from "@/lib/constants";
 
 type VoteSection = "overview" | "proposals" | "participation" | "advanced";
 type ProposalMode = "browse" | "create" | "vote" | "results";
+type AdvancedMode = "treasury" | "governor";
 
 const VotePage = () => {
   const { address, isConnected } = useAccount();
@@ -54,6 +59,7 @@ const VotePage = () => {
 
   const [section, setSection] = useState<VoteSection>("overview");
   const [proposalMode, setProposalMode] = useState<ProposalMode>("browse");
+  const [advancedMode, setAdvancedMode] = useState<AdvancedMode>("treasury");
   const [jumpProposalId, setJumpProposalId] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -221,46 +227,81 @@ const VotePage = () => {
 
       case "participation":
         return (
-          <VoteHarmonyTabShell tab="participation">
-            <VoteHarmonyPanelCard title="Participation profile" eyebrow="Rewards">
-              <div className="harmony-form-inner">
-                <RewardsPanel />
-              </div>
-            </VoteHarmonyPanelCard>
-            <VoteNotificationsPanel />
-            {!isConnected ? (
-              <VoteHarmonyNotConnected message="Connect your wallet to manage delegation." />
-            ) : (
-              <VoteHarmonyPanelCard title="Delegation" eyebrow="Public power routing">
-                <div className="harmony-form-inner">
-                  <DelegationPanel />
+          <div className="vote-harmony-panel">
+            <VoteHarmonyTabShell tab="participation">
+              <VoteParticipationProfile />
+
+              <VoteCollapsibleSection title="Ballot history" eyebrow="Private verification" defaultOpen>
+                <div className="harmony-form-inner -mx-1">
+                  {!isConnected ? (
+                    <VoteHarmonyNotConnected message="Connect your wallet to review ballot history and verify votes on this device." />
+                  ) : (
+                    <VotingHistory embedded />
+                  )}
                 </div>
-              </VoteHarmonyPanelCard>
-            )}
-            <ActivityFeed
-              defaultFilter="vote"
-              filters={["vote"]}
-              title="Recent Vote activity"
-              eyebrow="Shared activity"
-              emptyMessage="No indexed Vote activity found for this wallet yet."
-            />
-          </VoteHarmonyTabShell>
+              </VoteCollapsibleSection>
+
+              <VoteCollapsibleSection title="Delegation" eyebrow="Public power routing">
+                <div className="harmony-form-inner -mx-1">
+                  {!isConnected ? (
+                    <VoteHarmonyNotConnected message="Connect your wallet to manage delegation." />
+                  ) : (
+                    <DelegationPanel />
+                  )}
+                </div>
+              </VoteCollapsibleSection>
+
+              <VoteCollapsibleSection title="Rewards" eyebrow="Reveal on demand">
+                <div className="harmony-form-inner -mx-1">
+                  <RewardsPanel />
+                </div>
+              </VoteCollapsibleSection>
+
+              <VoteCollapsibleSection title="Vote alerts" eyebrow="Notifications">
+                <VoteNotificationsPanel embedded />
+              </VoteCollapsibleSection>
+
+              <ActivityFeed
+                defaultFilter="vote"
+                filters={["vote"]}
+                title="Recent governance activity"
+                eyebrow="Shared activity"
+                emptyMessage="No indexed Vote activity found for this wallet yet."
+              />
+            </VoteHarmonyTabShell>
+          </div>
         );
 
       case "advanced":
         return (
-          <VoteHarmonyTabShell tab="advanced">
-            <VoteHarmonyPanelCard title="Private proposal treasury" eyebrow="Advanced">
-              <div className="harmony-form-inner">
-                <TreasuryPanel />
+          <div className="vote-harmony-panel">
+            <VoteHarmonyTabShell tab="advanced">
+              <VoteAdvancedIntro />
+              <VoteHarmonySubNav
+                active={advancedMode}
+                onChange={setAdvancedMode}
+                items={[
+                  { key: "treasury", label: "Treasury", icon: Vault },
+                  { key: "governor", label: "Governor", icon: ShieldCheck },
+                ]}
+              />
+              <div className="mt-6">
+                {advancedMode === "treasury" ? (
+                  <VoteHarmonyPanelCard title="Treasury lifecycle" eyebrow="Timelock spends">
+                    <div className="harmony-form-inner">
+                      <TreasuryPanel />
+                    </div>
+                  </VoteHarmonyPanelCard>
+                ) : (
+                  <VoteHarmonyPanelCard title="Executable governance" eyebrow="Governor · Timelock">
+                    <div className="harmony-form-inner -mx-2">
+                      <GovernorPanel wrongNetwork={wrongNetwork} />
+                    </div>
+                  </VoteHarmonyPanelCard>
+                )}
               </div>
-            </VoteHarmonyPanelCard>
-            <VoteHarmonyPanelCard title="Executable governance" eyebrow="Public Governor · Timelock">
-              <div className="harmony-form-inner -mx-2">
-                <GovernorPanel wrongNetwork={wrongNetwork} />
-              </div>
-            </VoteHarmonyPanelCard>
-          </VoteHarmonyTabShell>
+            </VoteHarmonyTabShell>
+          </div>
         );
     }
   };

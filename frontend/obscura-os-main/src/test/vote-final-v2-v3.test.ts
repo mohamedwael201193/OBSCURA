@@ -20,9 +20,11 @@ describe("Vote V2/V3 information architecture", () => {
     expect(votePage).toContain('key: "proposals"');
     expect(votePage).toContain('key: "participation"');
     expect(votePage).toContain('key: "advanced"');
-    expect(votePage).not.toContain('key: "treasury"');
-    expect(votePage).not.toContain('key: "delegate"');
-    expect(votePage).not.toContain('key: "governor"');
+    const sidebarBlock = votePage.split("const harmonySidebar = [")[1]?.split("];")[0] ?? "";
+    expect(sidebarBlock).not.toContain('key: "treasury"');
+    expect(sidebarBlock).not.toContain('key: "delegate"');
+    expect(sidebarBlock).not.toContain('key: "governor"');
+    expect(votePage).toContain('key: "advanced"');
     expect(shell).toContain('"proposals" | "participation" | "advanced"');
   });
 

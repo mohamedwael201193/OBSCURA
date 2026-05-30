@@ -11,7 +11,7 @@ import GooeyNav from "@/components/elite/GooeyNav";
 import NavRightSlot from "@/components/elite/NavRightSlot";
 import Index from "./pages/Index.tsx";
 import PayPage from "./pages/PayPage.tsx";
-import DocsPage from "./pages/DocsPage.tsx";
+import DeveloperPortal from "./docs/DeveloperPortal.tsx";
 import PrivacyPage from "./pages/PrivacyPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import VotePage from "./pages/VotePage.tsx";
@@ -30,8 +30,11 @@ const queryClient = new QueryClient();
 /** App workspace routes use the integrated light shell (icon rail + sidebar + top bar). */
 const WORKSPACE_PATHS = new Set(["/pay", "/pay/contacts", "/pay/settings", "/vote", "/credit", "/ecosystem"]);
 
-/** Marketing pages ship their own nav (SpadeLandingNav) — skip global GooeyNav. */
-const SELF_NAV_PATHS = new Set(["/docs", "/privacy"]);
+/** Marketing / docs pages ship their own nav — skip global GooeyNav. */
+const isSelfNavPath = (pathname: string) => {
+  const p = normalizePath(pathname);
+  return p === "/privacy" || p === "/docs" || pathname.startsWith("/docs/");
+};
 
 const normalizePath = (pathname: string) => {
   const base = pathname.split("?")[0].replace(/\/$/, "") || "/";
@@ -47,7 +50,7 @@ const AnimatedRoutes = () => {
   const location = useLocation();
   const isLanding = location.pathname === "/";
   const isWorkspace = isWorkspacePath(location.pathname);
-  const isSelfNav = SELF_NAV_PATHS.has(normalizePath(location.pathname));
+  const isSelfNav = isSelfNavPath(location.pathname);
   const isSageShell = isLanding || isWorkspace || isSelfNav;
 
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -91,7 +94,8 @@ const AnimatedRoutes = () => {
                 <Route path="/vote" element={<VotePage />} />
                 <Route path="/credit" element={<CreditPage />} />
                 <Route path="/ecosystem" element={<EcosystemPage />} />
-                <Route path="/docs" element={<DocsPage />} />
+                <Route path="/docs" element={<DeveloperPortal />} />
+                <Route path="/docs/:slug" element={<DeveloperPortal />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/pmf" element={<PMFPage />} />
                 <Route path="*" element={<NotFound />} />

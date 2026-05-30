@@ -89,7 +89,7 @@ re-approve when ready.
 
 | Service | URL | Platform |
 |---|---|---|
-| Frontend | `https://obscura-os-nine.vercel.app` | Vercel |
+| Frontend | `https://obscuraos.online` | Custom domain (Vercel) |
 | API Server | `https://obscura-api-n62v.onrender.com` | Render (free) |
 | Worker | `https://obscura-worker-0ppj.onrender.com` | Render (free) |
 | GitHub repo | `https://github.com/mohamedwael201193/OBSCURA` | GitHub (main branch) |

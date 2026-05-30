@@ -6,7 +6,7 @@
  */
 
 const SW_VERSION = "pay-final-p1-3";
-const FALLBACK_URL = "https://obscura-os-nine.vercel.app/pay";
+const FALLBACK_URL = "https://obscuraos.online/pay";
 
 function asObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};

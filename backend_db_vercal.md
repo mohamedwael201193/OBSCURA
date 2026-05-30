@@ -6,7 +6,7 @@ This runbook covers the current Pay production topology for P0.1/P0.2. Only the 
 
 | Layer | Current value |
 |---|---|
-| Frontend | `https://obscura-os-nine.vercel.app` |
+| Frontend | `https://obscuraos.online` |
 | Frontend root | `frontend/obscura-os-main` |
 | Frontend build | `npm run build` -> `dist` |
 | API | `https://obscura-api-n62v.onrender.com` |
@@ -59,8 +59,8 @@ Non-secret values are committed in `render.yaml`:
 |---|---|
 | `NODE_ENV` | `production` |
 | `PORT` | `3000` |
-| `ALLOWED_ORIGINS` | `https://obscura-os-nine.vercel.app` |
-| `FRONTEND_URL` | `https://obscura-os-nine.vercel.app` |
+| `ALLOWED_ORIGINS` | `https://obscuraos.online,https://www.obscuraos.online` |
+| `FRONTEND_URL` | `https://obscuraos.online` |
 | `PAYMASTER_ADDRESS` | `0x7a8D880D9c5F88Ba8bd4435c450256628F66dd0C` |
 | `SUPABASE_URL` | `https://quoovjkjwgtdqwdofubh.supabase.co` |
 | `VAPID_CONTACT_EMAIL` | `noreply@obscura.finance` |
@@ -85,7 +85,7 @@ Non-secret values are committed in `render.yaml`:
 | `NODE_ENV` | `production` |
 | `PORT` | `3001` |
 | `SUPABASE_URL` | `https://quoovjkjwgtdqwdofubh.supabase.co` |
-| `FRONTEND_URL` | `https://obscura-os-nine.vercel.app` |
+| `FRONTEND_URL` | `https://obscuraos.online` |
 | `VAPID_CONTACT_EMAIL` | `noreply@obscura.finance` |
 | `VAPID_PUBLIC_KEY` | public VAPID key used by the API/frontend |
 | `INDEXER_GETLOGS_CHUNK_BLOCKS` | `10` |
@@ -192,7 +192,7 @@ Manual checks:
 
 1. `GET https://obscura-api-n62v.onrender.com/health` returns the v0.7 EntryPoint and current paymaster.
 2. `GET https://obscura-worker-0ppj.onrender.com/health` returns `status=ok` and `indexer.chunkSize <= 10`.
-3. `GET https://obscura-os-nine.vercel.app/sw.js` returns HTTP 200.
+3. `GET https://obscuraos.online/sw.js` returns HTTP 200.
 4. `GET https://obscura-api-n62v.onrender.com/vapid-public-key` returns the public VAPID key.
 5. Pay Activity loads for a connected wallet without Supabase configuration errors.
 6. Settings -> Notifications -> Repair browser refreshes the current browser subscription.

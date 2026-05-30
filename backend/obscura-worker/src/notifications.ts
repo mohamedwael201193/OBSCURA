@@ -12,7 +12,7 @@ import { db, type StoredActivityRecord } from "./db";
 const VAPID_PUBLIC_KEY    = process.env.VAPID_PUBLIC_KEY ?? "";
 const VAPID_PRIVATE_KEY   = process.env.VAPID_PRIVATE_KEY ?? "";
 const VAPID_CONTACT_EMAIL = process.env.VAPID_CONTACT_EMAIL ?? "noreply@obscura.finance";
-const FRONTEND_URL        = (process.env.FRONTEND_URL ?? "https://obscura-os-nine.vercel.app").replace(/\/$/, "");
+const FRONTEND_URL        = (process.env.FRONTEND_URL ?? "https://obscuraos.online").replace(/\/$/, "");
 
 const pushEnabled = Boolean(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
 

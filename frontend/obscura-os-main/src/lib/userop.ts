@@ -162,7 +162,9 @@ function buildPaymasterAndData(
 
 function dummyWebAuthnSignature(): Hex {
   const challenge = "A".repeat(43);
-  const clientDataJSON = `{"type":"webauthn.get","challenge":"${challenge}","origin":"https://obscura-os-nine.vercel.app","crossOrigin":false}`;
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "https://obscuraos.online";
+  const clientDataJSON = `{"type":"webauthn.get","challenge":"${challenge}","origin":"${origin}","crossOrigin":false}`;
   const challengeOffset = BigInt(clientDataJSON.indexOf(challenge));
   const authenticatorData = `0x${"00".repeat(32)}01${"00".repeat(4)}` as Hex;
   const zero32 = `0x${"00".repeat(32)}` as Hex;

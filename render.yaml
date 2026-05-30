@@ -25,9 +25,9 @@ services:
       - key: PORT
         value: "3000"
       - key: ALLOWED_ORIGINS
-        value: "https://obscura-os-nine.vercel.app"
+        value: "https://obscuraos.online,https://www.obscuraos.online"
       - key: FRONTEND_URL
-        value: "https://obscura-os-nine.vercel.app"
+        value: "https://obscuraos.online"
       - key: PAYMASTER_ADDRESS
         value: "0x7a8D880D9c5F88Ba8bd4435c450256628F66dd0C"
       - key: SUPABASE_URL
@@ -67,7 +67,7 @@ services:
       - key: SUPABASE_URL
         value: "https://quoovjkjwgtdqwdofubh.supabase.co"
       - key: FRONTEND_URL
-        value: "https://obscura-os-nine.vercel.app"
+        value: "https://obscuraos.online"
       - key: VAPID_CONTACT_EMAIL
         value: "noreply@obscura.finance"
       - key: VAPID_PUBLIC_KEY

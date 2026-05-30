@@ -15,7 +15,7 @@
 > - [docs/portal/](docs/portal/) — Developer portal content (typed docs at `/docs`)
 >
 > **Deployment registry:** [contracts-hardhat/deployments/arb-sepolia.json](contracts-hardhat/deployments/arb-sepolia.json)  
-> **Production frontend:** `https://obscura-os-nine.vercel.app`  
+> **Production frontend:** `https://obscuraos.online`  
 > **Production API:** `https://obscura-api-n62v.onrender.com`  
 > **Production worker:** `https://obscura-worker-0ppj.onrender.com`  
 > **Supabase:** `https://quoovjkjwgtdqwdofubh.supabase.co`
@@ -1670,7 +1670,7 @@ Worker uses `RPC_URL` primary + public fallbacks in transport mesh.
 | Platform | Vercel |
 | Root | `frontend/obscura-os-main` |
 | Build | `npm run build` → `dist/` |
-| URL | `https://obscura-os-nine.vercel.app` |
+| URL | `https://obscuraos.online` |
 | Deploy trigger | Push to `main` |
 | Secrets | All `VITE_*` in Vercel dashboard (not in repo) |
 
@@ -2003,7 +2003,7 @@ flowchart TD
 
 | Service | URL | Platform | Purpose |
 |---|---|---|---|
-| Frontend | `https://obscura-os-nine.vercel.app` | Vercel | Pay / Credit / Vote UI |
+| Frontend | `https://obscuraos.online` | Vercel | Pay / Credit / Vote UI |
 | API | `https://obscura-api-n62v.onrender.com` | Render | Relay, notifications, reputation |
 | Worker | `https://obscura-worker-0ppj.onrender.com` | Render | Indexer, reputation, push |
 | Supabase | `https://quoovjkjwgtdqwdofubh.supabase.co` | Supabase | Postgres + Realtime |
@@ -2556,7 +2556,7 @@ The Obscura TypeScript SDK (`@obscura-fhe/sdk`) is the **official, framework-agn
 | **Changelog** | [packages/sdk/CHANGELOG.md](packages/sdk/CHANGELOG.md) |
 | **Publish checklist** | [packages/sdk/PUBLISH_CHECKLIST.md](packages/sdk/PUBLISH_CHECKLIST.md) |
 | **Release log** | [sdk_memory.md](sdk_memory.md) |
-| **Developer portal** | https://obscura-os-nine.vercel.app/docs |
+| **Developer portal** | https://obscuraos.online/docs |
 | **Docs — quick start** | `/docs/quick-start` |
 | **Docs — SDK onboarding** | `/docs/sdk-onboarding` |
 | **Docs — SDK reference** | `/docs/sdk` |

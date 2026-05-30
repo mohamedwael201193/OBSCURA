@@ -51,7 +51,7 @@ export const architecturePage: DocPage = {
       type: "code",
       language: "text",
       title: "Deployment registry",
-      code: `Frontend   https://obscura-os-nine.vercel.app
+      code: `Frontend   https://obscuraos.online
 API        https://obscura-api-n62v.onrender.com
 Worker     https://obscura-worker-0ppj.onrender.com
 Supabase   https://quoovjkjwgtdqwdofubh.supabase.co

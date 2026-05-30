@@ -2,15 +2,17 @@
 
 > **Document type:** Canonical Ecosystem Architecture Reference  
 > **Status:** CANONICAL · LIVE (Arbitrum Sepolia testnet production)  
-> **Version:** v1.1  
+> **Version:** v1.2  
 > **Network:** Arbitrum Sepolia · chainId `421614`  
-> **Cut date:** 2026-05-29  
+> **Cut date:** 2026-05-30  
 > **Audience:** Investors · Auditors · Engineers · Judges · Ecosystem partners  
 >
 > **Source-of-truth inputs (merged):**
 > - [docs/pay_wave5.md](docs/pay_wave5.md) — Obscura Pay Protocol Documentation
 > - [credit_wave5_protocol_bible_v1.md](credit_wave5_protocol_bible_v1.md) — Obscura Credit Architecture Reference
 > - [vote_wave5_protocol_bible_v1.md](vote_wave5_protocol_bible_v1.md) — Obscura Vote Protocol Documentation (v1.3)
+> - [packages/sdk/](packages/sdk/) — Official TypeScript SDK (`@obscura-fhe/sdk`)
+> - [docs/portal/](docs/portal/) — Developer portal content (typed docs at `/docs`)
 >
 > **Deployment registry:** [contracts-hardhat/deployments/arb-sepolia.json](contracts-hardhat/deployments/arb-sepolia.json)  
 > **Production frontend:** `https://obscura-os-nine.vercel.app`  
@@ -79,6 +81,7 @@ Cross-references use `(§N)`. Addresses are EIP-55 mixed case. Amounts use **6 d
 36. [Future Expansion Roadmap](#36-future-expansion-roadmap)
 37. [Ecosystem Scale](#37-ecosystem-scale)
 38. [Why Obscura Is Technically Difficult](#38-why-obscura-is-technically-difficult)
+39. [Official TypeScript SDK](#39-official-typescript-sdk)
 
 ---
 
@@ -101,6 +104,7 @@ All three products share:
 - **Supabase** activity, reputation, and notification infrastructure
 - **Render** API and worker backend services
 - **Vercel** frontend deployment
+- **`@obscura-fhe/sdk`** — official TypeScript SDK for integrators (Pay, Credit, Vote, reputation, activity, notifications)
 - **Reveal-on-demand UX** — encrypted values display as masked placeholders until user action
 
 **Environment boundary:** Fhenix CoFHE is testnet-only as of this reference. Arbitrum Sepolia is the canonical production deployment target. Mainnet availability is an infrastructure unlock, not a missing product feature.
@@ -1412,6 +1416,8 @@ flowchart TB
 | State | React hooks; no global FHE auto-init |
 | Notifications | Service worker + Sonner + Web Push |
 | Database reads | Supabase anon client |
+| Developer portal | `/docs` — typed content from [docs/portal/](docs/portal/) |
+| External integrators | `@obscura-fhe/sdk` — see (§39) |
 
 ### 22.2 Repository layout
 
@@ -2256,6 +2262,9 @@ This section reports **verified counts** from the repository, deployment registr
 | **Primary navigation modules** | **16** | Pay 6 tabs + Credit 6 tabs + Vote 4 sections |
 | **Reputation signal types** | **28** | [reputation.ts](backend/obscura-worker/src/reputation.ts) — 7 Pay + 11 Credit + 10 Vote |
 | **API HTTP routes** | **12** | [index.ts](backend/obscura-api/src/index.ts), [relay.ts](backend/obscura-api/src/relay.ts), [notifications.ts](backend/obscura-api/src/notifications.ts), [reputation.ts](backend/obscura-api/src/reputation.ts) |
+| **SDK modules (`@obscura-fhe/sdk`)** | **6** | [packages/sdk/src/modules/](packages/sdk/src/modules/) — pay, credit, vote, reputation, activity, notifications |
+| **SDK unit tests (vitest)** | **15** | [packages/sdk/tests/sdk.test.ts](packages/sdk/tests/sdk.test.ts) |
+| **SDK runnable examples** | **8** | [packages/sdk/examples/](packages/sdk/examples/) |
 | **Shared infrastructure components** | **13** | See §37.3 |
 
 ### 37.2 Indexed event type breakdown
@@ -2528,12 +2537,383 @@ Obscura's difficulty is the **intersection** of these layers operating as one de
 
 ---
 
+## 39. Official TypeScript SDK
+
+🟢 **ACTIVE** — Published npm package for external integrators, automation, and future MCP tooling.
+
+The Obscura TypeScript SDK (`@obscura-fhe/sdk`) is the **official, framework-agnostic** client for Pay, Credit, Vote, and shared services. It mirrors production defaults (addresses, API, Supabase, RPC) and exposes typed transaction builders — without bundling React, wagmi, or `@fhenixprotocol/cofhe-sdk`.
+
+### 39.1 Package identity and links
+
+| Resource | URL / path |
+|---|---|
+| **npm package** | `@obscura-fhe/sdk` — https://www.npmjs.com/package/@obscura-fhe/sdk |
+| **Latest version** | `1.0.1` (2026-05-29) |
+| **Install** | `npm install @obscura-fhe/sdk viem` |
+| **GitHub source** | [packages/sdk/](packages/sdk/) |
+| **Architecture plan** | [packages/sdk/SDK_ARCHITECTURE.md](packages/sdk/SDK_ARCHITECTURE.md) |
+| **README** | [packages/sdk/README.md](packages/sdk/README.md) |
+| **Changelog** | [packages/sdk/CHANGELOG.md](packages/sdk/CHANGELOG.md) |
+| **Publish checklist** | [packages/sdk/PUBLISH_CHECKLIST.md](packages/sdk/PUBLISH_CHECKLIST.md) |
+| **Release log** | [sdk_memory.md](sdk_memory.md) |
+| **Developer portal** | https://obscura-os-nine.vercel.app/docs |
+| **Docs — quick start** | `/docs/quick-start` |
+| **Docs — SDK onboarding** | `/docs/sdk-onboarding` |
+| **Docs — SDK reference** | `/docs/sdk` |
+| **Docs content source** | [docs/portal/](docs/portal/) (typed pages, no markdown bibles) |
+
+> **Naming note:** The npm org is `obscura-fhe`. The package publishes as `@obscura-fhe/sdk`, not `@obscura/sdk`.
+
+### 39.2 Position in the architecture
+
+```mermaid
+flowchart LR
+  subgraph INTEGRATOR[Integrator App]
+    APP[Node / Vite / Next.js]
+    SDK[@obscura-fhe/sdk]
+    VIEM[viem peer]
+    FHE[FheProvider optional]
+  end
+
+  subgraph ONCHAIN[Arbitrum Sepolia]
+    PAY[ocUSDC_Pay + Pay stack]
+    CREDIT[Credit market]
+    VOTE[ObscuraVote]
+  end
+
+  subgraph OFFCHAIN[Off-chain services]
+    API[obscura-api]
+    SB[(Supabase)]
+  end
+
+  APP --> SDK
+  SDK --> VIEM
+  SDK --> FHE
+  SDK -->|pay credit vote| ONCHAIN
+  SDK -->|reputation notifications| API
+  SDK -->|activity| SB
+  FHE -.->|encrypt InEuint64| ONCHAIN
+```
+
+| SDK layer | Maps to architecture (§) |
+|---|---|
+| `sdk.pay` | Pay contracts (§9, §32.2) |
+| `sdk.credit` | Canonical market (§10, §32.3) |
+| `sdk.vote` | ObscuraVote (§11, §32.4) |
+| `sdk.reputation` | Shared reputation API (§12) |
+| `sdk.activity` | Supabase activity feed (§13, §24) |
+| `sdk.notifications` | Push prefs + VAPID (§14) |
+| `FheProvider` | CoFHE client adapter (§18) — **host-supplied** |
+
+The SDK does **not** replace the in-app CoFHE integration (`@fhenixprotocol/cofhe-sdk` + `src/lib/fhe.ts`). Integrators inject their own `FheProvider` or pass pre-encrypted `InEuint64` to write builders.
+
+### 39.3 Install and minimal usage
+
+```bash
+npm install @obscura-fhe/sdk viem
+```
+
+```typescript
+import { ObscuraSDK } from "@obscura-fhe/sdk";
+
+const sdk = ObscuraSDK.create({
+  supabaseAnonKey: process.env.OBSCURA_SUPABASE_ANON_KEY, // activity only
+});
+
+// Off-chain — no wallet
+const summary = await sdk.reputation.getSummary("0xYourWallet...");
+console.log(summary.tier, summary.totalCappedWeight);
+
+// On-chain read — default Arbitrum Sepolia RPC
+const count = await sdk.vote.getProposalCount(); // reads ObscuraVote.nextProposalId()
+const ctHash = await sdk.pay.getShieldedBalance("0xYourWallet...");
+```
+
+### 39.4 Module requirements matrix
+
+| Module | Wallet | RPC / `publicClient` | Supabase | `FheProvider` | Backend |
+|---|---|---|---|---|---|
+| `reputation` | No | No | No | No | obscura-api REST |
+| `notifications` | No | No | No | No | obscura-api REST |
+| `activity` | No | No | **URL + anon key** | No | Supabase direct |
+| `pay` / `credit` / `vote` reads | No | Yes (default RPC) | No | No | On-chain |
+| Encrypted writes | Optional* | Yes | No | **Yes** or pre-encrypted | On-chain |
+| `sendCall()` | **`walletClient`** | Yes | No | If write needs FHE | On-chain |
+
+\*Use `sdk.encodeCall(call)` and sign with any external wallet if `walletClient` is not injected.
+
+**Environment variables (integrators):**
+
+```bash
+# Activity (required for sdk.activity)
+OBSCURA_SUPABASE_URL=https://quoovjkjwgtdqwdofubh.supabase.co   # optional — SDK default
+OBSCURA_SUPABASE_ANON_KEY=eyJ...                                 # required for activity
+
+# Optional overrides
+ARB_SEPOLIA_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
+```
+
+Guard before activity queries:
+
+```typescript
+if (!sdk.activity.isConfigured()) {
+  throw new Error("Set OBSCURA_SUPABASE_ANON_KEY");
+}
+```
+
+### 39.5 Full configuration
+
+```typescript
+import { ObscuraSDK, DEFAULT_SUPABASE_URL } from "@obscura-fhe/sdk";
+import { createPublicClient, createWalletClient, http } from "viem";
+import { arbitrumSepolia } from "viem/chains";
+
+const rpcUrl = process.env.ARB_SEPOLIA_RPC_URL ?? "https://sepolia-rollup.arbitrum.io/rpc";
+
+const sdk = ObscuraSDK.create({
+  chainId: 421614,
+  rpcUrl,
+  apiUrl: "https://obscura-api-n62v.onrender.com",
+  supabaseUrl: process.env.OBSCURA_SUPABASE_URL ?? DEFAULT_SUPABASE_URL,
+  supabaseAnonKey: process.env.OBSCURA_SUPABASE_ANON_KEY,
+  publicClient: createPublicClient({ chain: arbitrumSepolia, transport: http(rpcUrl) }),
+  walletClient,   // optional — enables sendCall()
+  fhe: adapter,    // optional — enables encryptUint64 on write builders
+  addresses: {},   // partial override of DEFAULT_ADDRESSES
+});
+```
+
+### 39.6 Module API surface
+
+#### PayModule — `sdk.pay`
+
+| Method | Returns | Notes |
+|---|---|---|
+| `getShieldedBalance(account)` | `Promise<bigint>` | ctHash handle |
+| `buildShield(amount, enc?)` | `Promise<ContractCall>` | FHE or pre-encrypted |
+| `buildUnshield(to, amount, enc?)` | `Promise<ContractCall>` | |
+| `buildTransfer(to, amount, enc?)` | `Promise<ContractCall>` | |
+
+Target: `ocUSDC_Pay` `0xEd46020Df8abe7BB1E096f27d089F4326D223a53`
+
+#### CreditModule — `sdk.credit`
+
+| Method | Returns | Notes |
+|---|---|---|
+| `getMarketAddress(override?)` | `Address` | Default: canonical Pay/ocUSDC market |
+| `buildSupplyCollateral(amount, enc?, market?)` | `Promise<ContractCall>` | |
+| `buildBorrow(amount, enc?, market?)` | `Promise<ContractCall>` | |
+| `buildRepay(amount, enc?, market?)` | `Promise<ContractCall>` | |
+
+Default market: `0x1Ec113297c7F9516A6604aa3b18C180559a6f551`
+
+#### VoteModule — `sdk.vote`
+
+| Method | Returns | Notes |
+|---|---|---|
+| `getProposalCount()` | `Promise<bigint>` | Reads `nextProposalId()` on ObscuraVote |
+| `getProposal(id)` | `Promise<ProposalState>` | |
+| `buildCastVote(proposalId, optionIndex, enc?)` | `Promise<ContractCall>` | FHE for encrypted ballot |
+| `buildDelegate(delegatee)` | `ContractCall` | Plaintext delegate — no FHE |
+
+Vote contract: `0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730`
+
+#### ReputationModule — `sdk.reputation`
+
+| Method | Returns | Backend |
+|---|---|---|
+| `getSummary(wallet)` | `Promise<ReputationSummary>` | `GET /reputation/:wallet` |
+
+#### ActivityModule — `sdk.activity`
+
+| Method | Returns | Backend |
+|---|---|---|
+| `listForWallet(wallet, options?)` | `Promise<ActivityListResult>` | Supabase `obscura_activity` |
+| `getEventFilters()` | `ActivityEventFilterMap` | Mirrors frontend filters |
+| `isConfigured()` | `boolean` | True when URL + anon key set |
+
+#### NotificationsModule — `sdk.notifications`
+
+| Method | Backend |
+|---|---|
+| `getVapidPublicKey()` | `GET /notifications/vapid-public-key` |
+| `getPrefs(wallet)` | `GET /notifications/prefs/:wallet` |
+| `savePrefs(prefs)` | `POST /notifications/prefs` |
+| `subscribe(wallet, subscription)` | `POST /notifications/subscribe` |
+| `unsubscribe(wallet)` | `DELETE /notifications/subscribe/:wallet` |
+
+#### Facade helpers
+
+```typescript
+sdk.encodeCall(call: ContractCall): Hex
+sdk.sendCall(call, account): Promise<Hex>  // requires walletClient
+```
+
+### 39.7 FHE adapter (integrator-supplied)
+
+```typescript
+import type { FheProvider, InEuint64 } from "@obscura-fhe/sdk";
+
+const fhe: FheProvider = {
+  async encryptUint64(value, { contractAddress }) {
+    // Wrap @fhenixprotocol/cofhe-sdk — user-triggered only
+    return { ctHash, securityZone, utype, signature } satisfies InEuint64;
+  },
+};
+
+const sdk = ObscuraSDK.create({ fhe });
+await sdk.pay.buildShield(1000n); // encrypts via adapter
+```
+
+Privacy policy (same as frontend §17, §38.13): **never auto-decrypt on mount**; encrypt/decrypt must be user-triggered in host apps.
+
+### 39.8 TypeScript integration
+
+Recommended consumer `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true
+  }
+}
+```
+
+With `verbatimModuleSyntax: true`, use **type-only imports**:
+
+```typescript
+import { ObscuraSDK } from "@obscura-fhe/sdk";
+import type { ReputationSummary, FheProvider } from "@obscura-fhe/sdk";
+```
+
+SDK build output: **ESM** (`dist/index.js`) + **CJS** (`dist/index.cjs`) + dual `.d.ts` / `.d.cts`.
+
+### 39.9 Default deployment registry (embedded)
+
+Synced from [contracts-hardhat/deployments/arb-sepolia.json](contracts-hardhat/deployments/arb-sepolia.json) via [packages/sdk/src/config/defaults.ts](packages/sdk/src/config/defaults.ts):
+
+| Setting | Default |
+|---|---|
+| Chain ID | `421614` |
+| RPC | `https://sepolia-rollup.arbitrum.io/rpc` |
+| API | `https://obscura-api-n62v.onrender.com` |
+| Supabase URL | `https://quoovjkjwgtdqwdofubh.supabase.co` |
+| ocUSDC_Pay | `0xEd46020Df8abe7BB1E096f27d089F4326D223a53` |
+| ObscuraVote | `0xe358776AfdbA95d7c9F040e6ef1f5A021aF91730` |
+| Credit market | `0x1Ec113297c7F9516A6604aa3b18C180559a6f551` |
+
+When contracts redeploy, update `defaults.ts` and publish a patch SDK release.
+
+### 39.10 Runnable examples
+
+| Example | Command | Module |
+|---|---|---|
+| [basic-usage.ts](packages/sdk/examples/basic-usage.ts) | `npm run example:basic` | Combined smoke |
+| [reputation.ts](packages/sdk/examples/reputation.ts) | `npx tsx examples/reputation.ts [wallet]` | Reputation |
+| [activity.ts](packages/sdk/examples/activity.ts) | `npx tsx examples/activity.ts [wallet]` | Activity (needs anon key) |
+| [notifications.ts](packages/sdk/examples/notifications.ts) | `npx tsx examples/notifications.ts [wallet]` | Notifications |
+| [pay.ts](packages/sdk/examples/pay.ts) | `npx tsx examples/pay.ts [wallet]` | Pay |
+| [credit.ts](packages/sdk/examples/credit.ts) | `npx tsx examples/credit.ts` | Credit |
+| [vote.ts](packages/sdk/examples/vote.ts) | `npx tsx examples/vote.ts` | Vote |
+| [verify-vote-getter.ts](packages/sdk/examples/verify-vote-getter.ts) | `npx tsx examples/verify-vote-getter.ts` | On-chain getter verification |
+
+### 39.11 Test and release validation
+
+All gates run automatically via `prepublishOnly` before every npm publish.
+
+#### 39.11.1 Package scripts (`packages/sdk/`)
+
+| Script | Command | Purpose |
+|---|---|---|
+| Typecheck | `npm run typecheck` | `tsc --noEmit` on `src/` |
+| Unit tests | `npm run test` | vitest — 15 tests |
+| Build | `npm run build` | tsup → ESM + CJS + DTS |
+| Example smoke | `npm run example:basic` | Live reputation + VAPID against production API |
+| Pack | `npm pack` | Tarball integrity (~39.5 kB) |
+| Publish | `npm publish --access public` | npm registry (org: `obscura-fhe`) |
+
+#### 39.11.2 Unit test coverage (vitest)
+
+File: [packages/sdk/tests/sdk.test.ts](packages/sdk/tests/sdk.test.ts)
+
+| Suite | Tests | Validates |
+|---|---|---|
+| `utils` | 2 | Wallet normalization, `InEuint64` serialization |
+| `activity filters` | 1 | Credit/vote event namespaces |
+| `ObscuraSDK` | 4 | Default addresses, pay encode, FHE required error, delegate encode |
+| `ReputationModule` | 1 | `GET /reputation/:wallet` fetch mock |
+| `NotificationsModule` | 2 | VAPID key, 404 prefs |
+| `ActivityModule` | 3 | Supabase guard, `isConfigured()`, filter map |
+| `PayModule tx encoding` | 1 | Shield calldata matches viem |
+| `CreditModule` | 1 | Canonical market address |
+| **Total** | **15** | All passing as of v1.0.1 |
+
+#### 39.11.3 Release validation matrix (v1.0.1)
+
+| Gate | Result | Date |
+|---|---|---|
+| `npm run typecheck` | ✅ Pass | 2026-05-29 |
+| `npm run test` (15/15) | ✅ Pass | 2026-05-29 |
+| `npm run build` | ✅ Pass | 2026-05-29 |
+| `npm pack` | ✅ 39.5 kB, 10 files | 2026-05-29 |
+| On-chain Vote getter | ✅ `nextProposalId()` → 10 proposals on `0xe358…1730` | 2026-05-29 |
+| ESM import from tarball | ✅ Pass | 2026-05-29 |
+| CJS require from tarball | ✅ Pass | 2026-05-29 |
+| Fresh TypeScript project | ✅ `tsc --noEmit` with `verbatimModuleSyntax` | 2026-05-29 |
+| Fresh Vite React project | ✅ `npm run build` | 2026-05-29 |
+| Fresh Next.js project | ✅ `npm run build` | 2026-05-29 |
+| npm publish `@obscura-fhe/sdk@1.0.1` | ✅ Published | 2026-05-29 |
+| Git commit | `5da0662` on `main` | 2026-05-29 |
+
+#### 39.11.4 Known fixes in v1.0.1 (audit remediation)
+
+| Issue | Fix |
+|---|---|
+| Vote `proposalCount()` ABI mismatch | `getProposalCount()` now calls `nextProposalId()` (verified on-chain) |
+| Activity setup unclear | `isConfigured()` + expanded error messages + docs |
+| viem / TypeScript onboarding gaps | README + developer portal `/docs/sdk-onboarding` |
+| Missing per-module examples | Eight example scripts under `packages/sdk/examples/` |
+
+### 39.12 Developer onboarding path
+
+Recommended integrator sequence (also visualized at `/docs`):
+
+1. **Install SDK** — `npm install @obscura-fhe/sdk viem`
+2. **Connect wallet** — inject `publicClient` / `walletClient` via viem
+3. **Read reputation** — `sdk.reputation.getSummary()` (no Supabase)
+4. **Activity feed** — set `OBSCURA_SUPABASE_ANON_KEY`, call `sdk.activity.listForWallet()`
+5. **Pay flows** — shield / transfer builders + optional FHE
+6. **Credit flows** — supply / borrow / repay builders
+7. **Vote flows** — proposals, cast, delegate
+
+### 39.13 MCP compatibility (future)
+
+The flat module surface (`sdk.pay.*`, `sdk.reputation.*`, …) is designed to map **1:1** to future MCP automation tools. MCP server is **out of scope** for SDK v1 — do not publish MCP until SDK surface is stable (see [PUBLISH_CHECKLIST.md](packages/sdk/PUBLISH_CHECKLIST.md)).
+
+### 39.14 SDK vs in-app CoFHE stack
+
+| Concern | `@obscura-fhe/sdk` | Obscura frontend |
+|---|---|---|
+| React / wagmi | Not included | Full integration |
+| CoFHE encrypt/decrypt | `FheProvider` inject | `@fhenixprotocol/cofhe-sdk` + `src/lib/fhe.ts` |
+| UI stepper / reveal UX | Not included | `useFHEStatus`, reveal-on-demand |
+| Transaction builders | ✅ `ContractCall` + `encodeCall` | Hooks call contracts directly |
+| Off-chain services | ✅ API + Supabase | Same backends |
+
+---
+
 ## Document Changelog
 
 | Version | Date | Changes |
 |---|---|---|
 | v1.0 | 2026-05-29 | Initial canonical merge of Pay (`docs/pay_wave5.md`), Credit (`credit_wave5_protocol_bible_v1.md`), Vote (`vote_wave5_protocol_bible_v1.md` v1.3) into unified ecosystem architecture reference. 36 sections, institutional terminology, mermaid diagrams, complete registries. |
 | v1.1 | 2026-05-29 | Added §37 Ecosystem Scale (verified codebase counts) and §38 Why Obscura Is Technically Difficult; updated TOC and cross-references. |
+| v1.2 | 2026-05-30 | Added §39 Official TypeScript SDK (`@obscura-fhe/sdk` v1.0.1) — links, module API, requirements matrix, examples, full test/release validation; updated §37.1 scale counts and executive vision. |
 
 ---
 
@@ -2548,6 +2928,9 @@ Obscura's difficulty is the **intersection** of these layers operating as one de
 | **Two-step pattern** | confidentialTransfer then recordWithEnc (Credit) |
 | **ocUSDC_Pay** | Canonical Pay-backed confidential USDC wrapper |
 | **Reveal-on-demand** | User must click to decrypt; never auto on mount |
+| **`@obscura-fhe/sdk`** | Official TypeScript SDK for Pay, Credit, Vote, and shared services |
+| **`FheProvider`** | Host-supplied CoFHE encrypt adapter for SDK write builders |
+| **`ContractCall`** | Serializable tx descriptor returned by SDK write builders |
 | **Plain shadow** | Plaintext mirror for encrypted revert guards |
 | **Harmony** | Shared Obscura institutional UI design system |
 | **LLTV** | Loan-to-liquidation threshold (bps) |
@@ -2569,7 +2952,9 @@ Obscura's difficulty is the **intersection** of these layers operating as one de
 | Worker | [backend/obscura-worker/src/indexer/](backend/obscura-worker/src/indexer/), [reputation.ts](backend/obscura-worker/src/reputation.ts) |
 | API | [backend/obscura-api/src/](backend/obscura-api/src/) |
 | Infra | [render.yaml](render.yaml) |
+| **SDK** | [packages/sdk/](packages/sdk/), [SDK_ARCHITECTURE.md](packages/sdk/SDK_ARCHITECTURE.md), [README.md](packages/sdk/README.md) |
+| **Developer docs** | [docs/portal/](docs/portal/), live at `/docs` on production frontend |
 
 ---
 
-*End of Obscura Protocol Architecture Reference v1*
+*End of Obscura Protocol Architecture Reference v1.2*

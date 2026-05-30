@@ -91,3 +91,13 @@ WAVE4-CREDIT-PROGRESS.md
 scripts/test-e2e.ps1
 chrome-profile/
 launch.js
+
+# ── Local protocol bibles & planning docs (docs/portal/ remains tracked) ─────
+docs/README.md
+docs/pay_wave5.md
+docs/pay_wave5_v2.md
+docs/pay_wave5_v3.md
+docs/credit/BORROW_ROOT_CAUSE.md
+docs/credit/PRIVACY_MATRIX.md
+docs/credit/SCORE_FEED_FROM_VOTE.md
+docs/credit/STRATEGIC_PLAN_V2_PRODUCTION.md

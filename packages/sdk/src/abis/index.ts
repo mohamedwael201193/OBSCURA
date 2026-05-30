@@ -79,7 +79,7 @@ export const CREDIT_MARKET_ABI = [
 
 export const OBSCURA_VOTE_ABI = [
   {
-    name: "proposalCount",
+    name: "nextProposalId",
     type: "function",
     stateMutability: "view",
     inputs: [],

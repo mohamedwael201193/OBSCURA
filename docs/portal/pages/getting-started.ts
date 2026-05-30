@@ -77,6 +77,12 @@ export const quickStartPage: DocPage = {
       variant: "onboarding-path",
     },
     {
+      type: "callout",
+      variant: "info",
+      title: "What you need before starting",
+      text: "Reputation + notifications: npm install only. Activity: Supabase anon key required (URL defaults to Obscura project). On-chain reads: Arbitrum Sepolia RPC (default provided). Encrypted writes: optional FheProvider. sendCall(): optional walletClient.",
+    },
+    {
       type: "heading",
       level: 2,
       text: "Install",
@@ -97,9 +103,16 @@ export const quickStartPage: DocPage = {
       type: "code",
       language: "typescript",
       title: "Minimal client",
-      code: `import { ObscuraSDK } from "@obscura-fhe/sdk";
+      code: `import { ObscuraSDK, DEFAULT_SUPABASE_URL } from "@obscura-fhe/sdk";
+import { createPublicClient, http } from "viem";
+import { arbitrumSepolia } from "viem/chains";
+
+const rpcUrl = process.env.ARB_SEPOLIA_RPC_URL ?? "https://sepolia-rollup.arbitrum.io/rpc";
 
 export const sdk = ObscuraSDK.create({
+  rpcUrl,
+  publicClient: createPublicClient({ chain: arbitrumSepolia, transport: http(rpcUrl) }),
+  supabaseUrl: process.env.OBSCURA_SUPABASE_URL ?? DEFAULT_SUPABASE_URL,
   supabaseAnonKey: process.env.OBSCURA_SUPABASE_ANON_KEY,
 });
 
@@ -120,10 +133,11 @@ export const sdk = ObscuraSDK.create({
 const rep = await sdk.reputation.getSummary(wallet);
 console.log(rep.tier, rep.totalCappedWeight);
 
-const { items } = await sdk.activity.listForWallet(wallet, {
-  filter: "credit",
-  page: 0,
-});`,
+if (sdk.activity.isConfigured()) {
+  const { items } = await sdk.activity.listForWallet(wallet, { filter: "credit" });
+} else {
+  console.warn("Set OBSCURA_SUPABASE_ANON_KEY for activity feed");
+}`,
     },
     {
       type: "heading",
@@ -136,6 +150,7 @@ const { items } = await sdk.activity.listForWallet(wallet, {
       language: "typescript",
       title: "ContractCall pattern",
       code: `const ctHash = await sdk.pay.getShieldedBalance(wallet);
+const count = await sdk.vote.getProposalCount(); // reads nextProposalId()
 const call = sdk.vote.buildDelegate("0xDelegatee...");
 const calldata = sdk.encodeCall(call);
 // Sign with viem walletClient → sdk.sendCall(call, account)`,

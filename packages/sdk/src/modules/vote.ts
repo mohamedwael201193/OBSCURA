@@ -20,11 +20,12 @@ export class VoteModule {
     return this.deps.addresses.ObscuraVote;
   }
 
+  /** Returns total proposals created (= public `nextProposalId` on ObscuraVote). */
   async getProposalCount(): Promise<bigint> {
     return this.deps.publicClient.readContract({
       address: this.deps.addresses.ObscuraVote,
       abi: OBSCURA_VOTE_ABI,
-      functionName: "proposalCount",
+      functionName: "nextProposalId",
     }) as Promise<bigint>;
   }
 

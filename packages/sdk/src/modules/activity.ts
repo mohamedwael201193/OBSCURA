@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Address } from "viem";
 import { ACTIVITY_EVENT_FILTERS, type ActivityEventFilterMap } from "../config/activity-filters.js";
+import { DEFAULT_SUPABASE_URL } from "../config/defaults.js";
 import { normalizeWallet } from "../core/utils.js";
 import type {
   ActivityEventType,
@@ -13,10 +14,19 @@ const DEFAULT_PAGE_SIZE = 20;
 
 export class ActivityModule {
   private readonly client: SupabaseClient | null;
+  readonly supabaseUrl: string | undefined;
+  readonly supabaseAnonKey: string | undefined;
 
   constructor(supabaseUrl: string | undefined, supabaseAnonKey: string | undefined) {
+    this.supabaseUrl = supabaseUrl;
+    this.supabaseAnonKey = supabaseAnonKey;
     this.client =
       supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+  }
+
+  /** True when both Supabase URL and anon key were supplied at SDK init. */
+  isConfigured(): boolean {
+    return this.client !== null;
   }
 
   getEventFilters(): ActivityEventFilterMap {
@@ -26,7 +36,13 @@ export class ActivityModule {
   async listForWallet(wallet: Address, options: ActivityListOptions = {}): Promise<ActivityListResult> {
     if (!this.client) {
       throw new Error(
-        "Supabase not configured. Pass supabaseUrl and supabaseAnonKey to ObscuraSDK.create().",
+        [
+          "Activity module requires Supabase credentials.",
+          `Pass supabaseAnonKey (and optionally supabaseUrl) to ObscuraSDK.create().`,
+          `Default URL: ${DEFAULT_SUPABASE_URL}`,
+          "Get the anon key from your Supabase project → Settings → API → anon public.",
+          "Reputation and notifications work without Supabase; activity does not.",
+        ].join(" "),
       );
     }
 

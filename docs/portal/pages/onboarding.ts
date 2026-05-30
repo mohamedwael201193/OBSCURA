@@ -52,6 +52,12 @@ export const sdkOnboardingPage: DocPage = {
   category: "Getting started",
   blocks: [
     {
+      type: "callout",
+      variant: "info",
+      title: "Module requirements",
+      text: "reputation · notifications — API only, no wallet. activity — Supabase URL + anon key. pay · credit · vote reads — RPC (421614). Encrypted writes — FheProvider. sendCall — walletClient.",
+    },
+    {
       type: "visual",
       variant: "sdk-modules",
     },
@@ -65,21 +71,81 @@ export const sdkOnboardingPage: DocPage = {
       type: "code",
       language: "typescript",
       title: "ObscuraSDK.create()",
-      code: `import { ObscuraSDK } from "@obscura-fhe/sdk";
-import { createPublicClient, createWalletClient, http } from "viem";
+      code: `import { ObscuraSDK, DEFAULT_SUPABASE_URL } from "@obscura-fhe/sdk";
+import { createPublicClient, createWalletClient, http, custom } from "viem";
 import { arbitrumSepolia } from "viem/chains";
+
+const rpcUrl = process.env.ARB_SEPOLIA_RPC_URL ?? "https://sepolia-rollup.arbitrum.io/rpc";
 
 const publicClient = createPublicClient({
   chain: arbitrumSepolia,
-  transport: http(),
+  transport: http(rpcUrl),
+});
+
+// Browser: custom(window.ethereum) · Node: http(rpcUrl) + account
+const walletClient = createWalletClient({
+  chain: arbitrumSepolia,
+  transport: http(rpcUrl),
 });
 
 const sdk = ObscuraSDK.create({
+  chainId: 421614,
+  rpcUrl,
   publicClient,
   walletClient,              // optional — enables sendCall()
-  supabaseAnonKey: process.env.OBSCURA_SUPABASE_ANON_KEY,
-  fhe: cofheAdapter,           // optional — enables encryptUint64
+  supabaseUrl: process.env.OBSCURA_SUPABASE_URL ?? DEFAULT_SUPABASE_URL,
+  supabaseAnonKey: process.env.OBSCURA_SUPABASE_ANON_KEY, // required for activity
+  fhe: cofheAdapter,        // optional — enables encryptUint64
 });`,
+    },
+    {
+      type: "heading",
+      level: 2,
+      text: "TypeScript (verbatimModuleSyntax)",
+      id: "typescript",
+    },
+    {
+      type: "code",
+      language: "json",
+      title: "Recommended tsconfig.json",
+      code: `{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true
+  }
+}`,
+    },
+    {
+      type: "callout",
+      variant: "warning",
+      title: "Type-only imports",
+      text: "With verbatimModuleSyntax: true, import types with import type { FheProvider, ReputationSummary }. Mixing value + type imports causes TS1363. Use import type or set verbatimModuleSyntax: false.",
+    },
+    {
+      type: "heading",
+      level: 2,
+      text: "Supabase for activity",
+      id: "supabase",
+    },
+    {
+      type: "code",
+      language: "bash",
+      title: "Environment",
+      code: `OBSCURA_SUPABASE_URL=https://quoovjkjwgtdqwdofubh.supabase.co
+OBSCURA_SUPABASE_ANON_KEY=eyJ...   # Supabase → Settings → API → anon public`,
+    },
+    {
+      type: "code",
+      language: "typescript",
+      title: "Guard before querying",
+      code: `if (!sdk.activity.isConfigured()) {
+  throw new Error("Set OBSCURA_SUPABASE_ANON_KEY");
+}
+const feed = await sdk.activity.listForWallet(wallet);`,
     },
     {
       type: "heading",

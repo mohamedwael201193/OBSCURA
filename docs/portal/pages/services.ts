@@ -223,6 +223,12 @@ export const sdkReferencePage: DocPage = {
   category: "Reference",
   blocks: [
     {
+      type: "callout",
+      variant: "info",
+      title: "Requirements by module",
+      text: "activity → supabaseAnonKey (+ optional supabaseUrl). On-chain reads → rpcUrl or publicClient (chain 421614). Encrypted writes → fhe or pre-encrypted InEuint64. sendCall → walletClient.",
+    },
+    {
       type: "code",
       language: "bash",
       title: "Install",
@@ -293,7 +299,7 @@ sdk.sendCall(call, account): Promise<Hex>  // requires walletClient`,
       type: "table",
       headers: ["Method", "Returns"],
       rows: [
-        ["getProposalCount()", "Promise<bigint>"],
+        ["getProposalCount()", "Promise<bigint>", "Reads ObscuraVote.nextProposalId()"],
         ["getProposal(id)", "Promise<ProposalState>"],
         ["buildCastVote(proposalId, optionIndex, enc?)", "Promise<ContractCall>"],
         ["buildDelegate(delegatee)", "ContractCall"],
@@ -320,7 +326,8 @@ sdk.sendCall(call, account): Promise<Hex>  // requires walletClient`,
       type: "code",
       language: "typescript",
       code: `listForWallet(wallet, options?: ActivityListOptions): Promise<ActivityListResult>
-getEventFilters(): ActivityEventFilterMap`,
+getEventFilters(): ActivityEventFilterMap
+isConfigured(): boolean  // true when supabaseUrl + supabaseAnonKey set`,
     },
     {
       type: "heading",
@@ -348,7 +355,7 @@ getEventFilters(): ActivityEventFilterMap`,
       type: "list",
       items: [
         "Types: ContractCall, InEuint64, FheProvider, ReputationSummary, ActivityItem, NotificationPrefs, ProposalState",
-        "Constants: DEFAULT_ADDRESSES, ARBITRUM_SEPOLIA_CHAIN_ID, ACTIVITY_EVENT_FILTERS, DEFAULT_API_URL",
+        "Constants: DEFAULT_ADDRESSES, DEFAULT_SUPABASE_URL, ARBITRUM_SEPOLIA_CHAIN_ID, ACTIVITY_EVENT_FILTERS, DEFAULT_API_URL, DEFAULT_RPC_URL",
         "Errors: FheRequiredError, HttpError",
         "ABIs: OC_USDC_PAY_ABI, CREDIT_MARKET_ABI, OBSCURA_VOTE_ABI",
       ],

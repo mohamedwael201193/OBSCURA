@@ -154,7 +154,12 @@ describe("NotificationsModule", () => {
 describe("ActivityModule", () => {
   it("throws when supabase not configured", async () => {
     const mod = new ActivityModule(undefined, undefined);
-    await expect(mod.listForWallet(WALLET)).rejects.toThrow(/Supabase not configured/);
+    await expect(mod.listForWallet(WALLET)).rejects.toThrow(/Activity module requires Supabase/);
+  });
+
+  it("reports configuration state", () => {
+    expect(new ActivityModule(undefined, undefined).isConfigured()).toBe(false);
+    expect(new ActivityModule("https://x.supabase.co", "anon-key").isConfigured()).toBe(true);
   });
 
   it("exposes event filter map", () => {

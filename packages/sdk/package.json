@@ -1,6 +1,6 @@
 {
   "name": "@obscura-fhe/sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Official TypeScript SDK for Obscura Pay, Credit, and Vote on Arbitrum Sepolia",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -66,5 +66,10 @@
   "bugs": {
     "url": "https://github.com/mohamedwael201193/OBSCURA/issues"
   },
-  "homepage": "https://github.com/mohamedwael201193/OBSCURA/tree/main/packages/sdk#readme"
+  "homepage": "https://github.com/mohamedwael201193/OBSCURA/tree/main/packages/sdk#readme",
+  "directories": {
+    "example": "examples",
+    "test": "tests"
+  },
+  "author": ""
 }
